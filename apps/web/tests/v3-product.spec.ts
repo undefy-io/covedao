@@ -327,6 +327,8 @@ test("E2E-010 wallet: no List before mint-out, and it says why", async ({ browse
   await page.goto(`${BASE}/wallet`);
   await page.getByRole("button", { name: /connect wallet/i }).click();
   const card = page.locator("div.border", { has: page.locator(`a[href="/token/${aliceTokenId}"]`) }).first();
+  // Holdings name the token, not just its id.
+  await expect(card.getByText("$FROG")).toBeVisible({ timeout: 30_000 });
   await expect(card.getByText(/listing opens when .* mints out/i)).toBeVisible({ timeout: 30_000 });
   await expect(card.getByRole("button", { name: "List", exact: true })).toHaveCount(0);
 });

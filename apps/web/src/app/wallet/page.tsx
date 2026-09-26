@@ -16,6 +16,7 @@ import { useFeeRates } from "@/components/FeePicker";
 
 interface TokenInfo {
   ticker: string;
+  displayName: string;
   graduated: boolean;
   /** Lowest open ask, sats per 1,000 tokens. */
   floorPer1k: number | null;
@@ -108,6 +109,7 @@ function WalletContent() {
           const floor = asks.length ? Math.min(...asks.map((a) => unitPriceSats(a.amountAtoms, a.totalPriceSats))) : null;
           return [id, {
             ticker: d.data.ticker,
+            displayName: d.data.displayName ?? "",
             graduated: d.data.graduated ?? BigInt(d.data.issuedSupplyAtoms) >= BigInt(d.data.publicCapAtoms),
             floorPer1k: floor,
             vaultPer1k: q.ok ? Number(q.data.grossSats) : null,
@@ -291,8 +293,21 @@ function WalletContent() {
             {portfolio.holdings.map((h) => (
               <div key={h.tokenId} className="border border-rule bg-ink-2 p-4">
                 <a href={`/token/${h.tokenId}`} className="block">
+                  <div className="text-bone">
+                    {tokenInfo[h.tokenId] ? (
+                      <>
+                        ${tokenInfo[h.tokenId]!.ticker}
+                        {tokenInfo[h.tokenId]!.displayName ? <span className="text-bone-dim"> · {tokenInfo[h.tokenId]!.displayName}</span> : null}
+                      </>
+                    ) : (
+                      "…"
+                    )}
+                  </div>
                   <div className="font-mono text-xs text-bone-dim">{h.tokenId.slice(0, 16)}…</div>
-                  <div className="mt-1 text-xl text-bone">{fmtTokens(BigInt(h.amountAtoms))}</div>
+                  <div className="mt-1 text-xl text-bone">
+                    {fmtTokens(BigInt(h.amountAtoms))}
+                    {tokenInfo[h.tokenId] ? <span className="text-sm text-bone-dim"> {tokenInfo[h.tokenId]!.ticker}</span> : null}
+                  </div>
                   <div className="text-xs text-bone-dim">{h.utxoCount} token UTXO{h.utxoCount === 1 ? "" : "s"}</div>
                 </a>
                 {sending === h.tokenId ? (
@@ -374,7 +389,9 @@ function WalletContent() {
             {portfolio.listings.map((l) => (
               <div key={l.listingId} className="flex items-center justify-between border border-rule bg-ink-2 p-3 text-sm">
                 <div>
-                  <div className="text-bone">{fmtTokens(BigInt(l.amountAtoms))} @ {fmtBtc(BigInt(l.totalPriceSats))}</div>
+                  <div className="text-bone">
+                    {fmtTokens(BigInt(l.amountAtoms))} {tokenInfo[l.tokenId]?.ticker ?? `${l.tokenId.slice(0, 8)}…`} @ {fmtBtc(BigInt(l.totalPriceSats))}
+                  </div>
                   <div className="text-xs text-bone-dim">{l.status}</div>
                 </div>
                 {l.status === "ACTIVE" && (
