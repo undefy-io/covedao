@@ -107,12 +107,12 @@ function MarketContent() {
     setBuying(listing.listingId);
     setMsg("");
     try {
-      const fillId = await buyListing(
+      const { txid } = await buyListing(
         listing,
         { script, publicKey, ordinalsScript, signPsbt, signBip322, getUtxos },
         satPerVb,
       );
-      setMsg(`Buyer signed — waiting for seller (fill ${fillId.slice(0, 8)})…`);
+      setMsg(`Bought — arrives when the next block confirms it (${txid.slice(0, 16)}…).`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {

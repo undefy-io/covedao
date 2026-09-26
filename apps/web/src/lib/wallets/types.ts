@@ -42,6 +42,12 @@ export interface SignPsbtRequest {
    * it does after the user, when the transaction is submitted.
    */
   inputsByAddress: { address: string; indexes: number[] }[];
+  /**
+   * The sighash to sign with. Omitted: SIGHASH_ALL. A presigned listing asks
+   * for SIGHASH_SINGLE|ANYONECANPAY (0x83): the seller's carrier, paid out to
+   * them, and nothing else — so a buyer can complete the sale later.
+   */
+  sighashType?: number;
 }
 
 export interface WalletAdapter {

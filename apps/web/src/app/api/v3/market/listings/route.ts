@@ -34,7 +34,8 @@ export async function POST(req: Request) {
         creationHeight: BigInt(listing.creationHeight),
         expiryHeight: BigInt(listing.expiryHeight),
       },
-      strField(body, "signatureB64"),
+      // The seller's presigned listing PSBT (SIGHASH_SINGLE|ANYONECANPAY).
+      strField(body, "presignedPsbtBase64"),
       strField(body, "sellerTokenPublicKey") || undefined,
     );
     return ok({ listingId });

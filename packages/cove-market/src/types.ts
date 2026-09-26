@@ -24,6 +24,8 @@ export interface ListingV1 {
 }
 
 export type ListingStatus =
+  /** Presigned on a fresh split still in the mempool; live once it confirms. */
+  | "PENDING"
   | "ACTIVE"
   | "RESERVED"
   | "BROADCAST"
@@ -37,7 +39,6 @@ export type FillStatus =
   | "RESERVED"
   | "PSBT_BUILT"
   | "BUYER_SIGNED"
-  | "SELLER_SIGNED"
   | "BROADCAST"
   | "CONFIRMED"
   | "REORGED"

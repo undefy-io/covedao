@@ -84,7 +84,7 @@ async function xverseRpc<T>(method: string, params: Record<string, unknown>): Pr
 
 /**
  * Every wallet is asked for the same thing: sign these indexes, with
- * SIGHASH_ALL, and do not finalize. They differ only in how they want to be
+ * SIGHASH_ALL (or a listing's SINGLE|ANYONECANPAY), and do not finalize. They differ only in how they want to be
  * told, which is all these adapters resolve.
  */
 function makeAdapter(spec: {
@@ -145,7 +145,7 @@ function inputsToSign(request: SignPsbtRequest) {
   return request.inputsByAddress.map((group) => ({
     address: group.address,
     signingIndexes: group.indexes,
-    sigHash: SIGHASH_ALL,
+    sigHash: request.sighashType ?? SIGHASH_ALL,
   }));
 }
 
@@ -166,6 +166,8 @@ export const ADAPTERS: WalletAdapter[] = [
     sign: async (psbt, _network, request) => {
       const signInputs: Record<string, number[]> = {};
       for (const g of request.inputsByAddress) signInputs[g.address] = g.indexes;
+      // Xverse reads the sighash from each input's PSBT_IN_SIGHASH_TYPE, which
+      // a listing PSBT carries (SINGLE|ANYONECANPAY).
       const r = await xverseRpc<{ psbt: string }>("signPsbt", {
         psbt: psbt.toBase64(),
         signInputs,
@@ -197,7 +199,7 @@ export const ADAPTERS: WalletAdapter[] = [
       }).unisat;
       if (!u) throw new WalletError("NOT_INSTALLED", "Unisat is not installed");
       const toSignInputs = request.inputsByAddress.flatMap((g) =>
-        g.indexes.map((index) => ({ index, address: g.address, sighashTypes: [SIGHASH_ALL] })),
+        g.indexes.map((index) => ({ index, address: g.address, sighashTypes: [request.sighashType ?? SIGHASH_ALL] })),
       );
       try {
         const hex = await u.signPsbt(psbt.toHex(), { autoFinalized: false, toSignInputs });
@@ -265,7 +267,7 @@ export const ADAPTERS: WalletAdapter[] = [
         await leather.signPsbt(psbt, {
           network,
           signAtIndexes: allIndexes(request),
-          allowedSighash: [SIGHASH_ALL],
+          allowedSighash: [request.sighashType ?? SIGHASH_ALL],
           finalize: false,
           extractTx: false,
         }),

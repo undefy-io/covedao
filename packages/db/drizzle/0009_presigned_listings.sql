@@ -1,0 +1,3 @@
+DROP INDEX IF EXISTS "cove_v3_market_listings_source_active_uq";--> statement-breakpoint
+ALTER TABLE "cove_v3_market_listings" ADD COLUMN "seller_presigned_psbt" text;--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "cove_v3_market_listings_source_active_uq" ON "cove_v3_market_listings" USING btree ("network","source_txid","source_vout") WHERE "cove_v3_market_listings"."status" in ('PENDING', 'ACTIVE', 'RESERVED', 'BROADCAST');

@@ -8,6 +8,15 @@ import {
   signBip322P2trWithKey,
 } from "@crclaunch/wallets/e2e";
 import { IDENTITIES, fund, mine, listBtcUtxos, rpc } from "./v3-rpc";
+import { apiListPresigned, waitForListing } from "./v3-list";
+
+/** Every signature per wallet: a presigned seller signs nothing when their listing sells. */
+const signCalls = new Map<string, number>();
+function countedSign(keys: { payPriv: string; ordPriv: string }, psbtBase64: string): string {
+  signCalls.set(keys.ordPriv, (signCalls.get(keys.ordPriv) ?? 0) + 1);
+  return signPsbtTwoAddress(psbtBase64, keys.payPriv, keys.ordPriv);
+}
+const signsBy = (keys: { ordPriv: string }) => signCalls.get(keys.ordPriv) ?? 0;
 
 bitcoin.initEccLib(ecc as unknown as Parameters<typeof bitcoin.initEccLib>[0]);
 const ECPair = ECPairFactory(ecc);
@@ -53,7 +62,7 @@ async function portfolio(address: string) {
 async function walletPage(browser: Browser, keys: { payPriv: string; ordPriv: string }): Promise<Page> {
   const id = twoAddressIdentity(keys.payPriv, keys.ordPriv);
   const page = await (await browser.newContext()).newPage();
-  await page.exposeFunction("__signPsbt", (psbtBase64: string) => signPsbtTwoAddress(psbtBase64, keys.payPriv, keys.ordPriv));
+  await page.exposeFunction("__signPsbt", (psbtBase64: string) => countedSign(keys, psbtBase64));
   // Marketplace messages are signed by the token (ordinals) address.
   await page.exposeFunction("__signBip322", (message: string) => signBip322P2trWithKey(message, keys.ordPriv));
   await page.exposeFunction("__getUtxos", () => listBtcUtxos(id.paymentAddress));
@@ -82,26 +91,26 @@ async function walletPage(browser: Browser, keys: { payPriv: string; ordPriv: st
 let tokenId: string;
 let minted: bigint;
 
-/** List through the API — the UI only offers listing once a token is fully minted. */
+/** List through the API (split + Taproot presign) — the UI only offers listing once a token is fully minted. */
 async function apiList(keys: { payPriv: string; ordPriv: string }, tokens: bigint, priceSats: number) {
   const id = twoAddressIdentity(keys.payPriv, keys.ordPriv);
-  const pf = await portfolio(id.ordinalsAddress);
-  const utxo = pf.data.tokenUtxos.find((u: { tokenId: string; amountAtoms: string }) => u.tokenId === tokenId && BigInt(u.amountAtoms) >= tokens * T);
-  const prep = await fetch(`${BASE}/api/v3/market/listings/prepare`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      tokenId, sourceTxid: utxo.txid, sourceVout: String(utxo.vout), amountAtoms: (tokens * T).toString(), totalPriceSats: String(priceSats), expiryBlocks: "1008",
-      walletScript: id.paymentScript, walletAddress: id.paymentAddress, walletPublicKey: id.paymentPublicKey,
-      ordinalsScript: id.ordinalsScript, ordinalsPublicKey: id.ordinalsPublicKey,
-    }),
-  }).then((r) => r.json());
-  const made = await fetch(`${BASE}/api/v3/market/listings`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ listing: prep.data.listing, signatureB64: signBip322P2trWithKey(prep.data.message, keys.ordPriv), sellerTokenPublicKey: id.ordinalsPublicKey }),
-  }).then((r) => r.json());
-  expect(made.ok).toBe(true);
+  const made = await apiListPresigned(
+    {
+      fields: {
+        walletScript: id.paymentScript, walletAddress: id.paymentAddress, walletPublicKey: id.paymentPublicKey,
+        ordinalsScript: id.ordinalsScript, ordinalsPublicKey: id.ordinalsPublicKey,
+      },
+      tokenAddress: id.ordinalsAddress,
+      getUtxos: () => listBtcUtxos(id.paymentAddress),
+      sign: (psbt) => countedSign(keys, psbt),
+    },
+    tokenId,
+    tokens * T,
+    priceSats,
+  );
+  if (made.pending) await mineAndWait(1);
+  await waitForListing(made.listingId, tokenId);
+  return made;
 }
 
 test("X-001 launch from a nested-segwit wallet", async ({ browser }) => {
@@ -176,7 +185,7 @@ test("X-004 sell back to the vault from a Taproot carrier", async ({ browser }) 
   expect(BigInt(detail.data.issuedSupplyAtoms)).toBe(minted - 10_000n * T);
 });
 
-test("X-005 list with a Taproot BIP-322 signature", async () => {
+test("X-005 list with a Taproot SINGLE|ANYONECANPAY presignature", async () => {
   await apiList(DAVE, 3_000n, 50_000);
 
   const listings = await fetch(`${BASE}/api/v3/market/listings?tokenId=${tokenId}`).then((r) => r.json());
@@ -190,15 +199,12 @@ test("X-006 P2P fill: nested-segwit buyer, Taproot seller", async ({ browser }) 
   const buyer = await walletPage(browser, ERIN);
   await buyer.goto(`${BASE}/market`);
   await buyer.getByRole("button", { name: /connect wallet/i }).click();
+  const daveSignsBefore = signsBy(DAVE);
   await buyer.locator("tr", { hasText: "DAVE" }).getByRole("button", { name: "Buy", exact: true }).first().click();
-  await expect(buyer.getByText(/waiting for seller/i).first()).toBeVisible({ timeout: 60_000 });
-
-  const seller = await walletPage(browser, DAVE);
-  await seller.goto(`${BASE}/wallet`);
-  await seller.getByRole("button", { name: /connect wallet/i }).click();
-  await seller.getByRole("button", { name: /review & sign sale/i }).first().click();
-  await expect(seller.getByText(/sale broadcast/i).first()).toBeVisible({ timeout: 60_000 });
+  await expect(buyer.getByText(/^bought — arrives when/i).first()).toBeVisible({ timeout: 60_000 });
   await mineAndWait(1);
+  // The Taproot seller signed nothing at sale time.
+  expect(signsBy(DAVE)).toBe(daveSignsBefore);
 
   const pf = await portfolio(dave.ordinalsAddress);
   expect(pf.data.listings.find((l: { listingId: string }) => l.listingId === listingId).status).toBe("FILLED");

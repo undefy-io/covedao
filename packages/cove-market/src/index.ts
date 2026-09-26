@@ -48,7 +48,25 @@ export {
   type P2PFillTerms,
 } from "./finalize.js";
 export {
+  buildListingPsbt,
+  verifyListingPsbt,
+  buildPresignedFillPsbt,
+  attachSellerPresig,
+  LISTING_TX_VERSION,
+  LISTING_LOCKTIME,
+  LISTING_SEQUENCE,
+  SIGHASH_SINGLE_ANYONECANPAY,
+  FILL_SELLER_INPUT,
+  FILL_PAYOUT_VOUT,
+  FILL_BUYER_CARRIER_VOUT,
+  FILL_FEE_VOUT,
+  type ListingSource,
+  type SellerPresig,
+} from "./presign.js";
+export {
   MarketService,
+  publicListing,
+  PENDING_LISTING_MAX_BLOCKS,
   type BuyerFundInput,
   type CreateListingInput,
   type ReserveListingInput,

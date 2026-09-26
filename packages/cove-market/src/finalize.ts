@@ -12,12 +12,14 @@ import { OP_TRANSFER } from "@crclaunch/cove-wire";
 import type { CoreRpcProvider } from "@crclaunch/bitcoin";
 import { dustThreshold } from "@crclaunch/cove-economics";
 import { MarketError } from "./errors.js";
+import { FILL_SELLER_INPUT, FILL_PAYOUT_VOUT, FILL_BUYER_CARRIER_VOUT, FILL_FEE_VOUT, FILL_BUYER_CHANGE_VOUT } from "./presign.js";
 
 /**
  * Market final validation (§14): a P2P fill is a plain Cove TRANSFER plus the
- * market's own semantics (exact seller payout, exact p2p fee, exact miner fee,
- * single source token input, no backing/Guardian involvement, dust-safe
- * payouts). On success it returns an opaque `ValidatedP2PFill` that ONLY this
+ * market's own semantics (the presigned layout — seller carrier at input 1,
+ * their payout at output 1 —, exact seller payout, exact p2p fee, exact miner
+ * fee, the whole carrier to the buyer, no backing/Guardian involvement,
+ * dust-safe payouts). On success it returns an opaque `ValidatedP2PFill` that ONLY this
  * module can construct; `broadcastValidatedP2PFill` accepts nothing else.
  */
 
@@ -94,11 +96,25 @@ export function validateFinalizedP2PFill(params: P2PFillValidationParams): Valid
 
   const tx = bitcoin.Transaction.fromHex(params.rawTxHex);
 
-  // (a) input 0 is the listing's exact source outpoint (checked first for a
-  // clear error before the deeper structural validation).
-  const ins0 = tx.ins[0];
-  if (!ins0 || inputTxid(ins0) !== terms.sourceTxid || ins0.index !== terms.sourceVout) {
-    reject("SOURCE_INPUT", "input 0 is not the listing source outpoint");
+  // (a) input 1 is the listing's exact source outpoint: the seller's
+  // SIGHASH_SINGLE pairs it with output 1, their payout.
+  const sellerIn = tx.ins[FILL_SELLER_INPUT];
+  if (!sellerIn || inputTxid(sellerIn) !== terms.sourceTxid || sellerIn.index !== terms.sourceVout) {
+    reject("SOURCE_INPUT", `input ${FILL_SELLER_INPUT} is not the listing source outpoint`);
+  }
+  // Every other input is one of the buyer's reserved coins, and there are no others.
+  if (tx.ins.length !== terms.buyerFundInputs.length + 1) {
+    reject("INPUT_COUNT", `${tx.ins.length} inputs != 1 carrier + ${terms.buyerFundInputs.length} buyer coins`);
+  }
+  const reserved = new Set(terms.buyerFundInputs.map((f) => outpointKey(f.txid, f.vout)));
+  tx.ins.forEach((ins, i) => {
+    if (i !== FILL_SELLER_INPUT && !reserved.has(outpointKey(inputTxid(ins), ins.index))) {
+      reject("BUYER_INPUT", `input ${i} is not one of the buyer's reserved coins`);
+    }
+  });
+  // The carrier is sold whole: there is never token change in a presigned fill.
+  if (terms.amountAtoms !== terms.sourceAmountAtoms) {
+    reject("PARTIAL_CARRIER", "a presigned listing sells its whole carrier");
   }
 
   // Build resolved prevouts for every input so the transfer validator enforces
@@ -135,51 +151,36 @@ export function validateFinalizedP2PFill(params: P2PFillValidationParams): Valid
     }
   }
 
-  // (c) token allocations: buyer amount + optional seller change.
-  const changeAtoms = terms.sourceAmountAtoms - terms.amountAtoms;
-  const expectedAllocs = changeAtoms > 0n ? 2 : 1;
-  if (allocations.length !== expectedAllocs) reject("ALLOCATION_COUNT", `${allocations.length} != ${expectedAllocs}`);
+  // (c) token allocation: every token to the buyer's carrier at vout 2.
+  if (allocations.length !== 1) reject("ALLOCATION_COUNT", `${allocations.length} != 1`);
   const buyerAlloc = allocations[0]!;
-  if (buyerAlloc.vout !== 1 || buyerAlloc.amount !== terms.amountAtoms) {
+  if (buyerAlloc.vout !== FILL_BUYER_CARRIER_VOUT || buyerAlloc.amount !== terms.amountAtoms) {
     reject("BUYER_ALLOCATION", `vout=${buyerAlloc.vout} amount=${buyerAlloc.amount}`);
   }
-  if (changeAtoms > 0n) {
-    const changeAlloc = allocations[1]!;
-    if (changeAlloc.vout !== 2 || changeAlloc.amount !== changeAtoms) {
-      reject("SELLER_CHANGE_ALLOCATION", `vout=${changeAlloc.vout} amount=${changeAlloc.amount}`);
-    }
-  }
 
-  // (d) token carrier output scripts.
-  const buyerCarrier = tx.outs[1];
+  // (d) the buyer's token carrier.
+  const buyerCarrier = tx.outs[FILL_BUYER_CARRIER_VOUT];
   if (!buyerCarrier || !buyerCarrier.script.equals(terms.buyerTokenScript)) {
-    reject("BUYER_CARRIER_SCRIPT", "vout 1 is not the buyer token carrier");
-  }
-  if (changeAtoms > 0n) {
-    const changeCarrier = tx.outs[2];
-    if (!changeCarrier || !changeCarrier.script.equals(terms.sellerTokenChangeScript)) {
-      reject("SELLER_CHANGE_CARRIER_SCRIPT", "vout 2 is not the seller change carrier");
-    }
+    reject("BUYER_CARRIER_SCRIPT", `vout ${FILL_BUYER_CARRIER_VOUT} is not the buyer token carrier`);
   }
 
-  // (e) BTC outputs: seller payout, then p2p fee, then optional buyer change.
-  const sellerPayoutVout = 1 + expectedAllocs;
-  const feeVout = sellerPayoutVout + 1;
-  const payout = tx.outs[sellerPayoutVout];
+  // (e) BTC outputs: seller payout at vout 1 (paired with the seller's input),
+  // the market fee at vout 3, then optional buyer change at vout 4.
+  const payout = tx.outs[FILL_PAYOUT_VOUT];
   if (!payout || !payout.script.equals(terms.sellerPayoutScript) || BigInt(payout.value) !== terms.totalPriceSats) {
-    reject("SELLER_PAYOUT", "seller payout output mismatch");
+    reject("SELLER_PAYOUT", `vout ${FILL_PAYOUT_VOUT} is not the seller payout`);
   }
-  const feeOut = tx.outs[feeVout];
+  const feeOut = tx.outs[FILL_FEE_VOUT];
   if (!feeOut || !feeOut.script.equals(terms.feeScript) || BigInt(feeOut.value) !== terms.marketFeeSats) {
     reject("P2P_FEE", "p2p fee output mismatch");
   }
-  if (tx.outs.length > feeVout + 1) {
-    const buyerChange = tx.outs[feeVout + 1];
+  if (tx.outs.length > FILL_BUYER_CHANGE_VOUT) {
+    const buyerChange = tx.outs[FILL_BUYER_CHANGE_VOUT];
     if (!buyerChange || !buyerChange.script.equals(terms.buyerChangeScript)) {
       reject("BUYER_CHANGE", "unexpected buyer change output");
     }
   }
-  if (tx.outs.length > feeVout + 2) reject("UNEXPECTED_OUTPUT", "too many outputs");
+  if (tx.outs.length > FILL_BUYER_CHANGE_VOUT + 1) reject("UNEXPECTED_OUTPUT", "too many outputs");
 
   // (f) dust safety: seller payout and p2p fee must clear relay dust.
   if (terms.totalPriceSats < dustThreshold(terms.sellerPayoutScript)) {

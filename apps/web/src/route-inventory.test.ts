@@ -33,7 +33,6 @@ const REQUIRED_ROUTES = [
   "/api/v3/market/listings/[listingId]/reserve",
   "/api/v3/market/fills/[fillId]/build",
   "/api/v3/market/fills/[fillId]/buyer-signature",
-  "/api/v3/market/fills/[fillId]/seller-signature",
   "/api/v3/market/fills/[fillId]/finalize",
   "/api/v3/market/fills/[fillId]",
   "/api/v3/wallet/[address]/portfolio",

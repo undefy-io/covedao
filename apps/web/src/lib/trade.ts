@@ -1,7 +1,7 @@
 "use client";
 
-import { verifyClientIntent } from "@crclaunch/wallets";
-import { scriptOf } from "@/lib/wallets/resolve";
+import { verifyClientIntent, verifyListingIntent } from "@crclaunch/wallets";
+import { scriptOf, bitcoinNetwork } from "@/lib/wallets/resolve";
 import type { CoveNetwork } from "@/lib/wallets/types";
 
 /**
@@ -34,13 +34,14 @@ async function post(url: string, body: unknown) {
 
 /**
  * Buy a listing: reserve it with a signed nonce, have the buyer sign the fill,
- * and hand it to the seller to countersign. Returns the fill id.
+ * and the server completes it with the seller's presignature and broadcasts.
+ * The seller does nothing. Returns the transaction id.
  */
 export async function buyListing(
   listing: { listingId: string; amountAtoms: string; totalPriceSats: string },
   w: WalletOps,
   satPerVb: bigint | string | null,
-): Promise<string> {
+): Promise<{ fillId: string; txid: string }> {
   const funding = await w.getUtxos();
   const tokenScript = w.ordinalsScript || w.script;
   // A signed nonce, so nobody can lock every listing for free.
@@ -67,8 +68,12 @@ export async function buyListing(
     tokenAmountAtoms: listing.amountAtoms,
   });
   const signed = await w.signPsbt(built.psbtBase64, "P2P_BUY");
-  await post(`/api/v3/market/fills/${fillId}/buyer-signature`, { signedPsbtBase64: signed });
-  return fillId;
+  const done = await post(`/api/v3/market/fills/${fillId}/buyer-signature`, { signedPsbtBase64: signed });
+  return { fillId, txid: done.txid as string };
+}
+
+function networkOf(network: string) {
+  return bitcoinNetwork(network as CoveNetwork);
 }
 
 /** A recipient typed as an address, or (for tooling) as a raw scriptPubKey in hex. */
@@ -105,42 +110,87 @@ export async function sendTokens(params: {
 }
 
 /**
- * List tokens for sale. One listing sells from one token carrier, so this
- * picks the smallest carrier that covers the amount (a large holding is not
- * tied up by a small ask), has the seller sign the listing (BIP-322) and
- * posts it. Returns the listing id.
+ * List tokens for sale, presigned the way Ordinals marketplaces do it.
+ *
+ * A listing sells ONE whole token coin (carrier). If no coin holds exactly
+ * the amount, the wallet first splits one: a transfer to itself that makes a
+ * coin of exactly that amount (one signature). Then the seller signs that
+ * coin once, SIGHASH_SINGLE|ANYONECANPAY, over their payout (one signature).
+ * That is everything: when someone buys, the seller signs nothing.
+ *
+ * A listing on a fresh split waits as PENDING until the split confirms.
  */
 export async function createListing(params: {
   tokenId: string;
   amountAtoms: bigint;
   totalPriceSats: string;
   expiryBlocks: string;
+  network: string;
   /** The address holding the tokens (ordinals address, or the only one). */
   tokenAddress: string;
   walletFields: Record<string, string | undefined>;
-  signBip322: WalletOps["signBip322"];
-}): Promise<string> {
+  getUtxos: WalletOps["getUtxos"];
+  signPsbt: WalletOps["signPsbt"];
+  satPerVb: bigint | string | null;
+}): Promise<{ listingId: string; pending: boolean }> {
   if (params.amountAtoms <= 0n) throw new Error("Enter how many tokens to list");
   if (!/^\d+$/.test(params.totalPriceSats) || BigInt(params.totalPriceSats) <= 0n) throw new Error("Enter a price in sats");
+  const tokenScript = params.walletFields.ordinalsScript || params.walletFields.walletScript!;
+  const payoutScript = params.walletFields.walletScript!;
   const pf = await fetch(`/api/v3/wallet/${params.tokenAddress}/portfolio`).then((r) => r.json());
-  const utxo = ((pf.data?.tokenUtxos ?? []) as { txid: string; vout: number; tokenId: string; amountAtoms: string }[])
-    .filter((u) => u.tokenId === params.tokenId && BigInt(u.amountAtoms) >= params.amountAtoms)
-    .sort((a, b) => (BigInt(a.amountAtoms) < BigInt(b.amountAtoms) ? -1 : 1))[0];
-  if (!utxo) throw new Error("No single token coin of yours holds that many; list a smaller amount");
+  const mine = ((pf.data?.tokenUtxos ?? []) as { txid: string; vout: number; tokenId: string; amountAtoms: string }[])
+    .filter((u) => u.tokenId === params.tokenId);
+  const held = mine.reduce((a, u) => a + BigInt(u.amountAtoms), 0n);
+  if (held < params.amountAtoms) throw new Error("You do not hold that many tokens");
+
+  // A coin of exactly this amount, or split one off.
+  let source: { txid: string; vout: number };
+  let split = false;
+  const exact = mine.find((u) => BigInt(u.amountAtoms) === params.amountAtoms);
+  if (exact) {
+    source = { txid: exact.txid, vout: exact.vout };
+  } else {
+    const funding = await params.getUtxos();
+    const built = await post("/api/v3/transfer/build", {
+      tokenId: params.tokenId,
+      amountAtoms: params.amountAtoms.toString(),
+      recipientScript: tokenScript,
+      ...params.walletFields,
+      funding,
+      feeRateSatPerVb: params.satPerVb ?? undefined,
+      idempotencyKey: `split-${params.tokenId}-${Date.now()}`,
+    });
+    // The split keeps every token in the wallet and makes an exact coin.
+    verifyClientIntent(built.psbtBase64, { ...built.intent, operation: "SPLIT" });
+    const signed = await params.signPsbt(built.psbtBase64, "TRANSFER");
+    const sent = await post("/api/v3/transfer/submit", { sessionId: built.sessionId, signedPsbtBase64: signed });
+    // The transfer builder puts the recipient's (exact) coin at output 1.
+    source = { txid: sent.txid as string, vout: 1 };
+    split = true;
+  }
+
   const prep = await post("/api/v3/market/listings/prepare", {
     tokenId: params.tokenId,
-    sourceTxid: utxo.txid,
-    sourceVout: String(utxo.vout),
+    sourceTxid: source.txid,
+    sourceVout: String(source.vout),
     amountAtoms: params.amountAtoms.toString(),
     totalPriceSats: params.totalPriceSats,
     expiryBlocks: params.expiryBlocks,
     ...params.walletFields,
   });
-  const signatureB64 = await params.signBip322(prep.message);
+  // Never blind-sign a standing offer: one coin of mine, one payment to me.
+  verifyListingIntent(prep.listingPsbtBase64, {
+    sourceTxid: source.txid,
+    sourceVout: source.vout,
+    carrierScript: tokenScript,
+    payoutScript,
+    priceSats: params.totalPriceSats,
+  }, networkOf(params.network));
+  const presigned = await params.signPsbt(prep.listingPsbtBase64, "P2P_LIST");
   const created = await post("/api/v3/market/listings", {
     listing: prep.listing,
-    signatureB64,
+    presignedPsbtBase64: presigned,
     sellerTokenPublicKey: params.walletFields.ordinalsPublicKey,
   });
-  return created.listingId as string;
+  return { listingId: created.listingId as string, pending: split };
 }

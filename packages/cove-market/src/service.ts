@@ -10,17 +10,25 @@ import {
   type CoreRpcProvider,
 } from "@crclaunch/bitcoin";
 import { TOKEN_CARRIER_SATS, type CoveCanonicalView } from "@crclaunch/cove-covenant";
-import { buildTransferPsbtV2, type ResolvedInput } from "@crclaunch/cove-guardian/v3";
-import { loadCanonicalViewSnapshotFromDb } from "@crclaunch/cove-indexer/v3";
+import { loadCanonicalViewSnapshotFromDb, parseCoveTx } from "@crclaunch/cove-indexer/v3";
 import { deterministicFee, dustThreshold } from "@crclaunch/cove-economics";
+import { OP_TRANSFER as OP_TRANSFER_CODE } from "@crclaunch/cove-wire";
 import { scriptForKind, spendKindOf } from "@crclaunch/bitcoin";
 import { MarketError } from "./errors.js";
 import type { MarketConfig } from "./config.js";
 import type { ListingV1, CancellationV1 } from "./types.js";
 import { listingIdOf, cancellationHashOf } from "./order/hash.js";
-import { verifyListingAuthorization, verifyCancellationAuthorization, verifyReservationAuthorization } from "./order/signature.js";
+import { verifyCancellationAuthorization, verifyReservationAuthorization } from "./order/signature.js";
 import { validateListingShape } from "./order/validate.js";
 import { unsignedTxDigest, parsePsbt, validateP2wpkhPartialSig, partialSigOfInput } from "./psbt.js";
+import {
+  buildListingPsbt,
+  verifyListingPsbt,
+  presigOf,
+  buildPresignedFillPsbt,
+  attachSellerPresig,
+  FILL_SELLER_INPUT,
+} from "./presign.js";
 import {
   validateFinalizedP2PFill,
   broadcastValidatedP2PFill,
@@ -40,9 +48,32 @@ export interface BuyerFundInput {
 }
 
 export interface CreateListingInput extends ListingV1 {
-  signatureB64: string;
+  /**
+   * The seller-signed listing PSBT (see presign.ts): the whole carrier signed
+   * SIGHASH_SINGLE|ANYONECANPAY over their payout. It is the seller's
+   * authorisation AND what completes every future sale, so the seller never
+   * signs again. Stored server-side and never returned.
+   */
+  presignedPsbtBase64: string;
   /** Public key of sellerTokenScript (hex); required unless it is native segwit. */
   sellerTokenPublicKey?: string;
+}
+
+/**
+ * How long a listing may wait for its carrier to be indexed. A listing made
+ * right after a split points at an output still in the mempool; it goes live
+ * once a block confirms it, and is dropped if that never happens.
+ */
+export const PENDING_LISTING_MAX_BLOCKS = 6n;
+
+/** Listing statuses a buyer may see or act on; PENDING is hidden until its carrier confirms. */
+export const LISTING_SECRET_COLUMNS = ["sellerPresignedPsbt"] as const;
+
+/** A listing row without the columns that must never leave the server. */
+export function publicListing<T extends { sellerPresignedPsbt?: string | null }>(row: T): Omit<T, "sellerPresignedPsbt"> {
+  const { sellerPresignedPsbt: _secret, ...rest } = row;
+  void _secret;
+  return rest;
 }
 
 export interface ReserveListingInput {
@@ -180,6 +211,39 @@ export class MarketService {
     return { scriptPubKey: asBuffer(listing.sellerTokenScript), amountAtoms: row.amountAtoms, valueSats: txout.valueSats };
   }
 
+  /**
+   * A carrier that is not indexed yet: the output of a Cove TRANSFER still in
+   * the mempool (the seller just split off the amount they are listing). Core
+   * must hold it unspent at the seller's script with 1,000 sats, and the
+   * transaction's own Cove envelope must allocate exactly the listed amount
+   * of this token to it. The indexer has the last word when it confirms.
+   */
+  private async resolvePendingSource(listing: ListingV1): Promise<SourceResolution> {
+    const txout = await this.provider.getTxout(listing.sourceTxid, listing.sourceVout);
+    if (!txout) throw new MarketError("LISTING_BAD_SOURCE", "source outpoint is not an unspent output");
+    if (txout.scriptPubKeyHex !== listing.sellerTokenScript || txout.valueSats !== TOKEN_CARRIER_SATS) {
+      throw new MarketError("LISTING_SOURCE_MISMATCH", "source output is not a token carrier at the seller's address");
+    }
+    let raw: string;
+    try {
+      raw = await this.provider.getRawTransaction(listing.sourceTxid);
+    } catch {
+      throw new MarketError("LISTING_BAD_SOURCE", "source transaction not found");
+    }
+    const parsed = parseCoveTx(raw);
+    if (parsed.kind !== "TRANSFER" || parsed.envelope.op !== OP_TRANSFER_CODE) {
+      throw new MarketError("LISTING_BAD_SOURCE", "source is not the output of a Cove transfer");
+    }
+    if (parsed.envelope.tokenId.toString("hex") !== listing.tokenId) {
+      throw new MarketError("LISTING_SOURCE_MISMATCH", "source transfer moves another token");
+    }
+    const alloc = parsed.envelope.allocations.find((a) => a.vout === listing.sourceVout);
+    if (!alloc || alloc.amount !== listing.sourceAmountAtoms) {
+      throw new MarketError("LISTING_SOURCE_MISMATCH", "source transfer does not put the listed amount on that output");
+    }
+    return { scriptPubKey: asBuffer(listing.sellerTokenScript), amountAtoms: alloc.amount, valueSats: txout.valueSats };
+  }
+
   private async loadListing(listingId: string): Promise<ListingSelect | null> {
     const rows = await this.db.select().from(schema.coveV3MarketListings).where(eq(schema.coveV3MarketListings.listingId, listingId));
     return rows[0] ?? null;
@@ -214,10 +278,35 @@ export class MarketService {
     }
 
     assertKeyControls(input.sellerTokenScript, input.sellerTokenPublicKey, btcNetwork(this.config.network), "seller token");
-    if (!verifyListingAuthorization(input, input.signatureB64)) {
-      throw new MarketError("LISTING_BAD_SIGNATURE", "listing BIP-322 signature invalid");
+    // A presigned listing sells its whole carrier: a SIGHASH_SINGLE signature
+    // cannot protect token change, so there is none.
+    if (input.amountAtoms !== input.sourceAmountAtoms) {
+      throw new MarketError("LISTING_AMOUNT_INVALID", "a listing sells a whole token carrier; split off the amount first");
     }
-    await this.resolveSource(input);
+    // Live if the carrier is indexed; PENDING if it is a fresh split still in
+    // the mempool (checked against the transaction itself).
+    let pending = false;
+    let source: SourceResolution;
+    try {
+      source = await this.resolveSource(input);
+    } catch (e) {
+      if (!(e instanceof MarketError) || e.code !== "LISTING_BAD_SOURCE") throw e;
+      source = await this.resolvePendingSource(input);
+      pending = true;
+    }
+    // The presignature IS the authorisation: only the carrier's owner can make it.
+    verifyListingPsbt(input.presignedPsbtBase64, {
+      network: btcNetwork(this.config.network),
+      source: {
+        txid: input.sourceTxid,
+        vout: input.sourceVout,
+        script: source.scriptPubKey,
+        valueSats: source.valueSats,
+        publicKey: input.sellerTokenPublicKey ? asBuffer(input.sellerTokenPublicKey) : undefined,
+      },
+      payoutScript: asBuffer(input.sellerPayoutScript),
+      priceSats: input.totalPriceSats,
+    });
 
     if (input.totalPriceSats < dustThreshold(asBuffer(input.sellerPayoutScript))) {
       throw new MarketError("SELLER_PAYOUT_DUST", "seller payout below relay dust");
@@ -253,9 +342,11 @@ export class MarketService {
         creationHeight: input.creationHeight,
         expiryHeight: input.expiryHeight,
         nonce: input.nonce,
-        signatureB64: input.signatureB64,
+        // The BIP-322 order signature is superseded by the presignature.
+        signatureB64: "",
         sellerTokenPublicKey: input.sellerTokenPublicKey ?? null,
-        status: "ACTIVE",
+        sellerPresignedPsbt: input.presignedPsbtBase64,
+        status: pending ? "PENDING" : "ACTIVE",
       });
       await tx.insert(schema.coveV3MarketListingInputs).values({
         listingId,
@@ -268,10 +359,42 @@ export class MarketService {
         network: this.config.network,
         listingId,
         eventType: "LISTING_CREATED",
-        payloadJson: { amountAtoms: input.amountAtoms.toString(), totalPriceSats: input.totalPriceSats.toString() },
+        payloadJson: { amountAtoms: input.amountAtoms.toString(), totalPriceSats: input.totalPriceSats.toString(), pending },
       });
     });
     return listingId;
+  }
+
+  /**
+   * The unsigned listing PSBT a seller signs for these terms (whole carrier,
+   * SIGHASH_SINGLE|ANYONECANPAY over their payout). The carrier may be indexed
+   * or a fresh split still in the mempool.
+   */
+  async buildListingPsbtFor(listing: ListingV1, sellerTokenPublicKey?: string): Promise<string> {
+    validateListingShape(listing);
+    if (listing.amountAtoms !== listing.sourceAmountAtoms) {
+      throw new MarketError("LISTING_AMOUNT_INVALID", "a listing sells a whole token carrier; split off the amount first");
+    }
+    assertKeyControls(listing.sellerTokenScript, sellerTokenPublicKey, btcNetwork(this.config.network), "seller token");
+    let source: SourceResolution;
+    try {
+      source = await this.resolveSource(listing);
+    } catch (e) {
+      if (!(e instanceof MarketError) || e.code !== "LISTING_BAD_SOURCE") throw e;
+      source = await this.resolvePendingSource(listing);
+    }
+    return buildListingPsbt({
+      network: btcNetwork(this.config.network),
+      source: {
+        txid: listing.sourceTxid,
+        vout: listing.sourceVout,
+        script: source.scriptPubKey,
+        valueSats: source.valueSats,
+        publicKey: sellerTokenPublicKey ? asBuffer(sellerTokenPublicKey) : undefined,
+      },
+      payoutScript: asBuffer(listing.sellerPayoutScript),
+      priceSats: listing.totalPriceSats,
+    }).toBase64();
   }
 
   async cancelListing(listingId: string, cancelNonce: string, signatureB64: string): Promise<void> {
@@ -306,9 +429,14 @@ export class MarketService {
         .where(
           and(
             eq(schema.coveV3MarketFills.listingId, listingId),
-            inArray(schema.coveV3MarketFills.status, ["RESERVED", "PSBT_BUILT", "BUYER_SIGNED", "SELLER_SIGNED"]),
+            inArray(schema.coveV3MarketFills.status, ["RESERVED", "PSBT_BUILT", "BUYER_SIGNED"]),
           ),
         );
+      // The presignature goes with the listing: nobody can complete a sale now.
+      await tx
+        .update(schema.coveV3MarketListings)
+        .set({ sellerPresignedPsbt: null })
+        .where(eq(schema.coveV3MarketListings.listingId, listingId));
       await tx.insert(schema.coveV3MarketEvents).values({
         network: this.config.network,
         listingId,
@@ -414,21 +542,8 @@ export class MarketService {
     if (!listing) throw new MarketError("STATE_CHANGED", "listing not found");
 
     const source = await this.resolveSource(listingToV1(listing));
-
-    const changeAtoms = listing.sourceAmountAtoms - listing.amountAtoms;
-    const tokenOutputs: { script: Buffer; amountAtoms: bigint }[] = [
-      { script: asBuffer(fill.buyerTokenScript), amountAtoms: listing.amountAtoms },
-    ];
-    if (changeAtoms > 0n) {
-      tokenOutputs.push({ script: asBuffer(listing.sellerTokenChangeScript), amountAtoms: changeAtoms });
-    }
-    const extraCarrierSats = BigInt(tokenOutputs.length) * TOKEN_CARRIER_SATS - source.valueSats;
     const marketFee = this.marketFeeFor(listing.totalPriceSats);
-    const btcOutputs = [
-      { script: asBuffer(listing.sellerPayoutScript), valueSats: listing.totalPriceSats },
-      { script: this.config.feeScript, valueSats: marketFee },
-    ];
-    const funderInputs: ResolvedInput[] = fillFundInputs(fill).map((f) => ({
+    const funderInputs = fillFundInputs(fill).map((f) => ({
       txid: f.txid,
       vout: f.vout,
       script: asBuffer(f.script),
@@ -437,9 +552,8 @@ export class MarketService {
     }));
 
     // Size the fee against the transaction that is actually about to exist:
-    // one token-carrier input plus however many UTXOs the buyer reserved, and
-    // every output already decided above. A flat fee here would mean a fill
-    // that either never confirms or overpays by a multiple.
+    // the seller's carrier plus however many coins the buyer reserved, and
+    // every output of the presigned layout.
     const rates = await loadFeeRates(this.provider);
     const standard = rates.tiers.find((t) => t.key === "standard") ?? rates.tiers[0]!;
     const vsize = estimateVsize({
@@ -447,9 +561,10 @@ export class MarketService {
       p2wpkhInputs: 1 + funderInputs.length,
       outputScriptBytes: [
         P2P_OP_RETURN_SCRIPT_BYTES,
-        ...tokenOutputs.map((o) => o.script.length),
-        ...btcOutputs.map((o) => o.script.length),
-        asBuffer(fill.buyerChangeScript).length,
+        listing.sellerPayoutScript.length / 2,
+        fill.buyerTokenScript.length / 2,
+        this.config.feeScript.length,
+        fill.buyerChangeScript.length / 2,
       ],
     });
     let minerFeeSats: bigint;
@@ -469,34 +584,30 @@ export class MarketService {
       throw e;
     }
 
-    const result = buildTransferPsbtV2({
+    const result = buildPresignedFillPsbt({
       network: btcNetwork(this.config.network),
       tokenId: Buffer.from(listing.tokenId, "hex"),
-      tokenInputs: [{
+      seller: {
         txid: listing.sourceTxid,
         vout: listing.sourceVout,
         script: source.scriptPubKey,
         valueSats: source.valueSats,
         publicKey: listing.sellerTokenPublicKey ? asBuffer(listing.sellerTokenPublicKey) : undefined,
-      }],
-      tokenInputTotalAtoms: listing.sourceAmountAtoms,
-      tokenOutputs,
-      funderInputs,
-      funderChangeScript: asBuffer(fill.buyerChangeScript),
-      btcOutputs,
+        amountAtoms: listing.sourceAmountAtoms,
+      },
+      payoutScript: asBuffer(listing.sellerPayoutScript),
+      priceSats: listing.totalPriceSats,
+      buyerTokenScript: asBuffer(fill.buyerTokenScript),
+      fundInputs: funderInputs,
+      buyerChangeScript: asBuffer(fill.buyerChangeScript),
+      feeScript: this.config.feeScript,
+      marketFeeSats: marketFee,
       minerFeeSats,
     });
-
-    const requiredFunding = listing.totalPriceSats + marketFee + extraCarrierSats + minerFeeSats;
-    const totalFund = funderInputs.reduce((s, f) => s + f.valueSats, 0n);
-    const change = totalFund - requiredFunding;
-    if (change < 0n) throw new MarketError("BUYER_FUNDS_INSUFFICIENT", `short ${-change} sats`);
-
-    // Buyer change in (0, dust) cannot be an output, so the builder folds it
-    // into the miner fee. Record the fee that the transaction ACTUALLY pays:
-    // finalize re-derives it from inputs minus outputs and rejects a mismatch,
-    // and the buyer's browser does the same before signing. This used to refuse
-    // the fill outright over a few hundred satoshis of unspendable change.
+    // The seller's carrier brings its own 1,000 sats for the buyer's new one.
+    const extraCarrierSats = 0n;
+    // Change below dust goes to the miner; record the fee actually paid, which
+    // finalize and the buyer's browser both re-derive.
     const settledMinerFeeSats = result.minerFeeSats;
 
     const psbtB64 = result.psbt.toBase64();
@@ -508,6 +619,11 @@ export class MarketService {
     return psbtB64;
   }
 
+  /**
+   * The buyer's signed fill. Their coins must be signed SIGHASH_ALL and the
+   * seller's carrier must NOT be signed by them — the server attaches the
+   * seller's stored presignature when it completes the sale.
+   */
   async submitBuyerSignedPsbt(fillId: string, psbtB64: string): Promise<void> {
     const fill = await this.loadFill(fillId);
     if (!fill) throw new MarketError("STATE_CHANGED", "fill not found");
@@ -518,62 +634,43 @@ export class MarketService {
       throw new MarketError("PSBT_MUTATED", "unsigned tx digest mismatch");
     }
 
-    const fundCount = fillFundInputs(fill).length;
-    if (partialSigOfInput(psbt, 0) !== null) {
-      throw new MarketError("PSBT_MUTATED", "token input must not be buyer-signed");
+    if (partialSigOfInput(psbt, FILL_SELLER_INPUT) !== null) {
+      throw new MarketError("PSBT_MUTATED", "the seller's carrier must not be signed by the buyer");
     }
-    for (let i = 1; i <= fundCount; i++) validateP2wpkhPartialSig(psbt, i);
+    psbt.data.inputs.forEach((_, i) => {
+      if (i !== FILL_SELLER_INPUT) validateP2wpkhPartialSig(psbt, i);
+    });
 
-    // The buyer is done; now the seller needs time to come back and approve.
     await this.db
       .update(schema.coveV3MarketFills)
-      .set({
-        psbtBase64: psbtB64,
-        status: "BUYER_SIGNED",
-        reservationExpiresAt: new Date(Date.now() + this.config.sellerSignTtlSeconds * 1000),
-        updatedAt: new Date(),
-      })
+      .set({ psbtBase64: psbtB64, status: "BUYER_SIGNED", updatedAt: new Date() })
       .where(eq(schema.coveV3MarketFills.id, fillId));
   }
 
-  async submitSellerSignedPsbt(fillId: string, psbtB64: string): Promise<void> {
-    await assertMarketReady({ db: this.db, config: this.config, provider: this.provider });
-    const fill = await this.loadFill(fillId);
-    if (!fill) throw new MarketError("STATE_CHANGED", "fill not found");
-    if (fill.status !== "BUYER_SIGNED") throw new MarketError("STATE_CHANGED", `fill is ${fill.status}`);
-    const listing = await this.loadListing(fill.listingId);
-    if (!listing) throw new MarketError("STATE_CHANGED", "listing not found");
-    await this.resolveSource(listingToV1(listing));
-
-    const psbt = parsePsbt(psbtB64, btcNetwork(this.config.network));
-    if (fill.unsignedTxDigest && unsignedTxDigest(psbt) !== fill.unsignedTxDigest) {
-      throw new MarketError("PSBT_MUTATED", "unsigned tx digest mismatch");
-    }
-
-    validateP2wpkhPartialSig(psbt, 0);
-    const fundCount = fillFundInputs(fill).length;
-    for (let i = 1; i <= fundCount; i++) {
-      if (partialSigOfInput(psbt, i) === null) throw new MarketError("BUYER_SIGNATURE_INVALID", `buyer input ${i} signature lost`);
-    }
-
-    await this.db
-      .update(schema.coveV3MarketFills)
-      .set({ psbtBase64: psbtB64, status: "SELLER_SIGNED", updatedAt: new Date() })
-      .where(eq(schema.coveV3MarketFills.id, fillId));
+  /**
+   * Complete a buyer-signed fill: attach the seller's presignature, finalize,
+   * validate every market rule and broadcast. No seller step.
+   */
+  async completeFill(fillId: string): Promise<{ txid: string }> {
+    const validated = await this.finalizeP2PFill(fillId);
+    return this.broadcastP2PFill(validated);
   }
 
   async finalizeP2PFill(fillId: string): Promise<ValidatedP2PFill> {
     await assertMarketReady({ db: this.db, config: this.config, provider: this.provider });
     const fill = await this.loadFill(fillId);
     if (!fill) throw new MarketError("STATE_CHANGED", "fill not found");
-    if (fill.status !== "SELLER_SIGNED" && fill.status !== "BROADCAST") throw new MarketError("STATE_CHANGED", `fill is ${fill.status}`);
+    if (fill.status !== "BUYER_SIGNED" && fill.status !== "BROADCAST") throw new MarketError("STATE_CHANGED", `fill is ${fill.status}`);
     if (!fill.psbtBase64) throw new MarketError("STATE_CHANGED", "fill has no PSBT");
     const listing = await this.loadListing(fill.listingId);
     if (!listing) throw new MarketError("STATE_CHANGED", "listing not found");
+    if (!listing.sellerPresignedPsbt) throw new MarketError("LISTING_CANCELLED", "the listing's signature is gone (cancelled)");
     // Re-check the canary cap at fill time (§P0-6), not just at listing creation.
     assertSettlementCap(listing.totalPriceSats, this.config.maxP2pSettlementSats);
 
-    const psbt = parsePsbt(fill.psbtBase64, btcNetwork(this.config.network));
+    const network = btcNetwork(this.config.network);
+    const psbt = parsePsbt(fill.psbtBase64, network);
+    attachSellerPresig(psbt, presigOf(listing.sellerPresignedPsbt, network));
     psbt.finalizeAllInputs();
     const rawTxHex = psbt.extractTransaction().toHex();
 
@@ -621,6 +718,36 @@ export class MarketService {
     let invalidated = 0;
     let confirmed = 0;
     let reorged = 0;
+
+    // (P) PENDING listings (a fresh split): live once the indexer holds the
+    // carrier exactly as listed; dropped if it is spent, rejected, or never
+    // confirms within PENDING_LISTING_MAX_BLOCKS.
+    const pendingListings = await this.db
+      .select()
+      .from(schema.coveV3MarketListings)
+      .where(and(eq(schema.coveV3MarketListings.network, this.config.network), eq(schema.coveV3MarketListings.status, "PENDING")));
+    for (const listing of pendingListings) {
+      const utxo = await this.sourceUtxoRow(listing.sourceTxid, listing.sourceVout);
+      if (utxo && utxo.canonical && !utxo.spentByTxid) {
+        const matches =
+          utxo.tokenId === listing.tokenId &&
+          utxo.amountAtoms === listing.sourceAmountAtoms &&
+          utxo.scriptPubKey === listing.sellerTokenScript;
+        if (matches) {
+          await this.db.update(schema.coveV3MarketListings).set({ status: "ACTIVE", updatedAt: new Date() }).where(eq(schema.coveV3MarketListings.listingId, listing.listingId));
+          await this.db.insert(schema.coveV3MarketEvents).values({ network: this.config.network, listingId: listing.listingId, eventType: "LISTING_ACTIVE", payloadJson: {} });
+        } else {
+          await this.invalidateListing(listing.listingId, "indexed carrier differs from the listing");
+          invalidated++;
+        }
+        continue;
+      }
+      const gone = utxo?.spentByTxid ? true : !(await this.provider.getTxout(listing.sourceTxid, listing.sourceVout));
+      if (gone || tip > listing.creationHeight + PENDING_LISTING_MAX_BLOCKS) {
+        await this.invalidateListing(listing.listingId, gone ? "carrier spent before it confirmed" : "carrier never confirmed");
+        invalidated++;
+      }
+    }
 
     // (A) Promote BROADCAST fills that the indexer has confirmed.
     const broadcastFills = await this.db
@@ -713,35 +840,6 @@ export class MarketService {
       invalidated++;
     }
 
-    // (C2) A signed fill waiting on its seller is dead the moment the buyer's
-    // coins are spent elsewhere. Release the listing now rather than holding
-    // it for the whole seller window.
-    const waiting = await this.db
-      .select()
-      .from(schema.coveV3MarketFills)
-      .where(and(eq(schema.coveV3MarketFills.network, this.config.network), eq(schema.coveV3MarketFills.status, "BUYER_SIGNED")));
-    for (const fill of waiting) {
-      let dead = false;
-      for (const f of fillFundInputs(fill)) {
-        if (!(await this.provider.getTxout(f.txid, f.vout))) {
-          dead = true;
-          break;
-        }
-      }
-      if (!dead) continue;
-      await this.db.transaction(async (tx) => {
-        await tx
-          .update(schema.coveV3MarketFills)
-          .set({ status: "EXPIRED", failureReason: "buyer funding spent elsewhere", updatedAt: new Date() })
-          .where(eq(schema.coveV3MarketFills.id, fill.id));
-        await tx
-          .update(schema.coveV3MarketListings)
-          .set({ status: "ACTIVE", updatedAt: new Date() })
-          .where(and(eq(schema.coveV3MarketListings.listingId, fill.listingId), eq(schema.coveV3MarketListings.status, "RESERVED")));
-      });
-      expired++;
-    }
-
     // (D) Expire listings + reservations.
     const expListings = await this.db
       .select()
@@ -759,7 +857,7 @@ export class MarketService {
           eq(schema.coveV3MarketFills.network, this.config.network),
           // §M4: reclaim stuck fills at ANY non-terminal stage — a BUYER_SIGNED
           // fill that never finalizes must not lock the listing forever.
-          inArray(schema.coveV3MarketFills.status, ["RESERVED", "PSBT_BUILT", "BUYER_SIGNED", "SELLER_SIGNED"]),
+          inArray(schema.coveV3MarketFills.status, ["RESERVED", "PSBT_BUILT", "BUYER_SIGNED"]),
           lte(schema.coveV3MarketFills.reservationExpiresAt, now),
         ),
       );
@@ -817,14 +915,14 @@ export class MarketService {
 
   private async invalidateListing(listingId: string, reason: string): Promise<void> {
     await this.db.transaction(async (tx) => {
-      await tx.update(schema.coveV3MarketListings).set({ status: "INVALIDATED", updatedAt: new Date() }).where(eq(schema.coveV3MarketListings.listingId, listingId));
+      await tx.update(schema.coveV3MarketListings).set({ status: "INVALIDATED", sellerPresignedPsbt: null, updatedAt: new Date() }).where(eq(schema.coveV3MarketListings.listingId, listingId));
       await tx
         .update(schema.coveV3MarketFills)
         .set({ status: "FAILED", failureReason: reason, updatedAt: new Date() })
         .where(
           and(
             eq(schema.coveV3MarketFills.listingId, listingId),
-            inArray(schema.coveV3MarketFills.status, ["RESERVED", "PSBT_BUILT", "BUYER_SIGNED", "SELLER_SIGNED", "BROADCAST"]),
+            inArray(schema.coveV3MarketFills.status, ["RESERVED", "PSBT_BUILT", "BUYER_SIGNED", "BROADCAST"]),
           ),
         );
       await tx.insert(schema.coveV3MarketEvents).values({ network: this.config.network, listingId, eventType: "LISTING_INVALIDATED", payloadJson: { reason } });

@@ -25,7 +25,7 @@ export async function getWalletPortfolio(db: Database, network: string, walletSc
   }
   const holdings = [...byToken.values()].sort((a, b) => (a.tokenId < b.tokenId ? -1 : 1));
 
-  const listings = await db
+  const listingRows = await db
     .select()
     .from(schema.coveV3MarketListings)
     .where(
@@ -35,6 +35,11 @@ export async function getWalletPortfolio(db: Database, network: string, walletSc
       ),
     );
 
+  // The seller's presignature never leaves the server, not even to the seller.
+  const listings = listingRows.map(({ sellerPresignedPsbt: _secret, ...rest }) => {
+    void _secret;
+    return rest;
+  });
   const sellerListingIds = listings.map((l) => l.listingId);
   const fills = await db
     .select()

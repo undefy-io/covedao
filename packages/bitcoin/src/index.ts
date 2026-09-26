@@ -76,6 +76,8 @@ export {
   psbtInputFor,
   unfinalizeKeyInputs,
   checkSpendSignature,
+  checkListingSignature,
+  SIGHASH_SINGLE_ANYONECANPAY,
   inputVbytes,
   isP2SH,
   xOnly,

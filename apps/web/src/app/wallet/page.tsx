@@ -7,7 +7,6 @@ import { useIndexedBlock } from "@/lib/use-indexed-block";
 import { useWallet } from "@/components/WalletProvider";
 import { fmtBtc, fmtTokens } from "@/lib/format";
 import { DEMO_PORTFOLIO } from "@/lib/demo-tokens";
-import { verifyClientIntent } from "@crclaunch/wallets";
 import { sendTokens, createListing } from "@/lib/trade";
 import { unitPriceSats } from "@/lib/ohlc";
 import { fmtInt } from "@/lib/format";
@@ -41,7 +40,7 @@ function WalletContent() {
   const searchParams = useSearchParams();
   // Client-side design-preview path: no API calls, no writes.
   const demo = searchParams.get("demo") === "1";
-  const { connected, address, ordinalsAddress, script, ordinalsScript, network, walletFields, connect, signPsbt, signBip322, getUtxos } = useWallet();
+  const { connected, address, ordinalsAddress, network, walletFields, connect, signPsbt, signBip322, getUtxos } = useWallet();
   const { satPerVb } = useFeeRates();
   // Which holding has its Send form open, and what is typed into it.
   const [sending, setSending] = useState<string | null>(null);
@@ -132,62 +131,27 @@ function WalletContent() {
     }
     setBusy(`list-${tokenId}`);
     try {
-      const listingId = await createListing({
+      const { listingId, pending } = await createListing({
         tokenId,
         amountAtoms: BigInt(displayTokensToAtoms(listAmount)),
         totalPriceSats: total.toString(),
         expiryBlocks: listBlocks,
+        network,
         tokenAddress: ordinalsAddress || address!,
         walletFields: walletFields(),
-        signBip322,
+        getUtxos,
+        signPsbt,
+        satPerVb,
       });
-      setMsg(`Listed ${fmtInt(listAmount)} tokens for ${fmtInt(total)} sats (${listingId.slice(0, 12)}…).`);
+      setMsg(
+        `Listed ${fmtInt(listAmount)} tokens for ${fmtInt(total)} sats (${listingId.slice(0, 12)}…). ` +
+          (pending
+            ? "It goes live when the split confirms in the next block. You do not need to sign anything when it sells."
+            : "You do not need to sign anything when it sells."),
+      );
       setListing(null);
       setListAmount("");
       setListPricePer1k("");
-      await refresh();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function sellerSign(fill: { id: string; listingId: string; tokenId: string; status: string; amountAtoms: string; totalPriceSats: string; marketFeeSats: string; minerFeeSats: string; unsignedTxDigest: string | null; psbtBase64: string | null; txid: string | null }) {
-    setErr("");
-    if (!fill.psbtBase64) return;
-    setBusy(fill.id);
-    try {
-      // §M3: re-derive the seller's P2P payout (full price to the seller's own
-      // script) from the fill before signing — never blind-sign the server PSBT.
-      if (fill.unsignedTxDigest) {
-        verifyClientIntent(fill.psbtBase64, {
-          operation: "P2P_SELL",
-          tokenId: fill.tokenId,
-          tokenAmountAtoms: fill.amountAtoms,
-          grossSats: null,
-          protocolFeeSats: fill.marketFeeSats,
-          minerFeeSats: fill.minerFeeSats,
-          netSats: fill.totalPriceSats,
-          walletScript: script,
-          // Token change from a partial sale returns to the ordinals address.
-          ordinalsScript: ordinalsScript || script,
-          stateHash: null,
-          unsignedTxDigest: fill.unsignedTxDigest,
-        });
-      }
-      const signed = await signPsbt(fill.psbtBase64, "P2P_SELL");
-      const sr = await fetch(`/api/v3/market/fills/${fill.id}/seller-signature`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ signedPsbtBase64: signed }),
-      });
-      const sj = await sr.json();
-      if (!sj.ok) throw new Error(sj.error?.message ?? "seller signature failed");
-      const fr = await fetch(`/api/v3/market/fills/${fill.id}/finalize`, { method: "POST" });
-      const fj = await fr.json();
-      if (!fj.ok) throw new Error(fj.error?.message ?? "finalize failed");
-      setMsg(`Sale broadcast ${fj.data.txid.slice(0, 16)}…`);
       await refresh();
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -258,31 +222,12 @@ function WalletContent() {
 
   if (!loaded || !portfolio) return <div className="text-bone-dim">Loading wallet…</div>;
 
-  const salesRequired = portfolio.fills.filter((f) => f.status === "BUYER_SIGNED");
-
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl text-bone">Wallet</h1>
         <p className="break-all font-mono text-xs text-bone-dim">{address}</p>
       </div>
-
-      {salesRequired.length > 0 && (
-        <section className="border border-warning/40 bg-ink-2 p-5">
-          <h2 className="text-bone">Sales requiring signature</h2>
-          {salesRequired.map((f) => (
-            <div key={f.id} className="mt-3 flex items-center justify-between border-b border-border/40 py-2 last:border-0">
-              <div className="text-sm">
-                <div className="text-bone">{fmtTokens(BigInt(f.amountAtoms))} for {fmtBtc(BigInt(f.totalPriceSats))}</div>
-                <div className="font-mono text-xs text-bone-dim">fill {f.id.slice(0, 8)}</div>
-              </div>
-              <button onClick={() => void sellerSign(f)} disabled={busy === f.id} className="bg-signal px-4 py-2 text-sm text-bone hover:bg-[#F0A253] disabled:opacity-50">
-                {busy === f.id ? "Signing…" : "Review & Sign Sale"}
-              </button>
-            </div>
-          ))}
-        </section>
-      )}
 
       <section>
         <h2 className="text-lg text-bone">Holdings</h2>

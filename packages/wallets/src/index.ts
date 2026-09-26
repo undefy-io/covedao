@@ -11,6 +11,8 @@ export type {
 export {
   verifyClientIntent,
   unsignedTxDigestHex,
+  verifyListingIntent,
+  LISTING_SIGHASH,
   type ClientIntent,
   type VerifiedIntent,
 } from "./cove-intent.js";

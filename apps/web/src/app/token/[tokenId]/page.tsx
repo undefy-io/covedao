@@ -79,7 +79,7 @@ function TokenContent() {
   // Client-side render path for design review. Never calls the API, never writes.
   const demo = search.get("demo") === "1";
   const tokenId = params.tokenId;
-  const { connected, address, ordinalsAddress, script, publicKey, ordinalsScript, walletFields, connect, signPsbt, signBip322, getUtxos } = useWallet();
+  const { connected, address, ordinalsAddress, script, publicKey, ordinalsScript, walletFields, network, connect, signPsbt, signBip322, getUtxos } = useWallet();
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [tab, setTab] = useState<Tab>("mint");
@@ -232,8 +232,8 @@ function TokenContent() {
     setMsg("");
     setBusy(true);
     try {
-      const fillId = await buyListing(ask, { script, publicKey, ordinalsScript, signPsbt, signBip322, getUtxos }, satPerVb);
-      setMsg(`You signed. The seller now has 24 hours to approve the sale (fill ${fillId.slice(0, 8)}). Nothing moves until they do.`);
+      const { txid } = await buyListing(ask, { script, publicKey, ordinalsScript, signPsbt, signBip322, getUtxos }, satPerVb);
+      setMsg(`Bought — arrives when the next block confirms it (${txid.slice(0, 16)}…).`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -340,16 +340,23 @@ function TokenContent() {
     setErr("");
     setBusy(true);
     try {
-      const listingId = await createListing({
+      const { listingId, pending } = await createListing({
         tokenId,
         amountAtoms: BigInt(displayTokensToAtoms(amount)),
         totalPriceSats: price,
         expiryBlocks: listingBlocks,
+        network,
         tokenAddress: ordinalsAddress || address!,
         walletFields: walletFields(),
-        signBip322,
+        getUtxos,
+        signPsbt,
+        satPerVb,
       });
-      setMsg(`Listing created ${listingId.slice(0, 16)}…`);
+      setMsg(
+        `Listing created ${listingId.slice(0, 16)}…` +
+          (pending ? " It goes live when the split confirms." : "") +
+          " You do not need to sign anything when it sells.",
+      );
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {

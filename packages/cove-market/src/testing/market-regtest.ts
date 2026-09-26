@@ -27,8 +27,6 @@ import { getTokenUtxosByScriptDb } from "@crclaunch/cove-indexer/v3";
 import {
   REGTEST_KEYS,
   REGTEST_GUARDIAN_PRIV,
-  REGTEST_ALICE_PRIV,
-  REGTEST_CAROL_PRIV,
   REGTEST_FEE_SCRIPT,
   REGTEST_NONCE,
   REGTEST_MINER_FEE,
@@ -39,7 +37,6 @@ import {
   MarketService,
   defaultMarketConfig,
   signBip322P2wpkh,
-  listingMessageToSign,
   reservationMessageToSign,
   getBuyRoutes,
   getSellOptions,
@@ -182,36 +179,94 @@ async function main() {
   const carolScript = p2wpkh(carol).toString("hex");
   const buyerScript = p2wpkh(buyer).toString("hex");
 
+  /** Confirmed + mempool BTC at a script, via Core's UTXO set scan. */
+  async function rpcBalanceAt(scriptHex: string): Promise<bigint> {
+    const r = await rpc.call<{ unspents: { amount: number }[] }>("scantxoutset", ["start", [{ desc: `raw(${scriptHex})` }]]);
+    return r.unspents.reduce((a, u) => a + BigInt(Math.round(u.amount * 1e8)), 0n);
+  }
+
   async function tipHeight(): Promise<bigint> {
     return BigInt(await provider.getBestHeight());
   }
 
-  async function listToken(ownerPriv: Buffer, ownerKey: typeof alice, source: { txid: string; vout: number; amountAtoms: bigint }, amountAtoms: bigint, price: bigint, nonceHex: string): Promise<string> {
-    const scriptHex = p2wpkh(ownerKey).toString("hex");
+  const SINGLE_ACP = bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY;
+  type Key = typeof alice;
+  /** A Taproot (key-path) token address for `key`, and the tweaked signer for it. */
+  const taproot = (key: Key) => {
+    const x = Buffer.from(key.publicKey.subarray(1, 33));
+    const pay = bitcoin.payments.p2tr({ internalPubkey: x, network: bitcoin.networks.regtest });
+    const tweaked = key.tweak(bitcoin.crypto.taggedHash("TapTweak", x));
+    return { script: pay.output!, tweaked };
+  };
+
+  /**
+   * List a WHOLE carrier the Ordinals way: the server builds the listing PSBT,
+   * the seller signs its one input SIGHASH_SINGLE|ANYONECANPAY, and that
+   * presignature is all the seller ever signs for this sale.
+   */
+  async function listToken(
+    owner: Key,
+    source: { txid: string; vout: number; amountAtoms: bigint },
+    price: bigint,
+    nonceHex: string,
+    opts: { taproot?: boolean } = {},
+  ): Promise<string> {
+    const tokenScript = opts.taproot ? taproot(owner).script : p2wpkh(owner);
+    const payoutHex = p2wpkh(owner).toString("hex");
     const listing: ListingV1 = {
       orderVersion: 1,
       chainIdentity: REGTEST_CHAIN_IDENTITY,
       tokenId: tokenIdHex,
-      sellerTokenScript: scriptHex,
-      sellerPayoutScript: scriptHex,
-      sellerTokenChangeScript: scriptHex,
+      sellerTokenScript: tokenScript.toString("hex"),
+      sellerPayoutScript: payoutHex,
+      sellerTokenChangeScript: tokenScript.toString("hex"),
       sourceTxid: source.txid,
       sourceVout: source.vout,
       sourceAmountAtoms: source.amountAtoms,
-      amountAtoms,
+      amountAtoms: source.amountAtoms,
       totalPriceSats: price,
       creationHeight: await tipHeight(),
       expiryHeight: (await tipHeight()) + 500n,
       nonce: nonceHex,
     };
-    const sig = signBip322P2wpkh(ownerPriv, p2wpkh(ownerKey), listingMessageToSign(listing));
-    return market.createListing({ ...listing, signatureB64: sig });
+    const pubHex = Buffer.from(owner.publicKey).toString("hex");
+    const unsigned = await market.buildListingPsbtFor(listing, opts.taproot ? pubHex : undefined);
+    const psbt = bitcoin.Psbt.fromBase64(unsigned, { network: bitcoin.networks.regtest });
+    assert(psbt.data.inputs.length === 1 && psbt.txOutputs.length === 1, "listing PSBT is one input, one output");
+    psbt.signInput(0, opts.taproot ? taproot(owner).tweaked : owner, [SINGLE_ACP]);
+    return market.createListing({ ...listing, presignedPsbtBase64: psbt.toBase64(), sellerTokenPublicKey: opts.taproot ? pubHex : undefined });
+  }
+
+  /** Buy a listing: reserve, build, the BUYER signs, the server completes it. The seller does nothing. */
+  async function buy(listingId: string, fundBtc: number): Promise<{ fillId: string; txid: string }> {
+    const buyerFund = await fund(buyer, fundBtc);
+    const reserveNonce = randomBytes(32).toString("hex");
+    const reserveSig = signBip322P2wpkh(
+      buyer.privateKey!,
+      Buffer.from(buyerScript, "hex"),
+      reservationMessageToSign({ version: 1, listingId, reserveNonce, buyerTokenScript: buyerScript }),
+    );
+    const fillId = await market.reserveListing({
+      listingId,
+      buyerTokenScript: buyerScript,
+      buyerChangeScript: buyerScript,
+      buyerFundInputs: [{ txid: buyerFund.txid, vout: buyerFund.vout, script: buyerFund.script.toString("hex"), valueSats: buyerFund.valueSats }],
+      reserveNonce,
+      signatureB64: reserveSig,
+    });
+    const psbtB64 = await market.buildFillPsbt(fillId, REGTEST_MINER_FEE);
+    const buyerPsbt = bitcoin.Psbt.fromBase64(psbtB64, { network: bitcoin.networks.regtest });
+    assert(buyerPsbt.data.inputs[1]!.tapKeySig === undefined && !buyerPsbt.data.inputs[1]!.partialSig?.length, "the fill handed to the buyer carries no seller signature");
+    buyerPsbt.signInput(0, buyer);
+    await market.submitBuyerSignedPsbt(fillId, buyerPsbt.toBase64());
+    const { txid } = await market.completeFill(fillId);
+    return { fillId, txid };
   }
 
   // ══ Phase 2: external source-spend invalidation ══
   const aliceInv = await getTokenUtxosByScriptDb(db, "regtest", aliceScript);
   assert(aliceInv.length === 1, "Alice should own 1 token UTXO after MINT");
-  const listingInvalid = await listToken(REGTEST_ALICE_PRIV, alice, { txid: aliceInv[0]!.txid, vout: aliceInv[0]!.vout, amountAtoms: aliceInv[0]!.amountAtoms }, HALF, PRICE, "01".repeat(32));
+  const listingInvalid = await listToken(alice, { txid: aliceInv[0]!.txid, vout: aliceInv[0]!.vout, amountAtoms: aliceInv[0]!.amountAtoms }, PRICE, "01".repeat(32));
   console.log(`✓ listing INVALIDATION setup ${listingInvalid.slice(0, 16)}…`);
 
   // Alice spends her whole source UTXO externally (plain transfer to Carol).
@@ -231,13 +286,35 @@ async function main() {
   assert(invRecon.invalidated === 1, `expected 1 invalidated, got ${invRecon.invalidated}`);
   const invRow = await db.select().from(schema.coveV3MarketListings).where(eq(schema.coveV3MarketListings.listingId, listingInvalid));
   assert(invRow[0]!.status === "INVALIDATED", "externally-spent listing must be INVALIDATED");
+  assert(invRow[0]!.sellerPresignedPsbt === null, "an invalidated listing forgets its presignature");
   console.log(`✓ external source-spend → INVALIDATED (${extTxid.slice(0, 16)}…)`);
 
-  // ══ Phase 3: happy-path partial-Utxo fill ══
+  // ══ Phase 3: split, list while the split is in the mempool (PENDING),
+  //   go live on confirmation, sell with NO seller signature at sale time ══
   const carolInv = await getTokenUtxosByScriptDb(db, "regtest", carolScript);
   assert(carolInv.length === 1, "Carol should own 1 token UTXO after external transfer");
-  const listingId = await listToken(REGTEST_CAROL_PRIV, carol, { txid: carolInv[0]!.txid, vout: carolInv[0]!.vout, amountAtoms: carolInv[0]!.amountAtoms }, HALF, PRICE, "02".repeat(32));
-  console.log(`✓ listing created ${listingId.slice(0, 16)}…`);
+  const split = buildTransferPsbtV2({
+    network: bitcoin.networks.regtest, tokenId,
+    tokenInputs: [{ txid: carolInv[0]!.txid, vout: carolInv[0]!.vout, script: p2wpkh(carol), valueSats: TOKEN_CARRIER_SATS }],
+    tokenInputTotalAtoms: MINT_AMOUNT,
+    tokenOutputs: [{ script: p2wpkh(carol), amountAtoms: HALF }, { script: p2wpkh(carol), amountAtoms: HALF }],
+    funderInputs: [await fund(carol, 0.01)], funderChangeScript: p2wpkh(carol), btcOutputs: [], minerFeeSats: REGTEST_MINER_FEE,
+  });
+  split.psbt.signInput(0, carol);
+  split.psbt.signInput(1, carol);
+  split.psbt.finalizeAllInputs();
+  const splitTxid = await broadcast(orThrow(validateFinalizedTransferTransaction({ rawTxHex: split.psbt.extractTransaction().toHex(), view: state })));
+  // Not mined yet: the carrier at vout 1 exists only in the mempool.
+  const listingId = await listToken(carol, { txid: splitTxid, vout: 1, amountAtoms: HALF }, PRICE, "02".repeat(32));
+  const pendingRow = await db.select().from(schema.coveV3MarketListings).where(eq(schema.coveV3MarketListings.listingId, listingId));
+  assert(pendingRow[0]!.status === "PENDING", `a listing on an unconfirmed split is PENDING, got ${pendingRow[0]!.status}`);
+  const visibleWhilePending = await db.select().from(schema.coveV3MarketListings).where(eq(schema.coveV3MarketListings.status, "ACTIVE"));
+  assert(!visibleWhilePending.some((l) => l.listingId === listingId), "a PENDING listing is not buyable");
+  await mine();
+  await market.reconcileMarket();
+  const liveRow = await db.select().from(schema.coveV3MarketListings).where(eq(schema.coveV3MarketListings.listingId, listingId));
+  assert(liveRow[0]!.status === "ACTIVE", `the listing goes live once its carrier confirms, got ${liveRow[0]!.status}`);
+  console.log(`✓ split ${splitTxid.slice(0, 16)}… → listing PENDING → ACTIVE ${listingId.slice(0, 16)}…`);
 
   // best execution (quote only)
   const routes = await getBuyRoutes(db, "regtest", tokenIdHex, HALF);
@@ -248,41 +325,16 @@ async function main() {
   assert(p2pRoute.totalCostSats === PRICE + market.marketFeeFor(PRICE), "p2p route cost = price + p2p fee");
   assert(routes[0]!.totalCostSats <= routes[1]!.totalCostSats, "routes must be sorted ascending");
   const sellOpts = await getSellOptions(db, "regtest", tokenIdHex, carolScript);
-  assert(sellOpts.listableUtxos.length === 1, "Carol has 1 listable UTXO");
+  assert(sellOpts.listableUtxos.length === 2, "Carol has 2 listable UTXOs after the split");
   assert(sellOpts.redeemQuote !== null, "Carol can redeem whole-token balance via backing");
   console.log(`✓ best execution: backing=${backingRoute.totalCostSats} p2p=${p2pRoute.totalCostSats} (best=${routes[0]!.kind})`);
 
-  // reserve → build → buyer sign → seller sign → finalize → broadcast
-  const buyerFund = await fund(buyer, 0.2);
-  const reserveNonce = randomBytes(32).toString("hex");
-  const reserveSig = signBip322P2wpkh(
-    buyer.privateKey!,
-    Buffer.from(buyerScript, "hex"),
-    reservationMessageToSign({ version: 1, listingId, reserveNonce, buyerTokenScript: buyerScript }),
-  );
-  const fillId = await market.reserveListing({
-    listingId,
-    buyerTokenScript: buyerScript,
-    buyerChangeScript: buyerScript,
-    buyerFundInputs: [{ txid: buyerFund.txid, vout: buyerFund.vout, script: buyerFund.script.toString("hex"), valueSats: buyerFund.valueSats }],
-    reserveNonce,
-    signatureB64: reserveSig,
-  });
-  const psbtB64 = await market.buildFillPsbt(fillId, REGTEST_MINER_FEE);
-
-  const buyerPsbt = bitcoin.Psbt.fromBase64(psbtB64, { network: bitcoin.networks.regtest });
-  buyerPsbt.signInput(1, buyer);
-  await market.submitBuyerSignedPsbt(fillId, buyerPsbt.toBase64());
-
-  const bothPsbt = buyerPsbt;
-  bothPsbt.signInput(0, carol);
-  await market.submitSellerSignedPsbt(fillId, bothPsbt.toBase64());
-
-  const validated = await market.finalizeP2PFill(fillId);
-  await market.broadcastP2PFill(validated);
+  const carolPaidBefore = await rpcBalanceAt(carolScript);
+  const { fillId, txid: fillTxid } = await buy(listingId, 0.2);
   await mine();
   const fillRecon = await market.reconcileMarket();
   assert(fillRecon.confirmed === 1, `expected 1 confirmed, got ${fillRecon.confirmed}`);
+  const validated = { txid: fillTxid };
 
   const fillRow = await db.select().from(schema.coveV3MarketFills).where(eq(schema.coveV3MarketFills.id, fillId));
   assert(fillRow[0]!.status === "CONFIRMED", "fill must be CONFIRMED");
@@ -293,11 +345,15 @@ async function main() {
   const backingAfter = await db.select().from(schema.coveV3BackingStates).where(eq(schema.coveV3BackingStates.tokenId, tokenIdHex));
   assert(backingAfter[0]!.backingSats === mint.nextState.backingSats, "P2P fill must NOT touch backing");
   const buyerInv = await getTokenUtxosByScriptDb(db, "regtest", buyerScript);
-  assert(buyerInv.length === 1 && buyerInv[0]!.amountAtoms === HALF, "buyer receives exactly the listed amount");
-  // seller payout output (vout 3 for a partial fill: 0 OP_RETURN,1 buyer,2 change,3 payout)
-  const payoutOut = await provider.getTxout(validated.txid, 3);
-  assert(payoutOut && payoutOut.scriptPubKeyHex === carolScript && payoutOut.valueSats === PRICE, "seller receives exactly totalPriceSats");
-  console.log(`✓ P2P partial fill CONFIRMED (1M → 500k buyer + 500k change + ${PRICE} sats, backing untouched)`);
+  assert(buyerInv.length === 1 && buyerInv[0]!.amountAtoms === HALF, "buyer receives exactly the listed carrier");
+  // Presigned layout: 0 OP_RETURN, 1 seller payout, 2 buyer carrier, 3 fee.
+  const payoutOut = await provider.getTxout(validated.txid, 1);
+  assert(payoutOut && payoutOut.scriptPubKeyHex === carolScript && payoutOut.valueSats === PRICE, "seller receives exactly totalPriceSats at vout 1");
+  const feeOut = await provider.getTxout(validated.txid, 3);
+  assert(feeOut && feeOut.scriptPubKeyHex === feeScript.toString("hex") && feeOut.valueSats === market.marketFeeFor(PRICE), "market fee paid at vout 3");
+  // Carol keeps tokens and BTC on one address here, so her sold 1,000-sat carrier leaves with the sale.
+  assert((await rpcBalanceAt(carolScript)) === carolPaidBefore + PRICE - TOKEN_CARRIER_SATS, "Carol gained exactly the price (less the carrier she sold)");
+  console.log(`✓ P2P fill CONFIRMED, seller signed only at listing (${HALF} atoms → buyer, ${PRICE} sats → seller, backing untouched)`);
 
   // ══ Phase 4: market rows survive a full indexer reindex ══
   await reindexDb({ db, store, provider, config: cfg, network: "regtest" });
@@ -335,6 +391,34 @@ async function main() {
   const reconListing = await db.select().from(schema.coveV3MarketListings).where(eq(schema.coveV3MarketListings.listingId, listingId));
   assert(reconListing[0]!.status === "FILLED", "listing must be FILLED again after re-confirm");
   console.log(`✓ re-confirm after reorg: trade canonical, listing FILLED`);
+
+  // ══ Phase 6: a Taproot (key-path) seller carrier, as every ordinals wallet has ══
+  const carolLeft = (await getTokenUtxosByScriptDb(db, "regtest", carolScript)).filter((u) => u.tokenId === tokenIdHex);
+  assert(carolLeft.length === 1 && carolLeft[0]!.amountAtoms === HALF, "Carol keeps the other half");
+  const toTaproot = buildTransferPsbtV2({
+    network: bitcoin.networks.regtest, tokenId,
+    tokenInputs: [{ txid: carolLeft[0]!.txid, vout: carolLeft[0]!.vout, script: p2wpkh(carol), valueSats: TOKEN_CARRIER_SATS }],
+    tokenInputTotalAtoms: HALF,
+    tokenOutputs: [{ script: taproot(carol).script, amountAtoms: HALF }],
+    funderInputs: [await fund(carol, 0.01)], funderChangeScript: p2wpkh(carol), btcOutputs: [], minerFeeSats: REGTEST_MINER_FEE,
+  });
+  toTaproot.psbt.signInput(0, carol);
+  toTaproot.psbt.signInput(1, carol);
+  toTaproot.psbt.finalizeAllInputs();
+  const trTxid = await broadcast(orThrow(validateFinalizedTransferTransaction({ rawTxHex: toTaproot.psbt.extractTransaction().toHex(), view: state })));
+  await mine();
+  const trListing = await listToken(carol, { txid: trTxid, vout: 1, amountAtoms: HALF }, PRICE * 2n, "03".repeat(32), { taproot: true });
+  const trRow = await db.select().from(schema.coveV3MarketListings).where(eq(schema.coveV3MarketListings.listingId, trListing));
+  assert(trRow[0]!.status === "ACTIVE", "a listing on an indexed Taproot carrier is live at once");
+  const trFill = await buy(trListing, 0.2);
+  await mine();
+  const trRecon = await market.reconcileMarket();
+  assert(trRecon.confirmed === 1, `expected the Taproot sale to confirm, got ${trRecon.confirmed}`);
+  const trPayout = await provider.getTxout(trFill.txid, 1);
+  assert(trPayout && trPayout.scriptPubKeyHex === carolScript && trPayout.valueSats === PRICE * 2n, "Taproot seller paid exactly");
+  const buyerAll = (await getTokenUtxosByScriptDb(db, "regtest", buyerScript)).reduce((a, u) => a + u.amountAtoms, 0n);
+  assert(buyerAll === MINT_AMOUNT, "buyer now holds both halves");
+  console.log(`✓ Taproot seller carrier: presigned SINGLE|ACP key-path sale CONFIRMED ${trFill.txid.slice(0, 16)}…`);
 
   console.log("MARKET REGTEST PASSED");
 }

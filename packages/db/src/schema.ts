@@ -656,6 +656,14 @@ export const coveV3MarketListings = pgTable(
      * without it, and the scriptPubKey alone does not reveal it.
      */
     sellerTokenPublicKey: text("seller_token_public_key"),
+    /**
+     * The seller's presigned listing PSBT: one input (the whole carrier) signed
+     * SIGHASH_SINGLE|ANYONECANPAY over one output (their payout). A buyer's
+     * fill is completed with it, so the seller never signs at sale time.
+     * SECRET until broadcast: whoever holds it can settle the sale without the
+     * market fee, so no read model or API ever returns this column.
+     */
+    sellerPresignedPsbt: text("seller_presigned_psbt"),
     status: text("status").notNull().default("ACTIVE"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -664,12 +672,12 @@ export const coveV3MarketListings = pgTable(
     uniqueIndex("cove_v3_market_listings_id_uq").on(t.listingId),
     index("cove_v3_market_listings_token_status_idx").on(t.network, t.tokenId, t.status),
     index("cove_v3_market_listings_status_created_idx").on(t.network, t.status, t.createdAt),
-    // One ACTIVE/RESERVED/BROADCAST listing per source outpoint (double-list guard).
+    // One PENDING/ACTIVE/RESERVED/BROADCAST listing per source outpoint (double-list guard).
     // Literal IN-list: CREATE INDEX is DDL and cannot use bind parameters, so the
     // status constants are inlined here (they are fixed protocol values).
     uniqueIndex("cove_v3_market_listings_source_active_uq")
       .on(t.network, t.sourceTxid, t.sourceVout)
-      .where(sql`${t.status} in ('ACTIVE', 'RESERVED', 'BROADCAST')`),
+      .where(sql`${t.status} in ('PENDING', 'ACTIVE', 'RESERVED', 'BROADCAST')`),
   ],
 );
 

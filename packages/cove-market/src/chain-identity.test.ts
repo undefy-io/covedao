@@ -32,7 +32,7 @@ describe("createListing chainIdentity gate (§M5)", () => {
 
   it("rejects a listing whose chainIdentity differs from the server's", async () => {
     await expect(
-      market.createListing({ ...listing({ chainIdentity: "bitcoin-mainnet" }), signatureB64: "x" }),
+      market.createListing({ ...listing({ chainIdentity: "bitcoin-mainnet" }), presignedPsbtBase64: "x" }),
     ).rejects.toThrow(/chainIdentity/);
   });
 });

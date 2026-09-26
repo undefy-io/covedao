@@ -11,8 +11,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ fillId:
     const { app } = assertV3Enabled();
     const { fillId } = await params;
     const body = await readJson(req);
-    await app.submitBuyerSignature(fillId, strField(body, "signedPsbtBase64"));
-    return ok({ fillId, status: "BUYER_SIGNED" });
+    // The buyer's signature completes the sale: the server attaches the
+    // seller's presignature and broadcasts. No seller step.
+    const { txid } = await app.submitBuyerSignature(fillId, strField(body, "signedPsbtBase64"));
+    return ok({ fillId, status: "BROADCAST", txid });
   } catch (e) {
     return handleError(e);
   }

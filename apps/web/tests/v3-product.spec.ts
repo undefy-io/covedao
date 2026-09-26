@@ -3,7 +3,20 @@ import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import { ECPairFactory } from "ecpair";
 import { signPsbtWithKey, signBip322WithKey } from "@crclaunch/wallets/e2e";
-import { IDENTITIES, mine, listBtcUtxos } from "./v3-rpc";
+import { IDENTITIES, mine, listBtcUtxos, rpc } from "./v3-rpc";
+import { apiListPresigned, waitForListing } from "./v3-list";
+
+/**
+ * Every wallet signature, per identity. A presigned listing's seller signs
+ * once, at listing time; these counts prove nothing is asked of them when
+ * the listing sells.
+ */
+const signCalls = new Map<string, number>();
+function countedSign(privHex: string, psbtBase64: string): string {
+  signCalls.set(privHex, (signCalls.get(privHex) ?? 0) + 1);
+  return signPsbtWithKey(psbtBase64, privHex);
+}
+const signsBy = (id: { privHex: string }) => signCalls.get(id.privHex) ?? 0;
 
 bitcoin.initEccLib(ecc as unknown as Parameters<typeof bitcoin.initEccLib>[0]);
 const ECPair = ECPairFactory(ecc);
@@ -43,7 +56,7 @@ async function walletPage(browser: Browser, identity: { privHex: string; address
   const context = await browser.newContext();
   const page = await context.newPage();
   const script = scriptOf(identity.privHex);
-  await page.exposeFunction("__signPsbt", (psbtBase64: string) => signPsbtWithKey(psbtBase64, identity.privHex));
+  await page.exposeFunction("__signPsbt", (psbtBase64: string) => countedSign(identity.privHex, psbtBase64));
   await page.exposeFunction("__signBip322", (message: string) => signBip322WithKey(message, identity.privHex));
   await page.exposeFunction("__getUtxos", () => listBtcUtxos(identity.address));
   await page.addInitScript(
@@ -66,24 +79,21 @@ let aliceTokenId: string;
 let minted: bigint;
 const T = 100_000_000n;
 
-/** List through the API — the UI only offers listing once a token is fully minted. */
+/** List through the API (split + presign) — the UI only offers listing once a token is fully minted. */
 async function apiList(identity: { privHex: string; address: string }, tokenId: string, tokens: bigint, priceSats: number) {
   const script = scriptOf(identity.privHex);
-  const pf = await fetch(`${BASE}/api/v3/wallet/${identity.address}/portfolio`).then((r) => r.json());
-  const utxo = pf.data.tokenUtxos.find((u: { tokenId: string; amountAtoms: string }) => u.tokenId === tokenId && BigInt(u.amountAtoms) >= tokens * T);
-  const prep = await fetch(`${BASE}/api/v3/market/listings/prepare`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ tokenId, sourceTxid: utxo.txid, sourceVout: String(utxo.vout), amountAtoms: (tokens * T).toString(), totalPriceSats: String(priceSats), expiryBlocks: "1008", walletScript: script, walletAddress: identity.address }),
-  }).then((r) => r.json());
-  const sig = signBip322WithKey(prep.data.message, identity.privHex);
-  const made = await fetch(`${BASE}/api/v3/market/listings`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ listing: prep.data.listing, signatureB64: sig }),
-  }).then((r) => r.json());
-  expect(made.ok).toBe(true);
-  return made.data.listingId as string;
+  const made = await apiListPresigned(
+    {
+      fields: { walletScript: script, walletAddress: identity.address },
+      tokenAddress: identity.address,
+      getUtxos: () => listBtcUtxos(identity.address),
+      sign: (psbt) => countedSign(identity.privHex, psbt),
+    },
+    tokenId,
+    tokens * T,
+    priceSats,
+  );
+  return made;
 }
 
 test("E2E-001 launch: Alice launches FROG through the UI", async ({ browser }) => {
@@ -188,42 +198,63 @@ test("E2E-004 redeem: Bob instant-sells to Cove Backing", async ({ browser }) =>
   expect(BigInt(detail.data.issuedSupplyAtoms)).toBe(minted - 10_000n * T);
 });
 
-test("E2E-005 list P2P: Alice lists part of a token UTXO", async () => {
-  await apiList(IDENTITIES.alice, aliceTokenId, 1_000n, 100_000);
-
+test("E2E-005 list P2P: Alice splits off 1,000 and presigns it (PENDING → ACTIVE)", async () => {
+  const before = signsBy(IDENTITIES.alice);
+  const { listingId, pending } = await apiList(IDENTITIES.alice, aliceTokenId, 1_000n, 100_000);
+  // Two signatures: the split, and the one presignature. Nothing else, ever.
+  expect(signsBy(IDENTITIES.alice) - before).toBe(2);
+  expect(pending).toBe(true);
+  // Not buyable until the split confirms.
+  const hidden = await fetch(`${BASE}/api/v3/market/listings`).then((r) => r.json());
+  expect(hidden.data.some((l: { listingId: string }) => l.listingId === listingId)).toBe(false);
+  await mineAndWait(1);
+  await waitForListing(listingId, aliceTokenId);
   const listings = await fetch(`${BASE}/api/v3/market/listings`).then((r) => r.json());
   expect(listings.data.length).toBe(1);
   expect(listings.data[0].status).toBe("ACTIVE");
+  // The seller's presignature is never served.
+  expect(JSON.stringify(listings.data)).not.toMatch(/sellerPresignedPsbt|cHNidP8/);
 });
 
-test("E2E-006 P2P buy: Bob fills Alice's listing atomically", async ({ browser }) => {
+test("E2E-006 P2P buy: Bob buys and it settles with no seller signature", async ({ browser }) => {
   const listings = await fetch(`${BASE}/api/v3/market/listings`).then((r) => r.json());
   const listingId = listings.data[0].listingId;
+  const aliceSignsBefore = signsBy(IDENTITIES.alice);
 
   const bob = await walletPage(browser, IDENTITIES.bob);
   await bob.goto(`${BASE}/market`);
   await bob.getByRole("button", { name: /connect wallet/i }).click();
   await bob.getByRole("button", { name: "Buy", exact: true }).first().click();
-  await expect(bob.getByText(/waiting for seller/i).first()).toBeVisible({ timeout: 60_000 });
+  await expect(bob.getByText(/^bought — arrives when/i).first()).toBeVisible({ timeout: 60_000 });
+  await mineAndWait(1);
 
-  // Alice signs the sale from the wallet page
+  // The seller signed nothing at sale time.
+  expect(signsBy(IDENTITIES.alice)).toBe(aliceSignsBefore);
+  // Alice's wallet page has no sale to approve.
   const alice = await walletPage(browser, IDENTITIES.alice);
   await alice.goto(`${BASE}/wallet`);
   await alice.getByRole("button", { name: /connect wallet/i }).click();
-  await alice.getByRole("button", { name: /review & sign sale/i }).first().click();
-  await expect(alice.getByText(/sale broadcast/i).first()).toBeVisible({ timeout: 60_000 });
-  await mineAndWait(1);
+  await expect(alice.getByText(/holdings/i).first()).toBeVisible();
+  await expect(alice.getByRole("button", { name: /review & sign sale/i })).toHaveCount(0);
 
-  // The listing must now be FILLED and the trade confirmed; backing + supply unchanged by P2P.
+  // FILLED; Bob holds the tokens; Alice was paid exactly, at vout 1.
   const alicePf = await fetch(`${BASE}/api/v3/wallet/${IDENTITIES.alice.address}/portfolio`).then((r) => r.json());
   const filled = alicePf.data.listings.find((l: { listingId: string }) => l.listingId === listingId);
   expect(filled.status).toBe("FILLED");
+  const fill = alicePf.data.fills.find((f: { listingId: string; status: string }) => f.listingId === listingId && f.status === "CONFIRMED");
+  const tx = await rpc<{ vout: { value: number; scriptPubKey: { hex: string } }[] }>("getrawtransaction", [fill.txid, true]);
+  expect(Math.round(tx.vout[1]!.value * 1e8)).toBe(100_000);
+  expect(tx.vout[1]!.scriptPubKey.hex).toBe(scriptOf(IDENTITIES.alice.privHex));
+  const bobPf = await fetch(`${BASE}/api/v3/wallet/${IDENTITIES.bob.address}/portfolio`).then((r) => r.json());
+  expect(bobPf.data.tokenUtxos.some((u: { tokenId: string; amountAtoms: string }) => u.tokenId === aliceTokenId && BigInt(u.amountAtoms) === 1_000n * T)).toBe(true);
   const detail = await fetch(`${BASE}/api/v3/tokens/${aliceTokenId}`).then((r) => r.json());
   expect(BigInt(detail.data.issuedSupplyAtoms)).toBe(minted - 10_000n * T);
 });
 
 test("E2E-008 cancel: Alice cancels a second listing", async ({ browser }) => {
-  await apiList(IDENTITIES.alice, aliceTokenId, 1_000n, 100_000);
+  const { listingId } = await apiList(IDENTITIES.alice, aliceTokenId, 1_000n, 100_000);
+  await mineAndWait(1);
+  await waitForListing(listingId, aliceTokenId);
   const page = await walletPage(browser, IDENTITIES.alice);
   await page.goto(`${BASE}/wallet`);
   await page.getByRole("button", { name: /connect wallet/i }).click();
@@ -272,20 +303,20 @@ test("E2E-009 mint-out: the page switches to Buy / Sell / Redeem, and the market
   await carol.getByLabel(/For . sats/i).fill("100000");
   await carol.getByRole("button", { name: /list for sale/i }).click();
   await expect(carol.getByText(/listing created/i).first()).toBeVisible({ timeout: 60_000 });
+  // A split was needed, so the listing goes live on the next block.
+  await mineAndWait(1);
+  const firstAsk = await fetch(`${BASE}/api/v3/market/listings?tokenId=${fullId}`).then((r) => r.json());
+  expect(firstAsk.data.filter((l: { status: string }) => l.status === "ACTIVE").length).toBe(1);
 
-  // Bob buys it from the token page.
+  // Bob buys it from the token page; Carol signs nothing.
+  const carolSignsBefore = signsBy(IDENTITIES.carol);
   const bob = await walletPage(browser, IDENTITIES.bob);
   await bob.goto(`${BASE}/token/${fullId}`);
   await bob.getByRole("button", { name: /connect wallet/i }).click();
   await bob.getByRole("button", { name: "Buy", exact: true }).first().click();
   await bob.getByRole("button", { name: "Buy", exact: true }).last().click();
-  await expect(bob.getByText(/seller now has 24 hours/i).first()).toBeVisible({ timeout: 60_000 });
-
-  // Carol approves on her Wallet page.
-  await carol.goto(`${BASE}/wallet`);
-  await carol.getByRole("button", { name: /connect wallet/i }).click();
-  await carol.getByRole("button", { name: /review & sign sale/i }).first().click();
-  await expect(carol.getByText(/sale broadcast/i).first()).toBeVisible({ timeout: 60_000 });
+  await expect(bob.getByText(/^bought — arrives when/i).first()).toBeVisible({ timeout: 60_000 });
+  expect(signsBy(IDENTITIES.carol)).toBe(carolSignsBefore);
   await mineAndWait(1);
   const bobPf = await fetch(`${BASE}/api/v3/wallet/${IDENTITIES.bob.address}/portfolio`).then((r) => r.json());
   const h = bobPf.data.holdings.find((x: { tokenId: string }) => x.tokenId === fullId);
@@ -293,7 +324,7 @@ test("E2E-009 mint-out: the page switches to Buy / Sell / Redeem, and the market
 
   // Carol lists from her Wallet page: the form shows the floor and the vault
   // price, and the listing appears under My listings.
-  await carol.reload();
+  await carol.goto(`${BASE}/wallet`);
   await carol.getByRole("button", { name: /connect wallet/i }).click();
   const card = carol.locator("div.border", { has: carol.locator(`a[href="/token/${fullId}"]`) }).first();
   await card.getByRole("button", { name: "List", exact: true }).click();
@@ -303,6 +334,13 @@ test("E2E-009 mint-out: the page switches to Buy / Sell / Redeem, and the market
   await expect(card.getByText("120,000 sats")).toBeVisible();
   await card.getByRole("button", { name: "List", exact: true }).click();
   await expect(carol.getByText(/^listed 2,000 tokens for 120,000 sats/i)).toBeVisible({ timeout: 60_000 });
+  // The wallet split off exactly 2,000; the listing is live once that confirms.
+  await mineAndWait(1);
+  for (let i = 0; i < 30; i++) {
+    const l = await fetch(`${BASE}/api/v3/market/listings?tokenId=${fullId}`).then((r) => r.json());
+    if (l.data.some((x: { status: string; amountAtoms: string }) => x.status === "ACTIVE" && BigInt(x.amountAtoms) === 2_000n * T)) break;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
   const listings = await fetch(`${BASE}/api/v3/market/listings?tokenId=${fullId}`).then((r) => r.json());
   expect(listings.data.some((l: { status: string; amountAtoms: string; totalPriceSats: string }) =>
     l.status === "ACTIVE" && BigInt(l.amountAtoms) === 2_000n * T && l.totalPriceSats === "120000")).toBe(true);

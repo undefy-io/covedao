@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { NETWORK as COVE_NETWORK } from "@/lib/network";
 import type { WalletCapabilities } from "@crclaunch/wallets";
 import { adapterFor, inputsOwnedBy } from "@/lib/wallets/adapters";
+import { LISTING_SIGHASH } from "@crclaunch/wallets";
 import { WalletError, type CoveNetwork, type WalletId } from "@/lib/wallets/types";
 import {
   DEV_WALLET_ID,
@@ -240,6 +241,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       return adapterFor(conn.walletId as WalletId).signPsbt(NETWORK, {
         psbtBase64,
         inputsByAddress,
+        // A listing is presigned SIGHASH_SINGLE|ANYONECANPAY; everything else is SIGHASH_ALL.
+        sighashType: operation === "P2P_LIST" ? LISTING_SIGHASH : undefined,
       });
     },
     [conn],

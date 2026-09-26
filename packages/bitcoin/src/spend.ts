@@ -165,8 +165,36 @@ export type SignatureProblem =
  * explicit sighash flag, and only 0x01 is accepted there.
  */
 export function checkSpendSignature(psbt: bitcoin.Psbt, index: number): SignatureProblem {
+  return checkSignatureWithSighash(psbt, index, bitcoin.Transaction.SIGHASH_ALL);
+}
+
+/**
+ * SIGHASH_SINGLE | SIGHASH_ANYONECANPAY: the Ordinals-market listing
+ * signature. It commits to this input and to the ONE output at the same index
+ * (the seller's payout), and to nothing else, so a buyer can later add their
+ * own inputs and outputs around it without the seller signing again.
+ */
+export const SIGHASH_SINGLE_ANYONECANPAY =
+  bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY;
+
+/**
+ * A listing presignature: present, SIGHASH_SINGLE|ANYONECANPAY exactly, and
+ * cryptographically valid for the key that owns the input.
+ */
+export function checkListingSignature(psbt: bitcoin.Psbt, index: number): SignatureProblem {
+  return checkSignatureWithSighash(psbt, index, SIGHASH_SINGLE_ANYONECANPAY);
+}
+
+/**
+ * One input's signature, required to carry exactly `sighash`. For
+ * SIGHASH_ALL a bare 64-byte Taproot signature (SIGHASH_DEFAULT) is accepted,
+ * since it commits to exactly what SIGHASH_ALL does.
+ */
+function checkSignatureWithSighash(psbt: bitcoin.Psbt, index: number, sighash: number): SignatureProblem {
   const input = psbt.data.inputs[index];
   if (!input) return { ok: false, reason: "UNSIGNED", detail: `input ${index} does not exist` };
+  const all = sighash === bitcoin.Transaction.SIGHASH_ALL;
+  const wanted = all ? "SIGHASH_ALL" : `sighash 0x${sighash.toString(16)}`;
 
   const script = input.witnessUtxo?.script;
   const kind = script ? spendKindOf(script) : null;
@@ -179,15 +207,19 @@ export function checkSpendSignature(psbt: bitcoin.Psbt, index: number): Signatur
     if (!sig || sig.length === 0) {
       return { ok: false, reason: "UNSIGNED", detail: `input ${index} unsigned` };
     }
-    if (sig.length === 65 && sig[64] !== bitcoin.Transaction.SIGHASH_ALL) {
+    if (sig.length !== 64 && sig.length !== 65) {
+      return { ok: false, reason: "INVALID", detail: `input ${index} taproot signature is malformed` };
+    }
+    const hashType = sig.length === 65 ? sig[64]! : bitcoin.Transaction.SIGHASH_DEFAULT;
+    const matches = all
+      ? hashType === bitcoin.Transaction.SIGHASH_DEFAULT || hashType === sighash
+      : sig.length === 65 && hashType === sighash;
+    if (!matches) {
       return {
         ok: false,
         reason: "NOT_SIGHASH_ALL",
-        detail: `input ${index} taproot sighash 0x${sig[64]!.toString(16)} is not SIGHASH_ALL`,
+        detail: `input ${index} taproot sighash 0x${hashType.toString(16)} is not ${wanted}`,
       };
-    }
-    if (sig.length !== 64 && sig.length !== 65) {
-      return { ok: false, reason: "INVALID", detail: `input ${index} taproot signature is malformed` };
     }
     // Verified directly against the output key in the scriptPubKey, so it
     // does not depend on tapInternalKey, which a finalizing wallet clears.
@@ -196,9 +228,8 @@ export function checkSpendSignature(psbt: bitcoin.Psbt, index: number): Signatur
       const tx = bitcoin.Transaction.fromBuffer(psbt.data.globalMap.unsignedTx.toBuffer());
       const prevScripts = psbt.data.inputs.map((i) => Buffer.from(i.witnessUtxo!.script));
       const values = psbt.data.inputs.map((i) => i.witnessUtxo!.value);
-      const hashType = sig.length === 65 ? sig[64]! : bitcoin.Transaction.SIGHASH_DEFAULT;
-      const sighash = tx.hashForWitnessV1(index, prevScripts, values, hashType);
-      ok = ecc.verifySchnorr(sighash, Buffer.from(script!.subarray(2, 34)), Buffer.from(sig.subarray(0, 64)));
+      const digest = tx.hashForWitnessV1(index, prevScripts, values, hashType);
+      ok = ecc.verifySchnorr(digest, Buffer.from(script!.subarray(2, 34)), Buffer.from(sig.subarray(0, 64)));
     } catch {
       ok = false;
     }
@@ -212,8 +243,8 @@ export function checkSpendSignature(psbt: bitcoin.Psbt, index: number): Signatur
     return { ok: false, reason: "UNSIGNED", detail: `input ${index} unsigned` };
   }
   const sig = Buffer.from(input.partialSig[0]!.signature);
-  if (sig.length === 0 || sig[sig.length - 1] !== bitcoin.Transaction.SIGHASH_ALL) {
-    return { ok: false, reason: "NOT_SIGHASH_ALL", detail: `input ${index} is not SIGHASH_ALL` };
+  if (sig.length === 0 || sig[sig.length - 1] !== sighash) {
+    return { ok: false, reason: "NOT_SIGHASH_ALL", detail: `input ${index} is not ${wanted}` };
   }
   if (kind === "p2sh-p2wpkh" && !input.redeemScript) {
     return {

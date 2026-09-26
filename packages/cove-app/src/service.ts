@@ -33,10 +33,10 @@ import { ATOMS_PER_TOKEN, LOT_TOKENS, PUBLIC_SUPPLY_ATOMS } from "@crclaunch/cur
 import { canonicalTicker, computeTokenId, OP_MINT, OP_REDEEM, type ParsedEnvelopeV2 } from "@crclaunch/cove-wire";
 import {
   MarketService,
+  publicListing,
   defaultMarketConfig,
   mainnetMarketConfig,
   listingIdOf,
-  listingMessageToSign,
   cancellationHashOf,
   cancellationMessageToSign,
   getBuyRoutes,
@@ -1578,7 +1578,7 @@ export class V3AppService {
     walletPublicKey?: string;
     ordinalsPublicKey?: string;
     nonceHex: string;
-  }): Promise<{ listing: ListingV1; listingId: string; message: string; expiryHeight: bigint }> {
+  }): Promise<{ listing: ListingV1; listingId: string; listingPsbtBase64: string; expiryHeight: bigint }> {
     this.assertEnabled();
     const wallet = resolveWalletIdentity(walletIdentityFrom(params));
     const utxoRows = await this.db
@@ -1595,9 +1595,14 @@ export class V3AppService {
           isNull(schema.coveV3TokenUtxos.spentByTxid),
         ),
       );
+    // A listing sells one whole carrier. It is either indexed already, or the
+    // exact-amount output of a split the seller just broadcast (the market
+    // checks that transaction's own envelope; the listing waits as PENDING).
     const u = utxoRows[0];
-    if (!u) throw new AppError("LISTING_NOT_FOUND", "source token UTXO not found or spent");
-    if (params.amountAtoms > u.amountAtoms) throw new AppError("TOKEN_AMOUNT_INVALID", "listed amount exceeds source UTXO");
+    if (u && u.amountAtoms !== params.amountAtoms) {
+      throw new AppError("TOKEN_AMOUNT_INVALID", "a listing sells a whole token carrier; split off the amount first");
+    }
+    const sourceAmountAtoms = u ? u.amountAtoms : params.amountAtoms;
     const cursor = await this.db.select().from(schema.coveV3Cursor).where(eq(schema.coveV3Cursor.network, this.config.network));
     const tip = cursor[0]?.height ?? 0n;
     const nonce = Buffer.from(params.nonceHex, "hex");
@@ -1630,19 +1635,24 @@ export class V3AppService {
       sellerTokenChangeScript: wallet.ordinals.script,
       sourceTxid: params.sourceTxid,
       sourceVout: params.sourceVout,
-      sourceAmountAtoms: u.amountAtoms,
-      amountAtoms: params.amountAtoms,
+      sourceAmountAtoms,
+      amountAtoms: sourceAmountAtoms,
       totalPriceSats: params.totalPriceSats,
       creationHeight: tip,
       expiryHeight,
       nonce: nonce.toString("hex"),
     };
     const listingId = listingIdOf(listing);
-    return { listing, listingId, message: listingMessageToSign(listing), expiryHeight };
+    // The one thing the seller signs: their carrier, SIGHASH_SINGLE|ANYONECANPAY,
+    // over their payout. Nothing more is asked of them when it sells.
+    const listingPsbtBase64 = await this.market.buildListingPsbtFor(listing, wallet.ordinals.publicKey || undefined);
+    return { listing, listingId, listingPsbtBase64, expiryHeight };
   }
 
-  createListing(listing: ListingV1, signatureB64: string, sellerTokenPublicKey?: string) {
-    return this.market.createListing({ ...listing, signatureB64, sellerTokenPublicKey });
+  createListing(listing: ListingV1, presignedPsbtBase64: string, sellerTokenPublicKey?: string) {
+    this.assertMutating();
+    this.assertCanaryAllowed({ tokenId: listing.tokenId, walletScript: listing.sellerPayoutScript });
+    return this.market.createListing({ ...listing, presignedPsbtBase64, sellerTokenPublicKey });
   }
 
   prepareCancellation(listingId: string, nonceHex: string) {
@@ -1662,11 +1672,15 @@ export class V3AppService {
   buildFillPsbt(fillId: string, fee: { feeRateSatPerVb?: bigint; minerFeeSats?: bigint }) {
     return this.market.buildFillPsbt(fillId, fee);
   }
-  submitBuyerSignature(fillId: string, psbtB64: string) {
-    return this.market.submitBuyerSignedPsbt(fillId, psbtB64);
-  }
-  submitSellerSignature(fillId: string, psbtB64: string) {
-    return this.market.submitSellerSignedPsbt(fillId, psbtB64);
+  /**
+   * The buyer's signed fill, then the sale is completed at once: the stored
+   * seller presignature is attached and the transaction broadcast. The seller
+   * is not involved.
+   */
+  async submitBuyerSignature(fillId: string, psbtB64: string): Promise<{ txid: string }> {
+    this.assertMutating();
+    await this.market.submitBuyerSignedPsbt(fillId, psbtB64);
+    return this.finalizeAndBroadcastFill(fillId);
   }
   finalizeFill(fillId: string) {
     return this.market.finalizeP2PFill(fillId);
@@ -1735,7 +1749,8 @@ export class V3AppService {
       .where(cond)
       .limit(limit);
 
-    return rows.map((r) => ({ ...r.listing, ticker: r.ticker }));
+    // The seller's presignature never leaves the server.
+    return rows.map((r) => ({ ...publicListing(r.listing), ticker: r.ticker }));
   }
 
   // ── broadcast boundary ────────────────────────────────────────────────────

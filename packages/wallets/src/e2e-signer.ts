@@ -12,6 +12,12 @@ const ECPair = ECPairFactory(ecc);
  * bundle — the architecture gate scans for that.
  */
 
+/** The sighash an input asks for, as the allowed list bitcoinjs wants; default otherwise. */
+function sighashesFor(psbt: bitcoin.Psbt, index: number): number[] | undefined {
+  const t = psbt.data.inputs[index]?.sighashType;
+  return t === undefined ? undefined : [t];
+}
+
 export function signPsbtWithKey(psbtBase64: string, privKeyHex: string, network: bitcoin.networks.Network = bitcoin.networks.regtest): string {
   const psbt = bitcoin.Psbt.fromBase64(psbtBase64, { network });
   const key = ECPair.fromPrivateKey(Buffer.from(privKeyHex, "hex"), { network });
@@ -20,7 +26,8 @@ export function signPsbtWithKey(psbtBase64: string, privKeyHex: string, network:
   psbt.data.inputs.forEach((input, i) => {
     if (input.witnessUtxo && input.witnessUtxo.script.equals(script) && !input.partialSig?.length) indexes.push(i);
   });
-  for (const i of indexes) psbt.signInput(i, key);
+  // Honour a requested sighash (a presigned listing asks for SINGLE|ANYONECANPAY).
+  for (const i of indexes) psbt.signInput(i, key, sighashesFor(psbt, i));
   return psbt.toBase64();
 }
 
@@ -76,8 +83,8 @@ export function signPsbtTwoAddress(psbtBase64: string, paymentPrivHex: string, o
   const tweaked = ord.tweak(bitcoin.crypto.taggedHash("TapTweak", Buffer.from(ord.publicKey.subarray(1))));
   psbt.data.inputs.forEach((input, i) => {
     const script = input.witnessUtxo?.script.toString("hex");
-    if (script === id.paymentScript && !input.partialSig?.length) psbt.signInput(i, pay);
-    if (script === id.ordinalsScript && !input.tapKeySig) psbt.signInput(i, tweaked);
+    if (script === id.paymentScript && !input.partialSig?.length) psbt.signInput(i, pay, sighashesFor(psbt, i));
+    if (script === id.ordinalsScript && !input.tapKeySig) psbt.signInput(i, tweaked, sighashesFor(psbt, i));
   });
   return psbt.toBase64();
 }

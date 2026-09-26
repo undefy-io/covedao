@@ -235,6 +235,11 @@ export function verifyClientIntent(
     if (!outputs.some((o) => !isMine(o.scriptHex) && o.value === gross)) {
       mismatch(`no ${gross}-sat payment to the seller`);
     }
+  } else if (intent.operation === "SPLIT") {
+    // Moving your own tokens between your own coins costs only the miner fee.
+    if (walletDeltaSats !== -expectedMinerFee) {
+      mismatch(`splitting costs ${-walletDeltaSats} sats, not the ${expectedMinerFee}-sat network fee`);
+    }
   } else if (intent.operation === "REDEEM") {
     if (net === null) mismatch("redeem intent is missing its payout");
     const expected = net - expectedMinerFee;
@@ -331,6 +336,17 @@ function verifyTokenEnvelope(
     }
     case OP_TRANSFER: {
       if (amount === null) mismatch("transfer intent is missing its token amount");
+      if (intent.operation === "SPLIT") {
+        // Splitting a coin to list part of it: every token stays in the
+        // wallet, and one new carrier holds exactly the amount to list.
+        if (envelope.allocations.some((a) => !isMine(outputs[a.vout]?.scriptHex))) {
+          mismatch("a split must keep every token in your wallet");
+        }
+        if (!envelope.allocations.some((a) => a.amount === amount)) {
+          mismatch(`the split makes no coin of exactly ${amount} atoms`);
+        }
+        break;
+      }
       const direction = intent.tokenDirection ?? TOKEN_DIRECTION[intent.operation];
       if (direction === undefined) {
         mismatch(`cannot tell which way tokens move for operation ${intent.operation}`);
@@ -360,5 +376,60 @@ function verifyTokenEnvelope(
       // pass. Falling through silently here is exactly how an unchecked
       // transaction gets signed.
       mismatch(`unrecognised Cove operation ${String((envelope as { op: unknown }).op)}`);
+  }
+}
+
+/** SIGHASH_SINGLE | SIGHASH_ANYONECANPAY, the presigned-listing sighash. */
+export const LISTING_SIGHASH = 0x83;
+
+/**
+ * Check a listing PSBT before the seller presigns it.
+ *
+ * A presignature is a standing offer: anyone holding it can take the carrier
+ * by paying the one output it commits to. So the PSBT must be exactly one
+ * input — the seller's own carrier at the stated outpoint — and exactly one
+ * output paying the seller's own payment address the agreed price, with the
+ * SINGLE|ANYONECANPAY sighash requested and nothing else.
+ */
+export function verifyListingIntent(
+  psbtBase64: string,
+  expected: {
+    sourceTxid: string;
+    sourceVout: number;
+    /** The seller's token (ordinals) scriptPubKey, hex. */
+    carrierScript: string;
+    /** The seller's payment scriptPubKey, hex. */
+    payoutScript: string;
+    priceSats: string;
+  },
+  network: bitcoin.networks.Network = bitcoin.networks.regtest,
+): void {
+  let psbt: bitcoin.Psbt;
+  try {
+    psbt = bitcoin.Psbt.fromBase64(psbtBase64, { network });
+  } catch {
+    mismatch("cannot parse the listing");
+  }
+  if (psbt.txInputs.length !== 1 || psbt.txOutputs.length !== 1) {
+    mismatch(`a listing is one coin for one payment, not ${psbt.txInputs.length} inputs and ${psbt.txOutputs.length} outputs`);
+  }
+  const txIn = psbt.txInputs[0]!;
+  const txid = Buffer.from(txIn.hash).reverse().toString("hex");
+  if (txid !== expected.sourceTxid || txIn.index !== expected.sourceVout) {
+    mismatch("the listing sells a different coin than the one you chose");
+  }
+  const wu = psbt.data.inputs[0]!.witnessUtxo;
+  if (!wu || Buffer.from(wu.script).toString("hex") !== expected.carrierScript.toLowerCase()) {
+    mismatch("the coin being listed is not on your token address");
+  }
+  const out = psbt.txOutputs[0]!;
+  if (Buffer.from(out.script).toString("hex") !== expected.payoutScript.toLowerCase()) {
+    mismatch("the listing does not pay your wallet");
+  }
+  if (BigInt(out.value) !== BigInt(expected.priceSats)) {
+    mismatch(`the listing pays ${out.value} sats, not the ${expected.priceSats} you asked for`);
+  }
+  if (psbt.data.inputs[0]!.sighashType !== LISTING_SIGHASH) {
+    mismatch("the listing does not ask for the SINGLE|ANYONECANPAY listing signature");
   }
 }
