@@ -116,6 +116,17 @@ test("E2E-002 mint: Alice mints by spending sats", async ({ browser }) => {
   await page.getByRole("button", { name: /connect wallet/i }).click();
   // Before mint-out the only trades are with the curve.
   await expect(page.getByRole("button", { name: "List", exact: true })).toHaveCount(0);
+  // The first quick button is the smallest mint that works right now, and it
+  // really does mint something.
+  const zero = await fetch(`${BASE}/api/v3/backing/buy/quote-sats`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ tokenId: aliceTokenId, budgetSats: "0" }) }).then((r) => r.json());
+  const minSpend = BigInt(zero.data.minSpendSats);
+  const minLabel = minSpend.toLocaleString("en-US");
+  await page.getByRole("button", { name: minLabel, exact: true }).click();
+  await expect(page.getByLabel(/Spend . sats/i)).toHaveValue(minSpend.toString());
+  await expect(page.getByText(/≈ 1K FROG/)).toBeVisible({ timeout: 30_000 });
+  const one = await fetch(`${BASE}/api/v3/backing/buy/quote-sats`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ tokenId: aliceTokenId, budgetSats: (minSpend - 1n).toString() }) }).then((r) => r.json());
+  expect(one.data.amountAtoms).toBe("0"); // one sat less mints nothing
+
   await page.getByLabel(/Spend . sats/i).fill("200000");
   await expect(page.getByText(/≈ .* FROG/)).toBeVisible({ timeout: 30_000 });
   const q = await fetch(`${BASE}/api/v3/backing/buy/quote-sats`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ tokenId: aliceTokenId, budgetSats: "200000" }) }).then((r) => r.json());

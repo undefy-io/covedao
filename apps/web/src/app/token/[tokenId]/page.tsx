@@ -32,7 +32,16 @@ const TABS_OPEN: Tab[] = ["mint", "redeem"];
 const TABS_GRADUATED: Tab[] = ["buy", "sell", "redeem"];
 const TAB_LABEL: Record<Tab, string> = { mint: "Mint", redeem: "Redeem", buy: "Buy", sell: "Sell" };
 // The flat mint fee alone is 5,000 sats, so the smallest button must clear it.
-const QUICK_SATS = [10_000n, 25_000n, 100_000n];
+/**
+ * Quick mint buttons. The first is always the smallest mint that works right
+ * now (it moves with the curve and the fees), then larger round amounts.
+ */
+function quickSats(minSpend: bigint | null): bigint[] {
+  if (minSpend === null) return [10_000n, 25_000n, 100_000n];
+  const rest = [25_000n, 100_000n].filter((q) => q > minSpend);
+  while (rest.length < 2) rest.push((rest.at(-1) ?? minSpend) * 4n);
+  return [minSpend, ...rest];
+}
 
 interface Ask {
   listingId: string;
@@ -77,7 +86,9 @@ function TokenContent() {
   const [amount, setAmount] = useState("");
   // Mint is asked in sats — what people think in — and answered in tokens.
   const [budget, setBudget] = useState("");
-  const [mintQuote, setMintQuote] = useState<{
+  const [quoteState, setMintQuote] = useState<{
+    /** The budget this quote answers; a quote for any other budget is stale. */
+    forBudget: string;
     amountAtoms: string;
     totalSats: string;
     limitedBy: "budget" | "per-mint limit" | "supply";
@@ -142,6 +153,21 @@ function TokenContent() {
     if (!tabs.includes(tab)) setTab(tabs[0]!);
   }, [graduatedNow, tab, tabs]);
 
+  // The smallest mint right now, for the first quick button (budget 0 quotes
+  // nothing but still reports minSpendSats). Refreshed each block.
+  const [minSpend, setMinSpend] = useState<bigint | null>(null);
+  useEffect(() => {
+    if (demo) return;
+    void fetch("/api/v3/backing/buy/quote-sats", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ tokenId, budgetSats: "0" }),
+    })
+      .then((r) => r.json())
+      .then((j) => setMinSpend(j.ok && j.data.minSpendSats ? BigInt(j.data.minSpendSats) : null))
+      .catch(() => setMinSpend(null));
+  }, [tokenId, demo, block]);
+
   // Live answer to "what does this many sats mint?"
   useEffect(() => {
     if (demo || !budget || !/^\d+$/.test(budget)) {
@@ -155,7 +181,7 @@ function TokenContent() {
         body: JSON.stringify({ tokenId, budgetSats: budget }),
       })
         .then((r) => r.json())
-        .then((j) => setMintQuote(j.ok ? j.data : null))
+        .then((j) => setMintQuote(j.ok ? { ...j.data, forBudget: budget } : null))
         .catch(() => setMintQuote(null));
     }, 250);
     return () => clearTimeout(t);
@@ -330,6 +356,10 @@ function TokenContent() {
       setBusy(false);
     }
   }
+
+  // Only a quote for exactly the typed budget counts. Typing a new amount and
+  // pressing Review Mint before the new quote lands used to mint the OLD one.
+  const mintQuote = quoteState && quoteState.forBudget === budget ? quoteState : null;
 
   if (!loaded) return <DetailSkeleton />;
   if (!detail) {
@@ -555,7 +585,7 @@ function TokenContent() {
                   />
                 </label>
                 <div className="grid grid-cols-4 gap-px bg-rule">
-                  {QUICK_SATS.map((q) => (
+                  {quickSats(minSpend).map((q) => (
                     <button key={q.toString()} onClick={() => setBudget(q.toString())} className="bg-ink-2 py-2 text-xs text-bone-2 hover:text-bone">
                       {fmtInt(Number(q))}
                     </button>
