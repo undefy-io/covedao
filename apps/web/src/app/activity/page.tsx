@@ -6,6 +6,9 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useIndexedBlock } from "@/lib/use-indexed-block";
 
+/** Rows shown at first, and per "Show more". */
+const PAGE = 20;
+
 interface Event {
   txid: string;
   blockHeight: string;
@@ -20,6 +23,8 @@ function ActivityContent() {
   const demo = searchParams.get("demo") === "1";
   const [events, setEvents] = useState<Event[]>([]);
   const [loaded, setLoaded] = useState(false);
+  // The newest few by default; the rest one click away.
+  const [shown, setShown] = useState(PAGE);
   // Refetch when a new block is indexed.
   const block = useIndexedBlock();
 
@@ -53,7 +58,7 @@ function ActivityContent() {
         <p className="text-bone-dim">No confirmed events yet.</p>
       ) : (
         <div className="space-y-2">
-          {events.map((e) => (
+          {events.slice(0, shown).map((e) => (
             <div key={e.txid} className="flex items-center justify-between border border-rule bg-ink-2 p-3 text-sm">
               <div>
                 <span className="text-bone">{label(e.operation)}</span>
@@ -65,6 +70,11 @@ function ActivityContent() {
               </div>
             </div>
           ))}
+          {events.length > shown ? (
+            <button onClick={() => setShown((n) => n + PAGE)} className="btn-ghost w-full">
+              Show more ({events.length - shown} older)
+            </button>
+          ) : null}
         </div>
       )}
     </div>

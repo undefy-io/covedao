@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { fmtBtc, fmtInt, fmtTokens } from "@/lib/format";
 import { unitPriceSats } from "@/lib/ohlc";
 
+/** Rows shown at first, and per "Show more". */
+const PAGE = 10;
+
 /**
  * One token's confirmed history.
  *
@@ -48,6 +51,8 @@ export function TokenActivity({
   refreshKey?: string;
 }) {
   const [rows, setRows] = useState<ActivityRow[] | null>(demoRows ?? null);
+  // The newest few by default; the rest one click away.
+  const [shown, setShown] = useState(PAGE);
 
   useEffect(() => {
     if (demoRows) return;
@@ -86,7 +91,7 @@ export function TokenActivity({
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => {
+              {rows.slice(0, shown).map((r) => {
                 const isCurveTrade = r.grossSats !== null && r.amountAtoms !== null;
                 const price = isCurveTrade
                   ? unitPriceSats(r.amountAtoms!, r.grossSats!)
@@ -143,6 +148,11 @@ export function TokenActivity({
               })}
             </tbody>
           </table>
+          {rows.length > shown ? (
+            <button onClick={() => setShown((n) => n + PAGE)} className="btn-ghost mt-4 w-full">
+              Show more ({fmtInt(rows.length - shown)} older)
+            </button>
+          ) : null}
         </div>
       )}
     </section>
