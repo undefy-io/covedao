@@ -63,7 +63,7 @@ function setInputValue(psbt: bitcoin.Psbt, index: number, value: number): void {
 const DEPLOY_TXID = "aa".repeat(32);
 
 function mintSetup(overrides: Partial<Parameters<typeof buildMintPsbtV3>[0]> = {}) {
-  const deploy = buildDeployPsbtV3({
+  const deploy = buildDeployPsbtV3({ feeScript,
     network: bitcoin.networks.regtest,
     identity: {
       chainIdentity: CHAIN_BITCOIN_REGTEST,

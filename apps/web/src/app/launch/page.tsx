@@ -21,6 +21,7 @@ interface Prepared {
   publicSupplyAtoms: string;
   curve: string;
   vaultAnchorSats: string;
+  launchFeeSats: string;
 }
 
 export default function LaunchPage() {
@@ -150,7 +151,9 @@ export default function LaunchPage() {
           <Row k="Sold on the curve" v={`${fmtInt(BigInt(prepared.publicSupplyAtoms) / 100_000_000n)} tokens`} />
           <Row k="Price" v="210 even stairs, lots of 1,000" />
           <Row k="You earn" v="50% of the curve price of every mint" />
-          <Row k="Vault anchor" v={`${fmtInt(prepared.vaultAnchorSats)} sats`} />
+          <Row k="Launch fee" v={`${fmtInt(prepared.launchFeeSats)} sats (~$6)`} />
+          <Row k="Vault seed" v={`${fmtInt(prepared.vaultAnchorSats)} sats (stays in the token's vault)`} />
+          <Row k="You pay" v={`${fmtInt(BigInt(prepared.launchFeeSats) + BigInt(prepared.vaultAnchorSats))} sats + network fee`} />
           <div className="mt-5">
             <FeePicker
               rates={rates}

@@ -270,7 +270,7 @@ async function main(): Promise<void> {
   assert(inputs.length > 0, `no confirmed UTXOs at ${funderAddress}`);
   console.log(`  funding ${inputs[0]!.txid}:${inputs[0]!.vout} = ${inputs[0]!.valueSats} sats`);
 
-  const deploy = buildDeployPsbtV3({
+  const deploy = buildDeployPsbtV3({ feeScript,
     network: NET,
     identity: {
       chainIdentity: CHAIN_BITCOIN_SIGNET,
@@ -289,7 +289,7 @@ async function main(): Promise<void> {
   deploy.psbt.finalizeAllInputs();
   const deployHex = deploy.psbt.extractTransaction().toHex();
   const deployVal = validatedOrThrow(
-    validateFinalizedDeployTransaction({
+    validateFinalizedDeployTransaction({ feeScript,
       rawTxHex: deployHex,
       network: "signet",
       chainIdentity: CHAIN_BITCOIN_SIGNET,

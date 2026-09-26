@@ -28,7 +28,7 @@ import {
   type FundingInputChecker,
 } from "@crclaunch/cove-guardian/v3";
 import { loadCanonicalViewSnapshotFromDb, computeHealth, getTokenUtxosByScriptDb, getLiveTokenUtxosAtDb } from "@crclaunch/cove-indexer/v3";
-import { grossBuy, grossRedeem, mintFeeSats, redeemFeeSats, creatorFeeSats, CREATOR_RECORD_SATS, checkRedeemPayout } from "@crclaunch/cove-economics";
+import { grossBuy, grossRedeem, mintFeeSats, redeemFeeSats, creatorFeeSats, CREATOR_RECORD_SATS, LAUNCH_FEE_SATS, checkRedeemPayout } from "@crclaunch/cove-economics";
 import { ATOMS_PER_TOKEN, LOT_TOKENS, PUBLIC_SUPPLY_ATOMS } from "@crclaunch/curve";
 import { canonicalTicker, computeTokenId, OP_MINT, OP_REDEEM, type ParsedEnvelopeV2 } from "@crclaunch/cove-wire";
 import {
@@ -103,6 +103,8 @@ export interface LaunchPrepareResult {
   publicSupplyAtoms: bigint;
   curve: string;
   vaultAnchorSats: bigint;
+  /** Paid to the protocol by every launch (DEPLOY output 3). */
+  launchFeeSats: bigint;
 }
 
 export interface BackingQuote {
@@ -733,6 +735,7 @@ export class V3AppService {
       publicSupplyAtoms: PUBLIC_SUPPLY_ATOMS,
       curve: "stairs210",
       vaultAnchorSats: RESERVE_ANCHOR_SATS,
+      launchFeeSats: LAUNCH_FEE_SATS,
     };
   }
 
@@ -766,7 +769,7 @@ export class V3AppService {
       op: "DEPLOY",
       wallet,
       candidates: params.funding,
-      targetSats: RESERVE_ANCHOR_SATS + CREATOR_RECORD_SATS,
+      targetSats: RESERVE_ANCHOR_SATS + CREATOR_RECORD_SATS + LAUNCH_FEE_SATS,
       feeRateSatPerVb: params.feeRateSatPerVb,
       explicitMinerFeeSats: params.minerFeeSats,
     });
@@ -779,6 +782,7 @@ export class V3AppService {
       deployerInputs,
       deployerChangeScript: wallet.payments.scriptBuffer,
       creatorScript,
+      feeScript: this.config.feeScript,
       minerFeeSats,
     });
     const psbtBase64 = result.psbt.toBase64();
@@ -808,7 +812,8 @@ export class V3AppService {
         tokenId,
         tokenAmountAtoms: 0n,
         grossSats: null,
-        protocolFeeSats: null,
+        // The launch fee, paid at output 3 to the protocol fee address.
+        protocolFeeSats: LAUNCH_FEE_SATS,
         minerFeeSats: result.minerFeeSats,
         netSats: null,
         walletScript: wallet.payments.script,
@@ -837,6 +842,7 @@ export class V3AppService {
       guardianXOnly: this.config.guardianXOnly,
       recoveryKeyXOnly: this.config.recoveryKeyXOnly,
       recoveryProfile: this.config.recoveryProfile,
+      feeScript: this.config.feeScript,
     });
     if (!("rawTxHex" in validated)) throw new AppError("GUARDIAN_REJECTED", validated.reason);
     const txid = await this.broadcast(validated);

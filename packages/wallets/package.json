@@ -24,6 +24,8 @@
     "buffer": "^6.0.3"
   },
   "devDependencies": {
+    "@crclaunch/cove-covenant": "workspace:*",
+    "@crclaunch/cove-economics": "workspace:*",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   }

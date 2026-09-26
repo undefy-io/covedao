@@ -34,7 +34,7 @@ const MAINNET1: VaultRecoveryProfile = {
 
 function mintPsbt(): { psbt: bitcoin.Psbt; mintLeaf: VaultLeafRef; controlBlock: Buffer } {
   const tokenId = Buffer.from("ab".repeat(32), "hex");
-  const deploy = buildDeployPsbtV3({
+  const deploy = buildDeployPsbtV3({ feeScript: Buffer.from("0014" + "f".repeat(40), "hex"),
     network: bitcoin.networks.regtest,
     identity: { chainIdentity: CHAIN_BITCOIN_REGTEST, policyVersion: 3, ticker: "FROG", tokenNonce: Buffer.alloc(32, 0xab) },
     guardianXOnly,

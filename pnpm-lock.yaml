@@ -759,6 +759,12 @@ importers:
         specifier: ^2.2.3
         version: 2.2.4
     devDependencies:
+      '@crclaunch/cove-covenant':
+        specifier: workspace:*
+        version: link:../cove-covenant
+      '@crclaunch/cove-economics':
+        specifier: workspace:*
+        version: link:../cove-economics
       typescript:
         specifier: ^5.7.2
         version: 5.9.3

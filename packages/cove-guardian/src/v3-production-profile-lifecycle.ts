@@ -196,7 +196,7 @@ async function main(): Promise<void> {
   // ── DEPLOY ──
   console.log("STEP 1/6 — DEPLOY (MAINNET1 vault)");
   const deployerUtxo = await fundKey(rpc, provider, deployer, 1.0, mineAddr);
-  const deploy = buildDeployPsbtV3({
+  const deploy = buildDeployPsbtV3({ feeScript,
     network: bitcoin.networks.regtest,
     identity: { chainIdentity: CHAIN_BITCOIN_REGTEST, policyVersion: 3, ticker: "FROG", tokenNonce: NONCE },
     guardianXOnly, recoveryKeyXOnly, recoveryProfile,
@@ -206,7 +206,7 @@ async function main(): Promise<void> {
   deploy.psbt.signInput(0, deployer);
   deploy.psbt.finalizeAllInputs();
   const deployHex = deploy.psbt.extractTransaction().toHex();
-  const deployVal = orThrow(validateFinalizedDeployTransaction({ rawTxHex: deployHex, network: "regtest", chainIdentity: CHAIN_BITCOIN_REGTEST, guardianXOnly, recoveryKeyXOnly, recoveryProfile }), "DEPLOY");
+  const deployVal = orThrow(validateFinalizedDeployTransaction({ feeScript, rawTxHex: deployHex, network: "regtest", chainIdentity: CHAIN_BITCOIN_REGTEST, guardianXOnly, recoveryKeyXOnly, recoveryProfile }), "DEPLOY");
   const deployTxid = await broadcast(deployVal);
   await rpc.generateToAddress(1, mineAddr);
   const tokenId = deploy.tokenId;

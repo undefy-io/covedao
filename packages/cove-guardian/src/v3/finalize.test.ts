@@ -15,7 +15,8 @@ import {
   RESERVE_ANCHOR_SATS,
 } from "./builder.js";
 import { unsignedTransaction } from "./resolve.js";
-import { validateFinalizedMintTransaction, validateFinalizedRedeemTransaction } from "./finalize.js";
+import { validateFinalizedDeployTransaction, validateFinalizedMintTransaction, validateFinalizedRedeemTransaction } from "./finalize.js";
+import { LAUNCH_FEE_SATS } from "@crclaunch/cove-economics";
 
 /** Creator payout script recorded at DEPLOY (output 2). */
 const CREATOR_SCRIPT = Buffer.from("0014" + "9".repeat(40), "hex");
@@ -37,7 +38,7 @@ function p2wpkh(key: ReturnType<typeof ECPair.makeRandom>): Buffer {
 
 /** View at the DEPLOY state (S0 backing at DEPLOY:1); NO mint recorded yet. */
 function deploySetup() {
-  const deploy = buildDeployPsbtV3({
+  const deploy = buildDeployPsbtV3({ feeScript,
     network: bitcoin.networks.regtest,
     identity: { chainIdentity: CHAIN_BITCOIN_REGTEST, policyVersion: 3, ticker: "FROG", tokenNonce: NONCE },
     guardianXOnly,
@@ -187,6 +188,54 @@ describe("finalize — branded ValidatedCoveTransaction", () => {
       expect(r.operation).toBe("MINT");
       expect(r.tokenId).toHaveLength(64);
       expect(r.validationDigest).toHaveLength(64);
+    }
+  });
+});
+
+describe("finalize — DEPLOY launch fee (output 3)", () => {
+  const base = {
+    network: "regtest" as const,
+    chainIdentity: CHAIN_BITCOIN_REGTEST,
+    guardianXOnly,
+    recoveryKeyXOnly: recoveryXOnly,
+    feeScript,
+  };
+  function deployTx(): bitcoin.Transaction {
+    const d = buildDeployPsbtV3({
+      feeScript,
+      network: bitcoin.networks.regtest,
+      identity: { chainIdentity: CHAIN_BITCOIN_REGTEST, policyVersion: 3, ticker: "FROG", tokenNonce: NONCE },
+      guardianXOnly,
+      recoveryKeyXOnly: recoveryXOnly,
+      deployerInputs: [{ txid: "dd".repeat(32), vout: 0, script: CREATOR_SCRIPT, valueSats: 1_000_000n }],
+      deployerChangeScript: CREATOR_SCRIPT,
+      minerFeeSats: 1_000n,
+      creatorScript: CREATOR_SCRIPT,
+    });
+    return unsignedTransaction(d.psbt);
+  }
+
+  it("the builder pays exactly LAUNCH_FEE_SATS to the fee address, and finalize accepts it", () => {
+    const tx = deployTx();
+    expect(tx.outs[3]!.value).toBe(Number(LAUNCH_FEE_SATS));
+    expect(tx.outs[3]!.script.equals(feeScript)).toBe(true);
+    const r = validateFinalizedDeployTransaction({ ...base, rawTxHex: tx.toHex() });
+    expect("rawTxHex" in r).toBe(true);
+  });
+
+  it("refuses a DEPLOY with no fee, the wrong amount, or another address", () => {
+    const mutations: [string, (tx: bitcoin.Transaction) => void][] = [
+      ["no fee", (tx) => { tx.outs.splice(3); }],
+      ["short", (tx) => { tx.outs[3]!.value = Number(LAUNCH_FEE_SATS) - 1; }],
+      ["over", (tx) => { tx.outs[3]!.value = Number(LAUNCH_FEE_SATS) + 1; }],
+      ["other address", (tx) => { tx.outs[3]!.script = Buffer.from("0014" + "e".repeat(40), "hex"); }],
+    ];
+    for (const [label, mutate] of mutations) {
+      const tx = deployTx();
+      mutate(tx);
+      const r = validateFinalizedDeployTransaction({ ...base, rawTxHex: tx.toHex() });
+      expect({ label, ok: "rawTxHex" in r }).toEqual({ label, ok: false });
+      if (!("rawTxHex" in r)) expect(r.reason).toBe("LAUNCH_FEE_MISSING");
     }
   });
 });

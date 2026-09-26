@@ -4,7 +4,7 @@ import * as ecc from "tiny-secp256k1";
 import { s0StateV2, applyMintV2, applyRedeemV2 } from "@crclaunch/cove-covenant";
 import { buildBackingVaultV3 } from "@crclaunch/cove-vault";
 import { CHAIN_BITCOIN_REGTEST, computeTokenId, encodeDeployV2, encodeMintV2, encodeRedeemV2, encodeTransferV2 } from "@crclaunch/cove-wire";
-import { COVE_FEE_CONFIG, CREATOR_RECORD_SATS, creatorFeeSats, mintFeeSats, redeemFeeSats } from "@crclaunch/cove-economics";
+import { COVE_FEE_CONFIG, CREATOR_RECORD_SATS, LAUNCH_FEE_SATS, creatorFeeSats, mintFeeSats, redeemFeeSats } from "@crclaunch/cove-economics";
 import { V3IndexerState } from "./state.js";
 import { RESERVE_ANCHOR_SATS } from "./constants.js";
 
@@ -59,7 +59,7 @@ function fullLifecycleState(): V3IndexerState {
 
   // DEPLOY
   const deployWire = encodeDeployV2({ policyVersion: 3, ticker: "FROG", tokenNonce: NONCE });
-  const deployHex = tx([{ txid: "d0".repeat(32), vout: 0 }], [{ script: opReturn(deployWire), value: 0n }, { script: vaultScript(s0), value: RESERVE_ANCHOR_SATS }, { script: CREATOR_SCRIPT, value: CREATOR_RECORD_SATS }]);
+  const deployHex = tx([{ txid: "d0".repeat(32), vout: 0 }], [{ script: opReturn(deployWire), value: 0n }, { script: vaultScript(s0), value: RESERVE_ANCHOR_SATS }, { script: CREATOR_SCRIPT, value: CREATOR_RECORD_SATS }, { script: feeScript, value: LAUNCH_FEE_SATS }]);
   const deployTxid = bitcoin.Transaction.fromHex(deployHex).getId();
   state.applyBlock(block(1, [deployHex]));
 
@@ -123,7 +123,7 @@ function fullLifecycleState(): V3IndexerState {
 }
 
 /** Frozen deterministic state-root golden for the full 6-op lifecycle fixture. */
-export const V3_STATE_ROOT_GOLDEN = "b78f210c4f652d8618c04ec2f3cd229ade498b8d1fbc3ec43327d90d8e6d7638";
+export const V3_STATE_ROOT_GOLDEN = "1e6e2946331983a44e54801805924a3806233cf6e414ee7a9bd092c9000a4508";
 
 describe("deterministic V3 state-root golden (§18)", () => {
   it("matches the frozen golden root", () => {

@@ -6,7 +6,7 @@ import { eq, and, isNull } from "drizzle-orm";
 import { CHAIN_BITCOIN_REGTEST, computeTokenId, encodeDeployV2, encodeMintV2, encodeRedeemV2, encodeTransferV2 } from "@crclaunch/cove-wire";
 import { applyMintV2, applyRedeemV2, s0StateV2 } from "@crclaunch/cove-covenant";
 import { buildBackingVaultV3 } from "@crclaunch/cove-vault";
-import { COVE_FEE_CONFIG, CREATOR_RECORD_SATS, creatorFeeSats, mintFeeSats, redeemFeeSats } from "@crclaunch/cove-economics";
+import { COVE_FEE_CONFIG, CREATOR_RECORD_SATS, LAUNCH_FEE_SATS, creatorFeeSats, mintFeeSats, redeemFeeSats } from "@crclaunch/cove-economics";
 import { V3IndexerState } from "./state.js";
 import { V3Store } from "./store.js";
 import { RESERVE_ANCHOR_SATS } from "./constants.js";
@@ -59,7 +59,7 @@ describe.skipIf(!URL)("V3Store persistence — DEPLOY/MINT/TRANSFER/REDEEM + rev
     const deployWire = encodeDeployV2({ policyVersion: 3, ticker: "FROG", tokenNonce: NONCE });
     const deployHex = tx([{ txid: "d0".repeat(32), vout: 0 }], [
       { script: opReturn(deployWire), value: 0n },
-      { script: vaultScript(s0), value: RESERVE_ANCHOR_SATS }, { script: CREATOR_SCRIPT, value: CREATOR_RECORD_SATS },
+      { script: vaultScript(s0), value: RESERVE_ANCHOR_SATS }, { script: CREATOR_SCRIPT, value: CREATOR_RECORD_SATS }, { script: feeScript, value: LAUNCH_FEE_SATS },
     ]);
     const deployTxid = bitcoin.Transaction.fromHex(deployHex).getId();
     const b1 = block(1, [deployHex]);

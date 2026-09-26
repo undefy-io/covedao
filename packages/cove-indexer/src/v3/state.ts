@@ -18,7 +18,7 @@ import {
   computeTokenId,
   type ParsedEnvelopeV2,
 } from "@crclaunch/cove-wire";
-import { COVE_FEE_CONFIG, CREATOR_RECORD_SATS, creatorFeeSats, isCreatorScript, mintFeeSats, redeemFeeSats, isP2TR, isP2WPKH } from "@crclaunch/cove-economics";
+import { COVE_FEE_CONFIG, CREATOR_RECORD_SATS, LAUNCH_FEE_SATS, creatorFeeSats, isCreatorScript, mintFeeSats, redeemFeeSats, isP2TR, isP2WPKH } from "@crclaunch/cove-economics";
 import { RESERVE_ANCHOR_SATS } from "./constants.js";
 import { parseCoveTx, txidOf } from "./parser.js";
 import { computeStateRoot } from "./root.js";
@@ -314,6 +314,12 @@ export class V3IndexerState {
     const creatorOut = tx.outs[2];
     if (!creatorOut || BigInt(creatorOut.value) !== CREATOR_RECORD_SATS || !isCreatorScript(creatorOut.script)) {
       return { op: "DEPLOY", valid: false, reason: "CREATOR_OUTPUT_MISSING", tokenId: null, undo: null };
+    }
+    // Output 3 pays the launch fee: exactly LAUNCH_FEE_SATS to the protocol
+    // fee address. A launch that skips or shorts it is not a token.
+    const launchFeeOut = tx.outs[3];
+    if (!launchFeeOut || BigInt(launchFeeOut.value) !== LAUNCH_FEE_SATS || !launchFeeOut.script.equals(this.config.feeScript)) {
+      return { op: "DEPLOY", valid: false, reason: "LAUNCH_FEE_MISSING", tokenId: null, undo: null };
     }
     const tokenId = computeTokenId({
       chainIdentity: this.config.chainIdentity,

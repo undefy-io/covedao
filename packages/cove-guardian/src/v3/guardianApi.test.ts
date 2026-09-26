@@ -45,7 +45,7 @@ const memoryAudit: DurableAuditSink = {
 
 function mintFixture(): { psbt: bitcoin.Psbt; view: CoveChainView; tokenId: string } {
   const tokenId = Buffer.from("ab".repeat(32), "hex");
-  const deploy = buildDeployPsbtV3({
+  const deploy = buildDeployPsbtV3({ feeScript,
     network: bitcoin.networks.regtest,
     identity: { chainIdentity: CHAIN_BITCOIN_REGTEST, policyVersion: 3, ticker: "FROG", tokenNonce: Buffer.alloc(32, 0xab) },
     guardianXOnly, recoveryKeyXOnly, recoveryProfile: MAINNET1,

@@ -253,7 +253,7 @@ async function main(): Promise<void> {
   console.log(line);
   console.log("STEP 1/6 — DEPLOY");
   const deployerUtxo = await fundKey(rpc, provider, deployer, 1.0, mineAddr);
-  const deploy = buildDeployPsbtV3({
+  const deploy = buildDeployPsbtV3({ feeScript,
     network: bitcoin.networks.regtest,
     identity: {
       chainIdentity: CHAIN_BITCOIN_REGTEST,
@@ -272,7 +272,7 @@ async function main(): Promise<void> {
   deploy.psbt.finalizeAllInputs();
   const deployHex = deploy.psbt.extractTransaction().toHex();
   const deployVal = validatedOrThrow(
-    validateFinalizedDeployTransaction({
+    validateFinalizedDeployTransaction({ feeScript,
       rawTxHex: deployHex,
       network: "regtest",
       chainIdentity: CHAIN_BITCOIN_REGTEST,

@@ -21,7 +21,7 @@ import {
   type TokenIdentityInput,
 } from "@crclaunch/cove-wire";
 import { grossBuy } from "@crclaunch/cove-economics";
-import { mintFeeSats, redeemFeeSats as redeemFeeOf, creatorFeeSats, CREATOR_RECORD_SATS, dustThreshold, COVE_FEE_CONFIG } from "@crclaunch/cove-economics";
+import { mintFeeSats, redeemFeeSats as redeemFeeOf, creatorFeeSats, CREATOR_RECORD_SATS, LAUNCH_FEE_SATS, dustThreshold, COVE_FEE_CONFIG } from "@crclaunch/cove-economics";
 import type { Sats } from "@crclaunch/curve";
 
 bitcoin.initEccLib(ecc as unknown as Parameters<typeof bitcoin.initEccLib>[0]);
@@ -86,7 +86,8 @@ export interface DeployResult {
 /**
  * Build a real DEPLOY PSBT (§8). Canonical outputs: [0] OP_RETURN (wire v2
  * DEPLOY), [1] S0 backing vault (RESERVE_ANCHOR_SATS, backing=0), [2] creator
- * record (CREATOR_RECORD_SATS), [3] deployer change if any. tokenId is derived
+ * record (CREATOR_RECORD_SATS), [3] launch fee (LAUNCH_FEE_SATS to the protocol
+ * fee address), [4] deployer change if any. tokenId is derived
  * pre-transaction (never the txid) and commits to the creator script.
  */
 export function buildDeployPsbtV3(params: {
@@ -100,6 +101,8 @@ export function buildDeployPsbtV3(params: {
   deployerChangeScript: Buffer;
   /** Where the creator's share of every mint is paid. Defaults to the deployer's change script. */
   creatorScript?: Buffer;
+  /** The protocol fee address; output 3 pays it the launch fee. */
+  feeScript: Buffer;
   minerFeeSats: Sats;
 }): DeployResult {
   const creatorScript = params.creatorScript ?? params.deployerChangeScript;
@@ -127,9 +130,11 @@ export function buildDeployPsbtV3(params: {
   psbt.addOutput({ script: vault.scriptPubKey, value: Number(RESERVE_ANCHOR_SATS) });
   // Output 2 records the creator: every mint pays their share to this script.
   psbt.addOutput({ script: creatorScript, value: Number(CREATOR_RECORD_SATS) });
+  // Output 3 pays the launch fee; the indexer refuses a DEPLOY without it.
+  psbt.addOutput({ script: params.feeScript, value: Number(LAUNCH_FEE_SATS) });
 
   const totalIn = params.deployerInputs.reduce((s, i) => s + i.valueSats, 0n);
-  const change = totalIn - RESERVE_ANCHOR_SATS - CREATOR_RECORD_SATS - params.minerFeeSats;
+  const change = totalIn - RESERVE_ANCHOR_SATS - CREATOR_RECORD_SATS - LAUNCH_FEE_SATS - params.minerFeeSats;
   if (change < 0n) throw new Error("insufficient deployer funds");
   const settled = addChangeOrAbsorb(psbt, params.deployerChangeScript, change, params.minerFeeSats);
 

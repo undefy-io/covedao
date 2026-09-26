@@ -56,6 +56,11 @@ export interface CoveFeeConfig {
    * on top of the percentage for ordinary trades.
    */
   p2pFeeMinSats: Sats;
+  /**
+   * Flat sats paid to the protocol fee address by every launch (DEPLOY
+   * output 3). The indexer refuses a DEPLOY that does not pay it exactly.
+   */
+  launchFeeSats: Sats;
 }
 
 export const COVE_FEE_CONFIG: CoveFeeConfig = {
@@ -79,7 +84,12 @@ export const COVE_FEE_CONFIG: CoveFeeConfig = {
   p2pFeeBps: 750n, // 7.50%
   p2pFeeFlatSats: 0n,
   p2pFeeMinSats: 1_000n,
+  // Launch: about $6 at $84k/BTC. Flat, so every launch pays the same.
+  launchFeeSats: 7_000n,
 };
+
+/** The launch fee every DEPLOY pays at output 3 (see COVE_FEE_CONFIG.launchFeeSats). */
+export const LAUNCH_FEE_SATS: Sats = COVE_FEE_CONFIG.launchFeeSats;
 
 const BPS_DENOM = 10_000n;
 

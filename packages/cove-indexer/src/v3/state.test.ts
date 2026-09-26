@@ -11,7 +11,7 @@ import {
   encodeRedeemV2,
   encodeTransferV2,
 } from "@crclaunch/cove-wire";
-import { COVE_FEE_CONFIG, CREATOR_RECORD_SATS, creatorFeeSats, mintFeeSats } from "@crclaunch/cove-economics";
+import { COVE_FEE_CONFIG, CREATOR_RECORD_SATS, LAUNCH_FEE_SATS, creatorFeeSats, mintFeeSats } from "@crclaunch/cove-economics";
 import { RESERVE_ANCHOR_SATS } from "./constants.js";
 import { V3IndexerState } from "./state.js";
 
@@ -81,7 +81,7 @@ describe("V3IndexerState — deterministic lifecycle indexing (§9-§13, §14)",
     const deployWire = encodeDeployV2({ policyVersion: 3, ticker: "FROG", tokenNonce: NONCE });
     const deployTxid = tx(
       [{ txid: "d0".repeat(32), vout: 0 }],
-      [ { script: opReturn(deployWire), value: 0n }, { script: vaultScript(s0), value: RESERVE_ANCHOR_SATS }, { script: CREATOR_SCRIPT, value: CREATOR_RECORD_SATS } ],
+      [ { script: opReturn(deployWire), value: 0n }, { script: vaultScript(s0), value: RESERVE_ANCHOR_SATS }, { script: CREATOR_SCRIPT, value: CREATOR_RECORD_SATS }, { script: feeScript, value: LAUNCH_FEE_SATS } ],
     );
     const deployHex = deployTxid;
     const deployTxidHex = bitcoin.Transaction.fromHex(deployTxid).getId();
@@ -187,7 +187,7 @@ describe("V3IndexerState — deterministic lifecycle indexing (§9-§13, §14)",
       const s0 = s0StateV2({ tokenId: id.toString("hex") });
       const hex = tx(
         [{ txid: fundTxid, vout: 0 }],
-        [{ script: opReturn(deployWire), value: 0n }, { script: vaultScript(s0), value: RESERVE_ANCHOR_SATS }, { script: creator, value: CREATOR_RECORD_SATS }],
+        [{ script: opReturn(deployWire), value: 0n }, { script: vaultScript(s0), value: RESERVE_ANCHOR_SATS }, { script: creator, value: CREATOR_RECORD_SATS }, { script: feeScript, value: LAUNCH_FEE_SATS }],
       );
       return { id: id.toString("hex"), hex };
     };
@@ -199,6 +199,39 @@ describe("V3IndexerState — deterministic lifecycle indexing (§9-§13, §14)",
     expect(state.events.map((e) => e.valid)).toEqual([true, true]);
     expect(state.getTokenCreatorScript(Buffer.from(real.id, "hex"))!.equals(CREATOR_SCRIPT)).toBe(true);
     expect(state.getTokenCreatorScript(Buffer.from(copy.id, "hex"))!.equals(thief)).toBe(true);
+  });
+
+  it("a DEPLOY must pay the launch fee: exactly LAUNCH_FEE_SATS to the fee address at output 3", () => {
+    const deployWire = encodeDeployV2({ policyVersion: 3, ticker: "FROG", tokenNonce: NONCE });
+    const id = computeTokenId({ chainIdentity: CHAIN_BITCOIN_REGTEST, policyVersion: 3, ticker: "FROG", tokenNonce: NONCE, creatorScript: CREATOR_SCRIPT });
+    const s0 = s0StateV2({ tokenId: id.toString("hex") });
+    const other = Buffer.from("0014" + "e".repeat(40), "hex");
+    const deployWith = (fee: { script: Buffer; value: bigint } | null) =>
+      tx(
+        [{ txid: "d0".repeat(32), vout: 0 }],
+        [
+          { script: opReturn(deployWire), value: 0n },
+          { script: vaultScript(s0), value: RESERVE_ANCHOR_SATS },
+          { script: CREATOR_SCRIPT, value: CREATOR_RECORD_SATS },
+          ...(fee ? [fee] : []),
+        ],
+      );
+    const cases: [string, { script: Buffer; value: bigint } | null, boolean][] = [
+      ["no fee output", null, false],
+      ["one sat short", { script: feeScript, value: LAUNCH_FEE_SATS - 1n }, false],
+      ["one sat over", { script: feeScript, value: LAUNCH_FEE_SATS + 1n }, false],
+      ["paid to another address", { script: other, value: LAUNCH_FEE_SATS }, false],
+      ["exact fee to the fee address", { script: feeScript, value: LAUNCH_FEE_SATS }, true],
+    ];
+    for (const [label, fee, valid] of cases) {
+      const state = new V3IndexerState(config());
+      state.applyBlock(block(1, [deployWith(fee)]));
+      const ev = state.events[0]!;
+      expect({ label, valid: ev.valid }).toEqual({ label, valid });
+      if (!valid) expect(ev.reason).toBe("LAUNCH_FEE_MISSING");
+      expect(state.tokens.size).toBe(valid ? 1 : 0);
+    }
+    expect(LAUNCH_FEE_SATS).toBe(7_000n);
   });
 
   it("rejects a transfer claiming tokens not present", () => {
@@ -216,7 +249,7 @@ describe("V3IndexerState — deterministic lifecycle indexing (§9-§13, §14)",
     const deployWire = encodeDeployV2({ policyVersion: 3, ticker: "FROG", tokenNonce: NONCE });
     const deployTx = tx(
       [{ txid: "d0".repeat(32), vout: 0 }],
-      [{ script: opReturn(deployWire), value: 0n }, { script: vaultScript(s0), value: RESERVE_ANCHOR_SATS }, { script: CREATOR_SCRIPT, value: CREATOR_RECORD_SATS }],
+      [{ script: opReturn(deployWire), value: 0n }, { script: vaultScript(s0), value: RESERVE_ANCHOR_SATS }, { script: CREATOR_SCRIPT, value: CREATOR_RECORD_SATS }, { script: feeScript, value: LAUNCH_FEE_SATS }],
     );
     state.applyBlock(block(1, [deployTx]));
 
@@ -246,7 +279,7 @@ describe("V3IndexerState — deterministic lifecycle indexing (§9-§13, §14)",
       [{ txid: "d0".repeat(32), vout: 0 }],
       [
         { script: opReturn(deployWire), value: 0n },
-        { script: vaultScript(s0), value: RESERVE_ANCHOR_SATS }, { script: CREATOR_SCRIPT, value: CREATOR_RECORD_SATS },
+        { script: vaultScript(s0), value: RESERVE_ANCHOR_SATS }, { script: CREATOR_SCRIPT, value: CREATOR_RECORD_SATS }, { script: feeScript, value: LAUNCH_FEE_SATS },
       ],
     );
     // Height 1 (< H=2) → ignored.
@@ -267,7 +300,7 @@ describe("V3IndexerState — carriers spent outside the protocol are burned", ()
       [{ txid: "d0".repeat(32), vout: 0 }],
       [
         { script: opReturn(encodeDeployV2({ policyVersion: 3, ticker: "FROG", tokenNonce: NONCE })), value: 0n },
-        { script: vaultScript(s0), value: RESERVE_ANCHOR_SATS }, { script: CREATOR_SCRIPT, value: CREATOR_RECORD_SATS },
+        { script: vaultScript(s0), value: RESERVE_ANCHOR_SATS }, { script: CREATOR_SCRIPT, value: CREATOR_RECORD_SATS }, { script: feeScript, value: LAUNCH_FEE_SATS },
       ],
     );
     state.applyBlock(block(1, [deployHex]));

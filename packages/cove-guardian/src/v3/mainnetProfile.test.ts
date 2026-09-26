@@ -38,7 +38,7 @@ describe("production-profile MINT path (§137) — MAINNET1 vault through the Gu
     const s0 = s0StateV2({ tokenId: tokenId.toString("hex") });
 
     // Build the vault with the MAINNET1 recovery profile to obtain the S0 script.
-    const deploy = buildDeployPsbtV3({
+    const deploy = buildDeployPsbtV3({ feeScript: Buffer.from("0014" + "f".repeat(40), "hex"),
       network: bitcoin.networks.regtest,
       identity: { chainIdentity: CHAIN_BITCOIN_REGTEST, policyVersion: 3, ticker: "FROG", tokenNonce: Buffer.alloc(32, 0xab) },
       guardianXOnly,

@@ -9,7 +9,7 @@ import {
 import { buildBackingVaultV3, type VaultRecoveryProfile } from "@crclaunch/cove-vault";
 import { executeMintV3, executeRedeemV3 } from "@crclaunch/cove-simplicity";
 import { OP_DEPLOY, OP_MINT, OP_REDEEM, OP_TRANSFER, computeTokenId } from "@crclaunch/cove-wire";
-import { COVE_FEE_CONFIG, CREATOR_RECORD_SATS, checkFeeSettlement, creatorFeeSats, isCreatorScript, mintFeeSats, redeemFeeSats, isP2TR, isP2WPKH } from "@crclaunch/cove-economics";
+import { COVE_FEE_CONFIG, CREATOR_RECORD_SATS, LAUNCH_FEE_SATS, checkFeeSettlement, creatorFeeSats, isCreatorScript, mintFeeSats, redeemFeeSats, isP2TR, isP2WPKH } from "@crclaunch/cove-economics";
 import { s0StateV2 } from "@crclaunch/cove-covenant";
 import { RESERVE_ANCHOR_SATS } from "./builder.js";
 import { decodeCoveOpReturnTx } from "./resolve.js";
@@ -162,6 +162,8 @@ export function validateFinalizedDeployTransaction(params: {
   guardianXOnly: Buffer;
   recoveryKeyXOnly: Buffer;
   recoveryProfile?: VaultRecoveryProfile;
+  /** The protocol fee address: DEPLOY output 3 pays it exactly LAUNCH_FEE_SATS. */
+  feeScript: Buffer;
 }): FinalValidationResult {
   const parsed = parseTx(params.rawTxHex);
   if (!(parsed instanceof bitcoin.Transaction)) return parsed;
@@ -174,6 +176,10 @@ export function validateFinalizedDeployTransaction(params: {
   const creatorOut = tx.outs[2];
   if (!creatorOut || BigInt(creatorOut.value) !== CREATOR_RECORD_SATS || !isCreatorScript(creatorOut.script)) {
     return reject("CREATOR_OUTPUT_MISSING");
+  }
+  const launchFeeOut = tx.outs[3];
+  if (!launchFeeOut || BigInt(launchFeeOut.value) !== LAUNCH_FEE_SATS || !launchFeeOut.script.equals(params.feeScript)) {
+    return reject("LAUNCH_FEE_MISSING");
   }
   const tokenId = computeTokenId({
     chainIdentity: params.chainIdentity,

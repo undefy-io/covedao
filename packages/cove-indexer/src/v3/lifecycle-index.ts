@@ -134,7 +134,7 @@ async function main() {
 
   // ── DEPLOY ──
   const deployerUtxo = await fund(deployer, 1.0);
-  const deploy = buildDeployPsbtV3({
+  const deploy = buildDeployPsbtV3({ feeScript: REGTEST_FEE_SCRIPT,
     network: bitcoin.networks.regtest,
     identity: { chainIdentity: CHAIN_BITCOIN_REGTEST, policyVersion: 3, ticker: "FROG", tokenNonce: NONCE },
     guardianXOnly, recoveryKeyXOnly: recoveryXOnly,
@@ -144,7 +144,7 @@ async function main() {
   deploy.psbt.signInput(0, deployer);
   deploy.psbt.finalizeAllInputs();
   const deployHex = deploy.psbt.extractTransaction().toHex();
-  const deployVal = orThrow(validateFinalizedDeployTransaction({ rawTxHex: deployHex, network: "regtest", chainIdentity: CHAIN_BITCOIN_REGTEST, guardianXOnly, recoveryKeyXOnly: recoveryXOnly }));
+  const deployVal = orThrow(validateFinalizedDeployTransaction({ feeScript: REGTEST_FEE_SCRIPT, rawTxHex: deployHex, network: "regtest", chainIdentity: CHAIN_BITCOIN_REGTEST, guardianXOnly, recoveryKeyXOnly: recoveryXOnly }));
   await broadcastValidated(deployVal);
   await mineIndex();
   const tokenId = deploy.tokenId;

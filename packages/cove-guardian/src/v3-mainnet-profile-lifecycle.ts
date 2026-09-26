@@ -204,7 +204,7 @@ async function main(): Promise<void> {
   // ── DEPLOY (MAINNET1 vault) ──
   console.log("STEP 1/4 — DEPLOY (MAINNET1 2-of-3 vault)");
   const deployerUtxo = await fundKey(rpc, provider, deployer, 1.0, mineAddr);
-  const deploy = buildDeployPsbtV3({
+  const deploy = buildDeployPsbtV3({ feeScript,
     network: bitcoin.networks.regtest,
     identity: { chainIdentity: CHAIN_BITCOIN_REGTEST, policyVersion: 3, ticker: "FROG", tokenNonce: NONCE },
     guardianXOnly,
@@ -220,7 +220,7 @@ async function main(): Promise<void> {
   deploy.psbt.signInput(0, deployer);
   deploy.psbt.finalizeAllInputs();
   const deployHex = deploy.psbt.extractTransaction().toHex();
-  const deployVal = orThrow(validateFinalizedDeployTransaction({
+  const deployVal = orThrow(validateFinalizedDeployTransaction({ feeScript,
     rawTxHex: deployHex, network: "regtest", chainIdentity: CHAIN_BITCOIN_REGTEST,
     guardianXOnly, recoveryKeyXOnly, recoveryProfile: MAINNET1_PROFILE,
   }), "DEPLOY");

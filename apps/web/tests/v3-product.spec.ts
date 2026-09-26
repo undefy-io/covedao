@@ -118,6 +118,16 @@ test("E2E-001 launch: Alice launches FROG through the UI", async ({ browser }) =
   expect(tokens.data.length).toBeGreaterThanOrEqual(1);
   aliceTokenId = tokens.data[0].tokenId;
   expect(aliceTokenId).toMatch(/^[0-9a-f]{64}$/);
+
+  // The launch paid the 7,000-sat launch fee (~$6) to the protocol fee address
+  // at output 3: the regtest fee key's address (the public 0x44 fixture key).
+  const detail = await fetch(`${BASE}/api/v3/tokens/${aliceTokenId}`).then((r) => r.json());
+  const deployTx = await rpc<{ vout: { value: number; scriptPubKey: { hex: string } }[] }>("getrawtransaction", [detail.data.deployTxid, true]);
+  const feeScriptHex = bitcoin.payments
+    .p2wpkh({ pubkey: ECPair.fromPrivateKey(Buffer.alloc(32, 0x44)).publicKey, network: bitcoin.networks.regtest })
+    .output!.toString("hex");
+  expect(Math.round(deployTx.vout[3]!.value * 1e8)).toBe(7_000);
+  expect(deployTx.vout[3]!.scriptPubKey.hex).toBe(feeScriptHex);
 });
 
 test("E2E-002 mint: Alice mints by spending sats", async ({ browser }) => {

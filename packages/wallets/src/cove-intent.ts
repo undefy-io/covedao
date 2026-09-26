@@ -235,6 +235,19 @@ export function verifyClientIntent(
     if (!outputs.some((o) => !isMine(o.scriptHex) && o.value === gross)) {
       mismatch(`no ${gross}-sat payment to the seller`);
     }
+  } else if (intent.operation === "DEPLOY") {
+    // A launch costs the vault seed, the launch fee and the miner fee; the
+    // 1,000-sat creator record comes back to the creator's own address.
+    if (protocolFee !== LAUNCH_FEE_SATS) {
+      mismatch(`launch fee ${protocolFee ?? "missing"} is not the protocol's ${LAUNCH_FEE_SATS} sats`);
+    }
+    const expected = -(VAULT_ANCHOR_SATS + LAUNCH_FEE_SATS + expectedMinerFee);
+    if (walletDeltaSats !== expected) {
+      mismatch(
+        `launching costs ${-walletDeltaSats} sats, not the ${-expected} you were shown ` +
+          `(${VAULT_ANCHOR_SATS} vault seed + ${LAUNCH_FEE_SATS} launch fee + ${expectedMinerFee} miner fee)`,
+      );
+    }
   } else if (intent.operation === "SPLIT") {
     // Moving your own tokens between your own coins costs only the miner fee.
     if (walletDeltaSats !== -expectedMinerFee) {
@@ -378,6 +391,14 @@ function verifyTokenEnvelope(
       mismatch(`unrecognised Cove operation ${String((envelope as { op: unknown }).op)}`);
   }
 }
+
+/**
+ * Launch constants the browser checks a DEPLOY against. Mirrors
+ * LAUNCH_FEE_SATS (cove-economics) and RESERVE_ANCHOR_SATS (cove-covenant),
+ * which are not browser-safe imports; a test keeps them equal.
+ */
+export const LAUNCH_FEE_SATS = 7_000n;
+export const VAULT_ANCHOR_SATS = 10_000n;
 
 /** SIGHASH_SINGLE | SIGHASH_ANYONECANPAY, the presigned-listing sighash. */
 export const LISTING_SIGHASH = 0x83;

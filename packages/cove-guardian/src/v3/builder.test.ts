@@ -25,7 +25,7 @@ const recoveryXOnly = Buffer.from(ecc.pointFromScalar(Buffer.alloc(32, 0x43), tr
 const NONCE = Buffer.alloc(32, 0xab);
 
 function deploy() {
-  return buildDeployPsbtV3({
+  return buildDeployPsbtV3({ feeScript: Buffer.from("0014" + "f".repeat(40), "hex"),
     network: bitcoin.networks.regtest,
     identity: {
       chainIdentity: CHAIN_BITCOIN_REGTEST,
@@ -466,7 +466,7 @@ describe("dust change is absorbed into the miner fee, and reported", () => {
   const DUST_P2WPKH = 294n;
 
   function deployWithChange(inputSats: bigint, minerFeeSats: bigint) {
-    return buildDeployPsbtV3({
+    return buildDeployPsbtV3({ feeScript: Buffer.from("0014" + "f".repeat(40), "hex"),
       network: bitcoin.networks.regtest,
       identity: {
         chainIdentity: CHAIN_BITCOIN_REGTEST,
@@ -490,24 +490,24 @@ describe("dust change is absorbed into the miner fee, and reported", () => {
   }
 
   it("pays out change that clears the dust threshold", () => {
-    // 10,000 anchor + 1,000 creator record + 1,000 fee + 5,000 change
-    const d = deployWithChange(17_000n, 1_000n);
+    // 10,000 anchor + 1,000 creator record + 7,000 launch fee + 1,000 fee + 5,000 change
+    const d = deployWithChange(24_000n, 1_000n);
     expect(d.minerFeeSats).toBe(1_000n);
     expect(actualFee(d.psbt)).toBe(1_000n);
     expect(d.psbt.txOutputs.some((o) => o.value === 5_000)).toBe(true);
   });
 
   it("creates no change output at all when it lands exactly on zero", () => {
-    const d = deployWithChange(12_000n, 1_000n);
+    const d = deployWithChange(19_000n, 1_000n);
     expect(d.minerFeeSats).toBe(1_000n);
     expect(actualFee(d.psbt)).toBe(1_000n);
     expect(d.psbt.txOutputs.some((o) => o.script.equals(WALLET))).toBe(false);
   });
 
   it("absorbs sub-dust change and reports the larger fee", () => {
-    // 10,000 anchor + 1,000 fee + 200 change, and 200 is below the 294 dust
-    // threshold for a P2WPKH output.
-    const d = deployWithChange(12_200n, 1_000n);
+    // 10,000 anchor + 1,000 creator record + 7,000 launch fee + 1,000 fee +
+    // 200 change, and 200 is below the 294 dust threshold for a P2WPKH output.
+    const d = deployWithChange(19_200n, 1_000n);
     expect(d.minerFeeSats).toBe(1_200n);
     expect(actualFee(d.psbt)).toBe(d.minerFeeSats);
     expect(d.psbt.txOutputs.some((o) => o.script.equals(WALLET))).toBe(false);
@@ -515,7 +515,7 @@ describe("dust change is absorbed into the miner fee, and reported", () => {
 
   it("never absorbs more than one dust threshold", () => {
     for (let extra = 1n; extra < DUST_P2WPKH; extra += 37n) {
-      const d = deployWithChange(12_000n + extra, 1_000n);
+      const d = deployWithChange(19_000n + extra, 1_000n);
       expect(d.minerFeeSats - 1_000n).toBe(extra);
       expect(d.minerFeeSats - 1_000n).toBeLessThan(DUST_P2WPKH);
       expect(actualFee(d.psbt)).toBe(d.minerFeeSats);

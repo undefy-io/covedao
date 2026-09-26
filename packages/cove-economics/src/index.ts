@@ -28,6 +28,7 @@ export {
   CREATOR_MIN_SATS,
   isCreatorScript,
   CREATOR_RECORD_SATS,
+  LAUNCH_FEE_SATS,
   type CoveFeeConfig,
 } from "./fee.js";
 export { checkFeeSettlement, type FeeSettlementCheck } from "./feeSettlement.js";
