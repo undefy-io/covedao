@@ -136,6 +136,7 @@ export async function runRuntimeReadiness(env: RuntimeReadinessEnv): Promise<Run
   }
 
   const readiness = computeMainnetReadiness({
+    allowTestKeys: source === "test-only",
     profile,
     profileHash,
     expectedProfileHash: expectedProfileHash ?? "",

@@ -89,6 +89,8 @@ export interface MainnetReadinessInput {
   auditHealthy: boolean;
   signingJournalHealthy: boolean;
   canaryActive: boolean;
+  /** TESTS/CI ONLY: the profile is a test-only one, so the repo test keys are allowed. */
+  allowTestKeys?: boolean;
 }
 
 export interface MainnetReadiness {
@@ -116,7 +118,8 @@ export interface MainnetReadiness {
 
 /** The ONE readiness aggregator (§30). Consumed by CLI + web + canary tool. */
 export function computeMainnetReadiness(input: MainnetReadinessInput): MainnetReadiness {
-  const staticProfileReady = mainnetProfileComplete(input.profile);
+  const keys = { allowTestKeys: input.allowTestKeys === true };
+  const staticProfileReady = mainnetProfileComplete(input.profile, keys);
   const profileHashMatches = input.profileHash === input.expectedProfileHash;
   const guardianProfileHashMatches = input.guardianProfileHash !== null && input.guardianProfileHash === input.expectedProfileHash;
   const guardianKeyMatches = input.guardianXOnly !== null && input.profile.guardianXOnly !== null && input.guardianXOnly.toLowerCase() === input.profile.guardianXOnly.toLowerCase();
@@ -134,7 +137,7 @@ export function computeMainnetReadiness(input: MainnetReadinessInput): MainnetRe
     auditHealthy: input.auditHealthy,
     signingJournalHealthy: input.signingJournalHealthy,
     profileHashMatches,
-  });
+  }, keys);
 
   return {
     stage,

@@ -39,8 +39,8 @@ export const OWNER_DECISION_KEYS = [
 ] as const;
 
 /** The profile is statically complete iff the canonical validator passes. */
-export function mainnetProfileComplete(p: MainnetProfile): boolean {
-  return validateMainnetProfile(p).ok;
+export function mainnetProfileComplete(p: MainnetProfile, opts: { allowTestKeys?: boolean } = {}): boolean {
+  return validateMainnetProfile(p, opts).ok;
 }
 
 /** List the OWNER_DECISION_REQUIRED decisions still missing from a profile. */
@@ -69,8 +69,14 @@ export interface MainnetHealth {
  * and EVERY required health signal is green — including the SECONDARY Core and
  * Core agreement (§28).
  */
-export function deriveMainnetStage(p: MainnetProfile, canaryActive: boolean, health: MainnetHealth): MainnetStage {
-  if (!mainnetProfileComplete(p)) return "DISABLED";
+export function deriveMainnetStage(
+  p: MainnetProfile,
+  canaryActive: boolean,
+  health: MainnetHealth,
+  /** TESTS/CI ONLY: the profile is a test-only one (repo test keys allowed). */
+  opts: { allowTestKeys?: boolean } = {},
+): MainnetStage {
+  if (!mainnetProfileComplete(p, opts)) return "DISABLED";
   if (!health.profileHashMatches) return "DISABLED";
   if (!health.primaryCoreHealthy || !health.secondaryCoreHealthy || !health.coreAgreement || !health.indexerHealthy) return "READ_ONLY";
   if (!health.stateRootVerified || !health.workerHealthy) return "READ_ONLY";
