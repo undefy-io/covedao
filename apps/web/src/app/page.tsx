@@ -41,15 +41,14 @@ export default function HomePage() {
         <Image src="/logo.png" alt="covs" width={72} height={72} priority className="mb-6 h-16 w-16 sm:h-[72px] sm:w-[72px]" />
         <p className="eyebrow">covs.trade · CRC-20 · Bitcoin L1</p>
         <h1 className="mt-5 max-w-3xl text-display text-bone">
-          Covenant-backed
+          Covenant-powered
           <br />
-          tokens on Bitcoin.
+          CRC launchpad.
         </h1>
         <p className="mt-6 max-w-xl text-sm leading-relaxed text-bone-dim">
-          Every token gets its own covenant vault. Mint with BTC as the price climbs 210 small
-          stairs to 21,000,000 tokens, with nothing held back for the team. The creator earns 50%
-          of every mint, and you can always sell back to the vault for real BTC. The indexer is
-          open and deterministic — reproduce the state yourself rather than take our word for it.
+          The first fair-launch bonding curve on Bitcoin.
+          <br />
+          Mint as the price climbs. Sell back to the vault anytime.
         </p>
         <div className="mt-9 flex flex-wrap gap-3">
           <Link href="/launch" className="btn">Launch a token</Link>
