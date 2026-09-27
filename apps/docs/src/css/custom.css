@@ -1,0 +1,17 @@
+/* covs: warm orange accent on ink, matching the app. */
+:root {
+  --ifm-color-primary: #e8912d;
+  --ifm-color-primary-dark: #d98220;
+  --ifm-color-primary-darker: #cd7b1e;
+  --ifm-color-primary-darkest: #a96519;
+  --ifm-color-primary-light: #eba049;
+  --ifm-color-primary-lighter: #eda755;
+  --ifm-color-primary-lightest: #f1bc7d;
+  --ifm-font-family-base: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --ifm-code-font-size: 95%;
+}
+[data-theme="dark"] {
+  --ifm-background-color: #0c0c0d;
+  --ifm-navbar-background-color: #0c0c0d;
+  --ifm-footer-background-color: #0c0c0d;
+}

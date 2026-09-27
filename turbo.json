@@ -9,7 +9,8 @@
       "outputs": [
         ".next/**",
         "!.next/cache/**",
-        "dist/**"
+        "dist/**",
+        "build/**"
       ],
       "env": [
         "COVE_NETWORK",

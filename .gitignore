@@ -56,3 +56,7 @@ target/
 # Local scratch (GitHub page dump)
 fr.html
 .signet/
+
+# Docusaurus (apps/docs)
+/apps/docs/build/
+/apps/docs/.docusaurus/
