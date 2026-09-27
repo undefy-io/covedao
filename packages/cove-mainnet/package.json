@@ -21,6 +21,7 @@
     "@crclaunch/cove-wire": "workspace:*",
     "@crclaunch/curve": "workspace:*",
     "bitcoinjs-lib": "^6.1.7",
+    "smol-toml": "^1.9.0",
     "tiny-secp256k1": "^2.2.3"
   },
   "devDependencies": {

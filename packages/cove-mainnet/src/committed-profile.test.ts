@@ -5,7 +5,7 @@ import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import { buildBackingVaultV3 } from "@crclaunch/cove-vault";
 import { s0StateV2 } from "@crclaunch/cove-covenant";
-import { committedMainnetProfile, COMMITTED_MAINNET_PROFILE_JSON, resolveMainnetProfile } from "./committed-profile.js";
+import { committedMainnetProfile, MAINNET_PROFILES_PATH, resolveMainnetProfile } from "./committed-profile.js";
 import { loadMainnetProfile, parseMainnetProfileJson, validateMainnetProfile, type MainnetProfile } from "./profile.js";
 import { KNOWN_TEST_KEY_BYTES, isKnownTestPrivateKeyHex, isKnownTestScript, isKnownTestXOnly } from "./test-keys.js";
 
@@ -26,9 +26,9 @@ describe("committed mainnet profile", () => {
     expect(c.validation.errors.filter((e) => !e.startsWith("OWNER_DECISION_REQUIRED"))).toEqual([]);
   });
 
-  it("is plain JSON with no private key material", () => {
-    expect(() => JSON.parse(COMMITTED_MAINNET_PROFILE_JSON)).not.toThrow();
-    expect(COMMITTED_MAINNET_PROFILE_JSON).not.toMatch(/priv|secret|wif/i);
+  it("is plain TOML with no private key material", () => {
+    expect(() => readFileSync(MAINNET_PROFILES_PATH, "utf8")).not.toThrow();
+    expect(readFileSync(MAINNET_PROFILES_PATH, "utf8")).not.toMatch(/priv|secret|wif/i);
   });
 });
 
@@ -110,12 +110,12 @@ describe("resolveMainnetProfile", () => {
     expect(resolveMainnetProfile({ network: "mainnet" }).source).toBe("committed");
   });
   it("uses a test-only profile off mainnet, with the test-key bypass", () => {
-    const r = resolveMainnetProfile({ network: "regtest", testOnlyPath: FIXTURE });
+    const r = resolveMainnetProfile({ network: "regtest", testOnlyPath: resolve(ROOT, "packages/cove-mainnet/profiles.toml") });
     expect(r.source).toBe("test-only");
     expect(r.validation.ok).toBe(true);
   });
   it("refuses a test-only profile on mainnet", () => {
-    expect(() => resolveMainnetProfile({ network: "mainnet", testOnlyPath: FIXTURE })).toThrow(/refused on mainnet/);
+    expect(() => resolveMainnetProfile({ network: "mainnet", testOnlyPath: resolve(ROOT, "packages/cove-mainnet/profiles.toml") })).toThrow(/refused on mainnet/);
   });
 });
 

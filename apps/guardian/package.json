@@ -22,7 +22,8 @@
     "@crclaunch/cove-wire": "workspace:*",
     "@crclaunch/db": "workspace:*",
     "bitcoinjs-lib": "^6.1.7",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "envalid": "^8.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

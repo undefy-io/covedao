@@ -1,28 +1,34 @@
-import { requireCoveNetwork, coveNetworkSettings, type CoveNetworkName } from "@crclaunch/config";
-import { resolveMainnetProfile, TEST_ONLY_PROFILE_ENV, FEE_ADDRESS_ENV, type ResolvedMainnetProfile } from "@crclaunch/cove-mainnet";
-import { CHAIN_BITCOIN_MAINNET } from "@crclaunch/cove-wire";
+import { cleanEnv, str, bool, makeValidator } from "envalid";
+import {
+  coveNetworkSettings,
+  type CoveNetworkName,
+} from "@crclaunch/config";
+import {
+  resolveMainnetProfile,
+  type ResolvedMainnetProfile,
+} from "@crclaunch/cove-mainnet";
 import type { GuardianCustodyBackend } from "@crclaunch/cove-guardian/v3";
 import { selectCustodyBackend } from "./custody.js";
-import { requireAuthToken } from "./auth.js";
 
-/**
- * Everything the Guardian needs before it can start, from the environment:
- *
- *   COVE_NETWORK        required, no default
- *   COVE_DATABASE_URL   required
- *   COVE_BITCOIN_RPC_URL required: the Guardian's OWN view of the chain, used
- *                       to refuse unconfirmed funding inputs (the app could lie)
- *   GUARDIAN_AUTH_TOKEN required
- *   GUARDIAN_KEY_HEX    required on mainnet
- *   COVE_FEE_ADDRESS    required on mainnet: where every protocol fee goes;
- *                       must equal the web app's and the worker's
- *
- * Everything else (port, ord server) is committed per network. Regtest CI may
- * also name COVE_TEST_ONLY_PROFILE_PATH and GUARDIAN_TEST_KEY_HEX.
- */
+const nonEmpty = makeValidator((value: string) => {
+  if (!value.trim()) throw new Error("must not be empty");
+  return value;
+});
+const hexKey = makeValidator((value: string) => {
+  if (!/^[0-9a-f]{64}$/i.test(value)) throw new Error("must be 32 bytes of hex");
+  return value;
+});
+
+const endpoint = (protocols: string[]) => makeValidator((value: string) => {
+  const url = new URL(value);
+  if (!protocols.includes(url.protocol)) throw new Error("unsupported URL scheme");
+  return value;
+});
+const databaseUrl = endpoint(["postgres:", "postgresql:"]);
+const httpUrl = endpoint(["http:", "https:"]);
+
 export interface GuardianBoot {
   network: CoveNetworkName;
-  /** Mainnet rules apply: COVE_NETWORK=mainnet, or the committed (mainnet) profile. */
   mainnetGuard: boolean;
   canaryActive: boolean;
   profile: ResolvedMainnetProfile;
@@ -35,46 +41,63 @@ export interface GuardianBoot {
   ordUrl: string | undefined;
 }
 
-export function resolveGuardianBoot(env: Record<string, string | undefined>): GuardianBoot {
-  const network = requireCoveNetwork(env);
-  const authToken = requireAuthToken(env.GUARDIAN_AUTH_TOKEN);
-  const databaseUrl = env.COVE_DATABASE_URL;
-  if (!databaseUrl) throw new Error("COVE_DATABASE_URL is required");
-  const coreRpcUrl = env.COVE_BITCOIN_RPC_URL;
-  if (!coreRpcUrl) throw new Error("COVE_BITCOIN_RPC_URL is required (the Guardian checks funding inputs against its own node)");
-
+export function resolveGuardianBoot(
+  raw: Record<string, string | undefined>,
+): GuardianBoot {
+  const env = cleanEnv(
+    raw,
+    {
+      COVE_NETWORK: str({ choices: ["regtest", "signet", "testnet", "mainnet"] }),
+      COVE_DATABASE_URL: databaseUrl(),
+      COVE_BITCOIN_RPC_URL: httpUrl(),
+      COVE_BITCOIN_RPC_USER: str({ default: "" }),
+      COVE_BITCOIN_RPC_PASSWORD: str({ default: "" }),
+      GUARDIAN_AUTH_TOKEN: nonEmpty(),
+      GUARDIAN_KEY_HEX: hexKey({ default: "" }),
+      GUARDIAN_TEST_KEY_HEX: hexKey({ default: "" }),
+      COVE_FEE_ADDRESS: str({ default: "" }),
+      COVE_TEST_ONLY_PROFILE_PATH: str({ default: "" }),
+      COVE_V3_CANARY_ACTIVE: bool({ default: false }),
+      COVE_ORD_URL: httpUrl({ default: "" }),
+    },
+    {
+      reporter: ({ errors }) => {
+        const invalid = Object.entries(errors);
+        if (invalid.length) {
+          throw new Error(
+            invalid
+              .map(([key, error]) => `${key} is ${error?.name === "EnvMissingError" ? "required" : "invalid"}`)
+              .join("; "),
+          );
+        }
+      },
+    },
+  );
+  const network = env.COVE_NETWORK as CoveNetworkName;
   const profile = resolveMainnetProfile({
     network,
-    testOnlyPath: env[TEST_ONLY_PROFILE_ENV] || undefined,
-    feeAddress: env[FEE_ADDRESS_ENV] || undefined,
+    testOnlyPath: env.COVE_TEST_ONLY_PROFILE_PATH || undefined,
+    feeAddress: env.COVE_FEE_ADDRESS || undefined,
   });
-  // The committed profile is always a bitcoin-mainnet profile. Running it
-  // under any other network would sign for mainnet vaults with non-mainnet
-  // rules, so it forces the mainnet guard — and must be declared as mainnet.
-  const committedMainnet = profile.source === "committed" && profile.profile.chainIdentity === CHAIN_BITCOIN_MAINNET;
-  if (committedMainnet && network !== "mainnet") {
-    throw new Error(
-      `the committed profile is for bitcoin-mainnet but COVE_NETWORK is ${network}; ` +
-        `set COVE_NETWORK=mainnet, or name a test profile with ${TEST_ONLY_PROFILE_ENV} (regtest CI)`,
-    );
-  }
-  const mainnetGuard = network === "mainnet" || committedMainnet;
-
+  const mainnetGuard = network === "mainnet";
   const keyHex = env.GUARDIAN_KEY_HEX || undefined;
   const testKeyHex = env.GUARDIAN_TEST_KEY_HEX || undefined;
-  const custodyBackend = selectCustodyBackend(mainnetGuard ? "mainnet" : network, { keyHex, testKeyHex });
-  const settings = coveNetworkSettings(network, env);
-
+  const custodyBackend = selectCustodyBackend(network, { keyHex, testKeyHex });
+  const settings = coveNetworkSettings(network, raw);
   return {
     network,
     mainnetGuard,
-    canaryActive: ["1", "true", "yes", "on"].includes((env.COVE_V3_CANARY_ACTIVE ?? "").toLowerCase()),
+    canaryActive: env.COVE_V3_CANARY_ACTIVE,
     profile,
     custodyBackend,
     custody: keyHex ? "env-key" : testKeyHex ? "test" : "unconfigured",
-    databaseUrl,
-    coreRpc: { url: coreRpcUrl, user: env.COVE_BITCOIN_RPC_USER || undefined, password: env.COVE_BITCOIN_RPC_PASSWORD || undefined },
-    authToken,
+    databaseUrl: env.COVE_DATABASE_URL,
+    coreRpc: {
+      url: env.COVE_BITCOIN_RPC_URL,
+      user: env.COVE_BITCOIN_RPC_USER || undefined,
+      password: env.COVE_BITCOIN_RPC_PASSWORD || undefined,
+    },
+    authToken: env.GUARDIAN_AUTH_TOKEN,
     port: settings.guardianPort,
     ordUrl: settings.ordUrl ?? undefined,
   };

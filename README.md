@@ -174,7 +174,7 @@ pnpm cove:signet-proof             # signet lifecycle, real broadcast
 ## Mainnet status
 
 **Mainnet is not activated.** The committed profile
-(`packages/cove-mainnet/src/committed-profile.ts`) still has placeholders for
+(`packages/cove-mainnet/profiles.toml`, `[networks.mainnet]`) still has placeholders for
 every owner decision — activation height, Guardian key, recovery keys (2-of-3
 or 1-of-1), fee destination and bps, canary allowlists and caps — so mainnet
 refuses to start until they are filled in. The profile also refuses any key
@@ -216,7 +216,7 @@ Guardian) with only these env vars:
 | worker | `COVE_NETWORK`, `COVE_DATABASE_URL`, `COVE_BITCOIN_RPC_URL`, `COVE_GUARDIAN_ENDPOINT`, `COVE_GUARDIAN_AUTH_TOKEN`, `COVE_FEE_ADDRESS` |
 | guardian | `COVE_NETWORK`, `COVE_DATABASE_URL`, `COVE_BITCOIN_RPC_URL`, `GUARDIAN_AUTH_TOKEN`, `GUARDIAN_KEY_HEX`, `COVE_FEE_ADDRESS`, `COVE_V3_CANARY_ACTIVE` |
 
-The Guardian refuses to start unless `GUARDIAN_KEY_HEX` matches the profile's
+The app and Guardian repositories must carry the same `packages/cove-mainnet/profiles.toml`. Its `[protocol]` values are shared and `COVE_NETWORK` selects a network section. Guardian validates env with `envalid` before service startup. The Guardian refuses to start unless `GUARDIAN_KEY_HEX` matches the profile's
 `guardianXOnly`. On Railway the web may reach it over private networking
 (`http://<guardian>.railway.internal:4391`); anywhere else it must be https.
 The canary allowlists and caps in the profile are enforced on every mutation.

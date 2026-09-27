@@ -72,7 +72,7 @@ hash with the Guardian's at startup and stop on a mismatch.
 
 Local regtest keeps its fixture defaults (local node, public test keys) once
 `COVE_NETWORK=regtest` is set in the repo-root `.env`. Regtest CI may name a
-test profile with `COVE_TEST_ONLY_PROFILE_PATH`; that is refused on mainnet.
+the `[networks.regtest]` section of `packages/cove-mainnet/profiles.toml`; mainnet selects `[networks.mainnet]`. An explicit `COVE_TEST_ONLY_PROFILE_PATH` TOML override is refused on mainnet.
 
 ## Packages
 

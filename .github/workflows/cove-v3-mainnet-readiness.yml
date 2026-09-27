@@ -114,7 +114,7 @@ jobs:
       - name: Run production-profile-regtest lifecycle (remote Guardian, MAINNET1, real Core)
         run: pnpm --filter @crclaunch/cove-guardian v3-production-profile-lifecycle
         env:
-          COVE_TEST_ONLY_PROFILE_PATH: test/fixtures/mainnet-profile.json
+          COVE_TEST_ONLY_PROFILE_PATH: packages/cove-mainnet/profiles.toml
 
       - name: Readiness --static (committed profile)
         run: |
@@ -128,7 +128,7 @@ jobs:
       - name: Readiness --runtime with NO Guardian → NOT_READY (fail-closed)
         run: |
           set +e
-          OUT=$(COVE_TEST_ONLY_PROFILE_PATH=test/fixtures/mainnet-profile.json \
+          OUT=$(COVE_TEST_ONLY_PROFILE_PATH=packages/cove-mainnet/profiles.toml \
             COVE_BITCOIN_RPC_URL=http://127.0.0.1:18443 \
             COVE_BITCOIN_RPC_URL_SECONDARY=http://127.0.0.1:18443 \
             pnpm cove:v3-mainnet-readiness --runtime)
@@ -147,7 +147,7 @@ jobs:
         run: |
           COVE_NETWORK=regtest \
           COVE_DATABASE_URL="$DATABASE_URL" \
-          COVE_TEST_ONLY_PROFILE_PATH="$GITHUB_WORKSPACE/test/fixtures/mainnet-profile.json" \
+          COVE_TEST_ONLY_PROFILE_PATH="$GITHUB_WORKSPACE/packages/cove-mainnet/profiles.toml" \
           COVE_BITCOIN_RPC_URL=http://127.0.0.1:18443 \
           COVE_BITCOIN_RPC_USER="$COVE_REGTEST_RPC_USER" \
           COVE_BITCOIN_RPC_PASSWORD="$COVE_REGTEST_RPC_PASSWORD" \
@@ -181,7 +181,7 @@ jobs:
       # would mean the probes had been faked again.
       - name: Readiness --runtime (fixture + Core quorum + REAL Guardian → all reachable signals PASS, fails closed at READ_ONLY)
         run: |
-          EXPECTED=$(COVE_TEST_ONLY_PROFILE_PATH=test/fixtures/mainnet-profile.json \
+          EXPECTED=$(COVE_TEST_ONLY_PROFILE_PATH=packages/cove-mainnet/profiles.toml \
             pnpm --silent cove:v3-mainnet-readiness --static | awk '/profile hash:/ {print $3}')
           # No fallback: a hard-coded hash silently went stale when the
           # protocol profile changed.
@@ -191,7 +191,7 @@ jobs:
           # NOT_READY, and under `set -e` that would kill the step before the
           # per-signal PASS/FAIL lines are printed, hiding the cause.
           set +e
-          OUT=$(COVE_TEST_ONLY_PROFILE_PATH=test/fixtures/mainnet-profile.json \
+          OUT=$(COVE_TEST_ONLY_PROFILE_PATH=packages/cove-mainnet/profiles.toml \
             COVE_V3_MAINNET_PROFILE_HASH="$EXPECTED" \
             COVE_BITCOIN_RPC_URL=http://127.0.0.1:18443 \
             COVE_BITCOIN_RPC_URL_SECONDARY=http://127.0.0.1:18443 \
@@ -218,7 +218,7 @@ jobs:
       - name: Readiness rejects a mismatched committed profile hash
         run: |
           set +e
-          OUT=$(COVE_TEST_ONLY_PROFILE_PATH=test/fixtures/mainnet-profile.json \
+          OUT=$(COVE_TEST_ONLY_PROFILE_PATH=packages/cove-mainnet/profiles.toml \
             COVE_V3_MAINNET_PROFILE_HASH=$(printf 'ab%.0s' $(seq 1 32)) \
             COVE_BITCOIN_RPC_URL=http://127.0.0.1:18443 \
             COVE_BITCOIN_RPC_URL_SECONDARY=http://127.0.0.1:18443 \

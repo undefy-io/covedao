@@ -1,5 +1,6 @@
 export {
   MAINNET_PROFILE_DOMAIN,
+  parseMainnetProfile,
   parseMainnetProfileJson,
   loadMainnetProfile,
   validateMainnetProfile,
@@ -13,7 +14,7 @@ export {
   type ValidateMainnetProfileOptions,
 } from "./profile.js";
 export {
-  COMMITTED_MAINNET_PROFILE_JSON,
+  MAINNET_PROFILES_PATH,
   committedMainnetProfile,
   resolveMainnetProfile,
   TEST_ONLY_PROFILE_ENV,

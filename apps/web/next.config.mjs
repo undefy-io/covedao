@@ -13,6 +13,10 @@ if (!network || !NETWORKS.includes(network)) {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  outputFileTracingRoot: fileURLToPath(new URL("../../", import.meta.url)),
+  outputFileTracingIncludes: {
+    "/*": ["../../packages/cove-mainnet/profiles.toml"],
+  },
   // Inlined into the browser bundle. The explorer is committed per network
   // (@crclaunch/config); the env override is honoured off mainnet only.
   env: {

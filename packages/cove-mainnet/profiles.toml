@@ -1,0 +1,47 @@
+[protocol]
+profileVersion = 1
+chainIdentity = "bitcoin-mainnet"
+policyVersion = 3
+vaultProfileVersion = "COVE_V3_VAULT_PROFILE_MAINNET1"
+carrierSats = "1000"
+anchorSats = "10000"
+maxProtocolSupplyAtoms = "2100000000000000"
+reserveAllocationAtoms = "0"
+mintCmr = "7fb27adf2db5458882daf976ba9325815f111b2f3b16eedb72e75f96de4269b2"
+redeemCmr = "37e681b3e70a34acc3b38680c06fbe4f1b2799bede2607c6c9ed7fcac8c95d56"
+
+[networks.mainnet]
+
+[networks.mainnet.recovery]
+threshold = 1
+pubkeys = []
+
+[networks.mainnet.canary]
+allowedWalletScripts = []
+allowedTokenIds = []
+maxSingleBuySats = "200000"
+maxMintAtoms = "2100000000000000"
+minMintGrossSats = "5000"
+
+[networks.regtest]
+activationHeight = 101
+guardianXOnly = "24653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1c"
+feeScript = "0014cc1b07838e387deacd0e5232e1e8b49f4c29e484"
+buyFeeBps = 100
+redeemFeeBps = 100
+p2pFeeBps = 50
+
+[networks.regtest.recovery]
+threshold = 2
+pubkeys = ["baf7689c0a3558fb604589036a8d1e4b685d909f6e0e2c6018a14049ae64ec26", "9c1f585aa80762f9f4458f6806978b7befb46c7b68af82d399630793ff1a2b50", "1428f3a3532ff4f1cac70f7292bfad06d1037f800ee8839b56ebba917a22e900"]
+csvBlocks = 2016
+
+[networks.regtest.canary]
+allowedWalletScripts = ["0014bd92088bb7e82d611a9b94fbb74a0908152b784f", "0014c62ec1117fa030b9771639f1e10555cdbeea1dbc"]
+allowedTokenIds = ["fb960b7e43b92b0a9213cf8d0a4534fb8f5776728499af70bf1c3cc8e6d19469"]
+maxBackingSats = "1000000000"
+maxSingleBuySats = "200000"
+maxSingleRedeemPayoutSats = "50000000"
+maxP2pSettlementSats = "10000000"
+maxMintAtoms = "2100000000000000"
+minMintGrossSats = "5000"

@@ -339,8 +339,7 @@ function strArray(value: unknown): string[] {
 }
 
 /** Parse the canonical JSON wire format into a typed MainnetProfile. */
-export function parseMainnetProfileJson(text: string): MainnetProfile {
-  const raw = JSON.parse(text) as Record<string, unknown>;
+export function parseMainnetProfile(raw: Record<string, unknown>): MainnetProfile {
   assertNoUnknownKeys(raw, PROFILE_KEYS, "profile");
   const r = (raw.recovery ?? {}) as Record<string, unknown>;
   const c = (raw.canary ?? {}) as Record<string, unknown>;
@@ -397,6 +396,10 @@ export function parseMainnetProfileJson(text: string): MainnetProfile {
 }
 
 /** Load + parse + validate a profile file. Throws on parse/validation failure. */
+export function parseMainnetProfileJson(text: string): MainnetProfile {
+  return parseMainnetProfile(JSON.parse(text) as Record<string, unknown>);
+}
+
 export function loadMainnetProfile(
   path: string,
   opts: ValidateMainnetProfileOptions = {},
