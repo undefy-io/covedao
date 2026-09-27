@@ -137,7 +137,7 @@ export async function POST(req: Request) {
       return ok({ signatureB64: signBip322WithKey(strField(body, "message"), id.privHex) });
     }
     if (action === "getUtxos") {
-      const utxos = (await spendableUtxos([id])).map((u) => ({ txid: u.txid, vout: u.vout }));
+      const utxos = (await spendableUtxos([id])).map((u) => ({ txid: u.txid, vout: u.vout, valueSats: String(u.sats), confirmations: 1 }));
       return ok({ utxos });
     }
     return fail("UNKNOWN_ACTION", `unknown action "${action}"`, 400);

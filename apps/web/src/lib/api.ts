@@ -38,13 +38,20 @@ export function fail(
  * unrecognised error contributes nothing.
  */
 function detailOf(e: unknown): string | undefined {
-  if (!(e instanceof AppError || e instanceof MarketError || e instanceof BackingError))
+  if (!(isAppError(e) || e instanceof MarketError || e instanceof BackingError))
     return undefined;
   return e.message.replace(/^\[[A-Z_]+\]\s*/, "");
 }
 
+function isAppError(e: unknown): e is AppError {
+  return e instanceof AppError || (
+    e instanceof Error && e.name === "AppError" &&
+    typeof (e as AppError).code === "string"
+  );
+}
+
 function codeOf(e: unknown): string {
-  if (e instanceof AppError) return e.code;
+  if (isAppError(e)) return e.code;
   if (e instanceof MarketError) return e.code;
   if (e instanceof BackingError) return e.code;
   const msg = e instanceof Error ? e.message : String(e);
@@ -107,6 +114,8 @@ function humanCopy(code: string): string {
       return "Mainnet is not enabled yet.";
     case "INSUFFICIENT_BTC":
       return "Not enough BTC to cover this transaction.";
+    case "FUNDING_INPUT_INVALID":
+      return "The selected payment coins are invalid.";
     case "MINER_FEE_TOO_LOW":
       return "That miner fee is too low — Bitcoin would not relay this transaction.";
     case "MINER_FEE_TOO_HIGH":

@@ -475,7 +475,7 @@ export const en = {
   "err.TICKER_INVALID": "Ticker must be 1–16 uppercase letters or digits.",
   "err.METADATA_INVALID": "Some token details are invalid. Check the links are https and the text is not too long.",
   "err.FUNDING_INPUT_SPENT": "One of your coins was already spent. Refresh and try again.",
-  "err.FUNDING_INPUT_INVALID": "One of the coins is not from your payment address.",
+  "err.FUNDING_INPUT_INVALID": "The selected payment coins are invalid or exceed the input limit.",
   "err.FUNDING_INPUT_IS_TOKEN": "That coin holds tokens and cannot pay for a trade.",
   "err.FUNDING_CHECK_UNAVAILABLE": "Could not check your coins for inscriptions and runes. Try again shortly.",
   "err.INSUFFICIENT_BTC": "Not enough BTC to cover this transaction (amount plus network fee). Use a smaller amount or add BTC to your payment address.",

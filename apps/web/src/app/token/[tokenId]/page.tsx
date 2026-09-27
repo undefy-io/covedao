@@ -257,7 +257,7 @@ function TokenContent() {
     setErr("");
     setBusy(true);
     try {
-      const funding = await getUtxos();
+      const funding = await getUtxos(true);
       const isBuy = review.kind === "buy";
       const br = await fetch(`/api/v3/backing/${isBuy ? "buy" : "redeem"}/build`, {
         method: "POST",

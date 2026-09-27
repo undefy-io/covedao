@@ -67,7 +67,7 @@ export async function GET(req: Request) {
       const unspents = await scanAddress(provider as unknown as RpcCaller, address);
       const utxos = unspents
         .filter((u) => Math.round(u.amount * 1e8) > TOKEN_CARRIER_SATS)
-        .map((u) => ({ txid: u.txid, vout: u.vout, valueSats: String(Math.round(u.amount * 1e8)) }));
+        .map((u) => ({ txid: u.txid, vout: u.vout, valueSats: String(Math.round(u.amount * 1e8)), confirmations: 1 }));
       return ok({ address, utxos, source: "core" });
     }
 
@@ -84,7 +84,7 @@ export async function GET(req: Request) {
     const found = await new EsploraUtxoProvider(esplora, config.network).getUtxos(address, height);
     const utxos = found
       .filter((u) => u.valueSats > BigInt(TOKEN_CARRIER_SATS))
-      .map((u) => ({ txid: u.txid, vout: u.vout, valueSats: u.valueSats.toString() }));
+      .map((u) => ({ txid: u.txid, vout: u.vout, valueSats: u.valueSats.toString(), confirmations: u.confirmations }));
     return ok({ address, utxos, source: "esplora" });
   } catch (e) {
     return handleError(e);

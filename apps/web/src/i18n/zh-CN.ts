@@ -477,7 +477,7 @@ export const zhCN: Record<MessageKey, string> = {
   "err.TICKER_INVALID": "代码必须是 1–16 位大写字母或数字。",
   "err.METADATA_INVALID": "代币信息有误，检查链接是否是 https、文字是否太长。",
   "err.FUNDING_INPUT_SPENT": "你的某个 UTXO 已经被花掉了，刷新后再试。",
-  "err.FUNDING_INPUT_INVALID": "有个 UTXO 不属于你的付款地址。",
+  "err.FUNDING_INPUT_INVALID": "选中的支付 UTXO 无效或超过输入数量限制。",
   "err.FUNDING_INPUT_IS_TOKEN": "这个 UTXO 上有代币，不能拿来付款。",
   "err.FUNDING_CHECK_UNAVAILABLE": "暂时没法检查你的 UTXO 上有没有铭文或符文，稍后再试。",
   "err.INSUFFICIENT_BTC": "BTC 不够（金额 + 矿工费）。减少数量，或者往付款地址里充点 BTC。",

@@ -3,6 +3,7 @@
 import { tr } from "@/i18n";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { NETWORK as COVE_NETWORK } from "@/lib/network";
+import { selectFundingCandidates, type WalletFundingCoin } from "@/lib/funding-candidates";
 import type { WalletCapabilities } from "@crclaunch/wallets";
 import { adapterFor, inputsOwnedBy } from "@/lib/wallets/adapters";
 import { LISTING_SIGHASH } from "@crclaunch/wallets";
@@ -48,7 +49,7 @@ interface WalletState {
   disconnect: () => void;
   signPsbt: (psbtBase64: string, operation: string) => Promise<string>;
   signBip322: (message: string) => Promise<string>;
-  getUtxos: () => Promise<{ txid: string; vout: number }[]>;
+  getUtxos: (confirmedOnly?: boolean) => Promise<{ txid: string; vout: number }[]>;
   /** Everything a build needs to describe this wallet to the server. */
   walletFields: () => {
     walletScript: string;
@@ -270,11 +271,11 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     [conn],
   );
 
-  const getUtxos = useCallback(async () => {
+  const getUtxos = useCallback(async (confirmedOnly = false) => {
     if (!conn) return [];
     if (conn.isTestWallet) {
       const test = getTestWallet();
-      return test?.getUtxos ? test.getUtxos() : [];
+      return test?.getUtxos ? selectFundingCandidates(await test.getUtxos(), confirmedOnly) : [];
     }
     // From Cove's own node, not the wallet: the server re-resolves every
     // outpoint against Core at build time, and a list from somewhere else
@@ -282,10 +283,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     const r = await fetch(`/api/v3/wallet/utxos?address=${encodeURIComponent(conn.payments.address)}`);
     const j = await r.json();
     if (!j.ok) throw new WalletError("FAILED", j.error?.detail || j.error?.message || tr("wal.cannotList"));
-    return (j.data.utxos as { txid: string; vout: number }[]).map((u) => ({
-      txid: u.txid,
-      vout: u.vout,
-    }));
+    return selectFundingCandidates(j.data.utxos as WalletFundingCoin[], confirmedOnly);
   }, [conn]);
 
   const walletFields = useCallback(() => {
