@@ -38,10 +38,11 @@ export function getV3Services(): V3Services {
     url: config.coreRpcUrl,
     user: config.coreRpcUser,
     password: config.coreRpcPassword,
+    apiKey: config.coreRpcApiKey,
   });
   // §P1-2: arm the two-node Core quorum when a secondary Core is configured.
   const secondaryProvider = config.coreRpcUrlSecondary
-    ? new CoreRpcProvider({ url: config.coreRpcUrlSecondary, user: config.coreRpcUser, password: config.coreRpcPassword })
+    ? new CoreRpcProvider({ url: config.coreRpcUrlSecondary, user: config.coreRpcUser, password: config.coreRpcPassword, apiKey: config.coreRpcApiKey })
     : null;
 
   // §C4: the transition signer is REQUIRED — local for non-mainnet, remote for

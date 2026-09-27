@@ -55,6 +55,7 @@ interface RpcConfig {
   url: string;
   user?: string;
   password?: string;
+  apiKey?: string;
   /** Optional fee-rate ceiling (sat/vB) applied to estimation and broadcast. */
   maxFeeRateSatVb?: bigint;
 }
@@ -82,11 +83,17 @@ export function testMempoolAcceptParams(hex: string, maxfeerateBtcPerKvb?: numbe
 export class CoreRpcProvider implements BitcoinChainProvider {
   private id = 0;
   private decodedCache = new Map<string, BitcoinProtocolTx>();
-  constructor(private readonly cfg: RpcConfig) {}
+  constructor(private readonly cfg: RpcConfig) {
+    if (cfg.apiKey && (cfg.user || cfg.password)) {
+      throw new Error("RPC API key and Basic credentials cannot be combined");
+    }
+  }
 
   private async call<T>(method: string, params: unknown[] = []): Promise<T> {
     const headers: Record<string, string> = { "content-type": "application/json" };
-    if (this.cfg.user !== undefined) {
+    if (this.cfg.apiKey) {
+      headers["x-api-key"] = this.cfg.apiKey;
+    } else if (this.cfg.user !== undefined) {
       const token = Buffer.from(`${this.cfg.user}:${this.cfg.password ?? ""}`).toString("base64");
       headers.authorization = `Basic ${token}`;
     }

@@ -31,6 +31,7 @@ export interface V3AppConfig {
   /** Optional: hosted providers put the API key in the URL. */
   coreRpcUser?: string;
   coreRpcPassword?: string;
+  coreRpcApiKey?: string;
   /** Optional secondary Core URL for the two-node quorum (§29/§P1-2). */
   coreRpcUrlSecondary?: string;
   feeScript: Buffer;
@@ -188,15 +189,19 @@ export function loadV3AppConfig(env: Env, opts: LoadV3AppConfigOptions = {}): V3
   const enabled = settings.v3Enabled;
 
   // Regtest keeps its fixture defaults (the local node every harness starts).
-  // Every other network names its node explicitly; user/password are optional
-  // because hosted providers put the API key in the URL.
+  // Every other network names its node explicitly; hosted providers may use
+  // an API-key header instead of Bitcoin Core's Basic credentials.
   let coreRpcUrl: string;
   let coreRpcUser: string | undefined;
   let coreRpcPassword: string | undefined;
+  const coreRpcApiKey = env.COVE_BITCOIN_RPC_API_KEY || undefined;
+  if (coreRpcApiKey && (env.COVE_BITCOIN_RPC_USER || env.COVE_BITCOIN_RPC_PASSWORD)) {
+    throw new AppError("CORE_UNAVAILABLE", "COVE_BITCOIN_RPC_API_KEY cannot be combined with RPC user/password");
+  }
   if (network === "regtest") {
     coreRpcUrl = env.COVE_BITCOIN_RPC_URL ?? env.COVE_REGTEST_RPC_URL ?? env.BITCOIN_RPC_URL ?? "http://127.0.0.1:18443";
-    coreRpcUser = env.COVE_BITCOIN_RPC_USER ?? env.COVE_REGTEST_RPC_USER ?? env.BITCOIN_RPC_USER ?? "user";
-    coreRpcPassword = env.COVE_BITCOIN_RPC_PASSWORD ?? env.COVE_REGTEST_RPC_PASSWORD ?? env.BITCOIN_RPC_PASSWORD ?? "pass";
+    coreRpcUser = coreRpcApiKey ? undefined : env.COVE_BITCOIN_RPC_USER ?? env.COVE_REGTEST_RPC_USER ?? env.BITCOIN_RPC_USER ?? "user";
+    coreRpcPassword = coreRpcApiKey ? undefined : env.COVE_BITCOIN_RPC_PASSWORD ?? env.COVE_REGTEST_RPC_PASSWORD ?? env.BITCOIN_RPC_PASSWORD ?? "pass";
   } else {
     if (!env.COVE_BITCOIN_RPC_URL) {
       throw new AppError("CORE_UNAVAILABLE", `COVE_BITCOIN_RPC_URL is required on ${network}`);
@@ -226,6 +231,7 @@ export function loadV3AppConfig(env: Env, opts: LoadV3AppConfigOptions = {}): V3
       coreRpcUrl,
       coreRpcUser,
       coreRpcPassword,
+      coreRpcApiKey,
       coreRpcUrlSecondary,
       feeScript: Buffer.from(profile.feeScript!, "hex"),
       guardianXOnly: Buffer.from(profile.guardianXOnly!, "hex"),
@@ -294,6 +300,7 @@ export function loadV3AppConfig(env: Env, opts: LoadV3AppConfigOptions = {}): V3
     coreRpcUrl,
     coreRpcUser,
     coreRpcPassword,
+    coreRpcApiKey,
     coreRpcUrlSecondary,
     feeScript,
     guardianXOnly: xonly(guardianPriv!),

@@ -35,6 +35,7 @@ export interface RuntimeReadinessEnv {
   COVE_BITCOIN_RPC_URL_SECONDARY?: string;
   COVE_BITCOIN_RPC_USER?: string;
   COVE_BITCOIN_RPC_PASSWORD?: string;
+  COVE_BITCOIN_RPC_API_KEY?: string;
   COVE_GUARDIAN_ENDPOINT?: string;
   COVE_GUARDIAN_AUTH_TOKEN?: string;
   COVE_V3_CANARY_ACTIVE?: string;
@@ -79,9 +80,10 @@ export async function runRuntimeReadiness(env: RuntimeReadinessEnv): Promise<Run
   const releaseManifestOk = committedHash(env.COVE_V3_MAINNET_RELEASE_MANIFEST_HASH) !== null;
 
   // ── Core quorum (primary + secondary) ──
-  const rpcUser = env.COVE_BITCOIN_RPC_USER ?? "user";
-  const rpcPassword = env.COVE_BITCOIN_RPC_PASSWORD ?? "pass";
-  const primary = new CoreRpcProvider({ url: env.COVE_BITCOIN_RPC_URL ?? "http://127.0.0.1:18443", user: rpcUser, password: rpcPassword });
+  const rpcApiKey = env.COVE_BITCOIN_RPC_API_KEY || undefined;
+  const rpcUser = rpcApiKey ? undefined : env.COVE_BITCOIN_RPC_USER ?? "user";
+  const rpcPassword = rpcApiKey ? undefined : env.COVE_BITCOIN_RPC_PASSWORD ?? "pass";
+  const primary = new CoreRpcProvider({ url: env.COVE_BITCOIN_RPC_URL ?? "http://127.0.0.1:18443", user: rpcUser, password: rpcPassword, apiKey: rpcApiKey });
   let primaryCoreHealthy = false;
   let secondaryCoreHealthy = false;
   let coreAgreement = false;
@@ -92,7 +94,7 @@ export async function runRuntimeReadiness(env: RuntimeReadinessEnv): Promise<Run
   } catch { /* primary unreachable */ }
   const secondaryUrl = env.COVE_BITCOIN_RPC_URL_SECONDARY;
   if (secondaryUrl) {
-    const secondary = new CoreRpcProvider({ url: secondaryUrl, user: rpcUser, password: rpcPassword });
+    const secondary = new CoreRpcProvider({ url: secondaryUrl, user: rpcUser, password: rpcPassword, apiKey: rpcApiKey });
     try {
       await secondary.getBlockchainInfo();
       secondaryCoreHealthy = true;

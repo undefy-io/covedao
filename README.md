@@ -145,6 +145,12 @@ profile in `packages/cove-mainnet/src/committed-profile.ts`. See
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#configuration).
 
 Signet with real browser wallets: `scripts/signet-up.sh`.
+For a hosted signet RPC such as Tatum, set `COVE_NETWORK=signet`,
+`COVE_BITCOIN_RPC_URL=https://bitcoin-signet.gateway.tatum.io`, and
+`COVE_BITCOIN_RPC_API_KEY` on the web and worker. The key is sent in the
+`x-api-key` header; leave `COVE_BITCOIN_RPC_USER` and
+`COVE_BITCOIN_RPC_PASSWORD` unset. The local `scripts/signet-up.sh` starts its
+own Bitcoin Core node and does not use this hosted-RPC setup.
 
 Build the Simplicity predicate and verify the frozen CMRs:
 

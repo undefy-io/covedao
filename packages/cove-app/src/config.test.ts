@@ -59,6 +59,14 @@ describe("loadV3AppConfig mainnet path (§15)", () => {
     expect(cfg.enabled).toBe(true);
   });
 
+  it("uses the RPC API key without defaulting to Basic credentials", () => {
+    const cfg = loadV3AppConfig({ COVE_NETWORK: "regtest", COVE_BITCOIN_RPC_API_KEY: "test-key" });
+    expect(cfg.coreRpcApiKey).toBe("test-key");
+    expect(cfg.coreRpcUser).toBeUndefined();
+    expect(cfg.coreRpcPassword).toBeUndefined();
+    expect(() => loadV3AppConfig({ COVE_NETWORK: "regtest", COVE_BITCOIN_RPC_API_KEY: "test-key", COVE_BITCOIN_RPC_USER: "user" })).toThrow(/cannot be combined/);
+  });
+
   it("fails closed on the committed profile until its owner decisions are filled in", () => {
     expect(() => loadV3AppConfig({ COVE_NETWORK: "mainnet", COVE_BITCOIN_RPC_URL: RPC })).toThrow(/invalid mainnet profile: .*OWNER_DECISION_REQUIRED/);
   });

@@ -1,5 +1,24 @@
-import { describe, expect, it } from "vitest";
-import { btcPerKvbToSatPerVb, testMempoolAcceptParams } from "./provider.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { CoreRpcProvider, btcPerKvbToSatPerVb, testMempoolAcceptParams } from "./provider.js";
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe("CoreRpcProvider authentication", () => {
+  it("sends an API key in x-api-key without Basic authorization", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ result: 123, error: null }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const provider = new CoreRpcProvider({ url: "https://bitcoin-signet.gateway.tatum.io", apiKey: "test-api-key" });
+
+    expect(await provider.getBestHeight()).toBe(123);
+    const [, request] = fetchMock.mock.calls[0]!;
+    expect(request.headers["x-api-key"]).toBe("test-api-key");
+    expect(request.headers.authorization).toBeUndefined();
+  });
+
+  it("rejects combining an API key with Basic credentials", () => {
+    expect(() => new CoreRpcProvider({ url: "https://example.com", apiKey: "key", user: "user" })).toThrow(/cannot be combined/);
+  });
+});
 
 describe("btcPerKvbToSatPerVb (estimatesmartfee conversion)", () => {
   it("converts 0.00001000 BTC/kvB → 1 sat/vB", () => {

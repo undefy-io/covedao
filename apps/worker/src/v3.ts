@@ -40,10 +40,10 @@ async function main() {
   const POLL_MS = config.settings.workerPollMs;
 
   const lock = await acquireNetworkLock(config.network);
-  const provider = new CoreRpcProvider({ url: config.coreRpcUrl, user: config.coreRpcUser, password: config.coreRpcPassword });
+  const provider = new CoreRpcProvider({ url: config.coreRpcUrl, user: config.coreRpcUser, password: config.coreRpcPassword, apiKey: config.coreRpcApiKey });
   // §P1-2: arm the two-node Core quorum when a secondary Core is configured.
   const secondaryProvider = config.coreRpcUrlSecondary
-    ? new CoreRpcProvider({ url: config.coreRpcUrlSecondary, user: config.coreRpcUser, password: config.coreRpcPassword })
+    ? new CoreRpcProvider({ url: config.coreRpcUrlSecondary, user: config.coreRpcUser, password: config.coreRpcPassword, apiKey: config.coreRpcApiKey })
     : null;
   const db = createDb(DB_URL);
   const store = new V3Store(config.network);
