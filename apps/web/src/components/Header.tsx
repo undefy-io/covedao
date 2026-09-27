@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useWallet } from "./WalletProvider";
@@ -20,8 +21,7 @@ export function Header() {
     <header className="sticky top-0 z-40 border-b border-rule bg-ink/95 backdrop-blur">
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="group flex items-center gap-2.5">
-          {/* A filled square, not a rounded app icon — the mark is a mark. */}
-          <span className="h-3.5 w-3.5 bg-signal transition-colors group-hover:bg-[#F0A253]" />
+          <Image src="/logo.png" alt="covs" width={24} height={24} priority className="h-6 w-6 transition-transform group-hover:rotate-[-8deg]" />
           <span className="text-sm tracking-label text-bone">
             covs<span className="text-bone-dim">.trade</span>
           </span>

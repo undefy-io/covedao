@@ -1,3 +1,5 @@
+<p><img src="docs/assets/covs-logo.png" alt="covs" width="96" /></p>
+
 # covs.trade
 
 **covs — a CRC-family token launchpad on Bitcoin L1 — state-committed Taproot UTXOs,

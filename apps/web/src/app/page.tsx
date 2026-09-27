@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useIndexedBlock } from "@/lib/use-indexed-block";
@@ -37,6 +38,7 @@ export default function HomePage() {
   return (
     <div className="space-y-px">
       <section className="panel px-6 py-14 sm:px-10 sm:py-20">
+        <Image src="/logo.png" alt="covs" width={72} height={72} priority className="mb-6 h-16 w-16 sm:h-[72px] sm:w-[72px]" />
         <p className="eyebrow">covs.trade · CRC-20 · Bitcoin L1</p>
         <h1 className="mt-5 max-w-3xl text-display text-bone">
           Covenant-backed
