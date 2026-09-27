@@ -1,6 +1,7 @@
 import { AppError } from "@crclaunch/cove-app";
 import { MarketError } from "@crclaunch/cove-market";
 import { BackingError } from "@crclaunch/cove-economics";
+import * as Sentry from "@sentry/nextjs";
 
 /** Serialize bigint as strings for the JSON API (no JS floating point). */
 function bigintToString(_key: string, value: unknown): unknown {
@@ -63,6 +64,9 @@ function codeOf(e: unknown): string {
 export function handleError(e: unknown): Response {
   console.error("[api] error:", e instanceof Error ? (e.stack ?? e.message) : String(e));
   const code = codeOf(e);
+  if (code === "INTERNAL_ERROR") {
+    Sentry.captureException(e instanceof Error ? e : new Error(String(e)));
+  }
   const human = humanCopy(code);
   const retryable = [
     "CORE_UNAVAILABLE",

@@ -226,6 +226,8 @@ Guardian) with only these env vars:
 | worker | `COVE_NETWORK`, `COVE_DATABASE_URL`, `COVE_BITCOIN_RPC_URL`, `COVE_GUARDIAN_ENDPOINT`, `COVE_GUARDIAN_AUTH_TOKEN`, `COVE_FEE_ADDRESS` |
 | guardian | `COVE_NETWORK`, `COVE_DATABASE_URL`, `COVE_BITCOIN_RPC_URL`, `GUARDIAN_AUTH_TOKEN`, `GUARDIAN_KEY_HEX`, `COVE_FEE_ADDRESS`, `COVE_V3_CANARY_ACTIVE` |
 
+The web app reports browser, server, and API 500 errors to Sentry when `SENTRY_DSN` is set. Set `SENTRY_ENVIRONMENT=dev` for local testing and `SENTRY_ENVIRONMENT=prod` for the production web build and runtime. Both variables must be available when building the web app because its browser configuration is compiled into the bundle. The DSN is in the web and root `.env.example` files; no Sentry auth token is needed for error delivery.
+
 The app and Guardian repositories must carry the same `packages/cove-mainnet/profiles.toml`. Its `[protocol]` values are shared and `COVE_NETWORK` selects a network section. Guardian validates env with `envalid` before service startup. The Guardian refuses to start unless `GUARDIAN_KEY_HEX` matches the profile's
 `guardianXOnly`. On Railway the web may reach it over private networking
 (`http://<guardian>.railway.internal:4391`); anywhere else it must be https.

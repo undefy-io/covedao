@@ -46,6 +46,7 @@ export const en = {
   "common.all": "All",
   "common.none": "—",
   "common.somethingWrong": "Something went wrong.",
+  "common.tryAgain": "Try again",
   "common.open": "Open",
   "common.graduated": "Graduated",
   "common.mintedOut": "Minted out",

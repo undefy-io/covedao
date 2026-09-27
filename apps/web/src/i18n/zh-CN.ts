@@ -48,6 +48,7 @@ export const zhCN: Record<MessageKey, string> = {
   "common.all": "全部",
   "common.none": "—",
   "common.somethingWrong": "出错了。",
+  "common.tryAgain": "重试",
   "common.open": "铸造中",
   "common.graduated": "已打满",
   "common.mintedOut": "已打满",

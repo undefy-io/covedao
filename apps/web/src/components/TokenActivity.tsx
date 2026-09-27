@@ -85,12 +85,12 @@ export function TokenActivity({
           <table className="ledger-table">
             <thead>
               <tr>
-                <th>{t("hist.block")}</th>
+                <th className="text-right">{t("hist.block")}</th>
                 <th>{t("hist.what")}</th>
                 <th className="text-right">{t("hist.amount")}</th>
                 <th className="text-right">{t("hist.value")}</th>
                 <th className="text-right">{t("hist.price1k")}</th>
-                <th>{t("hist.tx")}</th>
+                <th className="text-right">{t("hist.tx")}</th>
               </tr>
             </thead>
             <tbody>
@@ -101,7 +101,7 @@ export function TokenActivity({
                   : null;
                 return (
                   <tr key={r.txid}>
-                    <td className="text-bone-dim">{fmtInt(r.blockHeight)}</td>
+                    <td className="text-right text-bone-dim">{fmtInt(r.blockHeight)}</td>
                     <td>
                       <span className={r.valid ? "text-bone" : "text-rejected"}>
                         {LABEL[r.operation ?? ""] ? t(LABEL[r.operation ?? ""]!) : r.operation ?? "—"}
@@ -132,7 +132,7 @@ export function TokenActivity({
                         <span className="text-bone-dim">—</span>
                       )}
                     </td>
-                    <td>
+                    <td className="text-right">
                       {explorerBase ? (
                         <a
                           href={`${explorerBase}/tx/${r.txid}`}

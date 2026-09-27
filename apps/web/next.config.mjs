@@ -1,5 +1,8 @@
 import { config as loadEnv } from "dotenv";
 import { fileURLToPath } from "node:url";
+import sentry from "@sentry/nextjs/config";
+
+const { withSentryConfig } = sentry;
 
 // Load the monorepo-root .env so both web + worker share one configuration.
 loadEnv({ path: fileURLToPath(new URL("../../.env", import.meta.url)) });
@@ -22,6 +25,8 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_COVE_NETWORK: network,
     NEXT_PUBLIC_EXPLORER_URL: network === "mainnet" ? "" : (process.env.NEXT_PUBLIC_EXPLORER_URL ?? ""),
+    NEXT_PUBLIC_SENTRY_DSN: process.env.SENTRY_DSN ?? "",
+    NEXT_PUBLIC_SENTRY_ENVIRONMENT: process.env.SENTRY_ENVIRONMENT ?? "dev",
   },
   transpilePackages: [
     "@crclaunch/config",
@@ -50,4 +55,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, { silent: true, sourcemaps: { disable: true } });
