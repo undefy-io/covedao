@@ -38,10 +38,7 @@ const config = {
       navbar: {
         title: "covs.trade",
         logo: { alt: "covs", src: "img/logo.png" },
-        items: [
-          { href: "https://covs.trade", label: "App", position: "right" },
-          { href: "https://github.com/undefy-io/covedao", label: "GitHub", position: "right" },
-        ],
+        items: [],
       },
       footer: { style: "dark", copyright: "covs.trade — Bitcoin mainnet" },
     }),

@@ -23,7 +23,10 @@ export function StatusBar() {
         <span className="hidden items-center gap-1.5 sm:flex">
           <Dot color={status.guardian.configured ? "bg-success" : "bg-warning"} /> Guardian · {status.guardian.configured ? "available" : "not configured"}
         </span>
-        <span className="ml-auto flex items-center gap-1.5">
+        <a href="/docs/index.html" className="ml-auto text-bone-dim underline-offset-2 hover:text-signal hover:underline">
+          Docs
+        </a>
+        <span className="flex items-center gap-1.5">
           {status.market.enabled ? <Dot color="bg-success" /> : <Dot color="bg-gray-500" />} market {status.market.enabled ? "enabled" : "disabled"}
           <span className="text-bone-dim">· {status.network}</span>
         </span>

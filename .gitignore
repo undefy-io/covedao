@@ -60,3 +60,6 @@ fr.html
 # Docusaurus (apps/docs)
 /apps/docs/build/
 /apps/docs/.docusaurus/
+
+# Docs built into the web app (pnpm --filter @crclaunch/docs build:web)
+/apps/web/public/docs/
