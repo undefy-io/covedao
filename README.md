@@ -87,7 +87,7 @@ The issuance curve is a frozen 210-stair integer staircase. All arithmetic is
 | `packages/cove-recovery` | Offline threshold-recovery tool |
 | `packages/bitcoin` | PSBT construction, dust policy, Core RPC and Esplora providers |
 | `apps/web` | Next.js application |
-| `apps/guardian` | Standalone Guardian service (sign-only HTTP API) |
+| `apps/guardian` | Guardian service copy retained for existing CI; standalone source is in the separate `guardian` repository |
 | `apps/worker` | V3 indexer worker (`start`); the V1 mock worker is `start:v1` |
 
 `packages/protocol`, `packages/curve` and the V1 paths under `docs/legacy/` are
@@ -114,9 +114,12 @@ pnpm typecheck && pnpm lint && pnpm test
 `pnpm dev:infra` mines 101 blocks and funds the dev wallet identities (alice,
 bob, carol) on a fresh chain, then a miner container mines a block every 10 s
 (`MINE_INTERVAL`). On regtest the web app runs the Guardian policy in-process
-with the public test keys, so the standalone Guardian (`pnpm dev:guardian`) is
-not needed for manual testing. Stop with `pnpm dev:infra:down`; wipe the chain
-and database with `pnpm dev:infra:reset`.
+with the public test keys, so the separate Guardian service is not needed for
+normal app testing. To run and check that service locally, start
+`pnpm dev:infra` here, then run `pnpm dev:regtest` in the sibling `guardian`
+repository. The regtest web app does not call that HTTP service; mainnet uses
+the remote Guardian. Stop local infrastructure with `pnpm dev:infra:down`;
+wipe the chain and database with `pnpm dev:infra:reset`.
 
 Fees go to `COVE_FEE_ADDRESS` from `.env` (a local-only regtest address in
 `.env.example`), as on mainnet; `pnpm dev:fees` shows what it has collected.
