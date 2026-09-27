@@ -115,9 +115,12 @@ pnpm typecheck && pnpm lint && pnpm test
 bob, carol) on a fresh chain, then a miner container mines a block every 10 s
 (`MINE_INTERVAL`). On regtest the web app runs the Guardian policy in-process
 with the public test keys, so the separate Guardian service is not needed for
-normal app testing. To run and check that service locally, start
-`pnpm dev:infra` here, then run `pnpm dev:regtest` in the sibling `guardian`
-repository. The regtest web app does not call that HTTP service; mainnet uses
+normal app testing. To run that service in Docker, keep the sibling `guardian`
+repository at `../guardian`, run `pnpm dev:infra`, then run
+`pnpm dev:guardian:docker` here. Compose builds the Guardian from its own
+repository and keeps it running beside PostgreSQL and Bitcoin Core. Check it
+with `curl -H 'Authorization: Bearer local-dev' http://127.0.0.1:4391/health`.
+The regtest web app does not call that HTTP service; mainnet uses
 the remote Guardian. Stop local infrastructure with `pnpm dev:infra:down`;
 wipe the chain and database with `pnpm dev:infra:reset`.
 

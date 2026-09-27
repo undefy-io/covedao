@@ -90,6 +90,36 @@ services:
           $$CLI -rpcwallet=dev -generate 1 >/dev/null || $$CLI loadwallet dev >/dev/null 2>&1
         done
 
+  guardian:
+    profiles: [guardian]
+    build:
+      context: ../guardian
+    depends_on:
+      postgres: { condition: service_healthy }
+      bitcoind: { condition: service_healthy }
+    restart: unless-stopped
+    environment:
+      COVE_NETWORK: regtest
+      COVE_V3_CANARY_ACTIVE: "0"
+      COVE_DATABASE_URL: postgres://cove:cove@postgres:5432/cove
+      COVE_BITCOIN_RPC_URL: http://bitcoind:18443
+      COVE_BITCOIN_RPC_USER: user
+      COVE_BITCOIN_RPC_PASSWORD: pass
+      GUARDIAN_AUTH_TOKEN: local-dev
+      GUARDIAN_TEST_KEY_HEX: "4242424242424242424242424242424242424242424242424242424242424242"
+    ports:
+      - "127.0.0.1:4391:4391"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:4391/health',{headers:{authorization:'Bearer local-dev'}}).then(r=>r.json()).then(h=>process.exit(h.reachable&&h.auditHealthy&&h.signingJournalHealthy&&h.custodyBackendReady?0:1)).catch(()=>process.exit(1))"
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
   # What the fee address has collected: `pnpm dev:fees`. Reads COVE_FEE_ADDRESS
   # from the repo-root .env (compose loads it), the same value the app uses.
   fees:
