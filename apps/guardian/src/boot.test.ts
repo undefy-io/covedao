@@ -47,6 +47,7 @@ describe("Guardian boot (env)", () => {
       COVE_NETWORK: "regtest",
       COVE_TEST_ONLY_PROFILE_PATH: FIXTURE,
       GUARDIAN_TEST_KEY_HEX: "42".repeat(32),
+      GUARDIAN_KEY_HEX: "",
     });
     expect(boot.mainnetGuard).toBe(false);
     expect(boot.custody).toBe("test");

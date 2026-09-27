@@ -45,7 +45,12 @@ export function resolveGuardianBoot(
   raw: Record<string, string | undefined>,
 ): GuardianBoot {
   const env = cleanEnv(
-    raw,
+    {
+      ...raw,
+      GUARDIAN_KEY_HEX: raw.GUARDIAN_KEY_HEX || undefined,
+      GUARDIAN_TEST_KEY_HEX: raw.GUARDIAN_TEST_KEY_HEX || undefined,
+      COVE_ORD_URL: raw.COVE_ORD_URL || undefined,
+    },
     {
       COVE_NETWORK: str({ choices: ["regtest", "signet", "testnet", "mainnet"] }),
       COVE_DATABASE_URL: databaseUrl(),
