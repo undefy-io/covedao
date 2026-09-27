@@ -97,16 +97,26 @@ export class CoreRpcProvider implements BitcoinChainProvider {
       const token = Buffer.from(`${this.cfg.user}:${this.cfg.password ?? ""}`).toString("base64");
       headers.authorization = `Basic ${token}`;
     }
-    const res = await fetch(this.cfg.url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ jsonrpc: "1.0", id: `${++this.id}`, method, params }),
-      signal: AbortSignal.timeout(20_000),
-    });
-    if (!res.ok) throw new Error(`RPC ${method} HTTP ${res.status}`);
-    const json = (await res.json()) as { result?: T; error?: { message?: string } | null };
-    if (json.error) throw new Error(`RPC ${method}: ${json.error.message ?? "error"}`);
-    return json.result as T;
+    const body = JSON.stringify({ jsonrpc: "1.0", id: `${++this.id}`, method, params });
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const res = await fetch(this.cfg.url, {
+        method: "POST",
+        headers,
+        body,
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (res.status === 429 && attempt < 3) {
+        const retryAfterSeconds = Number(res.headers.get("retry-after"));
+        const retryAfterMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0 ? retryAfterSeconds * 1_000 : 0;
+        await new Promise((resolve) => setTimeout(resolve, Math.max(2_000 * (attempt + 1), retryAfterMs)));
+        continue;
+      }
+      if (!res.ok) throw new Error(`RPC ${method} HTTP ${res.status}`);
+      const json = (await res.json()) as { result?: T; error?: { message?: string } | null };
+      if (json.error) throw new Error(`RPC ${method}: ${json.error.message ?? "error"}`);
+      return json.result as T;
+    }
+    throw new Error(`RPC ${method} rate limit retries exhausted`);
   }
 
   async getBestHeight(): Promise<number> {

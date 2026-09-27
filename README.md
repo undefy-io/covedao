@@ -152,6 +152,28 @@ For a hosted signet RPC such as Tatum, set `COVE_NETWORK=signet`,
 `COVE_BITCOIN_RPC_PASSWORD` unset. The local `scripts/signet-up.sh` starts its
 own Bitcoin Core node and does not use this hosted-RPC setup.
 
+For the local Docker signet stack, keep `.env.signet.local` (gitignored) with
+the RPC settings above, `COVE_DATABASE_URL` and `DATABASE_URL` both set to
+`postgres://cove:cove@postgres:5432/cove_signet`, signet-only
+`COVE_GUARDIAN_PRIVATE_KEY_HEX`, `COVE_RECOVERY_PRIVATE_KEY_HEX`, and
+`COVE_FEE_PRIVATE_KEY_HEX`, plus `COVE_ACTIVATION_HEIGHT`, `SENTRY_DSN`, and
+`SENTRY_ENVIRONMENT=dev`. Set the activation height to the signet tip before
+the first Cove transaction and keep it and the keys fixed on restarts. The
+signet app uses its local Guardian signer; the separate Guardian service is
+used on mainnet. This Compose stack creates its own Postgres volume and runs
+migrations automatically:
+
+```bash
+docker compose --profile guardian --profile app stop
+docker compose -f docker-compose.signet.yml up -d --build --wait
+# App: http://127.0.0.1:3000
+curl http://127.0.0.1:3000/api/v3/status
+```
+
+To stop signet without deleting its database, run
+`docker compose -f docker-compose.signet.yml stop`. After that,
+`pnpm dev:stack` starts the retained regtest stack again.
+
 Build the Simplicity predicate and verify the frozen CMRs:
 
 ```bash

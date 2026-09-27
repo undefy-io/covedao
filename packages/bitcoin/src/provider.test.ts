@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CoreRpcProvider, btcPerKvbToSatPerVb, testMempoolAcceptParams } from "./provider.js";
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
 
 describe("CoreRpcProvider authentication", () => {
   it("sends an API key in x-api-key without Basic authorization", async () => {
@@ -17,6 +20,20 @@ describe("CoreRpcProvider authentication", () => {
 
   it("rejects combining an API key with Basic credentials", () => {
     expect(() => new CoreRpcProvider({ url: "https://example.com", apiKey: "key", user: "user" })).toThrow(/cannot be combined/);
+  });
+
+  it("retries an HTTP 429 before returning the RPC result", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 429 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ result: 123, error: null }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const provider = new CoreRpcProvider({ url: "https://example.com", apiKey: "test-api-key" });
+
+    const height = provider.getBestHeight();
+    await vi.runAllTimersAsync();
+    expect(await height).toBe(123);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
 
