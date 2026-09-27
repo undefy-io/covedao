@@ -6,6 +6,14 @@ import { useEffect, useState } from "react";
 import { useIndexedBlock } from "@/lib/use-indexed-block";
 import { TokenCard, type V3TokenCardData } from "@/components/TokenCard";
 import { Tile } from "@/components/Tile";
+import { PUBLIC_SUPPLY_TOKENS, TEAM_ALLOCATION_TOKENS, CREATOR_PREMINE_TOKENS, getTheoreticalFullRaise } from "@crclaunch/curve";
+
+/** 21000000n → "21M". Computed from the curve so the numbers cannot go stale. */
+function fmtCompact(n: bigint): string {
+  if (n >= 1_000_000n) return `${Number(n) / 1_000_000}M`;
+  if (n >= 1_000n) return `${Number(n) / 1_000}K`;
+  return n.toString();
+}
 import { useSparklines } from "@/lib/use-sparklines";
 
 /**
@@ -57,12 +65,12 @@ export default function HomePage() {
       </section>
 
       <section className="panel px-6 py-8 sm:px-10">
-        <p className="eyebrow">The ledger</p>
+        <p className="eyebrow">Every token, same rules</p>
         <div className="mt-5 grid grid-cols-2 gap-px bg-rule sm:grid-cols-4">
-          <Tile value="1B" label="Total supply" />
-          <Tile value="0" label="Held back" />
-          <Tile value="0.288" label="BTC at full cap" />
-          <Tile value="20" label="Curve stages" />
+          <Tile value={fmtCompact(PUBLIC_SUPPLY_TOKENS)} label="Total supply" />
+          <Tile value={fmtCompact(TEAM_ALLOCATION_TOKENS + CREATOR_PREMINE_TOKENS)} label="Team tokens" />
+          <Tile value="50%" label="Of each mint to the creator" />
+          <Tile value={`${(Number(getTheoreticalFullRaise()) / 1e8).toFixed(3)} BTC`} label="In the vault at mint-out" />
         </div>
       </section>
 
