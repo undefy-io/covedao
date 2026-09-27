@@ -2,6 +2,8 @@
 
 # covs.trade
 
+> covs.trade — covenant-powered CRC launchpad on Bitcoin.
+
 **covs — a CRC-family token launchpad on Bitcoin L1 — state-committed Taproot UTXOs,
 an open indexer, and a non-custodial marketplace.**
 
