@@ -1,7 +1,7 @@
-# Local infra for manual testing on regtest: Postgres + Bitcoin Core.
+# Local regtest stack.
 #
-#   pnpm dev:infra         start everything, wait until healthy, push the DB schema
-#   pnpm dev               run web (http://localhost:3000) + worker
+#   pnpm dev:infra         start Postgres + Bitcoin Core and push the DB schema
+#   pnpm dev:stack         also start web, worker, and Guardian in Docker
 #   pnpm dev:infra:down    stop (keeps the chain and the database)
 #   pnpm dev:infra:reset   stop and delete the chain and the database
 #   pnpm dev:fees          fees collected at COVE_FEE_ADDRESS (from .env)
@@ -119,6 +119,69 @@ services:
       timeout: 5s
       retries: 12
       start_period: 20s
+
+  worker:
+    profiles: [app]
+    image: covedao-local-app
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    working_dir: /app/apps/worker
+    command: ["pnpm", "start"]
+    env_file: .env
+    environment:
+      COVE_NETWORK: regtest
+      COVE_DATABASE_URL: postgres://cove:cove@postgres:5432/cove
+      COVE_BITCOIN_RPC_URL: http://bitcoind:18443
+      COVE_BITCOIN_RPC_USER: user
+      COVE_BITCOIN_RPC_PASSWORD: pass
+    depends_on:
+      postgres: { condition: service_healthy }
+      bitcoind: { condition: service_healthy }
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "const {Client}=require('pg');const db=new Client({connectionString:process.env.COVE_DATABASE_URL});db.connect().then(()=>db.query(\"SELECT height FROM cove_v3_cursor WHERE network='regtest'\")).then(async r=>{const auth=Buffer.from(process.env.COVE_BITCOIN_RPC_USER+':'+process.env.COVE_BITCOIN_RPC_PASSWORD).toString('base64');const res=await fetch(process.env.COVE_BITCOIN_RPC_URL,{method:'POST',headers:{authorization:'Basic '+auth,'content-type':'application/json'},body:JSON.stringify({jsonrpc:'1.0',id:'health',method:'getblockcount',params:[]})});const tip=(await res.json()).result;const lag=BigInt(tip)-BigInt(r.rows[0].height);process.exit(res.ok&&lag>=0n&&lag<=2n?0:1)}).catch(()=>process.exit(1))"
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 30s
+
+  web:
+    profiles: [app]
+    image: covedao-local-app
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    working_dir: /app/apps/web
+    command: ["pnpm", "exec", "next", "dev", "--hostname", "0.0.0.0"]
+    env_file: .env
+    environment:
+      COVE_NETWORK: regtest
+      COVE_DATABASE_URL: postgres://cove:cove@postgres:5432/cove
+      COVE_BITCOIN_RPC_URL: http://bitcoind:18443
+      COVE_BITCOIN_RPC_USER: user
+      COVE_BITCOIN_RPC_PASSWORD: pass
+    depends_on:
+      postgres: { condition: service_healthy }
+      bitcoind: { condition: service_healthy }
+      worker: { condition: service_healthy }
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/v3/status').then(r=>r.json()).then(j=>process.exit(j.ok&&j.data?.indexer?.health==='HEALTHY'?0:1)).catch(()=>process.exit(1))"
+      interval: 5s
+      timeout: 10s
+      retries: 24
+      start_period: 30s
 
   # What the fee address has collected: `pnpm dev:fees`. Reads COVE_FEE_ADDRESS
   # from the repo-root .env (compose loads it), the same value the app uses.

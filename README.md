@@ -98,31 +98,38 @@ suite. New work targets the Cove V3 packages above.
 
 ## Getting started
 
-Requires Node 22, pnpm 10, Docker, and Rust (for the Simplicity binary).
+Requires Node 22, pnpm 10, and Docker. Docker builds the Simplicity Rust binary.
 
 ```bash
 pnpm install
 cp .env.example .env          # local regtest; sets COVE_NETWORK=regtest
-(cd packages/cove-simplicity/rust && cargo build --release)
-
-pnpm dev:infra                # Postgres + bitcoind regtest in Docker, DB schema pushed
-pnpm dev                      # web (http://localhost:3000) + V3 worker
+pnpm dev:stack                # web, worker, Guardian, Postgres and Bitcoin Core in Docker
 
 pnpm typecheck && pnpm lint && pnpm test
 ```
+
+`pnpm dev:stack` builds the Rust executable in Docker, applies the local database
+schema, and waits for the web, worker, and Guardian health checks. The web app is
+at `http://localhost:3000`; Guardian listens on `127.0.0.1:4391`. Docker Compose
+restarts the services if they exit. Use `docker compose ps` and
+`docker compose logs -f web worker guardian` to inspect them.
+Run `pnpm dev:stack` again after source changes to rebuild the local images.
 
 `pnpm dev:infra` mines 101 blocks and funds the dev wallet identities (alice,
 bob, carol) on a fresh chain, then a miner container mines a block every 10 s
 (`MINE_INTERVAL`). On regtest the web app runs the Guardian policy in-process
 with the public test keys, so the separate Guardian service is not needed for
-normal app testing. To run that service in Docker, keep the sibling `guardian`
-repository at `../guardian`, run `pnpm dev:infra`, then run
-`pnpm dev:guardian:docker` here. Compose builds the Guardian from its own
-repository and keeps it running beside PostgreSQL and Bitcoin Core. Check it
-with `curl -H 'Authorization: Bearer local-dev' http://127.0.0.1:4391/health`.
+normal app testing. The separate Guardian in the full Docker stack is built
+from the sibling `guardian` repository at `../guardian`. Check it with
+`curl -H 'Authorization: Bearer local-dev' http://127.0.0.1:4391/health`.
 The regtest web app does not call that HTTP service; mainnet uses
 the remote Guardian. Stop local infrastructure with `pnpm dev:infra:down`;
 wipe the chain and database with `pnpm dev:infra:reset`.
+
+For host-run development with live reload, run `pnpm dev:infra`, build the Rust
+executable under `packages/cove-simplicity/rust`, then run `pnpm dev`. Stop the
+Docker web and worker services first if the full stack is running, since they
+use the same port and database worker lock.
 
 Fees go to `COVE_FEE_ADDRESS` from `.env` (a local-only regtest address in
 `.env.example`), as on mainnet; `pnpm dev:fees` shows what it has collected.
