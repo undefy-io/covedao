@@ -17,7 +17,7 @@ export function StatusBar() {
           <Dot color={coreOk ? "bg-success" : "bg-danger"} /> Bitcoin Core · {coreOk ? `height ${status.core.height}` : "unavailable"}
         </span>
         <span className="flex items-center gap-1.5">
-          <Dot color={healthy ? "bg-success" : "bg-danger"} /> Cove indexer · {status.indexer.health.toLowerCase()}
+          <Dot color={healthy ? "bg-success" : "bg-danger"} /> covs indexer · {status.indexer.health.toLowerCase()}
           {status.indexer.lag !== "0" ? ` (lag ${status.indexer.lag})` : ""}
         </span>
         <span className="hidden items-center gap-1.5 sm:flex">

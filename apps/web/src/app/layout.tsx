@@ -7,9 +7,9 @@ import { WalletPicker } from "@/components/WalletPicker";
 import { DevWallet } from "@/components/DevWallet";
 
 export const metadata: Metadata = {
-  title: "Cove",
+  title: "covs.trade",
   description:
-    "Launch Bitcoin-native tokens with deterministic backing. Buy from Cove Backing, redeem back to BTC, transfer directly, or trade fixed-price P2P.",
+    "Launch Bitcoin-native tokens with deterministic backing. Mint from the token's covenant vault, sell back to it for BTC, transfer directly, or trade fixed-price P2P.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

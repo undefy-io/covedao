@@ -124,7 +124,7 @@ function coveEnvelope(psbt: bitcoin.Psbt) {
     try {
       return decodeV2(Buffer.from(out.script.subarray(2)));
     } catch (e) {
-      mismatch(`the Cove envelope in this transaction is unreadable: ${(e as Error).message}`);
+      mismatch(`the covs envelope in this transaction is unreadable: ${(e as Error).message}`);
     }
   }
   return null;

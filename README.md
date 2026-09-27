@@ -1,6 +1,6 @@
-# Cove
+# covs.trade
 
-**A CRC-family token protocol on Bitcoin L1 — state-committed Taproot UTXOs,
+**covs — a CRC-family token launchpad on Bitcoin L1 — state-committed Taproot UTXOs,
 an open indexer, and a non-custodial marketplace.**
 
 Cove issues tokens whose protocol state is committed into the Taproot output

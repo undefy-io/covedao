@@ -191,7 +191,7 @@ test("E2E-003 transfer: Alice transfers to Bob (backing + supply unchanged)", as
   expect(BigInt(detail.data.issuedSupplyAtoms)).toBe(minted);
 });
 
-test("E2E-004 redeem: Bob instant-sells to Cove Backing", async ({ browser }) => {
+test("E2E-004 redeem: Bob sells back to the vault", async ({ browser }) => {
   const page = await walletPage(browser, IDENTITIES.bob);
   await page.goto(`${BASE}/token/${aliceTokenId}`);
   await page.getByRole("button", { name: /connect wallet/i }).click();

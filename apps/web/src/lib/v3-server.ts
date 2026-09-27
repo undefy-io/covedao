@@ -56,6 +56,6 @@ export function getV3Services(): V3Services {
 
 export function assertV3Enabled(): V3Services {
   const s = getV3Services();
-  if (!s.config.enabled) throw new AppError("APP_DISABLED", "Cove V3 application is disabled");
+  if (!s.config.enabled) throw new AppError("APP_DISABLED", "covs is disabled on this server");
   return s;
 }

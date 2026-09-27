@@ -50,7 +50,7 @@ function ActivityContent() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl text-bone">Activity</h1>
-        <p className="text-sm text-bone-dim">Canonical confirmed Cove events (never broadcast-as-confirmed).</p>
+        <p className="text-sm text-bone-dim">Canonical confirmed covs events (never broadcast-as-confirmed).</p>
       </div>
       {!loaded ? (
         <p className="text-bone-dim">Loading…</p>

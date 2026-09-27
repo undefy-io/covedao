@@ -70,9 +70,9 @@ function humanCopy(code: string): string {
     case "ECONOMIC_DUST":
       return "This trade is too small to be worth making.";
     case "INDEXER_REBUILDING":
-      return "Cove is rebuilding chain state. Trading is temporarily paused.";
+      return "covs is rebuilding chain state. Trading is temporarily paused.";
     case "INDEXER_UNHEALTHY":
-      return "The Cove indexer is catching up. Trading is temporarily paused.";
+      return "The covs indexer is catching up. Trading is temporarily paused.";
     case "CORE_UNAVAILABLE":
       return "Bitcoin Core is unreachable. Trading is temporarily paused.";
     case "WALLET_REQUIRED":

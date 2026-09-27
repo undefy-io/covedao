@@ -261,7 +261,7 @@ export class V3AppService {
   // ── guards ────────────────────────────────────────────────────────────────
 
   private assertEnabled(): void {
-    if (!this.config.enabled) throw new AppError("APP_DISABLED", "Cove V3 application is disabled");
+    if (!this.config.enabled) throw new AppError("APP_DISABLED", "covs is disabled on this server");
   }
 
   private assertNetwork(): V3Network {
@@ -706,7 +706,7 @@ export class V3AppService {
           : "") +
         (skippedAssets.length > 0 ? ` Skipped coins holding inscriptions or runes: ${skippedAssets.join(", ")}.` : "") +
         (twoAddress
-          ? " Cove pays only from your wallet's payment (BTC) address, not its token (taproot) address — send BTC there first."
+          ? " covs pays only from your wallet's payment (BTC) address, not its token (taproot) address — send BTC there first."
           : ""),
     );
   }

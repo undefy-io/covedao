@@ -232,7 +232,7 @@ export class MarketService {
     }
     const parsed = parseCoveTx(raw);
     if (parsed.kind !== "TRANSFER" || parsed.envelope.op !== OP_TRANSFER_CODE) {
-      throw new MarketError("LISTING_BAD_SOURCE", "source is not the output of a Cove transfer");
+      throw new MarketError("LISTING_BAD_SOURCE", "source is not the output of a covs transfer");
     }
     if (parsed.envelope.tokenId.toString("hex") !== listing.tokenId) {
       throw new MarketError("LISTING_SOURCE_MISMATCH", "source transfer moves another token");

@@ -37,17 +37,17 @@ export default function HomePage() {
   return (
     <div className="space-y-px">
       <section className="panel px-6 py-14 sm:px-10 sm:py-20">
-        <p className="eyebrow">CRC-20 · Bitcoin L1</p>
+        <p className="eyebrow">covs.trade · CRC-20 · Bitcoin L1</p>
         <h1 className="mt-5 max-w-3xl text-display text-bone">
-          State-committed
+          Covenant-backed
           <br />
-          tokens.
+          tokens on Bitcoin.
         </h1>
         <p className="mt-6 max-w-xl text-sm leading-relaxed text-bone-dim">
-Every token is a flat 1,000,000,000 supply with nothing held back for the
-          team. Supply and backing are committed into the Taproot output key of a live UTXO, and
-          Bitcoin settles the transaction. The indexer is open, deterministic and in this
-          repository — so you can reproduce the state root yourself rather than take our word for it.
+          Every token gets its own covenant vault. Mint with BTC as the price climbs 210 small
+          stairs to 21,000,000 tokens, with nothing held back for the team. The creator earns 50%
+          of every mint, and you can always sell back to the vault for real BTC. The indexer is
+          open and deterministic — reproduce the state yourself rather than take our word for it.
         </p>
         <div className="mt-9 flex flex-wrap gap-3">
           <Link href="/launch" className="btn">Launch a token</Link>
@@ -126,12 +126,12 @@ Every token is a flat 1,000,000,000 supply with nothing held back for the
             items={[
               "Supply conservation and the issuance curve",
               "Payment amounts and the recovery profile",
-              "Bitcoin will not reject an invalid Cove transition; the indexer ignores it",
+              "Bitcoin will not reject an invalid covs transition; the indexer ignores it",
             ]}
           />
         </div>
         <p className="mt-6 max-w-2xl text-xs leading-relaxed text-bone-dim">
-          Cove is client-validated, like every Bitcoin metaprotocol today — there are no covenants on
+          covs is client-validated, like every Bitcoin metaprotocol today — there are no covenants on
           Bitcoin mainnet; every proposal is still a draft. The difference is that this validator is
           reproducible: the indexer is public, the state root is deterministic, and two independent
           operators can check each other.

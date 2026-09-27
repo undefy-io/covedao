@@ -6,7 +6,7 @@ test.describe("mobile smoke", () => {
 
   test("home renders", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByText(/State-committed/i).first()).toBeVisible();
+    await expect(page.getByText(/Covenant-backed/i).first()).toBeVisible();
   });
 
   test("explore renders", async ({ page }) => {

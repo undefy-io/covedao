@@ -22,7 +22,9 @@ export function Header() {
         <Link href="/" className="group flex items-center gap-2.5">
           {/* A filled square, not a rounded app icon — the mark is a mark. */}
           <span className="h-3.5 w-3.5 bg-signal transition-colors group-hover:bg-[#F0A253]" />
-          <span className="text-sm uppercase tracking-label text-bone">Cove</span>
+          <span className="text-sm tracking-label text-bone">
+            covs<span className="text-bone-dim">.trade</span>
+          </span>
         </Link>
 
         <nav className="flex items-center gap-0.5">

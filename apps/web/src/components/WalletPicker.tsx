@@ -186,7 +186,7 @@ export function WalletPicker() {
         <p className="border-t border-rule px-5 py-4 text-xs leading-relaxed text-bone-dim">
           {REGTEST
             ? "Local regtest wallets. Their keys are public and in the repository, and they sign on the server without asking. Disconnect and connect again to switch."
-            : "Cove needs two addresses from your wallet: one holding BTC to pay with, and one holding your tokens. Most wallets provide both. Nothing is signed until you approve it."}
+            : "covs needs two addresses from your wallet: one holding BTC to pay with, and one holding your tokens. Most wallets provide both. Nothing is signed until you approve it."}
         </p>
       </div>
     </div>
