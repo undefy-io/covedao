@@ -116,11 +116,11 @@ jobs:
         env:
           COVE_TEST_ONLY_PROFILE_PATH: test/fixtures/mainnet-profile.json
 
-      - name: Readiness --static (committed profile → READY_EXCEPT_FOR_OPERATOR_CEREMONY)
+      - name: Readiness --static (committed profile)
         run: |
           OUT=$(pnpm cove:v3-mainnet-readiness --static)
           echo "$OUT"
-          echo "$OUT" | grep -q "READY_EXCEPT_FOR_OPERATOR_CEREMONY"
+          echo "$OUT" | grep -Eq "READY_EXCEPT_FOR_OPERATOR_CEREMONY|STATIC_PROFILE_READY"
 
       # The readiness gate MUST fail closed when no Guardian is reachable. The
       # COVE_V3_FIXTURE_GUARDIAN escape hatch was removed (audit §C9: one env

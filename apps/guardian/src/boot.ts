@@ -24,6 +24,7 @@ export interface GuardianBoot {
   network: CoveNetworkName;
   /** Mainnet rules apply: COVE_NETWORK=mainnet, or the committed (mainnet) profile. */
   mainnetGuard: boolean;
+  canaryActive: boolean;
   profile: ResolvedMainnetProfile;
   custodyBackend: GuardianCustodyBackend;
   custody: "env-key" | "test" | "unconfigured";
@@ -67,6 +68,7 @@ export function resolveGuardianBoot(env: Record<string, string | undefined>): Gu
   return {
     network,
     mainnetGuard,
+    canaryActive: ["1", "true", "yes", "on"].includes((env.COVE_V3_CANARY_ACTIVE ?? "").toLowerCase()),
     profile,
     custodyBackend,
     custody: keyHex ? "env-key" : testKeyHex ? "test" : "unconfigured",

@@ -14,9 +14,8 @@ bitcoin.initEccLib(ecc as unknown as Parameters<typeof bitcoin.initEccLib>[0]);
 const ECPair = ECPairFactory(ecc);
 
 /**
- * REAL Core regtest recovery consensus matrix (§7). Funds a MAINNET1 (2-of-3)
- * vault, then proves: before-CSV reject, 1/3 reject, malformed witness reject,
- * 2/3 accept after CSV maturity. No mainnet; deterministic test keys only.
+ * REAL Core regtest recovery consensus matrix (§7). Proves both MAINNET1
+ * recovery shapes against Bitcoin Core. No mainnet; deterministic test keys only.
  */
 
 const RPC_URL = process.env.COVE_REGTEST_RPC_URL ?? "http://127.0.0.1:18443";
@@ -152,6 +151,36 @@ async function main() {
   assert(txid === bitcoin.Transaction.fromHex(hex).getId(), "txid mismatch");
 
   console.log(`✓ recovery consensus matrix PASSED (2-of-3, CSV ${CSV}) — txid ${txid.slice(0, 16)}…`);
+
+  // The simple production option is one distinct offline recovery key.
+  const singleProfile = { profileVersion: "COVE_V3_VAULT_PROFILE_MAINNET1" as const,
+    recoveryCsvBlocks: CSV, recoveryThreshold: 1, recoveryPubkeys: [K1] };
+  const singleVault = buildRecoveryDraft({
+    state, guardianXOnly: xonly(0x42), recoveryProfile: singleProfile,
+    outpoint: { txid: "00".repeat(32), vout: 0 }, vaultValueSats: 10_000n,
+    destinationScript, minerFeeSats: 1000n, maxMinerFeeSats: 2000n,
+  }).vault;
+  const singleFundTxid = await wrpc<string>("sendtoaddress", [singleVault.address, 1.0]);
+  await rpc("generatetoaddress", [1, await wrpc<string>("getnewaddress")]);
+  const singleFundTx = bitcoin.Transaction.fromHex(await provider.getRawTransaction(singleFundTxid));
+  const singleVout = singleFundTx.outs.findIndex((o) => o.script.equals(singleVault.scriptPubKey));
+  assert(singleVout >= 0, "single-key funding output not found");
+  const singleSpend = buildRecoveryDraft({
+    state, guardianXOnly: xonly(0x42), recoveryProfile: singleProfile,
+    outpoint: { txid: singleFundTxid, vout: singleVout },
+    vaultValueSats: BigInt(singleFundTx.outs[singleVout]!.value),
+    destinationScript, minerFeeSats: 1000n, maxMinerFeeSats: 2000n,
+  });
+  addRecoverySignature(singleSpend, K1, signRecoverySighash(singleSpend.sighash, priv(0x51)));
+  const singleHex = finalizeRecovery(singleSpend);
+  assert((await provider.testMempoolAccept(singleHex)).allowed === false, "single-key recovery must wait for CSV");
+  await rpc("generatetoaddress", [CSV, await wrpc<string>("getnewaddress")]);
+  const singleAccept = await provider.testMempoolAccept(singleHex);
+  assert(singleAccept.allowed === true, `single-key recovery rejected at maturity: ${singleAccept.rejectReason}`);
+  const singleTxid = await provider.broadcastTransaction(singleHex);
+  await rpc("generatetoaddress", [1, await wrpc<string>("getnewaddress")]);
+  assert(singleTxid === bitcoin.Transaction.fromHex(singleHex).getId(), "single-key txid mismatch");
+  console.log(`✓ recovery consensus matrix PASSED (1-of-1, CSV ${CSV}) — txid ${singleTxid.slice(0, 16)}…`);
 }
 
 main().catch((e) => {

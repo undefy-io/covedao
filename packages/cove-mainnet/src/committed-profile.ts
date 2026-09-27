@@ -41,7 +41,7 @@ export const COMMITTED_MAINNET_PROFILE_JSON = `{
   "activationHeight": null,
   "guardianXOnly": null,
   "recovery": {
-    "threshold": 2,
+    "threshold": 1,
     "csvBlocks": null,
     "pubkeys": []
   },

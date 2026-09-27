@@ -4,11 +4,7 @@ import { buildBackingVaultV3, type VaultRecoveryProfile } from "@crclaunch/cove-
 import { executeMintV3, executeRedeemV3 } from "@crclaunch/cove-simplicity";
 import { COVE_FEE_CONFIG, checkFeeSettlement } from "@crclaunch/cove-economics";
 import { RESERVE_ANCHOR_SATS } from "./builder.js";
-import {
-  analyzeMintTransitionV3,
-  analyzeRedeemTransitionV3,
-  CoveAnalyzeError,
-} from "./analyze.js";
+import { analyzeMintTransitionV3, analyzeRedeemTransitionV3, CoveAnalyzeError } from "./analyze.js";
 import { buildCanonicalMintWitness, buildCanonicalRedeemWitness } from "./witness.js";
 import { readPsbtOutputs, decodeCoveOpReturn } from "./resolve.js";
 import { checkDiscoveryOutput } from "./discoveryOutput.js";
@@ -94,14 +90,29 @@ export interface ValidateParams {
  * view catches carriers of the token being traded without a lookup; the
  * checker covers other Cove tokens, inscriptions, runes and confirmation.
  */
-async function checkFundingInputs(params: ValidateParams, indices: number[]): Promise<ValidationResult | null> {
+async function checkFundingInputs(
+  params: ValidateParams,
+  indices: number[],
+): Promise<ValidationResult | null> {
   for (const i of indices) {
     const txIn = params.psbt.txInputs[i]!;
     const outpoint = { txid: Buffer.from(txIn.hash).reverse().toString("hex"), vout: txIn.index };
     if (params.view.getTokenUtxo(outpoint)) {
-      return reject("FUNDING_HOLDS_TOKEN", `funding input ${outpoint.txid}:${outpoint.vout} holds Cove tokens`);
+      return reject(
+        "FUNDING_HOLDS_TOKEN",
+        `funding input ${outpoint.txid}:${outpoint.vout} holds Cove tokens`,
+      );
     }
-    const verdict = await params.fundingChecker.check(outpoint);
+    const prevout = params.psbt.data.inputs[i]?.witnessUtxo;
+    if (!prevout)
+      return reject(
+        "FUNDING_PREVOUT_MISMATCH",
+        `funding input ${outpoint.txid}:${outpoint.vout} has no witness UTXO`,
+      );
+    const verdict = await params.fundingChecker.check(outpoint, params.view.cursorHeight, {
+      script: prevout.script,
+      valueSats: BigInt(prevout.value),
+    });
     if (!verdict.ok) return reject(verdict.code, verdict.detail);
   }
   return null;
@@ -111,7 +122,10 @@ export async function validateMintTransitionV3(params: ValidateParams): Promise<
   const maxMinerFee = params.maxMinerFeeSats ?? 20_000n;
 
   // Mainnet requires the MAINNET1 recovery profile (fail closed; §36).
-  if (params.network === "mainnet" && params.recoveryProfile?.profileVersion !== "COVE_V3_VAULT_PROFILE_MAINNET1") {
+  if (
+    params.network === "mainnet" &&
+    params.recoveryProfile?.profileVersion !== "COVE_V3_VAULT_PROFILE_MAINNET1"
+  ) {
     return reject("MAINNET_PROFILE_REQUIRED", "mainnet requires the MAINNET1 recovery profile");
   }
 
@@ -128,14 +142,14 @@ export async function validateMintTransitionV3(params: ValidateParams): Promise<
     state: analysis.currentState,
     guardianXOnly: params.guardianXOnly,
     recoveryKeyXOnly: params.recoveryKeyXOnly,
-      recoveryProfile: params.recoveryProfile,
+    recoveryProfile: params.recoveryProfile,
     network: btcNet,
   });
   const nextVault = buildBackingVaultV3({
     state: analysis.nextState,
     guardianXOnly: params.guardianXOnly,
     recoveryKeyXOnly: params.recoveryKeyXOnly,
-      recoveryProfile: params.recoveryProfile,
+    recoveryProfile: params.recoveryProfile,
     network: btcNet,
   });
 
@@ -186,7 +200,10 @@ export async function validateMintTransitionV3(params: ValidateParams): Promise<
   const carrier = outputs[MINT_CARRIER_VOUT];
   if (!carrier) return reject("CARRIER_MISSING", "no carrier output at vout 2");
   if (carrier.value !== TOKEN_CARRIER_SATS) {
-    return reject("CARRIER_VALUE_MISMATCH", `carrier value ${carrier.value} != ${TOKEN_CARRIER_SATS}`);
+    return reject(
+      "CARRIER_VALUE_MISMATCH",
+      `carrier value ${carrier.value} != ${TOKEN_CARRIER_SATS}`,
+    );
   }
   if (!isStandardCarrier(carrier.script)) {
     return reject("CARRIER_NOT_STANDARD", "carrier is not P2TR/P2WPKH");
@@ -199,7 +216,10 @@ export async function validateMintTransitionV3(params: ValidateParams): Promise<
     return reject("FEE_MISMATCH", `fee ${feeOut.value} != ${analysis.protocolFeeSats}`);
   }
   if (!feeOut.script.equals(params.feeScript)) {
-    return reject("FEE_DESTINATION_MISMATCH", "fee output script is not the configured fee destination");
+    return reject(
+      "FEE_DESTINATION_MISMATCH",
+      "fee output script is not the configured fee destination",
+    );
   }
 
   // ── explicit fee-dust settlement (never a nonstandard fee output) ──
@@ -218,13 +238,24 @@ export async function validateMintTransitionV3(params: ValidateParams): Promise<
 
   // ── creator share (vout 4), to the address recorded at DEPLOY ──
   const creatorOut = outputs[MINT_CREATOR_VOUT];
-  if (!creatorOut || creatorOut.value !== analysis.creatorFeeSats || !creatorOut.script.equals(analysis.creatorScript)) {
-    return reject("CREATOR_FEE_MISMATCH", `vout 4 must pay the creator ${analysis.creatorFeeSats} sats`);
+  if (
+    !creatorOut ||
+    creatorOut.value !== analysis.creatorFeeSats ||
+    !creatorOut.script.equals(analysis.creatorScript)
+  ) {
+    return reject(
+      "CREATOR_FEE_MISMATCH",
+      `vout 4 must pay the creator ${analysis.creatorFeeSats} sats`,
+    );
   }
 
   // ── advisory crc-20 discovery envelope (§D1): never read into state, but a
   //    contradicting payload is refused a signature outright ──
-  const discovery = checkDiscoveryOutput(outputs, decodeCoveOpReturn(params.psbt), params.discoveryTicker);
+  const discovery = checkDiscoveryOutput(
+    outputs,
+    decodeCoveOpReturn(params.psbt),
+    params.discoveryTicker,
+  );
   if (discovery.present && !discovery.agrees) {
     return reject("DISCOVERY_MISMATCH", discovery.reason ?? "discovery envelope mismatch");
   }
@@ -269,11 +300,16 @@ export async function validateMintTransitionV3(params: ValidateParams): Promise<
   return { ok: true, analysis, simplicity: sim };
 }
 
-export async function validateRedeemTransitionV3(params: ValidateParams): Promise<ValidationResult> {
+export async function validateRedeemTransitionV3(
+  params: ValidateParams,
+): Promise<ValidationResult> {
   const maxMinerFee = params.maxMinerFeeSats ?? 20_000n;
 
   // Mainnet requires the MAINNET1 recovery profile (fail closed; §36).
-  if (params.network === "mainnet" && params.recoveryProfile?.profileVersion !== "COVE_V3_VAULT_PROFILE_MAINNET1") {
+  if (
+    params.network === "mainnet" &&
+    params.recoveryProfile?.profileVersion !== "COVE_V3_VAULT_PROFILE_MAINNET1"
+  ) {
     return reject("MAINNET_PROFILE_REQUIRED", "mainnet requires the MAINNET1 recovery profile");
   }
 
@@ -290,14 +326,14 @@ export async function validateRedeemTransitionV3(params: ValidateParams): Promis
     state: analysis.currentState,
     guardianXOnly: params.guardianXOnly,
     recoveryKeyXOnly: params.recoveryKeyXOnly,
-      recoveryProfile: params.recoveryProfile,
+    recoveryProfile: params.recoveryProfile,
     network: btcNet,
   });
   const nextVault = buildBackingVaultV3({
     state: analysis.nextState,
     guardianXOnly: params.guardianXOnly,
     recoveryKeyXOnly: params.recoveryKeyXOnly,
-      recoveryProfile: params.recoveryProfile,
+    recoveryProfile: params.recoveryProfile,
     network: btcNet,
   });
 
@@ -371,7 +407,10 @@ export async function validateRedeemTransitionV3(params: ValidateParams): Promis
     return reject("FEE_MISMATCH", `fee ${feeOut.value} != ${analysis.protocolFeeSats}`);
   }
   if (!feeOut.script.equals(params.feeScript)) {
-    return reject("FEE_DESTINATION_MISMATCH", "fee output script is not the configured fee destination");
+    return reject(
+      "FEE_DESTINATION_MISMATCH",
+      "fee output script is not the configured fee destination",
+    );
   }
 
   // ── explicit fee-dust settlement ──
@@ -415,7 +454,11 @@ export async function validateRedeemTransitionV3(params: ValidateParams): Promis
   // ── no unexpected outputs ──
   //   partial redeem: 0..4 required (change carrier at 4), optional BTC change at 5 → max 6
   //   full redeem:    0..3 required, optional BTC change at 4 → max 5
-  const discovery = checkDiscoveryOutput(outputs, decodeCoveOpReturn(params.psbt), params.discoveryTicker);
+  const discovery = checkDiscoveryOutput(
+    outputs,
+    decodeCoveOpReturn(params.psbt),
+    params.discoveryTicker,
+  );
   if (discovery.present && !discovery.agrees) {
     return reject("DISCOVERY_MISMATCH", discovery.reason ?? "discovery envelope mismatch");
   }
@@ -427,7 +470,10 @@ export async function validateRedeemTransitionV3(params: ValidateParams): Promis
   // ── backing decreases exactly by gross; backing never pays miner fee ──
   const backingIn = prevValue;
   const backingOut =
-    RESERVE_ANCHOR_SATS + analysis.nextState.backingSats + analysis.netPayoutSats + analysis.protocolFeeSats;
+    RESERVE_ANCHOR_SATS +
+    analysis.nextState.backingSats +
+    analysis.netPayoutSats +
+    analysis.protocolFeeSats;
   if (backingIn !== backingOut) {
     return reject(
       "BACKING_DECREASE_MISMATCH",
@@ -445,7 +491,9 @@ export async function validateRedeemTransitionV3(params: ValidateParams): Promis
 
   // ── funding inputs: everything except the vault and the token carriers ──
   const tokenInputs = new Set(analysis.tokenInputIndices);
-  const fundingIndices = params.psbt.txInputs.map((_, i) => i).filter((i) => i !== 0 && !tokenInputs.has(i));
+  const fundingIndices = params.psbt.txInputs
+    .map((_, i) => i)
+    .filter((i) => i !== 0 && !tokenInputs.has(i));
   const fundingRejection = await checkFundingInputs(params, fundingIndices);
   if (fundingRejection) return fundingRejection;
 

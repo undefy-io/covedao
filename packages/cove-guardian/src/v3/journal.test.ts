@@ -119,4 +119,17 @@ describe("Guardian durable audit + signing journal (§17-§23)", () => {
     expect(await j.reserve({ ...outpoint, unsignedTxDigest: "22".repeat(32) })).toBe("RESERVED");
     expect(await j.committedDigest(outpoint.network, outpoint.backingTxid, outpoint.backingVout)).toBe("22".repeat(32));
   });
+
+  it("a signed reservation never expires or releases", async () => {
+    let t = 0;
+    const j = new InMemorySigningJournal(() => t);
+    const outpoint = { network: "regtest", backingTxid: "fa".repeat(32), backingVout: 1 };
+    const first = { ...outpoint, unsignedTxDigest: "11".repeat(32) };
+    expect(await j.reserve(first)).toBe("RESERVED");
+    await j.markSigned(first);
+    t = SIGNING_JOURNAL_TTL_MS + 1;
+    await j.release(first);
+    expect(await j.committedDigest(outpoint.network, outpoint.backingTxid, outpoint.backingVout)).toBe(first.unsignedTxDigest);
+    expect(await j.reserve({ ...outpoint, unsignedTxDigest: "22".repeat(32) })).toBe("CONFLICT");
+  });
 });

@@ -78,6 +78,8 @@ export interface V3AppConfig {
    * The mutation gate requires it, so mainnet never runs on a partial profile.
    */
   mainnetProfileValid?: boolean;
+  /** Operator-controlled mainnet mutation switch; OFF unless explicitly armed. */
+  mainnetMutationsArmed?: boolean;
   /** Committed profile hash (mainnet) — used to verify the remote Guardian (§P1-2/C4). */
   mainnetProfileHash?: string;
   /** Remote Guardian service endpoint (mainnet). */
@@ -249,6 +251,7 @@ export function loadV3AppConfig(env: Env, opts: LoadV3AppConfigOptions = {}): V3
       maxListingBlocks: 21_000n,
       reservationTtlSeconds: 90,
       mainnetProfileValid: true, // loadMainnetConfig threw otherwise
+      mainnetMutationsArmed: ["1", "true", "yes", "on"].includes((env.COVE_V3_CANARY_ACTIVE ?? "").toLowerCase()),
       mainnetProfileHash: hashMainnetProfile(profile),
       guardianEndpoint: env.COVE_GUARDIAN_ENDPOINT,
       guardianAuthToken: env.COVE_GUARDIAN_AUTH_TOKEN,

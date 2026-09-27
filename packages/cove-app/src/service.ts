@@ -262,6 +262,9 @@ export class V3AppService {
 
   private assertEnabled(): void {
     if (!this.config.enabled) throw new AppError("APP_DISABLED", "covs is disabled on this server");
+    if (this.config.network === "mainnet" && this.config.mainnetMutationsArmed !== true) {
+      throw new AppError("MAINNET_DISABLED", "mainnet mutations are not armed");
+    }
   }
 
   private assertNetwork(): V3Network {
@@ -486,6 +489,7 @@ export class V3AppService {
     const tipOutpoint = { txid: tip.input.txid, vout: tip.input.vout };
     const matches = (tokenId: Buffer) => tokenId.toString("hex") === tokenIdHex;
     return {
+      cursorHeight: view.cursorHeight,
       getBackingOutpoint: (tokenId) =>
         matches(tokenId) ? tipOutpoint : view.getBackingOutpoint(tokenId),
       getCurrentBackingState: (tokenId) =>
@@ -787,6 +791,7 @@ export class V3AppService {
     });
     const psbtBase64 = result.psbt.toBase64();
     const digest = unsignedTxDigest(result.psbt);
+    const metadataJson = validateMetadata(params.metadata);
     const session = await createTxSession(this.db, {
       network: this.config.network,
       operation: "DEPLOY",
@@ -798,11 +803,11 @@ export class V3AppService {
       backingVout: null,
       unsignedTxDigest: digest,
       psbtBase64,
+      metadataJson,
       status: "BUILT",
       expiresAtHeight: null,
       idempotencyKey: params.idempotencyKey,
     });
-    await upsertTokenMetadata({ db: this.db, network: this.config.network, tokenId, submittedByScript: params.walletScript, deployTxid: null, metadata: params.metadata });
     return {
       sessionId: session.id,
       psbtBase64,
@@ -829,7 +834,13 @@ export class V3AppService {
     this.assertEnabled();
     const session = await requireTxSession(this.db, params.sessionId);
     if (session.operation !== "DEPLOY") throw new AppError("SESSION_STATE_INVALID", "session is not DEPLOY");
-    if (session.status === "BROADCAST" || session.status === "CONFIRMED") return { txid: session.txid! };
+    if (session.status === "BROADCAST" || session.status === "CONFIRMED") {
+      if (session.metadataJson && session.tokenId && session.txid) {
+        await upsertTokenMetadata({ db: this.db, network: this.config.network, tokenId: session.tokenId,
+          submittedByScript: session.walletScript, deployTxid: session.txid, metadata: session.metadataJson });
+      }
+      return { txid: session.txid! };
+    }
     const psbt = parsePsbt(params.signedPsbtBase64, btcNetwork(this.config.network));
     if (unsignedTxDigest(psbt) !== session.unsignedTxDigest) throw new AppError("PSBT_MUTATED", "unsigned tx digest changed");
     for (let i = 0; i < psbt.data.inputs.length; i++) validateInputSignature(psbt, i);
@@ -847,6 +858,10 @@ export class V3AppService {
     if (!("rawTxHex" in validated)) throw new AppError("GUARDIAN_REJECTED", validated.reason);
     const txid = await this.broadcast(validated);
     await updateTxSession(this.db, session.id, { txid, status: "BROADCAST" });
+    if (session.metadataJson && session.tokenId) {
+      await upsertTokenMetadata({ db: this.db, network: this.config.network, tokenId: session.tokenId,
+        submittedByScript: session.walletScript, deployTxid: txid, metadata: session.metadataJson });
+    }
     return { txid };
   }
 
@@ -946,11 +961,15 @@ export class V3AppService {
   }
 
   async quoteBackingBuy(tokenId: string, amountAtoms: bigint): Promise<BackingQuote> {
-    if (amountAtoms <= 0n || amountAtoms % ATOMS_PER_TOKEN !== 0n) throw new AppError("TOKEN_AMOUNT_INVALID", "backing buy requires whole display tokens");
+    if (amountAtoms <= 0n || amountAtoms % (LOT_TOKENS * ATOMS_PER_TOKEN) !== 0n) throw new AppError("TOKEN_AMOUNT_INVALID", "backing buy requires whole 1,000-token lots");
     const backing = await this.loadBacking(tokenId);
     const supply = backing.state.issuedPublicSupplyAtoms;
     if (supply + amountAtoms > PUBLIC_SUPPLY_ATOMS) throw new AppError("TOKEN_AMOUNT_INVALID", "exceeds public cap");
     const gross = grossBuy(supply / ATOMS_PER_TOKEN, amountAtoms / ATOMS_PER_TOKEN);
+    const limits = this.mintLimits();
+    if (amountAtoms > limits.maxMintAtoms) throw new AppError("TOKEN_AMOUNT_INVALID", "exceeds the per-mint token limit");
+    if (limits.maxGrossSats !== null && gross > limits.maxGrossSats) throw new AppError("TOKEN_AMOUNT_INVALID", "exceeds the per-mint curve price limit");
+    if (gross < limits.minGrossSats) throw new AppError("TOKEN_AMOUNT_INVALID", "below the minimum mint curve price");
     const fee = mintFeeSats(gross, amountAtoms, this.config.buyFeeBps, this.config.buyFeeFlatSats);
     const next = applyMintV2(backing.state, amountAtoms).nextState;
     const cursor = await this.db.select().from(schema.coveV3Cursor).where(eq(schema.coveV3Cursor.network, this.config.network));
@@ -1105,7 +1124,10 @@ export class V3AppService {
     if (session.status === "BROADCAST" || session.status === "CONFIRMED") return { txid: session.txid! };
     const psbt = parsePsbt(params.signedPsbtBase64, btcNetwork(this.config.network));
     if (unsignedTxDigest(psbt) !== session.unsignedTxDigest) throw new AppError("PSBT_MUTATED", "unsigned tx digest changed");
-    for (let i = 1; i < psbt.data.inputs.length; i++) validateInputSignature(psbt, i);
+    for (let i = 1; i < psbt.data.inputs.length; i++) {
+      validateInputSignature(psbt, i);
+      psbt.finalizeInput(i);
+    }
     const view = this.overlayPendingBacking(
       await this.loadView(session.tokenId!),
       session.tokenId!,
@@ -1121,7 +1143,6 @@ export class V3AppService {
       buyFeeFlatSats: this.config.buyFeeFlatSats,
       discoveryTicker, fundingChecker: this.fundingChecker });
     if (!signed.ok) throw new AppError("GUARDIAN_REJECTED", `${signed.reason}: ${signed.detail}`);
-    for (let i = 1; i < psbt.data.inputs.length; i++) psbt.finalizeInput(i);
     const rawTxHex = psbt.extractTransaction().toHex();
     const validated = await validateFinalizedMintTransaction({
       rawTxHex,
@@ -1340,7 +1361,10 @@ export class V3AppService {
     if (session.status === "BROADCAST" || session.status === "CONFIRMED") return { txid: session.txid! };
     const psbt = parsePsbt(params.signedPsbtBase64, btcNetwork(this.config.network));
     if (unsignedTxDigest(psbt) !== session.unsignedTxDigest) throw new AppError("PSBT_MUTATED", "unsigned tx digest changed");
-    for (let i = 1; i < psbt.data.inputs.length; i++) validateInputSignature(psbt, i);
+    for (let i = 1; i < psbt.data.inputs.length; i++) {
+      validateInputSignature(psbt, i);
+      psbt.finalizeInput(i);
+    }
     // The view must include the token carriers being redeemed.
     const spent = psbt.txInputs.map((i) => ({ txid: Buffer.from(i.hash).reverse().toString("hex"), vout: i.index }));
     const view = this.overlayPendingBacking(
@@ -1352,7 +1376,6 @@ export class V3AppService {
       recoveryProfile: this.config.recoveryProfile, feeScript: this.config.feeScript, maxMinerFeeSats: this.config.maxMinerFeeSats, redeemFeeBps: this.config.redeemFeeBps,
       redeemFeeFlatSats: this.config.redeemFeeFlatSats, fundingChecker: this.fundingChecker });
     if (!signed.ok) throw new AppError("GUARDIAN_REJECTED", `${signed.reason}: ${signed.detail}`);
-    for (let i = 1; i < psbt.data.inputs.length; i++) psbt.finalizeInput(i);
     const rawTxHex = psbt.extractTransaction().toHex();
     const validated = await validateFinalizedRedeemTransaction({
       rawTxHex,
@@ -1669,13 +1692,21 @@ export class V3AppService {
   }
 
   cancelListing(listingId: string, nonceHex: string, signatureB64: string) {
+    this.assertMutating();
     return this.market.cancelListing(listingId, Buffer.from(nonceHex, "hex").toString("hex"), signatureB64);
   }
 
   reserveListing(input: Parameters<MarketService["reserveListing"]>[0]) {
+    this.assertMutating();
     return this.market.reserveListing(input);
   }
+
+  preflightReserveListing(input: Parameters<MarketService["preflightReserveListing"]>[0]) {
+    this.assertMutating();
+    return this.market.preflightReserveListing(input);
+  }
   buildFillPsbt(fillId: string, fee: { feeRateSatPerVb?: bigint; minerFeeSats?: bigint }) {
+    this.assertMutating();
     return this.market.buildFillPsbt(fillId, fee);
   }
   /**
@@ -1689,9 +1720,11 @@ export class V3AppService {
     return this.finalizeAndBroadcastFill(fillId);
   }
   finalizeFill(fillId: string) {
+    this.assertMutating();
     return this.market.finalizeP2PFill(fillId);
   }
   broadcastFill(validated: Parameters<MarketService["broadcastP2PFill"]>[0]) {
+    this.assertMutating();
     return this.market.broadcastP2PFill(validated);
   }
   getFill(fillId: string) {

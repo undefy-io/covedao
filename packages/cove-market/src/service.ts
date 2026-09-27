@@ -254,6 +254,16 @@ export class MarketService {
     return rows[0] ?? null;
   }
 
+  /** Reject invalid reserve requests before their funding outpoints reach Core. */
+  async preflightReserveListing(input: Pick<ReserveListingInput, "listingId" | "reserveNonce" | "buyerTokenScript" | "signatureB64">): Promise<void> {
+    if (!verifyReservationAuthorization({ version: 1, listingId: input.listingId, reserveNonce: input.reserveNonce, buyerTokenScript: input.buyerTokenScript }, input.signatureB64)) {
+      throw new MarketError("LISTING_BAD_SIGNATURE", "reservation BIP-322 signature invalid");
+    }
+    const listing = await this.loadListing(input.listingId);
+    if (!listing || listing.network !== this.config.network) throw new MarketError("STATE_CHANGED", "listing not found");
+    if (listing.status !== "ACTIVE") throw new MarketError("LISTING_RESERVED", `listing is ${listing.status}`);
+  }
+
   async createListing(input: CreateListingInput): Promise<string> {
     // §M5: a listing must commit to THIS market's chain identity, not another
     // network's (which would let a foreign-chain signature/state pass through).

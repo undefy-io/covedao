@@ -1,4 +1,4 @@
-import { eq, and, lte } from "drizzle-orm";
+import { eq, and, lte, isNull, sql } from "drizzle-orm";
 import { schema, type Database } from "@crclaunch/db";
 import { SIGNING_JOURNAL_TTL_MS, type SigningJournalStore, type SigningReservation } from "@crclaunch/cove-guardian/v3";
 
@@ -8,9 +8,9 @@ import { SIGNING_JOURNAL_TTL_MS, type SigningJournalStore, type SigningReservati
  * processes and survives restart — the Guardian can never sign two different
  * successors for the same backing outpoint.
  *
- * A reservation carries a TTL (§C1): an abandoned checkout (build that is never
- * broadcast) self-heals after `SIGNING_JOURNAL_TTL_MS`, and `release` removes a
- * reservation explicitly on session expiry or when signing throws (§C6).
+ * Unsigned reservations carry a TTL. Once the Guardian produces a signature,
+ * markSigned makes the conflict barrier permanent; expiration and release
+ * cannot allow a different successor to be signed.
  */
 export class PostgresSigningJournal implements SigningJournalStore {
   constructor(readonly db: Database) {}
@@ -54,7 +54,7 @@ export class PostgresSigningJournal implements SigningJournalStore {
       .onConflictDoUpdate({
         target: [schema.coveV3SigningJournal.network, schema.coveV3SigningJournal.backingTxid, schema.coveV3SigningJournal.backingVout],
         set: { unsignedTxDigest: params.unsignedTxDigest, expiresAt },
-        setWhere: lte(schema.coveV3SigningJournal.expiresAt, now),
+        setWhere: and(lte(schema.coveV3SigningJournal.expiresAt, now), isNull(schema.coveV3SigningJournal.signedAt)),
       })
       .returning({ digest: schema.coveV3SigningJournal.unsignedTxDigest });
     if (claimed.length > 0) return "RESERVED";
@@ -65,6 +65,15 @@ export class PostgresSigningJournal implements SigningJournalStore {
     return row.unsignedTxDigest === params.unsignedTxDigest ? "IDEMPOTENT" : "CONFLICT";
   }
 
+  async markSigned(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<void> {
+    const rows = await this.db
+      .update(schema.coveV3SigningJournal)
+      .set({ signedAt: sql`COALESCE(${schema.coveV3SigningJournal.signedAt}, clock_timestamp())` })
+      .where(and(this.rowKey(params), eq(schema.coveV3SigningJournal.unsignedTxDigest, params.unsignedTxDigest)))
+      .returning({ id: schema.coveV3SigningJournal.id });
+    if (rows.length !== 1) throw new Error("signing reservation lost before signature was committed");
+  }
+
   async committedDigest(network: string, backingTxid: string, backingVout: number): Promise<string | null> {
     const rows = await this.db
       .select()
@@ -72,13 +81,13 @@ export class PostgresSigningJournal implements SigningJournalStore {
       .where(this.rowKey({ network, backingTxid, backingVout }));
     const row = rows[0];
     if (!row) return null;
-    if (row.expiresAt.getTime() <= Date.now()) return null; // expired → treated as absent
+    if (!row.signedAt && row.expiresAt.getTime() <= Date.now()) return null; // unsigned lease expired
     return row.unsignedTxDigest;
   }
 
   async release(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<void> {
     await this.db
       .delete(schema.coveV3SigningJournal)
-      .where(and(this.rowKey(params), eq(schema.coveV3SigningJournal.unsignedTxDigest, params.unsignedTxDigest)));
+      .where(and(this.rowKey(params), eq(schema.coveV3SigningJournal.unsignedTxDigest, params.unsignedTxDigest), isNull(schema.coveV3SigningJournal.signedAt)));
   }
 }

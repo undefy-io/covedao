@@ -45,5 +45,7 @@ describe("Guardian boot (env)", () => {
     expect(boot.custody).toBe("env-key");
     expect(boot.profile.source).toBe("committed");
     expect(boot.ordUrl).toBe("https://ordinals.com");
+    expect(boot.canaryActive).toBe(false);
+    expect(resolveGuardianBoot({ ...env, GUARDIAN_KEY_HEX: "7a".repeat(32), COVE_V3_CANARY_ACTIVE: "1" }).canaryActive).toBe(true);
   });
 });

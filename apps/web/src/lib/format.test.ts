@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fmtTokens, fmtBtc, displayTokensToAtoms } from "./format";
+import { fmtTokens, fmtBtc, displayTokensToAtoms, atomsToDisplayTokens } from "./format";
 
 /**
  * fmtTokens takes ATOMS. It previously skipped the 1e8 scaling, so the public
@@ -69,5 +69,13 @@ describe("displayTokensToAtoms", () => {
     expect(() => displayTokensToAtoms("abc")).toThrow(/invalid/);
     expect(() => displayTokensToAtoms("-5")).toThrow(/invalid/);
     expect(() => displayTokensToAtoms("")).toThrow(/invalid/);
+  });
+});
+
+describe("atomsToDisplayTokens", () => {
+  it("preserves the exact listed quantity when filling a buy amount", () => {
+    for (const atoms of ["1", "100000000", "9963095238095"]) {
+      expect(displayTokensToAtoms(atomsToDisplayTokens(atoms))).toBe(atoms);
+    }
   });
 });

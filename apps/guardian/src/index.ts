@@ -33,6 +33,7 @@ async function main(): Promise<void> {
     releaseId: process.env.RAILWAY_GIT_COMMIT_SHA ?? "local",
     databaseUrl: boot.databaseUrl,
     network: boot.network,
+    signingArmed: boot.canaryActive,
     custodyBackend: boot.custodyBackend,
     coreRpc: boot.coreRpc,
     ordUrl: boot.ordUrl,

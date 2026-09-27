@@ -13,9 +13,9 @@ const signer = {
   health: async () => ({ reachable: true }),
 } as GuardianTransitionSigner;
 
-function mainnetApp(mainnetProfileValid: boolean | undefined): V3AppService {
+function mainnetApp(mainnetProfileValid: boolean | undefined, armed = true): V3AppService {
   const cfg = loadV3AppConfig(
-    { COVE_NETWORK: "mainnet", COVE_BITCOIN_RPC_URL: "https://btc.example" },
+    { COVE_NETWORK: "mainnet", COVE_BITCOIN_RPC_URL: "https://btc.example", COVE_V3_CANARY_ACTIVE: armed ? "1" : "0" },
     { testOnlyMainnetProfile: loadMainnetProfile(FIXTURE, { allowTestKeys: true }).profile },
   );
   return new V3AppService({} as never, {} as never, { ...cfg, mainnetProfileValid }, signer);
@@ -36,6 +36,10 @@ describe("mainnet unlock (§6)", () => {
   it("without a validated committed profile, mainnet mutations stay refused", async () => {
     await expect(build(mainnetApp(undefined))).rejects.toThrow(/MAINNET_DISABLED/);
     await expect(build(mainnetApp(false))).rejects.toThrow(/MAINNET_DISABLED/);
+  });
+
+  it("requires the operator to arm mainnet mutations", async () => {
+    await expect(build(mainnetApp(true, false))).rejects.toThrow(/mainnet mutations are not armed/);
   });
 
   it("loadV3AppConfig marks the profile validated only on mainnet", () => {

@@ -36,7 +36,7 @@ export async function computeHealth(params: {
   try {
     const info = await params.provider.getBlockchainInfo();
     coreHeight = BigInt(info.blocks);
-    if (c.height > 0n) coreBlockHashAtCursor = await params.provider.getBlockHash(Number(c.height));
+    if (c.height > 0n && c.height <= coreHeight) coreBlockHashAtCursor = await params.provider.getBlockHash(Number(c.height));
   } catch {
     return { health: "CORE_UNREACHABLE", cursorHeight: c.height, cursorBlockHash: c.blockHash, coreHeight: 0n, coreBlockHashAtCursor: null, lag: 0n, stateRoot: c.stateRoot, rebuilding: c.rebuilding };
   }
@@ -44,6 +44,7 @@ export async function computeHealth(params: {
   const lag = coreHeight - c.height;
   let health: IndexerHealth;
   if (c.rebuilding) health = "REBUILDING";
+  else if (c.height > coreHeight) health = "DIVERGED";
   else if (coreBlockHashAtCursor !== null && coreBlockHashAtCursor !== c.blockHash) health = "DIVERGED";
   else if (lag > 2n) health = "BEHIND";
   else health = "HEALTHY";

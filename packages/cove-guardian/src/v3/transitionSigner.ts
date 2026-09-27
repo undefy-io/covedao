@@ -243,13 +243,21 @@ export class LocalGuardianTransitionSigner implements GuardianTransitionSigner {
     });
     const leaf = op === "MINT" ? prevVault.mintLeaf : prevVault.redeemLeaf;
     const control = op === "MINT" ? prevVault.mintControlBlock : prevVault.redeemControlBlock;
+    let signatureProduced = false;
     try {
       await this.signer.signVaultExecutionLeaf(req.psbt, 0, leaf, control);
+      signatureProduced = true;
+      await this.journal.markSigned({
+        network: req.network,
+        backingTxid: record.backingOutpoint.txid,
+        backingVout: record.backingOutpoint.vout,
+        unsignedTxDigest: record.unsignedTxDigest,
+      });
     } catch (e) {
       // §C6: release the reservation we just committed so a throwable signing
       // step (e.g. a missing witnessUtxo or an unsupported PSBT version) does
       // NOT permanently brick the backing outpoint.
-      if (reservation === "RESERVED") {
+      if (!signatureProduced && reservation === "RESERVED") {
         await this.journal.release({
           network: req.network,
           backingTxid: record.backingOutpoint.txid,

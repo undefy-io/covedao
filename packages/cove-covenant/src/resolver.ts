@@ -41,6 +41,8 @@ export interface BackingView {
  * inputs. `CoveChainView` and the indexer's DB snapshot loader both implement it.
  */
 export interface CoveCanonicalView {
+  /** Indexed chain height, when the view comes from the persistent indexer. */
+  readonly cursorHeight?: bigint;
   getBackingStateByOutpoint(outpoint: OutPoint): CoveStateV2 | null;
   getCurrentBackingState(tokenId: Buffer): CoveStateV2 | null;
   getBackingOutpoint(tokenId: Buffer): OutPoint | null;

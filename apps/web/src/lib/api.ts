@@ -18,7 +18,13 @@ export function ok(data: unknown): Response {
   return json({ ok: true, data });
 }
 
-export function fail(code: string, message: string, status = 400, retryable = false, detail?: string): Response {
+export function fail(
+  code: string,
+  message: string,
+  status = 400,
+  retryable = false,
+  detail?: string,
+): Response {
   return json({ ok: false, error: { code, message, retryable, detail } }, status);
 }
 
@@ -32,7 +38,8 @@ export function fail(code: string, message: string, status = 400, retryable = fa
  * unrecognised error contributes nothing.
  */
 function detailOf(e: unknown): string | undefined {
-  if (!(e instanceof AppError || e instanceof MarketError || e instanceof BackingError)) return undefined;
+  if (!(e instanceof AppError || e instanceof MarketError || e instanceof BackingError))
+    return undefined;
   return e.message.replace(/^\[[A-Z_]+\]\s*/, "");
 }
 
@@ -50,8 +57,23 @@ export function handleError(e: unknown): Response {
   console.error("[api] error:", e instanceof Error ? (e.stack ?? e.message) : String(e));
   const code = codeOf(e);
   const human = humanCopy(code);
-  const retryable = ["CORE_UNAVAILABLE", "INDEXER_UNHEALTHY", "INDEXER_REBUILDING", "QUOTE_STALE", "STATE_CHANGED", "MEMPOOL_REJECTED", "BROADCAST_FAILED"].includes(code);
-  const status = code === "INTERNAL_ERROR" ? 500 : code === "WRONG_NETWORK" || code === "MAINNET_DISABLED" ? 403 : 400;
+  const retryable = [
+    "CORE_UNAVAILABLE",
+    "INDEXER_UNHEALTHY",
+    "INDEXER_REBUILDING",
+    "QUOTE_STALE",
+    "STATE_CHANGED",
+    "MEMPOOL_REJECTED",
+    "BROADCAST_FAILED",
+  ].includes(code);
+  const status =
+    code === "INTERNAL_ERROR"
+      ? 500
+      : code === "REQUEST_TOO_LARGE"
+        ? 413
+        : code === "WRONG_NETWORK" || code === "MAINNET_DISABLED"
+          ? 403
+          : 400;
   return fail(code, human, status, retryable, detailOf(e));
 }
 
@@ -112,8 +134,30 @@ function humanCopy(code: string): string {
 
 export async function readJson(req: Request): Promise<Record<string, unknown>> {
   try {
-    return (await req.json()) as Record<string, unknown>;
-  } catch {
+    const maxBytes = 1_000_000;
+    const reader = req.body?.getReader();
+    if (!reader) return {};
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        throw new AppError("REQUEST_TOO_LARGE", "request body exceeds 1 MB");
+      }
+      chunks.push(value);
+    }
+    const bytes = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return JSON.parse(new TextDecoder().decode(bytes)) as Record<string, unknown>;
+  } catch (e) {
+    if (e instanceof AppError) throw e;
     return {};
   }
 }

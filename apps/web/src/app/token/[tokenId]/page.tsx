@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useWallet } from "@/components/WalletProvider";
 import { verifyClientIntent } from "@crclaunch/wallets";
-import { fmtBtc, fmtTokens, fmtInt, displayTokensToAtoms } from "@/lib/format";
+import { fmtBtc, fmtTokens, fmtInt, displayTokensToAtoms, atomsToDisplayTokens } from "@/lib/format";
 import { DEMO_TOKEN_DETAIL, DEMO_LISTINGS } from "@/lib/demo-tokens";
 import { TokenMarketPanel } from "@/components/TokenMarketPanel";
 import { FeePicker, useFeeRates, type FeeRatesResponse, type FeeTier } from "@/components/FeePicker";
@@ -33,18 +33,6 @@ type Tab = "mint" | "redeem" | "buy" | "sell";
 const TABS_OPEN: Tab[] = ["mint", "redeem"];
 const TABS_GRADUATED: Tab[] = ["buy", "sell", "redeem"];
 const TAB_LABEL: Record<Tab, MessageKey> = { mint: "tok.tabMint", redeem: "tok.tabRedeem", buy: "tok.tabBuy", sell: "tok.tabSell" };
-// The flat mint fee alone is 5,000 sats, so the smallest button must clear it.
-/**
- * Quick mint buttons. The first is always the smallest mint that works right
- * now (it moves with the curve and the fees), then larger round amounts.
- */
-function quickSats(minSpend: bigint | null): bigint[] {
-  if (minSpend === null) return [10_000n, 25_000n, 100_000n];
-  const rest = [25_000n, 100_000n].filter((q) => q > minSpend);
-  while (rest.length < 2) rest.push((rest.at(-1) ?? minSpend) * 4n);
-  return [minSpend, ...rest];
-}
-
 interface Ask {
   listingId: string;
   amountAtoms: string;
@@ -87,18 +75,14 @@ function TokenContent() {
   const [loaded, setLoaded] = useState(false);
   const [tab, setTab] = useState<Tab>("mint");
   const [amount, setAmount] = useState("");
-  // Mint is asked in sats — what people think in — and answered in tokens.
-  const [budget, setBudget] = useState("");
+  const [buyAmount, setBuyAmount] = useState("");
+  const [sellAmount, setSellAmount] = useState("");
   const [quoteState, setMintQuote] = useState<{
-    /** The budget this quote answers; a quote for any other budget is stale. */
-    forBudget: string;
-    amountAtoms: string;
-    totalSats: string;
-    limitedBy: "budget" | "per-mint limit" | "supply";
-    minGrossSats: string;
-    maxGrossSats: string | null;
-    minSpendSats: string | null;
+    forAmount: string;
+    forBlock: string;
+    quote: Quote;
   } | null>(null);
+  const [mintQuoteError, setMintQuoteError] = useState("");
   const [heldAtoms, setHeldAtoms] = useState<bigint | null>(null);
   const [balanceSats, setBalanceSats] = useState<bigint | null>(null);
   const [openAsks, setOpenAsks] = useState<Ask[]>([]);
@@ -156,39 +140,33 @@ function TokenContent() {
     if (!tabs.includes(tab)) setTab(tabs[0]!);
   }, [graduatedNow, tab, tabs]);
 
-  // The smallest mint right now, for the first quick button (budget 0 quotes
-  // nothing but still reports minSpendSats). Refreshed each block.
-  const [minSpend, setMinSpend] = useState<bigint | null>(null);
+  // Quote the exact token amount. A changed input or indexed block invalidates
+  // the old quote, including while a newer request is still in flight.
   useEffect(() => {
-    if (demo) return;
-    void fetch("/api/v3/backing/buy/quote-sats", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ tokenId, budgetSats: "0" }),
-    })
-      .then((r) => r.json())
-      .then((j) => setMinSpend(j.ok && j.data.minSpendSats ? BigInt(j.data.minSpendSats) : null))
-      .catch(() => setMinSpend(null));
-  }, [tokenId, demo, block]);
-
-  // Live answer to "what does this many sats mint?"
-  useEffect(() => {
-    if (demo || !budget || !/^\d+$/.test(budget)) {
-      setMintQuote(null);
+    setMintQuote(null);
+    setMintQuoteError("");
+    if (demo || tab !== "mint" || !amount) return;
+    if (!/^\d+$/.test(amount) || BigInt(amount) === 0n || BigInt(amount) % 1_000n !== 0n) {
+      setMintQuoteError(t("tok.errLots"));
       return;
     }
+    let cancelled = false;
     const timer = setTimeout(() => {
-      void fetch("/api/v3/backing/buy/quote-sats", {
+      void fetch("/api/v3/backing/buy/quote", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ tokenId, budgetSats: budget }),
+        body: JSON.stringify({ tokenId, amountAtoms: displayTokensToAtoms(amount) }),
       })
         .then((r) => r.json())
-        .then((j) => setMintQuote(j.ok ? { ...j.data, forBudget: budget } : null))
-        .catch(() => setMintQuote(null));
+        .then((j) => {
+          if (cancelled) return;
+          if (j.ok) setMintQuote({ forAmount: amount, forBlock: block, quote: j.data });
+          else setMintQuoteError(errorText(j));
+        })
+        .catch(() => { if (!cancelled) setMintQuoteError(t("tok.quoteUnavailable")); });
     }, 250);
-    return () => clearTimeout(timer);
-  }, [budget, tokenId, demo]);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [amount, tokenId, demo, tab, block, t]);
 
   // What the connected wallet holds of this token, and what it can spend.
   const refreshWallet = useCallback(async () => {
@@ -221,22 +199,18 @@ function TokenContent() {
       .catch(() => setOpenAsks([]));
   }, [demo, graduatedNow, tokenId, txid, block]);
 
-  /** Spend-everything for Mint: the wallet's BTC less a network fee and a margin. */
-  function maxBudget(): bigint | null {
-    if (balanceSats === null) return null;
-    const fee = previewFeeSats("BACKING_BUY") ?? 1_000n;
-    const b = balanceSats - fee * 2n - 500n;
-    return b > 0n ? b : 0n;
-  }
-
   async function buyAsk(ask: Ask) {
     if (!connected) return;
     setErr("");
     setMsg("");
     setBusy(true);
     try {
+      if (BigInt(displayTokensToAtoms(buyAmount)) !== BigInt(ask.amountAtoms)) {
+        throw new Error(t("tok.buyExactListing"));
+      }
       const { txid } = await buyListing(ask, { script, publicKey, ordinalsScript, signPsbt, signBip322, getUtxos }, satPerVb);
       setMsg(t("tok.bought", { txid: txid.slice(0, 16) }));
+      setBuyAmount("");
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -327,7 +301,6 @@ function TokenContent() {
       );
       setReview(null);
       setAmount("");
-      setBudget("");
       void refreshWallet();
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -343,7 +316,7 @@ function TokenContent() {
     try {
       const { listingId, pending } = await createListing({
         tokenId,
-        amountAtoms: BigInt(displayTokensToAtoms(amount)),
+        amountAtoms: BigInt(displayTokensToAtoms(sellAmount)),
         totalPriceSats: price,
         expiryBlocks: listingBlocks,
         network,
@@ -358,6 +331,8 @@ function TokenContent() {
           (pending ? ` ${t("tok.listedPending")}` : "") +
           ` ${t("tok.listedNoSign")}`,
       );
+      setSellAmount("");
+      setPrice("");
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -365,9 +340,11 @@ function TokenContent() {
     }
   }
 
-  // Only a quote for exactly the typed budget counts. Typing a new amount and
-  // pressing Review Mint before the new quote lands used to mint the OLD one.
-  const mintQuote = quoteState && quoteState.forBudget === budget ? quoteState : null;
+  const mintQuote = quoteState && quoteState.forAmount === amount && quoteState.forBlock === block ? quoteState.quote : null;
+  const requestedBuyAtoms = /^\d+(\.\d{1,8})?$/.test(buyAmount) ? BigInt(displayTokensToAtoms(buyAmount)) : null;
+  const matchingAsks = requestedBuyAtoms === null || requestedBuyAtoms === 0n
+    ? []
+    : openAsks.filter((ask) => BigInt(ask.amountAtoms) === requestedBuyAtoms);
 
   if (!loaded) return <DetailSkeleton />;
   if (!detail) {
@@ -575,63 +552,31 @@ function TokenContent() {
             ) : tab === "mint" ? (
               <div className="mt-5 space-y-4">
                 <label className="block">
-                  <span className="eyebrow">{t("tok.spend")}</span>
+                  <span className="eyebrow">{t("tok.mintAmount", { ticker: detail.ticker })}</span>
                   <input
-                    value={budget}
-                    onChange={(e) => setBudget(e.target.value.replace(/[^0-9]/g, ""))}
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))}
                     inputMode="numeric"
-                    placeholder={t("tok.spendPh")}
+                    placeholder={t("tok.redeemPh")}
                     className="field mt-2"
                   />
                 </label>
-                <div className="grid grid-cols-4 gap-px bg-rule">
-                  {quickSats(minSpend).map((q) => (
-                    <button key={q.toString()} onClick={() => setBudget(q.toString())} className="bg-ink-2 py-2 text-xs text-bone-2 hover:text-bone">
-                      {fmtInt(Number(q))}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => {
-                      const m = maxBudget();
-                      if (m !== null) setBudget(m.toString());
-                    }}
-                    disabled={maxBudget() === null}
-                    className="bg-ink-2 py-2 text-xs text-bone-2 hover:text-bone disabled:opacity-40"
-                  >
-                    {t("tok.max")}
-                  </button>
-                </div>
                 <div className="flex items-baseline justify-between text-sm">
-                  <span className="text-bone-dim">{t("tok.youGet")}</span>
+                  <span className="text-bone-dim">{t("tok.youPay")}</span>
                   <span className="tabular-nums text-bone">
-                    {mintQuote && BigInt(mintQuote.amountAtoms) > 0n
-                      ? t("tok.youGetValue", { amount: fmtTokens(BigInt(mintQuote.amountAtoms)), ticker: detail.ticker })
-                      : budget
-                        ? mintQuote?.minSpendSats
-                          ? t("tok.smallestMint", { n: fmtInt(BigInt(mintQuote.minSpendSats)) })
-                          : t("tok.tooLittle")
-                        : "—"}
+                    {mintQuote
+                      ? fmtBtc(BigInt(mintQuote.grossSats) + BigInt(mintQuote.feeSats) + BigInt(mintQuote.creatorFeeSats ?? "0") + 1_000n)
+                      : "—"}
                   </span>
                 </div>
-                {mintQuote?.limitedBy === "per-mint limit" && BigInt(mintQuote.amountAtoms) > 0n ? (
-                  <p className="text-xs text-pending">
-                    {t("tok.perMintLimit")}
-                    {mintQuote.maxGrossSats ? t("tok.perMintLimitCurve", { btc: fmtBtc(BigInt(mintQuote.maxGrossSats)) }) : ""}
-                    {t("tok.mintAgain")}
-                  </p>
-                ) : null}
-                {mintQuote?.limitedBy === "supply" ? (
-                  <p className="text-xs text-pending">{t("tok.lastTokens")}</p>
-                ) : null}
-                {budget && mintQuote && BigInt(mintQuote.amountAtoms) === 0n && BigInt(mintQuote.minGrossSats) > 0n ? (
-                  <p className="text-xs text-bone-dim">{t("tok.smallestGross", { btc: fmtBtc(BigInt(mintQuote.minGrossSats)) })}</p>
-                ) : null}
+                {mintQuoteError ? <p className="text-xs text-pending">{mintQuoteError}</p> : null}
+                {mintQuote ? <p className="text-xs text-bone-dim">{t("tok.mintNetworkFeeNote")}</p> : null}
                 {balanceSats !== null ? (
                   <p className="text-xs text-bone-dim">{t("tok.yourBtc", { btc: fmtBtc(balanceSats) })}</p>
                 ) : null}
                 <button
-                  onClick={() => void reviewTrade("buy", mintQuote?.amountAtoms)}
-                  disabled={busy || !mintQuote || BigInt(mintQuote.amountAtoms) <= 0n}
+                  onClick={() => void reviewTrade("buy", displayTokensToAtoms(amount))}
+                  disabled={busy || !mintQuote}
                   className="btn w-full"
                 >
                   {busy ? t("tok.working") : t("tok.reviewMint")}
@@ -672,31 +617,56 @@ function TokenContent() {
                 </button>
               </div>
             ) : tab === "buy" ? (
-              <div className="mt-5 space-y-2">
+              <div className="mt-5 space-y-4">
+                <label className="block">
+                  <span className="eyebrow">{t("tok.buyAmount", { ticker: detail.ticker })}</span>
+                  <input
+                    value={buyAmount}
+                    onChange={(e) => setBuyAmount(e.target.value)}
+                    inputMode="decimal"
+                    placeholder={t("tok.buyAmountPh")}
+                    className="field mt-2"
+                  />
+                </label>
+                <p className="text-xs leading-relaxed text-bone-dim">{t("tok.buyExactListing")}</p>
                 {openAsks.length === 0 ? (
                   <p className="border border-dashed border-rule px-4 py-6 text-center text-xs text-bone-dim">
                     {t("tok.nobodyListed", { ticker: detail.ticker })}
                   </p>
                 ) : (
-                  openAsks.map((a) => (
-                    <div key={a.listingId} className="flex items-center justify-between border border-rule bg-ink-2 px-3 py-2 text-sm">
-                      <div>
-                        <div className="text-bone">{fmtTokens(BigInt(a.amountAtoms))} {detail.ticker}</div>
-                        <div className="text-xs text-bone-dim">{t("tok.plusFee", { btc: fmtBtc(BigInt(a.totalPriceSats)) })}</div>
+                  <>
+                    {buyAmount && matchingAsks.length === 0 ? (
+                      <p className="border border-dashed border-rule px-4 py-6 text-center text-xs text-bone-dim">
+                        {requestedBuyAtoms === null || requestedBuyAtoms === 0n ? t("tok.buyInvalidAmount") : t("tok.buyNoExactListing")}
+                      </p>
+                    ) : null}
+                    {(buyAmount && matchingAsks.length > 0 ? matchingAsks : openAsks).map((a) => (
+                      <div key={a.listingId} className="flex items-center justify-between border border-rule bg-ink-2 px-3 py-2 text-sm">
+                        <div>
+                          <div className="text-bone">{atomsToDisplayTokens(a.amountAtoms)} {detail.ticker}</div>
+                          <div className="text-xs text-bone-dim">{t("tok.plusFee", { btc: fmtBtc(BigInt(a.totalPriceSats)) })}</div>
+                        </div>
+                        <button
+                          onClick={() => buyAmount && matchingAsks.length > 0 ? void buyAsk(a) : setBuyAmount(atomsToDisplayTokens(a.amountAtoms))}
+                          disabled={busy}
+                          className="btn px-4 py-1.5 text-xs"
+                        >
+                          {buyAmount && matchingAsks.length > 0 ? t("tok.buy") : t("tok.chooseAmount")}
+                        </button>
                       </div>
-                      <button onClick={() => void buyAsk(a)} disabled={busy} className="btn px-4 py-1.5 text-xs">
-                        {t("tok.buy")}
-                      </button>
-                    </div>
-                  ))
+                    ))}
+                  </>
                 )}
               </div>
             ) : (
               <div className="mt-5 space-y-4">
                 <label className="block">
-                  <span className="eyebrow">{t("tok.sellLabel", { ticker: detail.ticker })}</span>
-                  <input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="1000000" className="field mt-2" />
+                  <span className="eyebrow">{t("tok.sellAmount", { ticker: detail.ticker })}</span>
+                  <input value={sellAmount} onChange={(e) => setSellAmount(e.target.value)} inputMode="decimal" placeholder={t("tok.redeemPh")} className="field mt-2" />
                 </label>
+                {heldAtoms !== null ? (
+                  <p className="text-xs text-bone-dim">{t("tok.youHold", { amount: atomsToDisplayTokens(heldAtoms), ticker: detail.ticker })}</p>
+                ) : null}
                 <label className="block">
                   <span className="eyebrow">{t("tok.forSats")}</span>
                   <input value={price} onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))} placeholder="41500" className="field mt-2" />
@@ -713,7 +683,7 @@ function TokenContent() {
                     {t("tok.listNote")}
                   </span>
                 </label>
-                <button onClick={() => void list()} disabled={busy} className="btn w-full">
+                <button onClick={() => void list()} disabled={busy || !sellAmount || !price} className="btn w-full">
                   {busy ? t("tok.working") : t("tok.listForSale")}
                 </button>
               </div>

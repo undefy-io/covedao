@@ -177,14 +177,41 @@ or 1-of-1), fee destination and bps, canary allowlists and caps — so mainnet
 refuses to start until they are filled in. The profile also refuses any key
 or script controlled by the repo's public test keys.
 
+### Railway: first self-only canary
+
+The operator needs to provide these inputs before a canary deployment:
+
+1. **Two distinct keys under your control:** one Guardian signing key and one
+   offline recovery key. The simple profile uses 1-of-1 recovery; it does not
+   require three recovery signers. Generate them offline with
+   `pnpm cove:ceremony-keys --recovery-keys 1 --out <offline-drive>/keys`.
+   Share only their public x-only keys for the committed profile. Put the
+   Guardian private key in the Guardian service's Railway secret
+   (`GUARDIAN_KEY_HEX`); keep the recovery private key offline and out of
+   Railway, chat, and the repository.
+2. **Two public Bitcoin addresses:** a fee-receiving address you control and
+   the wallet address you will use for the self-only canary. These determine
+   the fee destination and canary allowlist; the remaining profile values and
+   activation height must be finalized before the first mainnet transaction.
+3. **Service access:** a Railway project with PostgreSQL and credentials for
+   Bitcoin Core RPC. Runtime readiness requires two Core endpoints that agree
+   on the chain. Only the web service should be public; worker, database, and
+   Guardian communicate privately. The recovery private key is never deployed.
+
+Keep `COVE_V3_CANARY_ACTIVE=0` on web and Guardian until the migration, profile,
+backups, and runtime readiness checks pass. Arming both services permits only
+the committed canary wallet and token under its caps. The current
+funding-after-signing liveness issue still blocks a **public user launch**;
+this first deployment is for the operator's own small canary only.
+
 Once the profile validates, mainnet runs as three services (web, worker,
 Guardian) with only these env vars:
 
 | Service | Env (see `apps/*/.env.example`) |
 | --- | --- |
-| web | `COVE_NETWORK`, `COVE_DATABASE_URL`, `COVE_BITCOIN_RPC_URL`, `COVE_GUARDIAN_ENDPOINT`, `COVE_GUARDIAN_AUTH_TOKEN`, `COVE_FEE_ADDRESS` |
+| web | `COVE_NETWORK`, `COVE_DATABASE_URL`, `COVE_BITCOIN_RPC_URL`, `COVE_GUARDIAN_ENDPOINT`, `COVE_GUARDIAN_AUTH_TOKEN`, `COVE_FEE_ADDRESS`, `COVE_V3_CANARY_ACTIVE` |
 | worker | `COVE_NETWORK`, `COVE_DATABASE_URL`, `COVE_BITCOIN_RPC_URL`, `COVE_GUARDIAN_ENDPOINT`, `COVE_GUARDIAN_AUTH_TOKEN`, `COVE_FEE_ADDRESS` |
-| guardian | `COVE_NETWORK`, `COVE_DATABASE_URL`, `COVE_BITCOIN_RPC_URL`, `GUARDIAN_AUTH_TOKEN`, `GUARDIAN_KEY_HEX`, `COVE_FEE_ADDRESS` |
+| guardian | `COVE_NETWORK`, `COVE_DATABASE_URL`, `COVE_BITCOIN_RPC_URL`, `GUARDIAN_AUTH_TOKEN`, `GUARDIAN_KEY_HEX`, `COVE_FEE_ADDRESS`, `COVE_V3_CANARY_ACTIVE` |
 
 The Guardian refuses to start unless `GUARDIAN_KEY_HEX` matches the profile's
 `guardianXOnly`. On Railway the web may reach it over private networking

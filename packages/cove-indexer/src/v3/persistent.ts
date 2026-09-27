@@ -5,6 +5,16 @@ import type { V3Store } from "./store.js";
 import type { V3IndexerState } from "./state.js";
 import type { V3IndexerConfig } from "./types.js";
 
+/** A fetched block must extend the projection we are about to persist. */
+export function blockExtendsCursor(
+  cursor: { height: bigint; blockHash: string },
+  block: { height: bigint; parentHash: string },
+  activationHeight: bigint,
+): boolean {
+  if (cursor.height === 0n && block.height === activationHeight) return true;
+  return block.height === cursor.height + 1n && block.parentHash === cursor.blockHash;
+}
+
 /**
  * Persistent worker + persistent reorg (§6/§7). Memory and DB stay in LOCKSTEP:
  * every block is applied to a STAGED clone, persisted, and only on commit is the
@@ -29,12 +39,27 @@ export async function persistentWorker(params: {
   // Nothing below the activation height can hold Cove state, so a fresh
   // indexer starts there. Walking from genesis instead reads every historical
   // block — hours on mainnet, and impossible on a pruned node.
-  const start = state.cursor.height + 1n > params.config.genesisHeight ? state.cursor.height + 1n : params.config.genesisHeight;
+  const start =
+    state.cursor.height + 1n > params.config.genesisHeight
+      ? state.cursor.height + 1n
+      : params.config.genesisHeight;
   for (let h = start; h <= tip; h++) {
     const hash = await provider.getBlockHash(Number(h));
     if (state.undoByHeight.get(h)?.blockHash === hash) continue; // idempotent
     const block = await provider.getBlock(hash);
-    const input = { height: h, hash: block.hash, parentHash: block.previousBlockHash, txs: block.rawTxs };
+    const input = {
+      height: h,
+      hash: block.hash,
+      parentHash: block.previousBlockHash,
+      txs: block.rawTxs,
+    };
+
+    if (!blockExtendsCursor(state.cursor, input, params.config.genesisHeight)) {
+      // Core switched branches after the worker's initial cursor check. Roll
+      // back before applying any block from the new branch to the old state.
+      await reorgPersistentToTip({ db, store, state, provider, config: params.config });
+      return { indexed, finalHeight: state.cursor.height, stateRoot: state.stateRoot() };
+    }
 
     const staged = state.clone();
     staged.applyBlock(input);
@@ -89,7 +114,18 @@ export async function reorgPersistentToTip(params: {
   for (let h = ancestor + 1n; h <= tipHeight; h++) {
     const hash = await provider.getBlockHash(Number(h));
     const block = await provider.getBlock(hash);
-    const input = { height: h, hash: block.hash, parentHash: block.previousBlockHash, txs: block.rawTxs };
+    const input = {
+      height: h,
+      hash: block.hash,
+      parentHash: block.previousBlockHash,
+      txs: block.rawTxs,
+    };
+
+    if (!blockExtendsCursor(state.cursor, input, params.config.genesisHeight)) {
+      throw new Error(
+        `Core changed branches during reorg replay at height ${h}; retry the worker tick`,
+      );
+    }
 
     const staged = state.clone();
     staged.applyBlock(input);

@@ -75,7 +75,8 @@ async function loadSummaries(db: Database, network: string, tokenIds?: string[])
 
   return tokens.map((t) => {
     const b = backingByToken.get(t.tokenId);
-    const meta = metaByToken.get(t.tokenId);
+    const candidateMeta = metaByToken.get(t.tokenId);
+    const meta = candidateMeta?.deployTxid === t.deployTxid ? candidateMeta : null;
     const ask = askByToken.get(t.tokenId);
     return {
       tokenId: t.tokenId,

@@ -175,6 +175,14 @@ describe("Production Guardian V3 — validateAndSignMintTransition", async () =>
     }
   });
 
+  it.skipIf(!isSimplicityAvailable())("accepts a finalized wallet funding input before Guardian signing", async () => {
+    const { view, mint, alice } = mintSetup();
+    mint.psbt.signInput(1, alice);
+    mint.psbt.finalizeInput(1);
+    const result = await signMint(mint.psbt, view);
+    expect(result.ok).toBe(true);
+  });
+
   it("wrong backing outpoint → refused, zero signatures", async () => {
     const { view, deploy } = mintSetup();
     const bad = mintSetup({

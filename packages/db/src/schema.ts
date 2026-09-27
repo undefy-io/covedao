@@ -29,9 +29,15 @@ export const tokens = pgTable(
     totalSupplyAtoms: atoms("total_supply_atoms").notNull(),
     publicSupplyAtoms: atoms("public_supply_atoms").notNull(),
     reserveSupplyAtoms: atoms("reserve_supply_atoms").notNull(),
-    confirmedMintedAtoms: atoms("confirmed_minted_atoms").notNull().$defaultFn(() => 0n),
-    pendingMintedAtoms: atoms("pending_minted_atoms").notNull().$defaultFn(() => 0n),
-    reserveSats: atoms("reserve_sats").notNull().$defaultFn(() => 0n),
+    confirmedMintedAtoms: atoms("confirmed_minted_atoms")
+      .notNull()
+      .$defaultFn(() => 0n),
+    pendingMintedAtoms: atoms("pending_minted_atoms")
+      .notNull()
+      .$defaultFn(() => 0n),
+    reserveSats: atoms("reserve_sats")
+      .notNull()
+      .$defaultFn(() => 0n),
     lastTradePricePerMillion: atoms("last_trade_price_per_million"),
     currentStage: integer("current_stage").notNull().default(1),
     deployHeight: atoms("deploy_height"),
@@ -155,7 +161,9 @@ export const blocks = pgTable(
 export const indexerCursors = pgTable("indexer_cursors", {
   id: text("id").primaryKey(),
   network: text("network").notNull(),
-  lastHeight: atoms("last_height").notNull().$defaultFn(() => 0n),
+  lastHeight: atoms("last_height")
+    .notNull()
+    .$defaultFn(() => 0n),
   lastBlockHash: text("last_block_hash"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -177,9 +185,15 @@ export const walletTokenBalances = pgTable(
     network: text("network").notNull(),
     walletAddress: text("wallet_address").notNull(),
     deploymentId: text("deployment_id").notNull(),
-    balanceAtoms: atoms("balance_atoms").notNull().$defaultFn(() => 0n),
-    pendingAtoms: atoms("pending_atoms").notNull().$defaultFn(() => 0n),
-    lockedAtoms: atoms("locked_atoms").notNull().$defaultFn(() => 0n),
+    balanceAtoms: atoms("balance_atoms")
+      .notNull()
+      .$defaultFn(() => 0n),
+    pendingAtoms: atoms("pending_atoms")
+      .notNull()
+      .$defaultFn(() => 0n),
+    lockedAtoms: atoms("locked_atoms")
+      .notNull()
+      .$defaultFn(() => 0n),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -224,8 +238,12 @@ export const trades = pgTable(
     tokenAmountAtoms: atoms("token_amount_atoms").notNull(),
     priceSats: atoms("price_sats").notNull(),
     pricePerMillionSats: atoms("price_per_million_sats").notNull(),
-    protocolFeeSats: atoms("protocol_fee_sats").notNull().$defaultFn(() => 0n),
-    platformFeeSats: atoms("platform_fee_sats").notNull().$defaultFn(() => 0n),
+    protocolFeeSats: atoms("protocol_fee_sats")
+      .notNull()
+      .$defaultFn(() => 0n),
+    platformFeeSats: atoms("platform_fee_sats")
+      .notNull()
+      .$defaultFn(() => 0n),
     txid: text("txid").notNull(),
     blockHeight: atoms("block_height").notNull(),
     canonical: boolean("canonical").notNull().default(true),
@@ -695,7 +713,11 @@ export const coveV3MarketListingInputs = pgTable(
   },
   (t) => [
     index("cove_v3_market_listing_inputs_listing_idx").on(t.listingId),
-    uniqueIndex("cove_v3_market_listing_inputs_outpoint_uq").on(t.listingId, t.sourceTxid, t.sourceVout),
+    uniqueIndex("cove_v3_market_listing_inputs_outpoint_uq").on(
+      t.listingId,
+      t.sourceTxid,
+      t.sourceVout,
+    ),
   ],
 );
 
@@ -735,7 +757,9 @@ export const coveV3MarketFills = pgTable(
   (t) => [
     index("cove_v3_market_fills_listing_idx").on(t.listingId),
     index("cove_v3_market_fills_status_idx").on(t.network, t.status),
-    uniqueIndex("cove_v3_market_fills_txid_uq").on(t.network, t.txid).where(sql`${t.txid} IS NOT NULL`),
+    uniqueIndex("cove_v3_market_fills_txid_uq")
+      .on(t.network, t.txid)
+      .where(sql`${t.txid} IS NOT NULL`),
   ],
 );
 
@@ -838,6 +862,13 @@ export const coveV3AppTransactions = pgTable(
     backingVout: integer("backing_vout"),
     unsignedTxDigest: text("unsigned_tx_digest"),
     psbtBase64: text("psbt_base64"),
+    metadataJson: jsonb("metadata_json").$type<{
+      displayName: string;
+      description: string;
+      websiteUrl?: string | null;
+      xUrl?: string | null;
+      imageUrl?: string | null;
+    }>(),
     txid: text("txid"),
     status: text("status").notNull().default("BUILT"), // BUILT | WALLET_SIGNED | BROADCAST | CONFIRMED | REORGED | FAILED | EXPIRED
     expiresAtHeight: atoms("expires_at_height"),
@@ -847,8 +878,15 @@ export const coveV3AppTransactions = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex("cove_v3_app_tx_idempotency_uq").on(t.network, t.walletScript, t.operation, t.idempotencyKey),
-    uniqueIndex("cove_v3_app_tx_txid_uq").on(t.network, t.txid).where(sql`${t.txid} IS NOT NULL`),
+    uniqueIndex("cove_v3_app_tx_idempotency_uq").on(
+      t.network,
+      t.walletScript,
+      t.operation,
+      t.idempotencyKey,
+    ),
+    uniqueIndex("cove_v3_app_tx_txid_uq")
+      .on(t.network, t.txid)
+      .where(sql`${t.txid} IS NOT NULL`),
     index("cove_v3_app_tx_status_idx").on(t.network, t.status),
     index("cove_v3_app_tx_wallet_idx").on(t.network, t.walletScript, t.createdAt),
   ],
@@ -890,6 +928,7 @@ export const coveV3GuardianAudit = pgTable(
   },
   (t) => [
     uniqueIndex("cove_v3_guardian_audit_hash_uq").on(t.network, t.auditHash),
+    uniqueIndex("cove_v3_guardian_audit_predecessor_uq").on(t.network, t.previousAuditHash),
     index("cove_v3_guardian_audit_outpoint_idx").on(t.network, t.backingTxid, t.backingVout),
   ],
 );
@@ -903,9 +942,12 @@ export const coveV3SigningJournal = pgTable(
     backingVout: integer("backing_vout").notNull(),
     unsignedTxDigest: text("unsigned_tx_digest").notNull(),
     signatureHash: text("signature_hash"),
+    signedAt: timestamp("signed_at", { withTimezone: true }),
     committedAt: timestamp("committed_at", { withTimezone: true }).notNull().defaultNow(),
-    /** Build-time reservation self-heals after this TTL (§C1). */
+    /** Unsigned reservations expire; signed rows remain committed. */
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   },
-  (t) => [uniqueIndex("cove_v3_signing_journal_outpoint_uq").on(t.network, t.backingTxid, t.backingVout)],
+  (t) => [
+    uniqueIndex("cove_v3_signing_journal_outpoint_uq").on(t.network, t.backingTxid, t.backingVout),
+  ],
 );

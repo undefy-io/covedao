@@ -29,6 +29,16 @@ export function displayTokensToAtoms(input: string): string {
   return (BigInt(whole) * ATOMS_PER_TOKEN + BigInt(frac)).toString();
 }
 
+/** Exact token amount for editable fields; abbreviated labels can lose atoms. */
+export function atomsToDisplayTokens(atoms: string | bigint): string {
+  const n = BigInt(atoms);
+  const whole = n / ATOMS_PER_TOKEN;
+  const fraction = n % ATOMS_PER_TOKEN;
+  return fraction === 0n
+    ? whole.toString()
+    : `${whole}.${fraction.toString().padStart(TOKEN_DECIMALS, "0").replace(/0+$/, "")}`;
+}
+
 export function fmtInt(v: string | bigint | number): string {
   const n = typeof v === "string" ? BigInt(v) : BigInt(v);
   return n.toLocaleString("en-US");

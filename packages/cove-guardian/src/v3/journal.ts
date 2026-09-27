@@ -98,7 +98,7 @@ export function verifyGuardianAuditChain(head: { previousAuditHash: string; audi
 
 export type SigningReservation = "RESERVED" | "IDEMPOTENT" | "CONFLICT";
 
-/** A build-time reservation self-heals after this TTL so an abandoned checkout cannot brick a token (§C1). */
+/** An unsigned signing lease expires; a produced signature never does. */
 export const SIGNING_JOURNAL_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 /** Durable per-backing-outpoint signing journal (double-sign protection). */
@@ -107,20 +107,22 @@ export interface SigningJournalStore {
    * Reserve a backing outpoint for `unsignedTxDigest`. CONFLICT means a
    * DIFFERENT digest was already committed (never sign); IDEMPOTENT means the
    * SAME digest was already committed (may recover the same signing result).
-   * A reservation whose TTL has elapsed is treated as absent and re-reserved.
+   * Only an unsigned reservation whose TTL has elapsed can be re-reserved.
    */
   reserve(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<SigningReservation>;
+  /** Make a produced signature's conflict barrier permanent before returning it. */
+  markSigned(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<void>;
   committedDigest(network: string, backingTxid: string, backingVout: number): Promise<string | null>;
   /**
-   * Release a reservation (only if it still matches `unsignedTxDigest`). Used to
-   * un-brick an abandoned build and to roll back when signing throws (§C1/§C6).
+   * Release an unsigned reservation if it still matches `unsignedTxDigest`.
+   * A produced signature's barrier cannot be released through this method.
    */
   release(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<void>;
 }
 
 /** In-memory journal (tests). A Map keyed by network:txid:vout. */
 export class InMemorySigningJournal implements SigningJournalStore {
-  private map = new Map<string, { digest: string; expiresAt: number }>();
+  private map = new Map<string, { digest: string; expiresAt: number; signed: boolean }>();
   constructor(private readonly clock: () => number = () => Date.now()) {}
 
   private now(): number {
@@ -130,17 +132,24 @@ export class InMemorySigningJournal implements SigningJournalStore {
   async reserve(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<SigningReservation> {
     const key = `${params.network}:${params.backingTxid}:${params.backingVout}`;
     const existing = this.map.get(key);
-    if (existing !== undefined && existing.expiresAt > this.now()) {
+    if (existing !== undefined && (existing.signed || existing.expiresAt > this.now())) {
       return existing.digest === params.unsignedTxDigest ? "IDEMPOTENT" : "CONFLICT";
     }
-    this.map.set(key, { digest: params.unsignedTxDigest, expiresAt: this.now() + SIGNING_JOURNAL_TTL_MS });
+    this.map.set(key, { digest: params.unsignedTxDigest, expiresAt: this.now() + SIGNING_JOURNAL_TTL_MS, signed: false });
     return "RESERVED";
+  }
+
+  async markSigned(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<void> {
+    const key = `${params.network}:${params.backingTxid}:${params.backingVout}`;
+    const held = this.map.get(key);
+    if (!held || held.digest !== params.unsignedTxDigest) throw new Error("signing reservation lost");
+    held.signed = true;
   }
 
   async committedDigest(network: string, backingTxid: string, backingVout: number): Promise<string | null> {
     const key = `${network}:${backingTxid}:${backingVout}`;
     const existing = this.map.get(key);
-    if (existing !== undefined && existing.expiresAt <= this.now()) {
+    if (existing !== undefined && !existing.signed && existing.expiresAt <= this.now()) {
       this.map.delete(key);
       return null;
     }
@@ -150,6 +159,6 @@ export class InMemorySigningJournal implements SigningJournalStore {
   async release(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<void> {
     const key = `${params.network}:${params.backingTxid}:${params.backingVout}`;
     const existing = this.map.get(key);
-    if (existing?.digest === params.unsignedTxDigest) this.map.delete(key);
+    if (existing?.digest === params.unsignedTxDigest && !existing.signed) this.map.delete(key);
   }
 }

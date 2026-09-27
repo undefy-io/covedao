@@ -26,4 +26,11 @@ describe("P0-6 finalizeAndBroadcastFill guards", () => {
     const app = serviceWith({ enabled: false });
     await expect(app.finalizeAndBroadcastFill("cd".repeat(16))).rejects.toThrow(/APP_DISABLED/);
   });
+
+  it("blocks market mutations while mainnet is disarmed", async () => {
+    const app = serviceWith({ network: "mainnet", mainnetProfileValid: true, mainnetMutationsArmed: false });
+    expect(() => app.reserveListing({} as never)).toThrow(/mainnet mutations are not armed/);
+    expect(() => app.buildFillPsbt("fill", {})).toThrow(/mainnet mutations are not armed/);
+    expect(() => app.broadcastFill({} as never)).toThrow(/mainnet mutations are not armed/);
+  });
 });

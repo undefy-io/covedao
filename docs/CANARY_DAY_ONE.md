@@ -21,25 +21,23 @@ burner whose compromise is bounded by the allowlist + caps.
 
 ---
 
-## 1. Generate the four keypairs (offline, air-gapped)
+## 1. Generate the two keypairs (offline, air-gapped)
 
 Run on a machine that will **not** host the app or the Guardian:
 
 ```bash
-pnpm cove:ceremony-keys --out /Volumes/ceremony/keys
+pnpm cove:ceremony-keys --recovery-keys 1 --out /Volumes/ceremony/keys
 ```
 
-It writes `guardian.key`, `recovery-1.key`, `recovery-2.key`, `recovery-3.key`
-(hex, mode 0600) to `--out`, and prints **only** the four x-only BIP340 pubkeys:
+It writes `guardian.key` and `recovery-1.key` (hex, mode 0600) to `--out`,
+and prints **only** their two x-only BIP340 pubkeys:
 
 ```
 guardian      <64-hex>
 recovery-1    <64-hex>
-recovery-2    <64-hex>
-recovery-3    <64-hex>
 ```
 
-- Store each private key **separately**, offline, in different physical locations.
+- Keep the recovery key offline, separate from the Guardian service, with a backup.
 - The x-only pubkeys are **public** — that's what goes into the profile.
 - Never put a `.key` file in the repo (they are gitignored; confirm with
   `git status --short` shows nothing new).
@@ -52,8 +50,8 @@ Edit the committed profile, `packages/cove-mainnet/src/committed-profile.ts`
 | Field | Value |
 |---|---|
 | `guardianXOnly` | the `guardian` x-only pubkey from step 1 |
-| `recovery.threshold` | `2` (with 3 keys) or `1` (with 1 key) |
-| `recovery.pubkeys` | the 3 `recovery-*` x-only pubkeys (any order; they are sorted canonically), or the single one for 1-of-1 |
+| `recovery.threshold` | `1` (the simple one-key recovery option) |
+| `recovery.pubkeys` | the single `recovery-1` x-only pubkey |
 | `recovery.csvBlocks` | `2016` (≈2 weeks) |
 | `activationHeight` | a **future** block height (see below) |
 | `feeScript` | leave `null`: set `COVE_FEE_ADDRESS` (your fee wallet's `bc1…` address) on web, worker and Guardian |
@@ -158,6 +156,8 @@ READY_FOR_CONTROLLED_MAINNET_CANARY
 
 1. Arm the canary (`canaryActive = true`) — the stage moves to `CANARY_ACTIVE`
    and `mutationsEnabled` flips true.
+   Set `COVE_V3_CANARY_ACTIVE=1` on both web and Guardian and restart those
+   services. Both independently refuse mainnet mutations while it is unset.
 2. Perform the **first** canary op — a single DEPLOY of the precomputed tokenId,
    then a single MINT to your own wallet — using the app's mutation path. That
    path enforces the canary wallet/token allowlist at the app layer, and the
@@ -192,8 +192,9 @@ and `maxBackingSats` is far above the 10 000-sats anchor.
 
 ## Rollback
 
-Disarm the canary (`canaryActive = false`) or clear the profile hash — the stage
-falls back to `CANARY_READY`/`READ_ONLY`, no new signs. If a backing invariant
+Disarm the canary (`COVE_V3_CANARY_ACTIVE=0` on both web and Guardian, then
+restart them) or clear the profile hash — the stage falls back to
+`CANARY_READY`/`READ_ONLY`, no new signs. If a backing invariant
 fires, follow `docs/runbooks/RECOVERY_PROCEDURE.md` (never a compensating tx).
 
 ## Never

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { MainnetProfile } from "@crclaunch/cove-mainnet";
-import { riskPolicyFromProfile } from "./service.js";
+import { guardMainnetSigning, riskPolicyFromProfile } from "./service.js";
+import type { GuardianTransport } from "@crclaunch/cove-guardian/v3";
 
 const profile: MainnetProfile = {
   profileVersion: 1,
@@ -47,6 +48,24 @@ describe("riskPolicyFromProfile (P0-2/P0-4)", () => {
     const p = riskPolicyFromProfile({ ...profile, canary: { ...profile.canary, allowedTokenIds: [] } });
     expect(p.enforceTokenAllowlist).toBe(true);
     expect(p.allowedTokenIds).toEqual([]);
+  });
+});
+
+describe("mainnet signing switch", () => {
+  it("blocks direct sign calls and reports signing disabled while disarmed", async () => {
+    let signs = 0;
+    const transport = {
+      health: async () => ({ reachable: true, releaseId: "test", profileHash: "aa".repeat(32),
+        guardianXOnly: "bb".repeat(32), auditHeadHash: "0".repeat(64), auditHealthy: true,
+        signingJournalHealthy: true, custodyBackendReady: true, signingEnabled: true }),
+      sign: async () => { signs++; return { ok: false, reason: "fake", detail: "fake" }; },
+    } satisfies GuardianTransport;
+    const paused = guardMainnetSigning(transport, "mainnet", false);
+    expect((await paused.health()).signingEnabled).toBe(false);
+    expect(await paused.sign({} as never)).toMatchObject({ ok: false, reason: "MAINNET_DISABLED" });
+    expect(signs).toBe(0);
+    await guardMainnetSigning(transport, "mainnet", true).sign({} as never);
+    expect(signs).toBe(1);
   });
 });
 

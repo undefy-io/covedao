@@ -1,0 +1,2 @@
+ALTER TABLE "cove_v3_app_transactions" ADD COLUMN "metadata_json" jsonb;--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "cove_v3_guardian_audit_predecessor_uq" ON "cove_v3_guardian_audit" USING btree ("network","previous_audit_hash");

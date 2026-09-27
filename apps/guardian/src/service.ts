@@ -12,6 +12,7 @@ import {
   type GuardianCustodyBackend,
   type GuardianSigningBackend,
   type GuardianRiskPolicy,
+  type GuardianTransport,
 } from "@crclaunch/cove-guardian/v3";
 import { loadCanonicalViewSnapshotFromDb, getLiveTokenUtxosAtDb } from "@crclaunch/cove-indexer/v3";
 import { PostgresSigningJournal, PostgresGuardianAudit } from "@crclaunch/cove-app";
@@ -31,6 +32,8 @@ export interface GuardianServiceConfig {
   releaseId: string;
   databaseUrl: string;
   network: "regtest" | "signet" | "testnet" | "mainnet";
+  /** Mainnet signer pause switch; false until the operator arms the canary. */
+  signingArmed?: boolean;
   custodyBackend: GuardianCustodyBackend;
   /**
    * The Guardian's OWN Bitcoin Core, used to refuse unconfirmed funding
@@ -45,12 +48,20 @@ export interface GuardianServiceConfig {
 const MAX_MINER_FEE_SATS = 20_000n;
 
 export interface BuiltGuardianService {
-  transport: InProcessGuardianTransport;
+  transport: GuardianTransport;
   profile: MainnetProfile;
   profileHash: string;
   guardianXOnly: string;
   /** The Guardian's own node, for the startup chain check. */
   core: CoreRpcProvider;
+}
+
+export function guardMainnetSigning(transport: GuardianTransport, network: string, armed: boolean): GuardianTransport {
+  if (network !== "mainnet" || armed) return transport;
+  return {
+    health: async () => ({ ...await transport.health(), signingEnabled: false }),
+    sign: async () => ({ ok: false, reason: "MAINNET_DISABLED", detail: "mainnet signing is not armed" }),
+  };
 }
 
 export function recoveryProfileFromMainnet(profile: MainnetProfile): VaultRecoveryProfile {
@@ -131,7 +142,7 @@ export function buildGuardianService(config: GuardianServiceConfig): BuiltGuardi
     let auditHeadHash = "";
     let auditHealthy = false;
     try {
-      auditHeadHash = await audit.headHash(config.network);
+      auditHeadHash = await audit.verifiedHeadHash(config.network);
       auditHealthy = true;
     } catch {
       auditHealthy = false;
@@ -146,13 +157,22 @@ export function buildGuardianService(config: GuardianServiceConfig): BuiltGuardi
     return { releaseId: config.releaseId, auditHeadHash, auditHealthy, signingJournalHealthy, custodyBackendReady };
   };
 
-  const transport = new InProcessGuardianTransport({
+  const innerTransport = new InProcessGuardianTransport({
     signer,
     profileHash,
     guardianXOnly,
     network: config.network,
     decode: (psbtBase64) => ({ psbt: bitcoin.Psbt.fromBase64(psbtBase64) }),
-    loadView: async (tokenId) => loadCanonicalViewSnapshotFromDb({ db, network: config.network, tokenId }),
+    loadView: async (tokenId) => {
+      const view = await loadCanonicalViewSnapshotFromDb({ db, network: config.network, tokenId });
+      if (view.rebuilding) throw new Error("Guardian indexer view is rebuilding");
+      const tip = await core.getBlockchainInfo();
+      if (view.cursorHeight > BigInt(tip.blocks)) throw new Error("Guardian indexer cursor is ahead of Core");
+      if (view.cursorHeight > 0n && await core.getBlockHash(Number(view.cursorHeight)) !== view.cursorBlockHash) {
+        throw new Error("Guardian indexer cursor diverged from Core");
+      }
+      return view;
+    },
     recoveryKeyXOnly,
     recoveryProfile,
     feeScript,
@@ -163,6 +183,8 @@ export function buildGuardianService(config: GuardianServiceConfig): BuiltGuardi
     fundingChecker,
     healthProbe,
   });
+
+  const transport = guardMainnetSigning(innerTransport, config.network, config.signingArmed === true);
 
   return { transport, profile, profileHash, guardianXOnly, core };
 }

@@ -24,7 +24,8 @@ function bounded(text: string, max: number): string {
   if (s.length === 0) throw new AppError("METADATA_INVALID", "text must not be empty");
   if (s.length > max) throw new AppError("METADATA_INVALID", `text exceeds ${max} characters`);
   // eslint-disable-next-line no-control-regex
-  if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(s)) throw new AppError("METADATA_INVALID", "control characters not allowed");
+  if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(s))
+    throw new AppError("METADATA_INVALID", "control characters not allowed");
   return s;
 }
 
@@ -39,7 +40,8 @@ export function validateMetadata(input: TokenMetadataInput): TokenMetadataInput 
   return {
     displayName: bounded(input.displayName, MAX_NAME),
     // A description is optional: plenty of tokens launch with a name alone.
-    description: (input.description ?? "").trim() === "" ? "" : bounded(input.description, MAX_DESC),
+    description:
+      (input.description ?? "").trim() === "" ? "" : bounded(input.description, MAX_DESC),
     websiteUrl: httpsUrl(input.websiteUrl),
     xUrl: httpsUrl(input.xUrl),
     imageUrl: httpsUrl(input.imageUrl),
@@ -76,6 +78,7 @@ export async function upsertTokenMetadata(params: {
         websiteUrl: m.websiteUrl,
         xUrl: m.xUrl,
         imageUrl: m.imageUrl,
+        submittedByScript: params.submittedByScript,
         deployTxid: params.deployTxid,
         updatedAt: new Date(),
       },
@@ -86,14 +89,28 @@ export async function getTokenMetadata(db: Database, network: string, tokenId: s
   const rows = await db
     .select()
     .from(schema.coveV3TokenMetadata)
-    .where(and(eq(schema.coveV3TokenMetadata.network, network), eq(schema.coveV3TokenMetadata.tokenId, tokenId)));
+    .where(
+      and(
+        eq(schema.coveV3TokenMetadata.network, network),
+        eq(schema.coveV3TokenMetadata.tokenId, tokenId),
+      ),
+    );
   return rows[0] ?? null;
 }
 
-export async function listTokenMetadataByTokenIds(db: Database, network: string, tokenIds: string[]) {
+export async function listTokenMetadataByTokenIds(
+  db: Database,
+  network: string,
+  tokenIds: string[],
+) {
   if (tokenIds.length === 0) return [];
   return db
     .select()
     .from(schema.coveV3TokenMetadata)
-    .where(and(eq(schema.coveV3TokenMetadata.network, network), inArray(schema.coveV3TokenMetadata.tokenId, tokenIds)));
+    .where(
+      and(
+        eq(schema.coveV3TokenMetadata.network, network),
+        inArray(schema.coveV3TokenMetadata.tokenId, tokenIds),
+      ),
+    );
 }

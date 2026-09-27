@@ -71,6 +71,20 @@
       "when": 1790446239331,
       "tag": "0009_presigned_listings",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790481527583,
+      "tag": "0010_crazy_plazm",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790485916882,
+      "tag": "0011_common_silvermane",
+      "breakpoints": true
     }
   ]
 }

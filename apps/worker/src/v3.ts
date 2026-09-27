@@ -80,9 +80,10 @@ async function main() {
       // 1. check Core + reorg
       const info = await provider.getBlockchainInfo();
       const coreHeight = BigInt(info.blocks);
-      if (state.cursor.height > 0n && state.cursor.height <= coreHeight) {
-        const coreHashAtCursor = await provider.getBlockHash(Number(state.cursor.height));
-        if (coreHashAtCursor !== state.cursor.blockHash) {
+      if (state.cursor.height > 0n) {
+        const shorterTip = state.cursor.height > coreHeight;
+        const coreHashAtCursor = shorterTip ? null : await provider.getBlockHash(Number(state.cursor.height));
+        if (shorterTip || coreHashAtCursor !== state.cursor.blockHash) {
           console.log(`reorg detected at height ${state.cursor.height}; rolling back to tip`);
           await reorgPersistentToTip({ db, store, state, provider, config: indexerConfig });
           metrics.inc("market.confirmations");
