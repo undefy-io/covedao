@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/i18n/LanguageProvider";
 import { fmtInt, fmtBtc } from "@/lib/format";
 
 /**
@@ -58,36 +59,37 @@ function Cell({
 }
 
 export function MarketStats({ s }: { s: MarketSummary }) {
+  const t = useT();
   const dash = "—";
   const up24 = (s.change24hPct ?? 0) >= 0;
   return (
     <div className="flex flex-wrap items-center gap-x-px gap-y-px bg-rule text-sm">
       <Cell
-        label="Floor"
+        label={t("mkt.floor")}
         value={s.floorSats === null ? dash : fmtInt(Math.round(s.floorSats))}
         tone={s.floorSats === null ? undefined : "up"}
       />
       <Cell
-        label="Last"
+        label={t("mkt.lastShort")}
         value={s.lastPriceSats === null ? dash : fmtInt(Math.round(s.lastPriceSats))}
         sub={<Pct value={s.change24hPct} />}
         tone={s.lastPriceSats === null ? undefined : up24 ? "up" : "down"}
       />
       <Cell
-        label="Mcap"
+        label={t("mkt.mcap")}
         value={s.marketCapSats === null ? dash : fmtBtc(BigInt(s.marketCapSats))}
       />
       <Cell
-        label="Volume 7d"
+        label={t("mkt.vol7d")}
         value={fmtBtc(BigInt(s.volume7dSats))}
         sub={<Pct value={s.volume7dChangePct} />}
       />
-      <Cell label="High" value={s.highSats === null ? dash : fmtInt(Math.round(s.highSats))} />
-      <Cell label="Low" value={s.lowSats === null ? dash : fmtInt(Math.round(s.lowSats))} />
+      <Cell label={t("mkt.high")} value={s.highSats === null ? dash : fmtInt(Math.round(s.highSats))} />
+      <Cell label={t("mkt.low")} value={s.lowSats === null ? dash : fmtInt(Math.round(s.lowSats))} />
       <Cell
-        label="Trades"
+        label={t("mkt.trades")}
         value={fmtInt(s.trades)}
-        sub={<span className="text-bone-dim">{fmtInt(s.buyers)} buyers</span>}
+        sub={<span className="text-bone-dim">{t("mkt.buyers", { n: fmtInt(s.buyers) })}</span>}
       />
     </div>
   );

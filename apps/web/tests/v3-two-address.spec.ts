@@ -33,7 +33,7 @@ test.beforeEach(async ({}, testInfo) => {
   test.skip(testInfo.project.name === "mobile", "full journey is desktop-only");
 });
 
-const BASE = "http://localhost:3100";
+const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3100";
 const T = 100_000_000n;
 
 const DAVE = { payPriv: "49".repeat(32), ordPriv: "4a".repeat(32) };

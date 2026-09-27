@@ -15,6 +15,7 @@ function fmtCompact(n: bigint): string {
   return n.toString();
 }
 import { useSparklines } from "@/lib/use-sparklines";
+import { useT } from "@/i18n/LanguageProvider";
 
 /**
  * The hero states the protocol's actual claim rather than a slogan: state is
@@ -25,6 +26,7 @@ import { useSparklines } from "@/lib/use-sparklines";
 export default function HomePage() {
   const [tokens, setTokens] = useState<V3TokenCardData[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const t = useT();
   // Refetch when a new block is indexed.
   const block = useIndexedBlock();
 
@@ -47,45 +49,45 @@ export default function HomePage() {
     <div className="space-y-px">
       <section className="panel px-6 py-14 sm:px-10 sm:py-20">
         <Image src="/logo.png" alt="covs" width={72} height={72} priority className="mb-6 h-16 w-16 sm:h-[72px] sm:w-[72px]" />
-        <p className="eyebrow">covs.trade · CRC-20 · Bitcoin L1</p>
+        <p className="eyebrow">{t("home.eyebrow")}</p>
         <h1 className="mt-5 max-w-3xl text-display text-bone">
-          Covenant-powered
+          {t("home.title1")}
           <br />
-          CRC launchpad.
+          {t("home.title2")}
         </h1>
         <p className="mt-6 max-w-xl text-sm leading-relaxed text-bone-dim">
-          The first fair-launch bonding curve on Bitcoin.
+          {t("home.pitch1")}
           <br />
-          Mint as the price climbs. Sell back to the vault anytime.
+          {t("home.pitch2")}
         </p>
         <div className="mt-9 flex flex-wrap gap-3">
-          <Link href="/launch" className="btn">Launch a token</Link>
-          <Link href="/explore" className="btn-ghost">Explore</Link>
+          <Link href="/launch" className="btn">{t("home.ctaLaunch")}</Link>
+          <Link href="/explore" className="btn-ghost">{t("home.ctaExplore")}</Link>
         </div>
       </section>
 
       <section className="panel px-6 py-8 sm:px-10">
-        <p className="eyebrow">Every token, same rules</p>
+        <p className="eyebrow">{t("home.rules")}</p>
         <div className="mt-5 grid grid-cols-2 gap-px bg-rule sm:grid-cols-4">
-          <Tile value={fmtCompact(PUBLIC_SUPPLY_TOKENS)} label="Total supply" />
-          <Tile value={fmtCompact(TEAM_ALLOCATION_TOKENS + CREATOR_PREMINE_TOKENS)} label="Team tokens" />
-          <Tile value="50%" label="Of each mint to the creator" />
-          <Tile value={`${(Number(getTheoreticalFullRaise()) / 1e8).toFixed(3)} BTC`} label="In the vault at mint-out" />
+          <Tile value={fmtCompact(PUBLIC_SUPPLY_TOKENS)} label={t("home.totalSupply")} />
+          <Tile value={fmtCompact(TEAM_ALLOCATION_TOKENS + CREATOR_PREMINE_TOKENS)} label={t("home.teamTokens")} />
+          <Tile value="50%" label={t("home.creatorShare")} />
+          <Tile value={`${(Number(getTheoreticalFullRaise()) / 1e8).toFixed(3)} BTC`} label={t("home.vaultAtMintOut")} />
         </div>
       </section>
 
       <section className="panel px-6 py-8 sm:px-10">
         <div className="flex items-baseline justify-between">
-          <p className="eyebrow">Recent launches</p>
+          <p className="eyebrow">{t("home.recent")}</p>
           <Link href="/explore" className="text-label uppercase tracking-label text-bone-dim hover:text-signal">
-            View all →
+            {t("home.viewAll")}
           </Link>
         </div>
         <div className="mt-5">
           {!loaded ? (
-            <Empty message="Reading the chain…" />
+            <Empty message={t("common.readingChain")} />
           ) : tokens.length === 0 ? (
-            <Empty message="No confirmed tokens yet." />
+            <Empty message={t("home.noTokens")} />
           ) : (
             <div className="grid gap-px bg-rule sm:grid-cols-2 lg:grid-cols-3">
               {tokens.map((t) => (
@@ -97,54 +99,31 @@ export default function HomePage() {
       </section>
 
       <section className="panel px-6 py-8 sm:px-10">
-        <p className="eyebrow">How it works</p>
+        <p className="eyebrow">{t("home.how")}</p>
         <ol className="mt-6 grid gap-px bg-rule sm:grid-cols-3">
-          <Step
-            n="01"
-            title="Buy from backing"
-            body="BTC enters the deterministic reserve and freshly issued tokens come out. The price is a frozen 20-stage integer curve — no oracle, no discretion."
-          />
-          <Step
-            n="02"
-            title="Redeem to backing"
-            body="Sell tokens back to the reserve for the exact R-delta, minus the protocol fee. The Guardian recomputes every amount from canonical state."
-          />
-          <Step
-            n="03"
-            title="Trade peer to peer"
-            body="List a real token UTXO at a fixed BTC price. Buyer and seller both sign SIGHASH_ALL and it settles atomically in one Bitcoin transaction."
-          />
+          <Step n="01" title={t("home.step1Title")} body={t("home.step1Body")} />
+          <Step n="02" title={t("home.step2Title")} body={t("home.step2Body")} />
+          <Step n="03" title={t("home.step3Title")} body={t("home.step3Body")} />
         </ol>
       </section>
 
       <section className="panel px-6 py-8 sm:px-10">
-        <p className="eyebrow">What Bitcoin enforces</p>
+        <p className="eyebrow">{t("home.enforces")}</p>
         <div className="mt-5 grid gap-px bg-rule md:grid-cols-2">
           <Boundary
             kind="verified"
-            heading="Bitcoin consensus"
-            items={[
-              "The Taproot signature on every spend",
-              "UTXO rules — no double-spend, no BTC inflation",
-              "The successor output exists at the exact value and script committed to",
-            ]}
+            chip={t("home.consensus")}
+            heading={t("home.consensusHeading")}
+            items={[t("home.consensus1"), t("home.consensus2"), t("home.consensus3")]}
           />
           <Boundary
             kind="pending"
-            heading="The Guardian — not Bitcoin"
-            items={[
-              "Supply conservation and the issuance curve",
-              "Payment amounts and the recovery profile",
-              "Bitcoin will not reject an invalid covs transition; the indexer ignores it",
-            ]}
+            chip={t("home.policy")}
+            heading={t("home.guardianHeading")}
+            items={[t("home.guardian1"), t("home.guardian2"), t("home.guardian3")]}
           />
         </div>
-        <p className="mt-6 max-w-2xl text-xs leading-relaxed text-bone-dim">
-          covs is client-validated, like every Bitcoin metaprotocol today — there are no covenants on
-          Bitcoin mainnet; every proposal is still a draft. The difference is that this validator is
-          reproducible: the indexer is public, the state root is deterministic, and two independent
-          operators can check each other.
-        </p>
+        <p className="mt-6 max-w-2xl text-xs leading-relaxed text-bone-dim">{t("home.honest")}</p>
       </section>
     </div>
   );
@@ -162,17 +141,19 @@ function Step({ n, title, body }: { n: string; title: string; body: string }) {
 
 function Boundary({
   kind,
+  chip: chipLabel,
   heading,
   items,
 }: {
   kind: "verified" | "pending";
+  chip: string;
   heading: string;
   items: string[];
 }) {
   const chip = kind === "verified" ? "chip chip-verified" : "chip chip-pending";
   return (
     <div className="bg-ink-3 px-5 py-5">
-      <span className={chip}>{kind === "verified" ? "Consensus" : "Policy"}</span>
+      <span className={chip}>{chipLabel}</span>
       <div className="mt-3 text-sm text-bone">{heading}</div>
       <ul className="mt-3 space-y-2">
         {items.map((t) => (

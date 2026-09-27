@@ -15,7 +15,7 @@ export default defineConfig({
   reporter: [["list"]],
   globalSetup: "./tests/global-setup.ts",
   use: {
-    baseURL: "http://localhost:3100",
+    baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3100",
     trace: "on-first-retry",
   },
   projects: [

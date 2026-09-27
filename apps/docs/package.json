@@ -7,7 +7,7 @@
     "build": "docusaurus build",
     "serve": "docusaurus serve --port 3002",
     "clear": "docusaurus clear",
-    "build:web": "DOCS_HASH_ROUTER=1 DOCS_BASE_URL=/ docusaurus build --out-dir ../web/public/docs"
+    "build:web": "DOCS_HASH_ROUTER=1 DOCS_BASE_URL=/ DOCS_LOCALE=en docusaurus build --out-dir ../web/public/docs && DOCS_HASH_ROUTER=1 DOCS_BASE_URL=/ DOCS_LOCALE=zh-Hans docusaurus build --locale zh-Hans --out-dir ../web/public/docs/zh-Hans"
   },
   "dependencies": {
     "@docusaurus/core": "3.10.2",

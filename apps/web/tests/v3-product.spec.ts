@@ -29,7 +29,7 @@ test.beforeEach(async ({}, testInfo) => {
   test.skip(testInfo.project.name === "mobile", "full product journey is desktop-only");
 });
 
-const BASE = "http://localhost:3100";
+const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3100";
 
 async function status() {
   const r = await fetch(`${BASE}/api/v3/status`);

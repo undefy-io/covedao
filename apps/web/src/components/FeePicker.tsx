@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/i18n/LanguageProvider";
+import type { MessageKey } from "@/i18n";
 import { useEffect, useState } from "react";
 
 /**
@@ -79,10 +81,11 @@ export function FeePicker({
   /** Rough size of the transaction, used only to preview the fee in sats. */
   vsizeHint?: number;
 }) {
+  const t = useT();
   if (!rates) {
     return (
       <div className="border border-rule bg-ink-3 px-3 py-2.5 text-xs text-bone-dim">
-        Reading Bitcoin fee rates…
+        {t("fee.reading")}
       </div>
     );
   }
@@ -90,37 +93,37 @@ export function FeePicker({
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between">
-        <span className="eyebrow">Network fee</span>
+        <span className="eyebrow">{t("fee.title")}</span>
         {rates.estimated ? (
           <span className="text-label uppercase tracking-label text-pending">
-            No fee history — estimated
+            {t("fee.estimated")}
           </span>
         ) : (
           <span className="text-label uppercase tracking-label text-bone-dim">
-            Floor {rates.floorSatPerVb} sat/vB
+            {t("fee.floor", { n: rates.floorSatPerVb })}
           </span>
         )}
       </div>
       <div className="grid grid-cols-3 gap-px bg-rule">
-        {rates.tiers.map((t) => {
-          const active = t.key === selected;
-          const preview = vsizeHint ? BigInt(t.satPerVb) * BigInt(Math.ceil(vsizeHint)) : null;
+        {rates.tiers.map((tier) => {
+          const active = tier.key === selected;
+          const preview = vsizeHint ? BigInt(tier.satPerVb) * BigInt(Math.ceil(vsizeHint)) : null;
           return (
             <button
-              key={t.key}
+              key={tier.key}
               type="button"
-              onClick={() => onSelect(t.key)}
+              onClick={() => onSelect(tier.key)}
               aria-pressed={active}
               className={`px-3 py-2.5 text-left transition-colors ${
                 active ? "bg-signal/10 text-bone" : "bg-ink-3 text-bone-dim hover:bg-ink-2"
               }`}
             >
-              <div className={`text-sm ${active ? "text-signal" : ""}`}>{t.label}</div>
+              <div className={`text-sm ${active ? "text-signal" : ""}`}>{t(`fee.${tier.key}` as MessageKey)}</div>
               <div className="mt-1 text-label uppercase tracking-label tabular-nums">
-                {t.satPerVb} sat/vB
+                {tier.satPerVb} sat/vB
               </div>
               <div className="mt-0.5 text-label tabular-nums text-bone-dim">
-                {preview !== null ? `≈${preview.toLocaleString()} sats` : `~${t.blocks} blocks`}
+                {preview !== null ? `≈${preview.toLocaleString()} sats` : t("fee.blocks", { n: tier.blocks })}
               </div>
             </button>
           );

@@ -4,7 +4,7 @@
  * SIGHASH_SINGLE|ANYONECANPAY, over the payout. E2E only.
  */
 
-const BASE = "http://localhost:3100";
+const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3100";
 
 async function post(url: string, body: unknown) {
   const j = await fetch(`${BASE}${url}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());

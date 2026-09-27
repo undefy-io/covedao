@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/i18n/LanguageProvider";
+import type { MessageKey } from "@/i18n";
 import { useEffect, useState } from "react";
 import { fmtBtc, fmtInt, fmtTokens } from "@/lib/format";
 import { unitPriceSats } from "@/lib/ohlc";
@@ -29,11 +31,11 @@ interface ActivityRow {
   backingAfterSats: string | null;
 }
 
-const LABEL: Record<string, string> = {
-  DEPLOY: "Launch",
-  MINT: "Bought from backing",
-  REDEEM: "Sold to backing",
-  TRANSFER: "Transfer",
+const LABEL: Record<string, MessageKey> = {
+  DEPLOY: "hist.deploy",
+  MINT: "hist.mint",
+  REDEEM: "hist.redeem",
+  TRANSFER: "hist.transfer",
 };
 
 export function TokenActivity({
@@ -50,6 +52,7 @@ export function TokenActivity({
   /** Changes when a new block is indexed; the history refetches. */
   refreshKey?: string;
 }) {
+  const t = useT();
   const [rows, setRows] = useState<ActivityRow[] | null>(demoRows ?? null);
   // The newest few by default; the rest one click away.
   const [shown, setShown] = useState(PAGE);
@@ -65,29 +68,29 @@ export function TokenActivity({
   return (
     <section className="panel px-6 py-8 sm:px-10">
       <div className="flex items-baseline justify-between">
-        <p className="eyebrow">History</p>
+        <p className="eyebrow">{t("hist.title")}</p>
         <span className="text-label uppercase tracking-label text-bone-dim">
-          Confirmed on Bitcoin
+          {t("hist.confirmed")}
         </span>
       </div>
 
       {rows === null ? (
-        <p className="mt-5 text-sm text-bone-dim">Reading the chain…</p>
+        <p className="mt-5 text-sm text-bone-dim">{t("hist.reading")}</p>
       ) : rows.length === 0 ? (
         <p className="mt-5 border border-dashed border-rule px-6 py-10 text-center text-sm text-bone-dim">
-          Nothing has settled yet. The first buy will appear here.
+          {t("hist.empty")}
         </p>
       ) : (
         <div className="mt-5 overflow-x-auto">
           <table className="ledger-table">
             <thead>
               <tr>
-                <th>Block</th>
-                <th>What</th>
-                <th className="text-right">Amount</th>
-                <th className="text-right">Value</th>
-                <th className="text-right">Price / 1k</th>
-                <th>Transaction</th>
+                <th>{t("hist.block")}</th>
+                <th>{t("hist.what")}</th>
+                <th className="text-right">{t("hist.amount")}</th>
+                <th className="text-right">{t("hist.value")}</th>
+                <th className="text-right">{t("hist.price1k")}</th>
+                <th>{t("hist.tx")}</th>
               </tr>
             </thead>
             <tbody>
@@ -101,11 +104,11 @@ export function TokenActivity({
                     <td className="text-bone-dim">{fmtInt(r.blockHeight)}</td>
                     <td>
                       <span className={r.valid ? "text-bone" : "text-rejected"}>
-                        {LABEL[r.operation ?? ""] ?? r.operation ?? "—"}
+                        {LABEL[r.operation ?? ""] ? t(LABEL[r.operation ?? ""]!) : r.operation ?? "—"}
                       </span>
                       {!r.valid && r.reason ? (
                         <span className="ml-2 text-label uppercase tracking-label text-rejected">
-                          rejected
+                          {t("hist.rejected")}
                         </span>
                       ) : null}
                     </td>
@@ -150,7 +153,7 @@ export function TokenActivity({
           </table>
           {rows.length > shown ? (
             <button onClick={() => setShown((n) => n + PAGE)} className="btn-ghost mt-4 w-full">
-              Show more ({fmtInt(rows.length - shown)} older)
+              {t("hist.more", { n: fmtInt(rows.length - shown) })}
             </button>
           ) : null}
         </div>

@@ -1,4 +1,5 @@
 "use client";
+import { useT } from "@/i18n/LanguageProvider";
 import { DEMO_EVENTS } from "@/lib/demo-tokens";
 
 import { useSearchParams } from "next/navigation";
@@ -21,6 +22,7 @@ function ActivityContent() {
   const searchParams = useSearchParams();
   // Client-side design-preview path: no API calls, no writes.
   const demo = searchParams.get("demo") === "1";
+  const t = useT();
   const [events, setEvents] = useState<Event[]>([]);
   const [loaded, setLoaded] = useState(false);
   // The newest few by default; the rest one click away.
@@ -44,18 +46,26 @@ function ActivityContent() {
   }, [block]);
 
   const label = (op: string | null) =>
-    op === "DEPLOY" ? "Launch" : op === "MINT" ? "Backing buy" : op === "REDEEM" ? "Backing redeem" : op === "TRANSFER" ? "Transfer" : op ?? "—";
+    op === "DEPLOY"
+      ? t("act.deploy")
+      : op === "MINT"
+        ? t("act.mint")
+        : op === "REDEEM"
+          ? t("act.redeem")
+          : op === "TRANSFER"
+            ? t("act.transfer")
+            : op ?? "—";
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl text-bone">Activity</h1>
-        <p className="text-sm text-bone-dim">Canonical confirmed covs events (never broadcast-as-confirmed).</p>
+        <h1 className="text-2xl text-bone">{t("act.title")}</h1>
+        <p className="text-sm text-bone-dim">{t("act.sub")}</p>
       </div>
       {!loaded ? (
-        <p className="text-bone-dim">Loading…</p>
+        <p className="text-bone-dim">{t("common.loading")}</p>
       ) : events.length === 0 ? (
-        <p className="text-bone-dim">No confirmed events yet.</p>
+        <p className="text-bone-dim">{t("act.empty")}</p>
       ) : (
         <div className="space-y-2">
           {events.slice(0, shown).map((e) => (
@@ -65,14 +75,14 @@ function ActivityContent() {
                 {e.tokenId && <span className="ml-2 font-mono text-xs text-bone-dim">{e.tokenId.slice(0, 12)}…</span>}
               </div>
               <div className="text-right">
-                <div className="text-xs text-bone-dim">height {e.blockHeight}</div>
+                <div className="text-xs text-bone-dim">{t("act.height", { n: e.blockHeight })}</div>
                 <div className="font-mono text-xs text-bone-dim">{e.txid.slice(0, 16)}…</div>
               </div>
             </div>
           ))}
           {events.length > shown ? (
             <button onClick={() => setShown((n) => n + PAGE)} className="btn-ghost w-full">
-              Show more ({events.length - shown} older)
+              {t("act.more", { n: events.length - shown })}
             </button>
           ) : null}
         </div>
@@ -81,13 +91,18 @@ function ActivityContent() {
   );
 }
 
+function SuspenseLoading() {
+  const t = useT();
+  return <div className="panel px-6 py-16 text-center text-sm text-bone-dim">{t("common.loading")}</div>;
+}
+
 /**
  * useSearchParams opts this route into client-side rendering, which Next
  * requires to sit behind a Suspense boundary.
  */
 export default function ActivityPage() {
   return (
-    <Suspense fallback={<div className="panel px-6 py-16 text-center text-sm text-bone-dim">Loading…</div>}>
+    <Suspense fallback={<SuspenseLoading />}>
       <ActivityContent />
     </Suspense>
   );

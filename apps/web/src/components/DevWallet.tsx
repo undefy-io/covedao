@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/i18n/LanguageProvider";
 import { useEffect } from "react";
 import { useWallet } from "./WalletProvider";
 import { DEV_WALLET_STORAGE_KEY } from "@/lib/wallets/dev";
@@ -15,6 +16,7 @@ import { DEV_WALLET_STORAGE_KEY } from "@/lib/wallets/dev";
  */
 export function DevWallet() {
   const { connected, connectDev, devIdentity, address } = useWallet();
+  const t = useT();
 
   useEffect(() => {
     if (connected) return;
@@ -37,7 +39,7 @@ export function DevWallet() {
 
   return (
     <div className="fixed bottom-14 right-4 z-50 border border-pending/40 bg-pending/10 px-3 py-2 text-label uppercase tracking-label text-pending">
-      Dev wallet · {devIdentity} · {address.slice(0, 10)}…
+      {t("dev.badge", { name: devIdentity, address: address.slice(0, 10) })}
     </div>
   );
 }

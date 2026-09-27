@@ -15,3 +15,15 @@
   --ifm-navbar-background-color: #0c0c0d;
   --ifm-footer-background-color: #0c0c0d;
 }
+
+/* Footer social links: the logos alone, centred. */
+.footer-social {
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem;
+}
+
+/* The language link opens the other build in place; no "external" icon. */
+.locale-link svg {
+  display: none;
+}

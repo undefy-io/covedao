@@ -1,4 +1,5 @@
 import * as bitcoin from "bitcoinjs-lib";
+import { tr } from "../../i18n";
 import { Psbt } from "bitcoinjs-lib";
 import {
   WalletError,
@@ -25,7 +26,7 @@ export function browserNetwork(network: CoveNetwork): BrowserNetwork {
   if (network === "regtest") {
     throw new WalletError(
       "WRONG_NETWORK",
-      "Browser wallets do not support regtest. Use the built-in test wallet locally.",
+      tr("wal.noRegtest"),
     );
   }
   return network;

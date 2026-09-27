@@ -1,5 +1,7 @@
 "use client";
 
+import { isMessageKey, type MessageKey } from "@/i18n";
+import { useT } from "@/i18n/LanguageProvider";
 import { useSearchParams } from "next/navigation";
 
 import { Suspense, useEffect, useState } from "react";
@@ -7,7 +9,7 @@ import { useIndexedBlock } from "@/lib/use-indexed-block";
 import { useWallet } from "@/components/WalletProvider";
 import { fmtBtc, fmtTokens } from "@/lib/format";
 import { DEMO_PORTFOLIO } from "@/lib/demo-tokens";
-import { sendTokens, createListing } from "@/lib/trade";
+import { sendTokens, createListing, errorText } from "@/lib/trade";
 import { unitPriceSats } from "@/lib/ohlc";
 import { fmtInt } from "@/lib/format";
 import { displayTokensToAtoms } from "@/lib/format";
@@ -40,6 +42,7 @@ function WalletContent() {
   const searchParams = useSearchParams();
   // Client-side design-preview path: no API calls, no writes.
   const demo = searchParams.get("demo") === "1";
+  const t = useT();
   const { connected, address, ordinalsAddress, network, walletFields, connect, signPsbt, signBip322, getUtxos } = useWallet();
   const { satPerVb } = useFeeRates();
   // Which holding has its Send form open, and what is typed into it.
@@ -126,7 +129,7 @@ function WalletContent() {
     setMsg("");
     const total = totalFor(listAmount, listPricePer1k);
     if (total === null) {
-      setErr("Enter how many tokens and a price per 1,000");
+      setErr(t("wallet.enterBoth"));
       return;
     }
     setBusy(`list-${tokenId}`);
@@ -144,10 +147,8 @@ function WalletContent() {
         satPerVb,
       });
       setMsg(
-        `Listed ${fmtInt(listAmount)} tokens for ${fmtInt(total)} sats (${listingId.slice(0, 12)}…). ` +
-          (pending
-            ? "It goes live when the split confirms in the next block. You do not need to sign anything when it sells."
-            : "You do not need to sign anything when it sells."),
+        `${t("wallet.listed", { n: fmtInt(listAmount), sats: fmtInt(total), id: listingId.slice(0, 12) })} ` +
+          (pending ? t("wallet.listedPending") : t("wallet.listedNoSign")),
       );
       setListing(null);
       setListAmount("");
@@ -175,7 +176,7 @@ function WalletContent() {
         signPsbt,
         satPerVb,
       });
-      setMsg(`Sent. It arrives when the next block confirms it (${txid.slice(0, 16)}…).`);
+      setMsg(t("wallet.sent", { txid: txid.slice(0, 16) }));
       setSending(null);
       setSendAmount("");
       setSendTo("");
@@ -193,7 +194,7 @@ function WalletContent() {
     try {
       const pr = await fetch(`/api/v3/market/listings/${listingId}/cancel/prepare`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
       const pj = await pr.json();
-      if (!pj.ok) throw new Error(pj.error?.message ?? "cancel prepare failed");
+      if (!pj.ok) throw new Error(errorText(pj) || t("wallet.cancelPrepFailed"));
       const sig = await signBip322(pj.data.message);
       const cr = await fetch(`/api/v3/market/listings/${listingId}/cancel`, {
         method: "POST",
@@ -201,8 +202,8 @@ function WalletContent() {
         body: JSON.stringify({ nonceHex: pj.data.cancelNonce, signatureB64: sig }),
       });
       const cj = await cr.json();
-      if (!cj.ok) throw new Error(cj.error?.message ?? "cancel failed");
-      setMsg("Listing cancelled");
+      if (!cj.ok) throw new Error(errorText(cj) || t("wallet.cancelFailed"));
+      setMsg(t("wallet.cancelled"));
       await refresh();
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -214,25 +215,25 @@ function WalletContent() {
   if (!connected && !demo) {
     return (
       <div className="border border-dashed border-rule bg-ink-3 px-6 py-12 text-center">
-        <p className="text-bone-dim">Connect a wallet to view holdings.</p>
-        <button onClick={() => void connect()} className="mt-4 bg-signal px-6 py-3 text-bone hover:bg-[#F0A253]">Connect Wallet</button>
+        <p className="text-bone-dim">{t("wallet.connectToView")}</p>
+        <button onClick={() => void connect()} className="mt-4 bg-signal px-6 py-3 text-bone hover:bg-[#F0A253]">{t("wallet.connect")}</button>
       </div>
     );
   }
 
-  if (!loaded || !portfolio) return <div className="text-bone-dim">Loading wallet…</div>;
+  if (!loaded || !portfolio) return <div className="text-bone-dim">{t("wallet.loading")}</div>;
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl text-bone">Wallet</h1>
+        <h1 className="text-2xl text-bone">{t("wallet.title")}</h1>
         <p className="break-all font-mono text-xs text-bone-dim">{address}</p>
       </div>
 
       <section>
-        <h2 className="text-lg text-bone">Holdings</h2>
+        <h2 className="text-lg text-bone">{t("wallet.holdings")}</h2>
         {portfolio.holdings.length === 0 ? (
-          <p className="mt-2 text-sm text-bone-dim">No token holdings yet.</p>
+          <p className="mt-2 text-sm text-bone-dim">{t("wallet.noHoldings")}</p>
         ) : (
           <div className="mt-2 grid gap-3 sm:grid-cols-2">
             {portfolio.holdings.map((h) => (
@@ -253,28 +254,28 @@ function WalletContent() {
                     {fmtTokens(BigInt(h.amountAtoms))}
                     {tokenInfo[h.tokenId] ? <span className="text-sm text-bone-dim"> {tokenInfo[h.tokenId]!.ticker}</span> : null}
                   </div>
-                  <div className="text-xs text-bone-dim">{h.utxoCount} token UTXO{h.utxoCount === 1 ? "" : "s"}</div>
+                  <div className="text-xs text-bone-dim">{t(h.utxoCount === 1 ? "wallet.utxo" : "wallet.utxos", { n: h.utxoCount })}</div>
                 </a>
                 {sending === h.tokenId ? (
                   <div className="mt-3 space-y-2">
                     <input
-                      aria-label="Send amount"
+                      aria-label={t("wallet.sendAmount")}
                       value={sendAmount}
                       onChange={(e) => setSendAmount(e.target.value)}
-                      placeholder="How many tokens"
+                      placeholder={t("wallet.sendAmountPh")}
                       className="field"
                     />
                     <input
-                      aria-label="Send to address"
+                      aria-label={t("wallet.sendTo")}
                       value={sendTo}
                       onChange={(e) => setSendTo(e.target.value.trim())}
-                      placeholder="Their token address (bc1p…)"
+                      placeholder={t("wallet.sendToPh")}
                       className="field"
                     />
                     <div className="grid grid-cols-2 gap-px bg-rule">
-                      <button onClick={() => setSending(null)} className="btn-ghost w-full border-0">Cancel</button>
+                      <button onClick={() => setSending(null)} className="btn-ghost w-full border-0">{t("wallet.cancel")}</button>
                       <button onClick={() => void send(h.tokenId)} disabled={busy !== null} className="btn w-full">
-                        {busy === `send-${h.tokenId}` ? "Sending…" : "Send"}
+                        {busy === `send-${h.tokenId}` ? t("wallet.sending") : t("wallet.send")}
                       </button>
                     </div>
                   </div>
@@ -296,11 +297,11 @@ function WalletContent() {
                 ) : (
                   <div className="mt-3 flex gap-2">
                     <button onClick={() => setSending(h.tokenId)} className="border border-rule px-3 py-1.5 text-xs text-bone-2 hover:text-bone">
-                      Send
+                      {t("wallet.send")}
                     </button>
                     {tokenInfo[h.tokenId]?.graduated === false ? (
                       <span className="self-center text-xs text-bone-dim">
-                        Listing opens when {tokenInfo[h.tokenId]!.ticker} mints out. Until then, sell back to the vault on the token page.
+                        {t("wallet.listOpens", { ticker: tokenInfo[h.tokenId]!.ticker })}
                       </span>
                     ) : (
                       <button
@@ -315,7 +316,7 @@ function WalletContent() {
                         disabled={!tokenInfo[h.tokenId]}
                         className="border border-rule px-3 py-1.5 text-xs text-bone-2 hover:text-bone disabled:opacity-40"
                       >
-                        List
+                        {t("wallet.list")}
                       </button>
                     )}
                   </div>
@@ -326,9 +327,9 @@ function WalletContent() {
       </section>
 
       <section>
-        <h2 className="text-lg text-bone">My listings</h2>
+        <h2 className="text-lg text-bone">{t("wallet.myListings")}</h2>
         {portfolio.listings.length === 0 ? (
-          <p className="mt-2 text-sm text-bone-dim">No listings.</p>
+          <p className="mt-2 text-sm text-bone-dim">{t("wallet.noListings")}</p>
         ) : (
           <div className="mt-2 space-y-2">
             {portfolio.listings.map((l) => (
@@ -337,11 +338,11 @@ function WalletContent() {
                   <div className="text-bone">
                     {fmtTokens(BigInt(l.amountAtoms))} {tokenInfo[l.tokenId]?.ticker ?? `${l.tokenId.slice(0, 8)}…`} @ {fmtBtc(BigInt(l.totalPriceSats))}
                   </div>
-                  <div className="text-xs text-bone-dim">{l.status}</div>
+                  <div className="text-xs text-bone-dim">{isMessageKey(`lst.${l.status}`) ? t(`lst.${l.status}` as MessageKey) : l.status}</div>
                 </div>
                 {l.status === "ACTIVE" && (
                   <button onClick={() => void cancel(l.listingId)} disabled={busy === l.listingId} className="border border-rule px-3 py-1.5 text-xs text-bone-2 hover:border-danger hover:text-danger disabled:opacity-50">
-                    Cancel
+                    {t("wallet.cancelListing")}
                   </button>
                 )}
               </div>
@@ -371,6 +372,7 @@ function ListForm(props: {
   onCancel: () => void;
   onList: () => void;
 }) {
+  const t = useT();
   const { info } = props;
   const held = BigInt(props.holding.amountAtoms) / 100_000_000n;
   const total = totalFor(props.amount, props.per1k);
@@ -384,51 +386,56 @@ function ListForm(props: {
           disabled={info?.floorPer1k == null}
           className="bg-ink-3 px-3 py-2 text-left disabled:opacity-60"
         >
-          <div className="text-bone-dim">Floor (lowest ask)</div>
-          <div className="text-bone">{info?.floorPer1k != null ? `${fmtInt(Math.ceil(info.floorPer1k))} sats / 1,000` : "no asks yet"}</div>
+          <div className="text-bone-dim">{t("wallet.floorLowest")}</div>
+          <div className="text-bone">{info?.floorPer1k != null ? t("wallet.per1k", { n: fmtInt(Math.ceil(info.floorPer1k)) }) : t("wallet.noAsksYet")}</div>
         </button>
         <button
           onClick={() => info?.vaultPer1k != null && props.setPer1k(String(Math.ceil(info.vaultPer1k)))}
           disabled={info?.vaultPer1k == null}
           className="bg-ink-3 px-3 py-2 text-left disabled:opacity-60"
         >
-          <div className="text-bone-dim">Vault buys back at</div>
-          <div className="text-bone">{info?.vaultPer1k != null ? `${fmtInt(info.vaultPer1k)} sats / 1,000` : "—"}</div>
+          <div className="text-bone-dim">{t("wallet.vaultBuys")}</div>
+          <div className="text-bone">{info?.vaultPer1k != null ? t("wallet.per1k", { n: fmtInt(info.vaultPer1k) }) : "—"}</div>
         </button>
       </div>
       <label className="block text-bone-dim">
-        Tokens to list <span className="text-bone-dim">(you hold {fmtInt(held)})</span>
+        {t("wallet.tokensToList")} <span className="text-bone-dim">{t("wallet.youHold", { n: fmtInt(held) })}</span>
         <div className="mt-1 flex gap-2">
-          <input aria-label="List amount" value={props.amount} onChange={(e) => props.setAmount(e.target.value.trim())} inputMode="numeric" className="field" />
-          <button onClick={() => props.setAmount(String(held))} className="border border-rule px-3 text-bone-2 hover:text-bone">All</button>
+          <input aria-label={t("wallet.listAmount")} value={props.amount} onChange={(e) => props.setAmount(e.target.value.trim())} inputMode="numeric" className="field" />
+          <button onClick={() => props.setAmount(String(held))} className="border border-rule px-3 text-bone-2 hover:text-bone">{t("wallet.all")}</button>
         </div>
       </label>
       <label className="block text-bone-dim">
-        Price · sats per 1,000 tokens
-        <input aria-label="Price per 1,000 tokens" value={props.per1k} onChange={(e) => props.setPer1k(e.target.value.trim())} inputMode="numeric" className="field mt-1" />
+        {t("wallet.pricePer1k")}
+        <input aria-label={t("wallet.pricePer1kAria")} value={props.per1k} onChange={(e) => props.setPer1k(e.target.value.trim())} inputMode="numeric" className="field mt-1" />
       </label>
       <label className="block text-bone-dim">
-        Listing lasts
+        {t("wallet.lasts")}
         <select value={props.blocks} onChange={(e) => props.setBlocks(e.target.value)} className="field mt-1">
-          <option value="144">about 1 day</option>
-          <option value="1008">about 1 week</option>
-          <option value="4320">about 1 month</option>
+          <option value="144">{t("wallet.day")}</option>
+          <option value="1008">{t("wallet.week")}</option>
+          <option value="4320">{t("wallet.month")}</option>
         </select>
       </label>
       <div className="flex justify-between text-sm">
-        <span className="text-bone-dim">You receive</span>
-        <span className="tabular-nums text-bone">{total !== null ? `${fmtInt(total)} sats` : "—"}</span>
+        <span className="text-bone-dim">{t("wallet.youReceive")}</span>
+        <span className="tabular-nums text-bone">{total !== null ? t("wallet.sats", { n: fmtInt(total) }) : "—"}</span>
       </div>
-      <p className="text-bone-dim">The buyer pays the 7.5% market fee on top. The tokens stay in your wallet until someone buys.</p>
-      {belowVault ? <p className="text-pending">That is below what the vault pays; selling back on the token page gets you more.</p> : null}
+      <p className="text-bone-dim">{t("wallet.feeNote")}</p>
+      {belowVault ? <p className="text-pending">{t("wallet.belowVault")}</p> : null}
       <div className="grid grid-cols-2 gap-px bg-rule">
-        <button onClick={props.onCancel} className="btn-ghost w-full border-0">Cancel</button>
+        <button onClick={props.onCancel} className="btn-ghost w-full border-0">{t("wallet.cancel")}</button>
         <button onClick={props.onList} disabled={props.disabled || total === null} className="btn w-full">
-          {props.busy ? "Listing…" : "List"}
+          {props.busy ? t("wallet.listing") : t("wallet.list")}
         </button>
       </div>
     </div>
   );
+}
+
+function SuspenseLoading() {
+  const t = useT();
+  return <div className="panel px-6 py-16 text-center text-sm text-bone-dim">{t("common.loading")}</div>;
 }
 
 /**
@@ -437,7 +444,7 @@ function ListForm(props: {
  */
 export default function WalletPage() {
   return (
-    <Suspense fallback={<div className="panel px-6 py-16 text-center text-sm text-bone-dim">Loading…</div>}>
+    <Suspense fallback={<SuspenseLoading />}>
       <WalletContent />
     </Suspense>
   );

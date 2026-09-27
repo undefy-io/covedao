@@ -1,5 +1,7 @@
 "use client";
 
+import { useLang, useT } from "@/i18n/LanguageProvider";
+import type { Lang } from "@/i18n";
 import { fmtInt, fmtBtc } from "@/lib/format";
 
 /**
@@ -20,9 +22,9 @@ export interface Sale {
   totalPriceSats: string;
 }
 
-function when(iso: string): string {
+function when(iso: string, lang: Lang): string {
   const d = new Date(iso);
-  return d.toLocaleString("en-US", {
+  return d.toLocaleString(lang === "zh" ? "zh-CN" : "en-US", {
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -32,6 +34,8 @@ function when(iso: string): string {
 
 /** Scatter of the most recent fills, sized by value. */
 function Scatter({ sales }: { sales: Sale[] }) {
+  const t = useT();
+  const { lang } = useLang();
   const pts = sales.slice(0, 120).reverse();
   if (pts.length < 2) return null;
   const vals = pts.map((s) => Number(s.totalPriceSats));
@@ -55,26 +59,28 @@ function Scatter({ sales }: { sales: Sale[] }) {
               <span
                 className="absolute left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-signal transition-transform group-hover:scale-150"
                 style={{ bottom: `calc(${h}% - 3px)` }}
-                title={`${fmtInt(s.amountTokens)} tokens · ${fmtBtc(BigInt(s.totalPriceSats))}`}
+                title={t("sales.tokensTitle", { n: fmtInt(s.amountTokens), btc: fmtBtc(BigInt(s.totalPriceSats)) })}
               />
             </div>
           );
         })}
       </div>
       <div className="absolute inset-x-2 bottom-1.5 flex justify-between text-label uppercase tracking-label text-bone-dim">
-        <span>{when(pts[0]!.at)}</span>
-        <span>latest {pts.length} sales</span>
-        <span>{when(pts[pts.length - 1]!.at)}</span>
+        <span>{when(pts[0]!.at, lang)}</span>
+        <span>{t("sales.latest", { n: pts.length })}</span>
+        <span>{when(pts[pts.length - 1]!.at, lang)}</span>
       </div>
     </div>
   );
 }
 
 export function SalesFeed({ sales, explorerBase }: { sales: Sale[]; explorerBase?: string }) {
+  const t = useT();
+  const { lang } = useLang();
   if (sales.length === 0) {
     return (
       <div className="border border-dashed border-rule px-6 py-14 text-center text-sm text-bone-dim">
-        No confirmed sales yet.
+        {t("sales.none")}
       </div>
     );
   }
@@ -83,26 +89,26 @@ export function SalesFeed({ sales, explorerBase }: { sales: Sale[]; explorerBase
     <div>
       <Scatter sales={sales} />
       <div className="mt-5 flex items-baseline justify-between">
-        <p className="eyebrow">Confirmed sales</p>
+        <p className="eyebrow">{t("sales.title")}</p>
         <span className="text-label uppercase tracking-label text-bone-dim">
-          {fmtInt(shown.length)} of {fmtInt(sales.length)}
+          {t("sales.ofTotal", { a: fmtInt(shown.length), b: fmtInt(sales.length) })}
         </span>
       </div>
       <div className="mt-4 overflow-x-auto">
         <table className="ledger-table min-w-[44rem]">
           <thead>
             <tr>
-              <th>Time</th>
-              <th>Transaction</th>
-              <th>Tokens</th>
-              <th>Unit · sats/1k</th>
-              <th>Total</th>
+              <th>{t("sales.time")}</th>
+              <th>{t("sales.tx")}</th>
+              <th>{t("sales.tokens")}</th>
+              <th>{t("sales.unit")}</th>
+              <th>{t("sales.total")}</th>
             </tr>
           </thead>
           <tbody>
             {shown.map((s) => (
               <tr key={s.txid} className="transition-colors hover:bg-ink-3">
-                <td className="whitespace-nowrap text-bone-dim">{when(s.at)}</td>
+                <td className="whitespace-nowrap text-bone-dim">{when(s.at, lang)}</td>
                 <td className="hex">
                   {explorerBase ? (
                     <a

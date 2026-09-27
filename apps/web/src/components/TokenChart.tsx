@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/i18n/LanguageProvider";
 import { useEffect, useRef, useState } from "react";
 import type { Chart } from "klinecharts";
 import type { OhlcCandle, Interval } from "@/lib/ohlc";
@@ -47,6 +48,7 @@ export function TokenChart({
   loading?: boolean;
   className?: string;
 }) {
+  const t = useT();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
   const [ready, setReady] = useState(false);
@@ -182,7 +184,7 @@ export function TokenChart({
   return (
     <div className={`panel ${className}`}>
       <div className="flex items-center justify-between border-b border-rule px-4 py-2.5">
-        <p className="eyebrow">Price · sats per 1,000 {ticker}</p>
+        <p className="eyebrow">{t("chart.title", { ticker })}</p>
         <div className="flex gap-px bg-rule">
           {INTERVALS.map((i) => (
             <button
@@ -204,7 +206,7 @@ export function TokenChart({
         <div ref={containerRef} className="h-[420px] w-full" />
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center bg-ink/60 text-label uppercase tracking-label text-bone-dim">
-            Loading…
+            {t("chart.loading")}
           </div>
         ) : null}
       </div>

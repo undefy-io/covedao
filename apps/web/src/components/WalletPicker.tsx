@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/i18n/LanguageProvider";
 import { useEffect, useState } from "react";
 import { NETWORK } from "@/lib/network";
 import { useWallet } from "./WalletProvider";
@@ -25,6 +26,7 @@ function formatBtc(sats: number): string {
 }
 
 export function WalletPicker() {
+  const t = useT();
   const { pickerOpen, closePicker, connect, connectDev } = useWallet();
   const [installed, setInstalled] = useState<Set<WalletId> | null>(null);
   // undefined while loading, null when the dev wallet is off.
@@ -84,7 +86,7 @@ export function WalletPicker() {
           ? e.message
           : e instanceof Error
             ? e.message
-            : "Could not connect.",
+            : t("pick.couldNot"),
       );
     } finally {
       setBusy(null);
@@ -96,31 +98,30 @@ export function WalletPicker() {
       className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Connect a wallet"
+      aria-label={t("pick.aria")}
       onClick={(e) => {
         if (e.target === e.currentTarget) closePicker();
       }}
     >
       <div className="panel w-full max-w-sm">
         <div className="flex items-center justify-between border-b border-rule px-5 py-4">
-          <p className="eyebrow">{REGTEST ? "Connect a test wallet" : "Connect a wallet"}</p>
+          <p className="eyebrow">{REGTEST ? t("pick.titleTest") : t("pick.title")}</p>
           <button
             onClick={closePicker}
-            aria-label="Close"
+            aria-label={t("pick.close")}
             className="text-label uppercase tracking-label text-bone-dim hover:text-bone"
           >
-            Close
+            {t("pick.close")}
           </button>
         </div>
 
         {REGTEST ? (
           <div className="grid gap-px bg-rule">
             {devWallets === undefined ? (
-              <p className="bg-ink-3 px-5 py-4 text-xs text-bone-dim">Loading test wallets…</p>
+              <p className="bg-ink-3 px-5 py-4 text-xs text-bone-dim">{t("pick.loadingTest")}</p>
             ) : devWallets === null ? (
               <p className="bg-ink-3 px-5 py-4 text-xs leading-relaxed text-bone-dim">
-                Browser wallets do not support regtest, and the built-in test wallets are off. Set
-                COVE_DEV_WALLET=true in .env and restart the web app.
+                {t("pick.devOff")}
               </p>
             ) : (
               devWallets.map((w) => (
@@ -138,7 +139,7 @@ export function WalletPicker() {
                     </span>
                   </span>
                   <span className="text-label uppercase tracking-label text-bone-dim">
-                    {busy === w.identity ? "Connecting…" : formatBtc(w.balanceSats)}
+                    {busy === w.identity ? t("pick.connecting") : formatBtc(w.balanceSats)}
                   </span>
                 </button>
               ))
@@ -162,14 +163,14 @@ export function WalletPicker() {
                   <span className="text-sm text-bone">{a.name}</span>
                   <span className="text-label uppercase tracking-label text-bone-dim">
                     {busy === a.id
-                      ? "Waiting…"
+                      ? t("pick.waiting")
                       : installed === null
                         ? "…"
                         : have && wrongNet
-                          ? "Mainnet only"
+                          ? t("pick.mainnetOnly")
                           : have
-                            ? "Connect"
-                            : "Install →"}
+                            ? t("pick.connect")
+                            : t("pick.install")}
                   </span>
                 </button>
               );
@@ -185,8 +186,8 @@ export function WalletPicker() {
 
         <p className="border-t border-rule px-5 py-4 text-xs leading-relaxed text-bone-dim">
           {REGTEST
-            ? "Local regtest wallets. Their keys are public and in the repository, and they sign on the server without asking. Disconnect and connect again to switch."
-            : "covs needs two addresses from your wallet: one holding BTC to pay with, and one holding your tokens. Most wallets provide both. Nothing is signed until you approve it."}
+            ? t("pick.footTest")
+            : t("pick.foot")}
         </p>
       </div>
     </div>

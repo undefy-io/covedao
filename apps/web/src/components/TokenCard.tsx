@@ -4,6 +4,7 @@ import Link from "next/link";
 import { fmtBtc, fmtTokens, fmtInt } from "@/lib/format";
 import { Sparkline } from "./Sparkline";
 import { TokenImage } from "./TokenImage";
+import { useT } from "@/i18n/LanguageProvider";
 
 export interface V3TokenCardData {
   tokenId: string;
@@ -30,6 +31,7 @@ export function TokenCard({
   /** Recent closes, sats per 1,000 tokens. Empty when the token has not traded. */
   spark?: number[];
 }) {
+  const t = useT();
   const issued = BigInt(token.issuedSupplyAtoms);
   const cap = BigInt(token.publicCapAtoms);
   const graduated = token.graduated ?? issued >= cap;
@@ -51,7 +53,7 @@ export function TokenCard({
           </div>
         </div>
         <span className={graduated ? "chip chip-signal shrink-0" : "chip chip-verified shrink-0"}>
-          {graduated ? "Graduated" : "Open"}
+          {graduated ? t("common.graduated") : t("common.open")}
         </span>
       </div>
 
@@ -60,12 +62,12 @@ export function TokenCard({
           real price of nothing. */}
       <div className="mt-4 flex items-end justify-between gap-3">
         <div>
-          <div className="text-label uppercase tracking-label text-bone-dim">Last · sats/1k</div>
+          <div className="text-label uppercase tracking-label text-bone-dim">{t("card.last")}</div>
           <div className="mt-1 text-lg tabular-nums text-bone">
             {spark.length > 0 ? fmtInt(Math.round(spark[spark.length - 1]!)) : "—"}
           </div>
         </div>
-        <Sparkline values={spark} label={`${token.ticker} recent price`} />
+        <Sparkline values={spark} label={t("common.recentPrice", { ticker: token.ticker })} />
       </div>
 
       {/* Progress against the public cap — the one number deciding whether this
@@ -81,10 +83,10 @@ export function TokenCard({
       </div>
 
       <dl className="mt-4 space-y-1.5 text-xs">
-        <Row label="Backing" value={fmtBtc(BigInt(token.backingSats))} />
-        <Row label="Stage" value={`${token.curveStage} / 210`} />
-        <Row label="Holders" value={String(token.holderCount)} />
-        {token.bestAskSats ? <Row label="Best ask" value={fmtBtc(BigInt(token.bestAskSats))} /> : null}
+        <Row label={t("card.backing")} value={fmtBtc(BigInt(token.backingSats))} />
+        <Row label={t("card.stage")} value={`${token.curveStage} / 210`} />
+        <Row label={t("card.holders")} value={String(token.holderCount)} />
+        {token.bestAskSats ? <Row label={t("card.bestAsk")} value={fmtBtc(BigInt(token.bestAskSats))} /> : null}
       </dl>
 
       <div className="hex mt-4 truncate border-t border-rule pt-3">

@@ -1,5 +1,6 @@
 "use client";
 
+import { tr, translateError } from "@/i18n";
 import { verifyClientIntent, verifyListingIntent } from "@crclaunch/wallets";
 import { scriptOf, bitcoinNetwork } from "@/lib/wallets/resolve";
 import type { CoveNetwork } from "@/lib/wallets/types";
@@ -20,9 +21,12 @@ export interface WalletOps {
   getUtxos: () => Promise<{ txid: string; vout: number }[]>;
 }
 
-/** The server's own words when it has them; the short copy otherwise. */
-export function errorText(j: { error?: { message?: string; detail?: string } }): string {
-  return j.error?.detail || j.error?.message || "Something went wrong.";
+/**
+ * The server's own words when it has them; the short copy otherwise. In
+ * Chinese, a known error code shows its translation instead.
+ */
+export function errorText(j: { error?: { code?: string; message?: string; detail?: string } }): string {
+  return translateError(j.error?.code, j.error?.detail || j.error?.message || tr("common.somethingWrong"));
 }
 
 async function post(url: string, body: unknown) {
@@ -59,7 +63,7 @@ export async function buyListing(
   const built = await post(`/api/v3/market/fills/${fillId}/build`, { feeRateSatPerVb: satPerVb ?? undefined });
   // The wallet's own scripts and the price on the listing are the user's
   // facts; the server's copy of them is not trusted.
-  if (!built.intent) throw new Error("server did not describe the purchase");
+  if (!built.intent) throw new Error(tr("trade.noIntent"));
   verifyClientIntent(built.psbtBase64, {
     ...built.intent,
     walletScript: w.script,
@@ -133,15 +137,15 @@ export async function createListing(params: {
   signPsbt: WalletOps["signPsbt"];
   satPerVb: bigint | string | null;
 }): Promise<{ listingId: string; pending: boolean }> {
-  if (params.amountAtoms <= 0n) throw new Error("Enter how many tokens to list");
-  if (!/^\d+$/.test(params.totalPriceSats) || BigInt(params.totalPriceSats) <= 0n) throw new Error("Enter a price in sats");
+  if (params.amountAtoms <= 0n) throw new Error(tr("trade.enterAmount"));
+  if (!/^\d+$/.test(params.totalPriceSats) || BigInt(params.totalPriceSats) <= 0n) throw new Error(tr("trade.enterPrice"));
   const tokenScript = params.walletFields.ordinalsScript || params.walletFields.walletScript!;
   const payoutScript = params.walletFields.walletScript!;
   const pf = await fetch(`/api/v3/wallet/${params.tokenAddress}/portfolio`).then((r) => r.json());
   const mine = ((pf.data?.tokenUtxos ?? []) as { txid: string; vout: number; tokenId: string; amountAtoms: string }[])
     .filter((u) => u.tokenId === params.tokenId);
   const held = mine.reduce((a, u) => a + BigInt(u.amountAtoms), 0n);
-  if (held < params.amountAtoms) throw new Error("You do not hold that many tokens");
+  if (held < params.amountAtoms) throw new Error(tr("trade.notEnoughTokens"));
 
   // A coin of exactly this amount, or split one off.
   let source: { txid: string; vout: number };

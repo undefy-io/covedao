@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/i18n/LanguageProvider";
 import { useEffect, useState } from "react";
 
 /**
@@ -21,6 +22,7 @@ interface TxState {
 
 export function TxStatus({ txid, explorerBase }: { txid: string; explorerBase?: string }) {
   const [state, setState] = useState<TxState | null>(null);
+  const t = useT();
 
   useEffect(() => {
     if (!txid) return;
@@ -47,12 +49,12 @@ export function TxStatus({ txid, explorerBase }: { txid: string; explorerBase?: 
   const dropped = state != null && !confirmed && !state.mempool;
 
   const chip = confirmed ? "chip chip-verified" : dropped ? "chip chip-rejected" : "chip chip-pending";
-  const label = confirmed ? "Confirmed" : dropped ? "Dropped" : "In mempool";
+  const label = confirmed ? t("tx.confirmed") : dropped ? t("tx.dropped") : t("tx.mempool");
   const detail = confirmed
-    ? `Settled in block ${state!.confirmedHeight}.`
+    ? t("tx.settled", { height: state!.confirmedHeight! })
     : dropped
-      ? "Bitcoin dropped this transaction before it was mined. Nothing was spent and nothing was bought — you can try again, and a higher network fee will help it stick."
-      : "Waiting for a block. Your BTC is committed but not yet spent; this settles as soon as a miner includes it.";
+      ? t("tx.droppedDetail")
+      : t("tx.waitingDetail");
 
   return (
     <div className="mt-4 border border-rule bg-ink-3 px-4 py-3">
@@ -65,7 +67,7 @@ export function TxStatus({ txid, explorerBase }: { txid: string; explorerBase?: 
             rel="noreferrer noopener"
             className="text-label uppercase tracking-label text-bone-dim hover:text-signal"
           >
-            View on explorer →
+            {t("tx.viewExplorer")}
           </a>
         ) : null}
       </div>

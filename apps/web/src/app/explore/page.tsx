@@ -12,22 +12,24 @@ import { TokenImage } from "@/components/TokenImage";
 import { Tile } from "@/components/Tile";
 import { InfoTip } from "@/components/InfoTip";
 import { useSparklines } from "@/lib/use-sparklines";
+import { useT } from "@/i18n/LanguageProvider";
+import type { MessageKey } from "@/i18n";
 
 type SortKey = "progress" | "backing" | "holders" | "newest";
 type Filter = "all" | "open" | "graduated" | "listed";
 
-const SORTS: { key: SortKey; label: string }[] = [
-  { key: "progress", label: "Progress" },
-  { key: "backing", label: "Backing" },
-  { key: "holders", label: "Holders" },
-  { key: "newest", label: "Newest" },
+const SORTS: { key: SortKey; label: MessageKey }[] = [
+  { key: "progress", label: "explore.sortProgress" },
+  { key: "backing", label: "explore.sortBacking" },
+  { key: "holders", label: "explore.sortHolders" },
+  { key: "newest", label: "explore.sortNewest" },
 ];
 
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "open", label: "Open" },
-  { key: "graduated", label: "Graduated" },
-  { key: "listed", label: "Listed" },
+const FILTERS: { key: Filter; label: MessageKey }[] = [
+  { key: "all", label: "explore.filterAll" },
+  { key: "open", label: "explore.filterOpen" },
+  { key: "graduated", label: "explore.filterGraduated" },
+  { key: "listed", label: "explore.filterListed" },
 ];
 
 function ExploreContent() {
@@ -35,6 +37,7 @@ function ExploreContent() {
   // Demo mode renders fixtures client-side so the design can be reviewed
   // against a populated page. It never calls the API and never writes.
   const demo = params.get("demo") === "1";
+  const t = useT();
 
   const [tokens, setTokens] = useState<V3TokenCardData[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -120,28 +123,25 @@ function ExploreContent() {
   return (
     <div className="space-y-px">
       <section className="panel px-6 py-8 sm:px-10">
-        <p className="eyebrow">Explore</p>
-        <h1 className="mt-4 text-3xl text-bone">Confirmed tokens</h1>
-        <p className="mt-2 max-w-xl text-sm text-bone-dim">
-          Every token below is derived from confirmed Bitcoin blocks by the open indexer. Search by
-          tokenId, ticker or name.
-        </p>
+        <p className="eyebrow">{t("explore.eyebrow")}</p>
+        <h1 className="mt-4 text-3xl text-bone">{t("explore.title")}</h1>
+        <p className="mt-2 max-w-xl text-sm text-bone-dim">{t("explore.intro")}</p>
 
         {demo ? (
           <p className="mt-5 inline-block border border-pending/40 bg-pending/10 px-3 py-1.5 text-label uppercase tracking-label text-pending">
-            Demo data · not from the chain
+            {t("common.demoData")}
           </p>
         ) : null}
 
         {/* Aggregate row — the shape of the whole set before any single token. */}
         <div className="mt-6 grid grid-cols-3 gap-px bg-rule">
-          <Tile value={String(rows.length)} label="Tokens" />
+          <Tile value={String(rows.length)} label={t("explore.tokens")} />
           <Tile
             value={fmtBtc(totalBacking)}
-            label="Total backing"
-            help="All the Bitcoin held across every token's vault. Each token has its own."
+            label={t("explore.totalBacking")}
+            help={t("explore.totalBackingHelp")}
           />
-          <Tile value={fmtInt(totalHolders)} label="Holders" />
+          <Tile value={fmtInt(totalHolders)} label={t("explore.holders")} />
         </div>
       </section>
 
@@ -151,13 +151,13 @@ function ExploreContent() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search tokenId, ticker or name"
-            aria-label="Search tokens"
+            placeholder={t("explore.search")}
+            aria-label={t("explore.searchLabel")}
             className="field max-w-sm flex-1"
           />
 
           <div className="flex items-center gap-2">
-            <span className="eyebrow">Filter</span>
+            <span className="eyebrow">{t("explore.filter")}</span>
             <div className="flex">
               {FILTERS.map((f) => (
                 <button
@@ -169,15 +169,15 @@ function ExploreContent() {
                       : "border border-rule px-3 py-1.5 text-label uppercase tracking-label text-bone-dim transition-colors hover:text-bone"
                   }
                 >
-                  {f.label}
+                  {t(f.label)}
                 </button>
               ))}
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="eyebrow">Sort</span>
-            <div className="flex">
+            <span className="eyebrow">{t("explore.sort")}</span>
+            <div className="flex flex-wrap">
               {SORTS.map((s) => (
                 <button
                   key={s.key}
@@ -188,7 +188,7 @@ function ExploreContent() {
                       : "border border-rule px-3 py-1.5 text-label uppercase tracking-label text-bone-dim transition-colors hover:text-bone"
                   }
                 >
-                  {s.label}
+                  {t(s.label)}
                 </button>
               ))}
             </div>
@@ -200,9 +200,9 @@ function ExploreContent() {
       {graduatedRows.length > 0 ? (
         <section className="panel px-6 py-8 sm:px-10">
           <div className="flex items-baseline justify-between">
-            <p className="eyebrow">Graduated</p>
+            <p className="eyebrow">{t("explore.graduatedTitle")}</p>
             <span className="text-label uppercase tracking-label text-bone-dim">
-              Full 1B curve minted
+              {t("explore.graduatedSub")}
             </span>
           </div>
           <div
@@ -214,35 +214,31 @@ function ExploreContent() {
                   : "sm:grid-cols-2 lg:grid-cols-3"
             }`}
           >
-            {graduatedRows.slice(0, 6).map((t) => (
+            {graduatedRows.slice(0, 6).map((g) => (
               <Link
-                key={t.tokenId}
-                href={`/token/${t.tokenId}`}
+                key={g.tokenId}
+                href={`/token/${g.tokenId}`}
                 className="group bg-ink-3 px-5 py-4 transition-colors hover:bg-ink-2"
               >
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm text-bone transition-colors group-hover:text-signal">
-                    {t.ticker}
+                    {g.ticker}
                   </span>
-                  <span className="chip chip-signal shrink-0">Graduated</span>
+                  <span className="chip chip-signal shrink-0">{t("common.graduated")}</span>
                 </div>
-                <div className="mt-1 truncate text-xs text-bone-dim">{t.displayName}</div>
+                <div className="mt-1 truncate text-xs text-bone-dim">{g.displayName}</div>
                 <div className="mt-3 flex justify-between text-xs tabular-nums">
-                  <span className="text-bone-dim">Backing</span>
-                  <span className="text-bone-2">{fmtBtc(BigInt(t.backingSats))}</span>
+                  <span className="text-bone-dim">{t("explore.backing")}</span>
+                  <span className="text-bone-2">{fmtBtc(BigInt(g.backingSats))}</span>
                 </div>
                 <div className="mt-1 flex justify-between text-xs tabular-nums">
-                  <span className="text-bone-dim">Holders</span>
-                  <span className="text-bone-2">{fmtInt(t.holderCount)}</span>
+                  <span className="text-bone-dim">{t("explore.holders")}</span>
+                  <span className="text-bone-2">{fmtInt(g.holderCount)}</span>
                 </div>
               </Link>
             ))}
           </div>
-          <p className="mt-5 max-w-xl text-xs leading-relaxed text-bone-dim">
-            Minting is finished for these. The backing vault keeps buying and selling at the curve
-            price exactly as before &mdash; graduation marks the milestone, it does not change how
-            the token works.
-          </p>
+          <p className="mt-5 max-w-xl text-xs leading-relaxed text-bone-dim">{t("explore.graduatedNote")}</p>
         </section>
       ) : null}
 
@@ -253,26 +249,22 @@ function ExploreContent() {
         ) : failed ? (
           <Notice
             kind="rejected"
-            title="Could not reach the indexer"
-            body="The chain projection is unavailable. Nothing is wrong with your wallet — this page is read-only."
+            title={t("explore.errTitle")}
+            body={t("explore.errBody")}
           />
         ) : rows.length === 0 ? (
           <Notice
             kind="pending"
-            title={search ? "No match" : "No confirmed tokens yet"}
-            body={
-              search
-                ? `Nothing matches “${search}”. Tokens appear here once their DEPLOY transaction confirms.`
-                : "Tokens appear here once their DEPLOY transaction confirms on Bitcoin."
-            }
+            title={search ? t("explore.noMatch") : t("explore.noTokens")}
+            body={search ? t("explore.noMatchBody", { search }) : t("explore.noTokensBody")}
             action={
               search ? (
                 <button onClick={() => setSearch("")} className="btn-ghost mt-5">
-                  Clear search
+                  {t("explore.clearSearch")}
                 </button>
               ) : (
                 <Link href="/launch" className="btn mt-5">
-                  Launch the first one
+                  {t("explore.launchFirst")}
                 </Link>
               )
             }
@@ -300,30 +292,28 @@ function TokenTable({
   rows: V3TokenCardData[];
   series: Record<string, number[]>;
 }) {
+  const tt = useT();
   return (
     <div className="overflow-x-auto">
       <table className="ledger-table min-w-[72rem]">
         <thead>
           <tr>
-            <th>Ticker</th>
-            <th>Status</th>
-            <th>Last · sats/1k</th>
-            <th>Trend</th>
-            <th>Issued / cap</th>
-            <th>Progress</th>
+            <th>{tt("explore.colTicker")}</th>
+            <th>{tt("explore.colStatus")}</th>
+            <th>{tt("explore.colLast")}</th>
+            <th>{tt("explore.colTrend")}</th>
+            <th>{tt("explore.colIssued")}</th>
+            <th>{tt("explore.colProgress")}</th>
             <th>
               <span className="inline-flex items-center gap-1.5">
-                Backing
-                <InfoTip label="backing">
-                  Real Bitcoin held in a vault for this token — holders can always sell back into
-                  it, no buyer needed.
-                </InfoTip>
+                {tt("explore.colBacking")}
+                <InfoTip label={tt("explore.colBacking")}>{tt("explore.backingTip")}</InfoTip>
               </span>
             </th>
-            <th>Stage</th>
-            <th>Holders</th>
-            <th>Best ask</th>
-            <th>Height</th>
+            <th>{tt("explore.colStage")}</th>
+            <th>{tt("explore.colHolders")}</th>
+            <th>{tt("explore.colBestAsk")}</th>
+            <th>{tt("explore.colHeight")}</th>
           </tr>
         </thead>
         <tbody>
@@ -351,9 +341,9 @@ function TokenTable({
                 </td>
                 <td>
                   {t.graduated ?? pct >= 100 ? (
-                    <span className="chip chip-signal">Graduated</span>
+                    <span className="chip chip-signal">{tt("common.graduated")}</span>
                   ) : (
-                    <span className="chip chip-verified">Open</span>
+                    <span className="chip chip-verified">{tt("common.open")}</span>
                   )}
                 </td>
                 <td className="text-bone">
@@ -424,10 +414,11 @@ function Notice({
   body: string;
   action?: React.ReactNode;
 }) {
+  const t = useT();
   return (
     <div className="border border-dashed border-rule px-6 py-16 text-center">
       <span className={kind === "rejected" ? "chip chip-rejected" : "chip chip-pending"}>
-        {kind === "rejected" ? "Unavailable" : "Empty"}
+        {kind === "rejected" ? t("explore.unavailable") : t("explore.empty")}
       </span>
       <div className="mt-4 text-bone">{title}</div>
       <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-bone-dim">{body}</p>

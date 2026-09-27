@@ -1,0 +1,10 @@
+{
+  "title": {
+    "message": "covs.trade",
+    "description": "The title in the navbar"
+  },
+  "logo.alt": {
+    "message": "covs",
+    "description": "The alt text of navbar logo"
+  }
+}

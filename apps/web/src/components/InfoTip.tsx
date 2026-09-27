@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/i18n/LanguageProvider";
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -38,6 +39,7 @@ interface Placement {
 
 export function InfoTip({ label, children }: { label: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const t = useT();
   const [place, setPlace] = useState<Placement | null>(null);
   const id = useId();
   const wrap = useRef<HTMLSpanElement>(null);
@@ -108,7 +110,7 @@ export function InfoTip({ label, children }: { label: string; children: React.Re
     <span ref={wrap} className="relative inline-flex align-middle">
       <button
         type="button"
-        aria-label={`What is ${label}?`}
+        aria-label={t("tip.whatIs", { label })}
         aria-expanded={open}
         aria-describedby={open ? id : undefined}
         onPointerDown={(e) => {

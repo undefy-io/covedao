@@ -1,5 +1,6 @@
 "use client";
 
+import { tr } from "@/i18n";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { NETWORK as COVE_NETWORK } from "@/lib/network";
 import type { WalletCapabilities } from "@crclaunch/wallets";
@@ -166,7 +167,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       const id = await fetchDevIdentity(identity);
       installDevWallet(id);
       const test = getTestWallet();
-      if (!test) throw new WalletError("FAILED", "dev wallet did not install");
+      if (!test) throw new WalletError("FAILED", tr("wal.devNotInstalled"));
       await connectTestWallet(test);
       setDevIdentity(id.identity);
       setPickerOpen(false);
@@ -224,10 +225,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   const signPsbt = useCallback(
     async (psbtBase64: string, operation: string) => {
-      if (!conn) throw new WalletError("FAILED", "No wallet connected");
+      if (!conn) throw new WalletError("FAILED", tr("wal.noWallet"));
       if (conn.isTestWallet) {
         const test = getTestWallet();
-        if (!test) throw new WalletError("FAILED", "No wallet connected");
+        if (!test) throw new WalletError("FAILED", tr("wal.noWallet"));
         return test.signPsbt({ psbtBase64, operation });
       }
       // Tell the wallet exactly which inputs are its own. The backing vault
@@ -236,7 +237,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       // invalidate the transaction.
       const inputsByAddress = inputsOwnedBy(psbtBase64, NETWORK, conn);
       if (inputsByAddress.length === 0) {
-        throw new WalletError("FAILED", "this transaction has no inputs belonging to your wallet");
+        throw new WalletError("FAILED", tr("wal.noInputs"));
       }
       return adapterFor(conn.walletId as WalletId).signPsbt(NETWORK, {
         psbtBase64,
@@ -250,11 +251,11 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   const signBip322 = useCallback(
     async (message: string) => {
-      if (!conn) throw new WalletError("FAILED", "No wallet connected");
+      if (!conn) throw new WalletError("FAILED", tr("wal.noWallet"));
       if (conn.isTestWallet) {
         const test = getTestWallet();
         if (!test?.signBip322Simple) {
-          throw new WalletError("UNSUPPORTED", "Wallet does not support BIP-322");
+          throw new WalletError("UNSUPPORTED", tr("wal.noBip322"));
         }
         return test.signBip322Simple({ message });
       }
@@ -280,7 +281,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     // just produces failures nobody can explain.
     const r = await fetch(`/api/v3/wallet/utxos?address=${encodeURIComponent(conn.payments.address)}`);
     const j = await r.json();
-    if (!j.ok) throw new WalletError("FAILED", j.error?.detail || j.error?.message || "cannot list your coins");
+    if (!j.ok) throw new WalletError("FAILED", j.error?.detail || j.error?.message || tr("wal.cannotList"));
     return (j.data.utxos as { txid: string; vout: number }[]).map((u) => ({
       txid: u.txid,
       vout: u.vout,

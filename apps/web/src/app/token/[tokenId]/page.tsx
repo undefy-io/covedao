@@ -1,5 +1,7 @@
 "use client";
 
+import type { MessageKey } from "@/i18n";
+import { useT } from "@/i18n/LanguageProvider";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { EXPLORER_URL } from "@/lib/network";
 import Link from "next/link";
@@ -30,7 +32,7 @@ import { createListing, buyListing, errorText } from "@/lib/trade";
 type Tab = "mint" | "redeem" | "buy" | "sell";
 const TABS_OPEN: Tab[] = ["mint", "redeem"];
 const TABS_GRADUATED: Tab[] = ["buy", "sell", "redeem"];
-const TAB_LABEL: Record<Tab, string> = { mint: "Mint", redeem: "Redeem", buy: "Buy", sell: "Sell" };
+const TAB_LABEL: Record<Tab, MessageKey> = { mint: "tok.tabMint", redeem: "tok.tabRedeem", buy: "tok.tabBuy", sell: "tok.tabSell" };
 // The flat mint fee alone is 5,000 sats, so the smallest button must clear it.
 /**
  * Quick mint buttons. The first is always the smallest mint that works right
@@ -79,6 +81,7 @@ function TokenContent() {
   // Client-side render path for design review. Never calls the API, never writes.
   const demo = search.get("demo") === "1";
   const tokenId = params.tokenId;
+  const t = useT();
   const { connected, address, ordinalsAddress, script, publicKey, ordinalsScript, walletFields, network, connect, signPsbt, signBip322, getUtxos } = useWallet();
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -174,7 +177,7 @@ function TokenContent() {
       setMintQuote(null);
       return;
     }
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       void fetch("/api/v3/backing/buy/quote-sats", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -184,7 +187,7 @@ function TokenContent() {
         .then((j) => setMintQuote(j.ok ? { ...j.data, forBudget: budget } : null))
         .catch(() => setMintQuote(null));
     }, 250);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [budget, tokenId, demo]);
 
   // What the connected wallet holds of this token, and what it can spend.
@@ -233,7 +236,7 @@ function TokenContent() {
     setBusy(true);
     try {
       const { txid } = await buyListing(ask, { script, publicKey, ordinalsScript, signPsbt, signBip322, getUtxos }, satPerVb);
-      setMsg(`Bought — arrives when the next block confirms it (${txid.slice(0, 16)}…).`);
+      setMsg(t("tok.bought", { txid: txid.slice(0, 16) }));
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -256,8 +259,8 @@ function TokenContent() {
     setBusy(true);
     try {
       const amountAtoms = atoms ?? displayTokensToAtoms(amount);
-      if (BigInt(amountAtoms) <= 0n) throw new Error(kind === "buy" ? "That amount does not mint any tokens." : "Enter how many tokens to redeem.");
-      if (BigInt(amountAtoms) % (1_000n * 100_000_000n) !== 0n) throw new Error("Tokens move in lots of 1,000 — use a multiple of 1,000.");
+      if (BigInt(amountAtoms) <= 0n) throw new Error(kind === "buy" ? t("tok.errMintNothing") : t("tok.errRedeemAmount"));
+      if (BigInt(amountAtoms) % (1_000n * 100_000_000n) !== 0n) throw new Error(t("tok.errLots"));
       const endpoint = kind === "buy" ? "buy" : "redeem";
       const qr = await fetch(`/api/v3/backing/${endpoint}/quote`, {
         method: "POST",
@@ -320,9 +323,7 @@ function TokenContent() {
       if (!sj.ok) throw new Error(errorText(sj));
       setTxid(sj.data.txid);
       setMsg(
-        isBuy
-          ? "Minted. Your tokens arrive when the next block confirms it."
-          : "Redeemed. Your BTC arrives when the next block confirms it.",
+        isBuy ? t("tok.minted") : t("tok.redeemed"),
       );
       setReview(null);
       setAmount("");
@@ -353,9 +354,9 @@ function TokenContent() {
         satPerVb,
       });
       setMsg(
-        `Listing created ${listingId.slice(0, 16)}…` +
-          (pending ? " It goes live when the split confirms." : "") +
-          " You do not need to sign anything when it sells.",
+        t("tok.listed", { id: listingId.slice(0, 16) }) +
+          (pending ? ` ${t("tok.listedPending")}` : "") +
+          ` ${t("tok.listedNoSign")}`,
       );
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -372,14 +373,10 @@ function TokenContent() {
   if (!detail) {
     return (
       <section className="panel px-6 py-16 text-center sm:px-10">
-        <span className="chip chip-pending">Pending</span>
-        <div className="mt-4 text-bone">This token is still being created</div>
-        <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-bone-dim">
-          A token appears once its launch transaction is confirmed in a Bitcoin block, which can
-          take a few minutes. This page checks again every few seconds and opens the token as soon
-          as it is ready. If you did not just launch it, check the link.
-        </p>
-        <Link href="/explore" className="btn-ghost mt-5">Back to explore</Link>
+        <span className="chip chip-pending">{t("tok.pending")}</span>
+        <div className="mt-4 text-bone">{t("tok.creating")}</div>
+        <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-bone-dim">{t("tok.creatingBody")}</p>
+        <Link href="/explore" className="btn-ghost mt-5">{t("tok.backExplore")}</Link>
       </section>
     );
   }
@@ -402,7 +399,7 @@ function TokenContent() {
       <section className="panel px-6 py-8 sm:px-10">
         {demo ? (
           <p className="mb-5 inline-block border border-pending/40 bg-pending/10 px-3 py-1.5 text-label uppercase tracking-label text-pending">
-            Demo data · not from the chain
+            {t("common.demoData")}
           </p>
         ) : null}
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -414,7 +411,7 @@ function TokenContent() {
               size="lg"
             />
             <div>
-              <p className="eyebrow">Token</p>
+              <p className="eyebrow">{t("tok.eyebrow")}</p>
               <h1 className="mt-3 text-4xl text-bone">{detail.ticker}</h1>
               <p className="mt-1 text-sm text-bone-dim">{detail.displayName}</p>
               {detail.websiteUrl || detail.xUrl ? (
@@ -426,7 +423,7 @@ function TokenContent() {
                       rel="noreferrer noopener nofollow"
                       className="text-label uppercase tracking-label text-bone-dim hover:text-signal"
                     >
-                      Website →
+                      {t("tok.website")}
                     </a>
                   ) : null}
                   {detail.xUrl ? (
@@ -436,7 +433,7 @@ function TokenContent() {
                       rel="noreferrer noopener nofollow"
                       className="text-label uppercase tracking-label text-bone-dim hover:text-signal"
                     >
-                      X →
+                      {t("tok.x")}
                     </a>
                   ) : null}
                 </div>
@@ -444,7 +441,7 @@ function TokenContent() {
             </div>
           </div>
           <span className={graduated ? "chip chip-signal" : "chip chip-verified"}>
-            {graduated ? "Graduated" : "Open"}
+            {graduated ? t("common.graduated") : t("common.open")}
           </span>
         </div>
         {detail.description ? (
@@ -453,22 +450,18 @@ function TokenContent() {
 
         {graduated ? (
           <div className="mt-6 border border-signal/40 bg-signal/10 px-5 py-4">
-            <p className="text-label uppercase tracking-label text-signal">Graduated</p>
-            <p className="mt-2 max-w-xl text-xs leading-relaxed text-bone-dim">
-              All 1B tokens are minted, so trading is now between holders: Buy and Sell below.
-              Redeem stays open as the floor &mdash; the vault still pays the curve price for any
-              token handed back, and redeeming reopens minting until the curve is full again.
-            </p>
+            <p className="text-label uppercase tracking-label text-signal">{t("tok.graduatedTitle")}</p>
+            <p className="mt-2 max-w-xl text-xs leading-relaxed text-bone-dim">{t("tok.graduatedBody")}</p>
           </div>
         ) : null}
 
         {/* The curve is the single most important thing on this page. */}
         <div className="mt-8">
           <div className="flex items-baseline justify-between text-label uppercase tracking-label text-bone-dim">
-            <span>{pct.toFixed(1)}% minted</span>
+            <span>{t("tok.pctMinted", { pct: pct.toFixed(1) })}</span>
             <span>
-              Stair {detail.curveStage} of 210
-              {!graduated ? ` · next stair at ${fmtTokens(BigInt(detail.curveStage) * 100_000n * 100_000_000n)}` : ""}
+              {t("tok.stairOf", { n: detail.curveStage })}
+              {!graduated ? t("tok.nextStair", { n: fmtTokens(BigInt(detail.curveStage) * 100_000n * 100_000_000n) }) : ""}
             </span>
           </div>
           <div className="mt-2 h-1.5 w-full bg-rule">
@@ -476,7 +469,7 @@ function TokenContent() {
           </div>
           <div className="mt-2 flex items-baseline justify-between text-xs tabular-nums">
             <span className="text-bone">{fmtTokens(issued)} <span className="text-bone-dim">({pct.toFixed(1)}%)</span></span>
-            <span className="text-bone-dim">{fmtTokens(cap)} cap</span>
+            <span className="text-bone-dim">{t("tok.cap", { n: fmtTokens(cap) })}</span>
           </div>
         </div>
 
@@ -484,26 +477,26 @@ function TokenContent() {
           <Tile
             size="md"
             value={fmtBtc(BigInt(detail.backingSats))}
-            label="BTC backing"
-            help={`Real Bitcoin held in a vault for ${detail.ticker} — you can always sell back into it, no buyer needed.`}
+            label={t("tok.btcBacking")}
+            help={t("tok.btcBackingHelp", { ticker: detail.ticker })}
           />
           <Tile
             size="md"
             value={fmtTokens(BigInt(detail.remainingCapacityAtoms))}
-            label="Remaining"
-            help="Tokens nobody has bought yet. The price steps up as they go."
+            label={t("tok.remaining")}
+            help={t("tok.remainingHelp")}
           />
           <Tile
             size="md"
             value={fmtInt(detail.holderCount)}
-            label="Holders"
-            help={`Wallets holding at least one ${detail.ticker}, counted from confirmed blocks.`}
+            label={t("tok.holders")}
+            help={t("tok.holdersHelp", { ticker: detail.ticker })}
           />
           <Tile
             size="md"
             value={detail.bestAskSats ? fmtBtc(BigInt(detail.bestAskSats)) : "—"}
-            label={detail.activeListingCount ? `Best ask · ${detail.activeListingCount} listed` : "Best ask"}
-            help="The cheapest price another holder is asking — person to person, not the vault."
+            label={detail.activeListingCount ? t("tok.bestAskListed", { n: detail.activeListingCount }) : t("tok.bestAsk")}
+            help={t("tok.bestAskHelp")}
           />
         </div>
       </section>
@@ -530,42 +523,42 @@ function TokenContent() {
 
       {/* ── Actions ──────────────────────────────────────────────────── */}
       <section className="panel px-6 py-8 sm:px-10">
-        <p className="eyebrow">Trade</p>
+        <p className="eyebrow">{t("tok.trade")}</p>
         <div className="mt-5 grid gap-px bg-rule lg:grid-cols-[1fr_1.1fr]">
           <div className="bg-ink-3 px-5 py-5">
             <div className="flex flex-wrap">
-              {tabs.map((t) => (
+              {tabs.map((tb) => (
                 <button
-                  key={t}
+                  key={tb}
                   onClick={() => {
-                    setTab(t);
+                    setTab(tb);
                     setReview(null);
                     setErr("");
                   }}
                   className={
-                    tab === t
+                    tab === tb
                       ? "border border-signal bg-signal px-3 py-1.5 text-label uppercase tracking-label text-ink"
                       : "border border-rule px-3 py-1.5 text-label uppercase tracking-label text-bone-dim transition-colors hover:text-bone"
                   }
                 >
-                  {TAB_LABEL[t]}
+                  {t(TAB_LABEL[tb])}
                 </button>
               ))}
             </div>
 
             <p className="mt-4 text-xs leading-relaxed text-bone-dim">
               {tab === "mint"
-                ? `Pay BTC, get new ${detail.ticker}. The BTC goes into the token's vault; the price rises as more is minted.`
+                ? t("tok.introMint", { ticker: detail.ticker })
                 : tab === "redeem"
-                  ? `Give ${detail.ticker} back to the vault and get BTC out at the curve price. Always available — no buyer needed.`
+                  ? t("tok.introRedeem", { ticker: detail.ticker })
                   : tab === "buy"
-                    ? `All ${detail.ticker} is minted. Buy from holders who have listed theirs.`
-                    : `List your ${detail.ticker} at your own price. It sells when someone buys it; cancel any time.`}
+                    ? t("tok.introBuy", { ticker: detail.ticker })
+                    : t("tok.introSell", { ticker: detail.ticker })}
             </p>
 
             {!connected ? (
               <button onClick={() => void connect()} className="btn mt-5 w-full">
-                Connect wallet
+                {t("tok.connect")}
               </button>
             ) : review ? (
               <TradeReview
@@ -582,12 +575,12 @@ function TokenContent() {
             ) : tab === "mint" ? (
               <div className="mt-5 space-y-4">
                 <label className="block">
-                  <span className="eyebrow">Spend · sats</span>
+                  <span className="eyebrow">{t("tok.spend")}</span>
                   <input
                     value={budget}
                     onChange={(e) => setBudget(e.target.value.replace(/[^0-9]/g, ""))}
                     inputMode="numeric"
-                    placeholder="e.g. 25000"
+                    placeholder={t("tok.spendPh")}
                     className="field mt-2"
                   />
                 </label>
@@ -605,52 +598,54 @@ function TokenContent() {
                     disabled={maxBudget() === null}
                     className="bg-ink-2 py-2 text-xs text-bone-2 hover:text-bone disabled:opacity-40"
                   >
-                    Max
+                    {t("tok.max")}
                   </button>
                 </div>
                 <div className="flex items-baseline justify-between text-sm">
-                  <span className="text-bone-dim">You get</span>
+                  <span className="text-bone-dim">{t("tok.youGet")}</span>
                   <span className="tabular-nums text-bone">
                     {mintQuote && BigInt(mintQuote.amountAtoms) > 0n
-                      ? `≈ ${fmtTokens(BigInt(mintQuote.amountAtoms))} ${detail.ticker}`
+                      ? t("tok.youGetValue", { amount: fmtTokens(BigInt(mintQuote.amountAtoms)), ticker: detail.ticker })
                       : budget
                         ? mintQuote?.minSpendSats
-                          ? `nothing — the smallest mint is ${fmtInt(BigInt(mintQuote.minSpendSats))} sats`
-                          : "too little to mint"
+                          ? t("tok.smallestMint", { n: fmtInt(BigInt(mintQuote.minSpendSats)) })
+                          : t("tok.tooLittle")
                         : "—"}
                   </span>
                 </div>
                 {mintQuote?.limitedBy === "per-mint limit" && BigInt(mintQuote.amountAtoms) > 0n ? (
                   <p className="text-xs text-pending">
-                    That is the most one mint can take{mintQuote.maxGrossSats ? ` (${fmtBtc(BigInt(mintQuote.maxGrossSats))} of curve price)` : ""}. Mint again for more.
+                    {t("tok.perMintLimit")}
+                    {mintQuote.maxGrossSats ? t("tok.perMintLimitCurve", { btc: fmtBtc(BigInt(mintQuote.maxGrossSats)) }) : ""}
+                    {t("tok.mintAgain")}
                   </p>
                 ) : null}
                 {mintQuote?.limitedBy === "supply" ? (
-                  <p className="text-xs text-pending">That mints the last tokens on the curve.</p>
+                  <p className="text-xs text-pending">{t("tok.lastTokens")}</p>
                 ) : null}
                 {budget && mintQuote && BigInt(mintQuote.amountAtoms) === 0n && BigInt(mintQuote.minGrossSats) > 0n ? (
-                  <p className="text-xs text-bone-dim">The smallest mint is {fmtBtc(BigInt(mintQuote.minGrossSats))} of curve price.</p>
+                  <p className="text-xs text-bone-dim">{t("tok.smallestGross", { btc: fmtBtc(BigInt(mintQuote.minGrossSats)) })}</p>
                 ) : null}
                 {balanceSats !== null ? (
-                  <p className="text-xs text-bone-dim">Your BTC: {fmtBtc(balanceSats)} · network fee is added on the next screen</p>
+                  <p className="text-xs text-bone-dim">{t("tok.yourBtc", { btc: fmtBtc(balanceSats) })}</p>
                 ) : null}
                 <button
                   onClick={() => void reviewTrade("buy", mintQuote?.amountAtoms)}
                   disabled={busy || !mintQuote || BigInt(mintQuote.amountAtoms) <= 0n}
                   className="btn w-full"
                 >
-                  {busy ? "Working…" : "Review mint"}
+                  {busy ? t("tok.working") : t("tok.reviewMint")}
                 </button>
               </div>
             ) : tab === "redeem" ? (
               <div className="mt-5 space-y-4">
                 <label className="block">
-                  <span className="eyebrow">Redeem · {detail.ticker} · lots of 1,000</span>
+                  <span className="eyebrow">{t("tok.redeemLabel", { ticker: detail.ticker })}</span>
                   <input
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     inputMode="decimal"
-                    placeholder={heldAtoms ? fmtTokens(heldAtoms).replace(/[^0-9.]/g, "") : "e.g. 1000000"}
+                    placeholder={heldAtoms ? fmtTokens(heldAtoms).replace(/[^0-9.]/g, "") : t("tok.redeemPh")}
                     className="field mt-2"
                   />
                 </label>
@@ -664,33 +659,33 @@ function TokenContent() {
                         disabled={heldAtoms === 0n}
                         className="bg-ink-2 py-2 text-xs text-bone-2 hover:text-bone disabled:opacity-40"
                       >
-                        {pctOf === 100n ? "All" : `${pctOf}%`}
+                        {pctOf === 100n ? t("tok.all") : `${pctOf}%`}
                       </button>
                     ))}
                   </div>
                 ) : null}
                 {heldAtoms !== null ? (
-                  <p className="text-xs text-bone-dim">You hold {fmtTokens(heldAtoms)} {detail.ticker}</p>
+                  <p className="text-xs text-bone-dim">{t("tok.youHold", { amount: fmtTokens(heldAtoms), ticker: detail.ticker })}</p>
                 ) : null}
                 <button onClick={() => void reviewTrade("sell")} disabled={busy} className="btn w-full">
-                  {busy ? "Working…" : "Review redeem"}
+                  {busy ? t("tok.working") : t("tok.reviewRedeem")}
                 </button>
               </div>
             ) : tab === "buy" ? (
               <div className="mt-5 space-y-2">
                 {openAsks.length === 0 ? (
                   <p className="border border-dashed border-rule px-4 py-6 text-center text-xs text-bone-dim">
-                    Nobody has listed {detail.ticker} yet. Redeem is always open.
+                    {t("tok.nobodyListed", { ticker: detail.ticker })}
                   </p>
                 ) : (
                   openAsks.map((a) => (
                     <div key={a.listingId} className="flex items-center justify-between border border-rule bg-ink-2 px-3 py-2 text-sm">
                       <div>
                         <div className="text-bone">{fmtTokens(BigInt(a.amountAtoms))} {detail.ticker}</div>
-                        <div className="text-xs text-bone-dim">{fmtBtc(BigInt(a.totalPriceSats))} + 7.5% fee</div>
+                        <div className="text-xs text-bone-dim">{t("tok.plusFee", { btc: fmtBtc(BigInt(a.totalPriceSats)) })}</div>
                       </div>
                       <button onClick={() => void buyAsk(a)} disabled={busy} className="btn px-4 py-1.5 text-xs">
-                        Buy
+                        {t("tok.buy")}
                       </button>
                     </div>
                   ))
@@ -699,28 +694,27 @@ function TokenContent() {
             ) : (
               <div className="mt-5 space-y-4">
                 <label className="block">
-                  <span className="eyebrow">Sell · {detail.ticker}</span>
+                  <span className="eyebrow">{t("tok.sellLabel", { ticker: detail.ticker })}</span>
                   <input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="1000000" className="field mt-2" />
                 </label>
                 <label className="block">
-                  <span className="eyebrow">For · sats</span>
+                  <span className="eyebrow">{t("tok.forSats")}</span>
                   <input value={price} onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))} placeholder="41500" className="field mt-2" />
                 </label>
                 <label className="block">
-                  <span className="eyebrow">Expires after</span>
+                  <span className="eyebrow">{t("tok.expires")}</span>
                   <select value={listingBlocks} onChange={(e) => setListingBlocks(e.target.value)} className="field mt-2">
-                    <option value="144">1 day</option>
-                    <option value="1008">1 week</option>
-                    <option value="4320">1 month</option>
-                    <option value="21000">5 months (maximum)</option>
+                    <option value="144">{t("tok.day1")}</option>
+                    <option value="1008">{t("tok.week1")}</option>
+                    <option value="4320">{t("tok.month1")}</option>
+                    <option value="21000">{t("tok.months5")}</option>
                   </select>
                   <span className="mt-2 block text-xs leading-relaxed text-bone-dim">
-                    Your tokens never move until someone buys. When they do, you approve the sale
-                    on your Wallet page within 24 hours.
+                    {t("tok.listNote")}
                   </span>
                 </label>
                 <button onClick={() => void list()} disabled={busy} className="btn w-full">
-                  {busy ? "Working…" : "List for sale"}
+                  {busy ? t("tok.working") : t("tok.listForSale")}
                 </button>
               </div>
             )}
@@ -737,19 +731,16 @@ function TokenContent() {
           {/* ── The verifiable facts. This is what separates Cove from a
                  dashboard: every one of these can be checked on-chain. ── */}
           <div className="bg-ink-3 px-5 py-5">
-            <p className="eyebrow">On-chain record</p>
+            <p className="eyebrow">{t("tok.onchain")}</p>
             <dl className="mt-4 space-y-3">
-              <Fact k="Deploy txid" v={detail.deployTxid} mono />
-              <Fact k="Deploy height" v={fmtInt(Number(detail.deployHeight))} />
-              <Fact k="Backing outpoint" v={`${detail.backingOutpoint.txid}:${detail.backingOutpoint.vout}`} mono />
-              <Fact k="State hash" v={detail.stateHash} mono />
-              <Fact k="Policy version" v={`V${detail.policyVersion}`} />
-              <Fact k="tokenId" v={detail.tokenId} mono />
+              <Fact k={t("tok.deployTxid")} v={detail.deployTxid} mono />
+              <Fact k={t("tok.deployHeight")} v={fmtInt(Number(detail.deployHeight))} />
+              <Fact k={t("tok.backingOutpoint")} v={`${detail.backingOutpoint.txid}:${detail.backingOutpoint.vout}`} mono />
+              <Fact k={t("tok.stateHash")} v={detail.stateHash} mono />
+              <Fact k={t("tok.policyVersion")} v={`V${detail.policyVersion}`} />
+              <Fact k={t("tok.tokenId")} v={detail.tokenId} mono />
             </dl>
-            <p className="mt-5 text-xs leading-relaxed text-bone-dim">
-              Every value above is derivable from confirmed blocks. Run the indexer and you should
-              reach the same state hash.
-            </p>
+            <p className="mt-5 text-xs leading-relaxed text-bone-dim">{t("tok.onchainNote")}</p>
           </div>
         </div>
       </section>
@@ -806,6 +797,7 @@ function TradeReview({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const t = useT();
   const isBuy = review.kind === "buy";
   const gross = BigInt(review.quote.grossSats);
   const protocolFee = BigInt(review.quote.feeSats);
@@ -818,21 +810,21 @@ function TradeReview({
   return (
     <div className="mt-5 space-y-4">
       <div className="border border-signal/40 bg-signal/5 px-4 py-4">
-        <p className="eyebrow">{isBuy ? "You are minting" : "You are redeeming"}</p>
+        <p className="eyebrow">{isBuy ? t("tok.youMint") : t("tok.youRedeem")}</p>
         <p className="mt-2 text-2xl tabular-nums text-bone">
           {fmtTokens(review.amountAtoms)} <span className="text-base text-bone-dim">{ticker}</span>
         </p>
       </div>
 
       <dl className="space-y-2 text-sm">
-        <Line k="Curve price" v={fmtBtc(gross)} />
-        {isBuy ? <Line k="Creator (50%)" v={`+${fmtBtc(creatorFee)}`} /> : null}
-        {isBuy ? <Line k="Token carrier" v={`+${fmtBtc(1_000n)}`} /> : null}
-        <Line k="Protocol fee" v={`${isBuy ? "+" : "−"}${fmtBtc(protocolFee)}`} />
-        <Line k="Network fee" v={`${isBuy ? "+" : "−"}\u2248${fmtBtc(minerFee)}`} />
+        <Line k={t("tok.curvePrice")} v={fmtBtc(gross)} />
+        {isBuy ? <Line k={t("tok.creator50")} v={`+${fmtBtc(creatorFee)}`} /> : null}
+        {isBuy ? <Line k={t("tok.carrier")} v={`+${fmtBtc(1_000n)}`} /> : null}
+        <Line k={t("tok.protocolFee")} v={`${isBuy ? "+" : "−"}${fmtBtc(protocolFee)}`} />
+        <Line k={t("tok.networkFee")} v={`${isBuy ? "+" : "−"}\u2248${fmtBtc(minerFee)}`} />
         <div className="border-t border-rule-bright pt-2">
           <Line
-            k={isBuy ? "You pay" : "You receive"}
+            k={isBuy ? t("tok.youPay") : t("tok.youReceive")}
             v={`\u2248${fmtBtc(total < 0n ? -total : total)}`}
             strong
           />
@@ -846,18 +838,14 @@ function TradeReview({
         vsizeHint={rates?.typicalVsize[isBuy ? "BACKING_BUY" : "REDEEM"]}
       />
 
-      <p className="text-xs leading-relaxed text-bone-dim">
-        The curve price and the protocol fee are locked to the backing state quoted above. If
-        someone else trades first, this is refused and re-quoted rather than filled at a different
-        price. Your wallet will show the final amounts before you sign.
-      </p>
+      <p className="text-xs leading-relaxed text-bone-dim">{t("tok.lockedNote")}</p>
 
       <div className="grid grid-cols-2 gap-px bg-rule">
         <button onClick={onCancel} disabled={busy} className="btn-ghost w-full border-0">
-          Back
+          {t("tok.back")}
         </button>
         <button onClick={onConfirm} disabled={busy} className="btn w-full">
-          {busy ? "Working…" : isBuy ? "Confirm & sign" : "Confirm & sign"}
+          {busy ? t("tok.working") : t("tok.confirmSign")}
         </button>
       </div>
     </div>
@@ -906,13 +894,18 @@ function DetailSkeleton() {
   );
 }
 
+function SuspenseLoading() {
+  const t = useT();
+  return <div className="panel px-6 py-16 text-center text-sm text-bone-dim">{t("common.loading")}</div>;
+}
+
 /**
  * useSearchParams opts this route into client-side rendering, which Next
  * requires to sit behind a Suspense boundary.
  */
 export default function TokenPage() {
   return (
-    <Suspense fallback={<div className="panel px-6 py-16 text-center text-sm text-bone-dim">Loading…</div>}>
+    <Suspense fallback={<SuspenseLoading />}>
       <TokenContent />
     </Suspense>
   );

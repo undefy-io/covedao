@@ -1,5 +1,7 @@
 "use client";
 
+import { isMessageKey, type MessageKey } from "@/i18n";
+import { useT } from "@/i18n/LanguageProvider";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -46,6 +48,7 @@ function MarketContent() {
   const router = useRouter();
   // The market being viewed: one token's book, or every book when unset.
   const selected = searchParams.get("token");
+  const t = useT();
   const [tokens, setTokens] = useState<MarketToken[]>([]);
   const [query, setQuery] = useState("");
   const { connected, script, publicKey, ordinalsScript, connect, signPsbt, signBip322, getUtxos } = useWallet();
@@ -112,7 +115,7 @@ function MarketContent() {
         { script, publicKey, ordinalsScript, signPsbt, signBip322, getUtxos },
         satPerVb,
       );
-      setMsg(`Bought — arrives when the next block confirms it (${txid.slice(0, 16)}…).`);
+      setMsg(t("market.bought", { txid: txid.slice(0, 16) }));
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -183,35 +186,31 @@ function MarketContent() {
       <section className="panel px-6 py-8 sm:px-10">
         {demo ? (
           <p className="mb-5 inline-block border border-pending/40 bg-pending/10 px-3 py-1.5 text-label uppercase tracking-label text-pending">
-            Demo data &middot; not from the chain
+            {t("common.demoData")}
           </p>
         ) : null}
-        <p className="eyebrow">Market</p>
-        <h1 className="mt-3 text-4xl text-bone">P2P asks</h1>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-bone-dim">
-          Every row is a real token UTXO offered at a fixed BTC price. Buyer and seller both sign
-          SIGHASH_ALL and it settles atomically in one Bitcoin transaction. There are no bids and no
-          synthetic liquidity &mdash; an empty book means an empty book.
-        </p>
+        <p className="eyebrow">{t("market.eyebrow")}</p>
+        <h1 className="mt-3 text-4xl text-bone">{t("market.title")}</h1>
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-bone-dim">{t("market.body")}</p>
 
         <div className="mt-8 grid grid-cols-2 gap-px bg-rule sm:grid-cols-3">
-          <Tile value={fmtInt(visible.length)} label="Open asks" />
-          <Tile value={fmtInt(totalTokens)} label="Tokens offered" />
-          <Tile value={totalSats > 0n ? fmtBtc(totalSats) : "\u2014"} label="Book value" />
+          <Tile value={fmtInt(visible.length)} label={t("market.openAsks")} />
+          <Tile value={fmtInt(totalTokens)} label={t("market.tokensOffered")} />
+          <Tile value={totalSats > 0n ? fmtBtc(totalSats) : "\u2014"} label={t("market.bookValue")} />
         </div>
       </section>
 
       <section className="panel px-6 py-8 sm:px-10">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="eyebrow">Markets</p>
-            <h2 className="mt-2 text-xl text-bone">{selectedToken ? `$${selectedToken.ticker}` : "All tokens"}</h2>
+            <p className="eyebrow">{t("market.markets")}</p>
+            <h2 className="mt-2 text-xl text-bone">{selectedToken ? `$${selectedToken.ticker}` : t("market.allTokens")}</h2>
           </div>
           <input
-            aria-label="Search tokens"
+            aria-label={t("market.search")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search ticker or name"
+            placeholder={t("market.searchPh")}
             className="field max-w-xs"
           />
         </div>
@@ -221,61 +220,66 @@ function MarketContent() {
             aria-pressed={!selected}
             className={`bg-ink-2 p-4 text-left transition-colors hover:bg-ink-3 ${!selected ? "outline outline-1 outline-signal" : ""}`}
           >
-            <div className="text-bone">All tokens</div>
-            <div className="mt-1 text-xs text-bone-dim">{fmtInt(listings.filter((l) => l.status === "ACTIVE").length)} open asks</div>
+            <div className="text-bone">{t("market.allTokens")}</div>
+            <div className="mt-1 text-xs text-bone-dim">{t("market.nOpenAsks", { n: fmtInt(listings.filter((l) => l.status === "ACTIVE").length) })}</div>
           </button>
-          {cards.map((t) => {
-            const book = bookByToken.get(t.tokenId);
-            const minted = BigInt(t.publicCapAtoms) > 0n ? Number((BigInt(t.issuedSupplyAtoms) * 1000n) / BigInt(t.publicCapAtoms)) / 10 : 0;
-            const out = t.graduated ?? BigInt(t.issuedSupplyAtoms) >= BigInt(t.publicCapAtoms);
-            const on = selected === t.tokenId;
+          {cards.map((tk) => {
+            const book = bookByToken.get(tk.tokenId);
+            const minted = BigInt(tk.publicCapAtoms) > 0n ? Number((BigInt(tk.issuedSupplyAtoms) * 1000n) / BigInt(tk.publicCapAtoms)) / 10 : 0;
+            const out = tk.graduated ?? BigInt(tk.issuedSupplyAtoms) >= BigInt(tk.publicCapAtoms);
+            const on = selected === tk.tokenId;
             return (
               <button
-                key={t.tokenId}
-                onClick={() => selectToken(on ? null : t.tokenId)}
+                key={tk.tokenId}
+                onClick={() => selectToken(on ? null : tk.tokenId)}
                 aria-pressed={on}
-                aria-label={`${t.ticker} market`}
+                aria-label={t("market.cardAria", { ticker: tk.ticker })}
                 className={`bg-ink-2 p-4 text-left transition-colors hover:bg-ink-3 ${on ? "outline outline-1 outline-signal" : ""}`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="truncate text-bone">${t.ticker}</span>
-                  <span className={out ? "chip chip-signal" : "chip chip-verified"}>{out ? "Minted out" : `${minted}%`}</span>
+                  <span className="truncate text-bone">${tk.ticker}</span>
+                  <span className={out ? "chip chip-signal" : "chip chip-verified"}>{out ? t("market.mintedOut") : `${minted}%`}</span>
                 </div>
-                <div className="mt-1 truncate text-xs text-bone-dim">{t.displayName}</div>
+                <div className="mt-1 truncate text-xs text-bone-dim">{tk.displayName}</div>
                 <div className="mt-3 text-xs text-bone-2">
-                  {book ? `${fmtInt(book.asks)} ask${book.asks === 1 ? "" : "s"} · floor ${fmtInt(Math.ceil(book.floor ?? 0))} sats/1k` : out ? "No asks yet" : "Minting — trades after mint-out"}
+                  {book
+                    ? t(book.asks === 1 ? "market.askFloor" : "market.asksFloor", { n: fmtInt(book.asks), floor: fmtInt(Math.ceil(book.floor ?? 0)) })
+                    : out
+                      ? t("market.noAsksYet")
+                      : t("market.minting")}
                 </div>
               </button>
             );
           })}
         </div>
-        {tokens.length > 0 && cards.length === 0 ? <p className="mt-4 text-sm text-bone-dim">No token matches “{query}”.</p> : null}
+        {tokens.length > 0 && cards.length === 0 ? <p className="mt-4 text-sm text-bone-dim">{t("market.noMatch", { q: query })}</p> : null}
         {selectedToken ? (
           <p className="mt-4 text-xs text-bone-dim">
-            Showing only ${selectedToken.ticker}.{" "}
-            <Link href={`/token/${selectedToken.tokenId}`} className="text-signal hover:underline">Open its token page</Link> to mint, redeem or list.
+            {t("market.showingOnly", { ticker: selectedToken.ticker })}{" "}
+            <Link href={`/token/${selectedToken.tokenId}`} className="text-signal hover:underline">{t("market.openPage")}</Link>
+            {t("market.toMint")}
           </p>
         ) : null}
       </section>
 
       <section className="panel px-6 py-8 sm:px-10">
         {!loaded ? (
-          <Empty message="Loading listings\u2026" />
+          <Empty message={t("market.loadingListings")} />
         ) : rows.length === 0 ? (
-          <Empty message={selectedToken ? `No asks for $${selectedToken.ticker} yet.` : "No active listings yet."} />
+          <Empty message={selectedToken ? t("market.noAsksFor", { ticker: selectedToken.ticker }) : t("market.noListings")} />
         ) : (
           <div className="overflow-x-auto">
             <table className="ledger-table min-w-[64rem]">
               <thead>
                 <tr>
-                  <th>Token</th>
-                  <th>Ask &middot; sats/1k</th>
-                  <th>Last &middot; sats/1k</th>
-                  <th>Trend</th>
-                  <th>Lot</th>
-                  <th>Total</th>
-                  <th>Status</th>
-                  <th>Seller</th>
+                  <th>{t("market.colToken")}</th>
+                  <th>{t("market.colAsk")}</th>
+                  <th>{t("market.colLast")}</th>
+                  <th>{t("market.colTrend")}</th>
+                  <th>{t("market.colLot")}</th>
+                  <th>{t("market.colTotal")}</th>
+                  <th>{t("market.colStatus")}</th>
+                  <th>{t("market.colSeller")}</th>
                   <th />
                 </tr>
               </thead>
@@ -310,7 +314,7 @@ function MarketContent() {
                       <td className="text-bone-2">{fmtTokens(BigInt(l.amountAtoms))}</td>
                       <td className="text-bone-2">{fmtBtc(BigInt(l.totalPriceSats))}</td>
                       <td>
-                        <span className={statusChip(l.status)}>{l.status}</span>
+                        <span className={statusChip(l.status)}>{isMessageKey(`lst.${l.status}`) ? t(`lst.${l.status}` as MessageKey) : l.status}</span>
                       </td>
                       <td className="hex">{l.sellerTokenScript.slice(0, 10)}&hellip;</td>
                       <td>
@@ -319,7 +323,7 @@ function MarketContent() {
                           disabled={!connected || buying === l.listingId || l.status !== "ACTIVE"}
                           className="btn px-3 py-1.5 text-label"
                         >
-                          {buying === l.listingId ? "Reserving\u2026" : "Buy"}
+                          {buying === l.listingId ? t("market.reserving") : t("market.buy")}
                         </button>
                       </td>
                     </tr>
@@ -333,9 +337,9 @@ function MarketContent() {
         {!connected ? (
           <div className="mt-6 flex flex-wrap items-center gap-4 border-t border-rule pt-6">
             <button onClick={() => void connect()} className="btn">
-              Connect wallet
+              {t("market.connect")}
             </button>
-            <p className="text-xs text-bone-dim">Required to fill an ask.</p>
+            <p className="text-xs text-bone-dim">{t("market.required")}</p>
           </div>
         ) : (
           <div className="mt-6 max-w-md border-t border-rule pt-6">
@@ -371,13 +375,18 @@ function Empty({ message }: { message: string }) {
   );
 }
 
+function SuspenseLoading() {
+  const t = useT();
+  return <div className="panel px-6 py-16 text-center text-sm text-bone-dim">{t("common.loading")}</div>;
+}
+
 /**
  * useSearchParams opts this route into client-side rendering, which Next
  * requires to sit behind a Suspense boundary.
  */
 export default function MarketPage() {
   return (
-    <Suspense fallback={<div className="panel px-6 py-16 text-center text-sm text-bone-dim">Loading…</div>}>
+    <Suspense fallback={<SuspenseLoading />}>
       <MarketContent />
     </Suspense>
   );

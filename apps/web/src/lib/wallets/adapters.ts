@@ -1,5 +1,6 @@
 "use client";
 
+import { tr } from "@/i18n";
 import * as bitcoin from "bitcoinjs-lib";
 import { Psbt } from "bitcoinjs-lib";
 import * as unisat from "@ordzaar/ordit-sdk/unisat";
@@ -43,10 +44,10 @@ function isTaprootAddress(address: string): boolean {
 function fail(walletName: string, e: unknown): never {
   const message = e instanceof Error ? e.message : String(e);
   if (/cancel|reject|denied|user/i.test(message)) {
-    throw new WalletError("REJECTED", `${walletName} request was cancelled`);
+    throw new WalletError("REJECTED", tr("wal.cancelled", { wallet: walletName }));
   }
   if (/not installed|no provider|is not defined/i.test(message)) {
-    throw new WalletError("NOT_INSTALLED", `${walletName} is not installed`);
+    throw new WalletError("NOT_INSTALLED", tr("wal.notInstalled", { wallet: walletName }));
   }
   throw new WalletError("FAILED", `${walletName}: ${message}`);
 }
@@ -66,7 +67,7 @@ async function xverseRpc<T>(method: string, params: Record<string, unknown>): Pr
   const provider = (window as unknown as {
     XverseProviders?: { BitcoinProvider?: { request(m: string, p: unknown): Promise<unknown> } };
   }).XverseProviders?.BitcoinProvider;
-  if (!provider) throw new WalletError("NOT_INSTALLED", "Xverse is not installed");
+  if (!provider) throw new WalletError("NOT_INSTALLED", tr("wal.notInstalled", { wallet: "Xverse" }));
   const res = (await provider.request(method, params)) as {
     result?: T;
     error?: { code?: number; message?: string };
@@ -74,11 +75,11 @@ async function xverseRpc<T>(method: string, params: Record<string, unknown>): Pr
   if (res?.error) {
     // 4001 / -32000 is the user closing or rejecting the prompt.
     if (res.error.code === 4001 || /reject|cancel/i.test(res.error.message ?? "")) {
-      throw new WalletError("REJECTED", "You declined the request in Xverse");
+      throw new WalletError("REJECTED", tr("wal.declined", { wallet: "Xverse" }));
     }
-    throw new WalletError("FAILED", res.error.message ?? "Xverse refused the request");
+    throw new WalletError("FAILED", res.error.message ?? tr("wal.refused", { wallet: "Xverse" }));
   }
-  if (!res?.result) throw new WalletError("FAILED", "Xverse returned nothing");
+  if (!res?.result) throw new WalletError("FAILED", tr("wal.returnedNothing", { wallet: "Xverse" }));
   return res.result;
 }
 
@@ -197,7 +198,7 @@ export const ADAPTERS: WalletAdapter[] = [
       const u = (window as unknown as {
         unisat?: { signPsbt(hex: string, o: unknown): Promise<string> };
       }).unisat;
-      if (!u) throw new WalletError("NOT_INSTALLED", "Unisat is not installed");
+      if (!u) throw new WalletError("NOT_INSTALLED", tr("wal.notInstalled", { wallet: "Unisat" }));
       const toSignInputs = request.inputsByAddress.flatMap((g) =>
         g.indexes.map((index) => ({ index, address: g.address, sighashTypes: [request.sighashType ?? SIGHASH_ALL] })),
       );
@@ -206,8 +207,8 @@ export const ADAPTERS: WalletAdapter[] = [
         return Psbt.fromHex(hex).toBase64();
       } catch (e) {
         const err = e as { code?: number; message?: string };
-        if (err?.code === 4001) throw new WalletError("REJECTED", "You declined the request in Unisat");
-        throw new WalletError("FAILED", err?.message ?? "Unisat could not sign");
+        if (err?.code === 4001) throw new WalletError("REJECTED", tr("wal.declined", { wallet: "Unisat" }));
+        throw new WalletError("FAILED", err?.message ?? tr("wal.couldNotSign", { wallet: "Unisat" }));
       }
     },
     signMessage: async (_network, _address, message) => {

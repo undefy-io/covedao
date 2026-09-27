@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/i18n/LanguageProvider";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TokenChart } from "./TokenChart";
 import { MarketStats, type MarketSummary } from "./MarketStats";
@@ -48,6 +49,7 @@ export function TokenMarketPanel({
   /** Changes when a new block is indexed; the panel refetches quietly. */
   refreshKey?: string;
 }) {
+  const t = useT();
   const [interval, setInterval] = useState<Interval>("1h");
   const [candles, setCandles] = useState<OhlcCandle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,12 +123,12 @@ export function TokenMarketPanel({
   return (
     <section className="panel px-6 py-8 sm:px-10">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <p className="eyebrow">Market</p>
+        <p className="eyebrow">{t("mkt.eyebrow")}</p>
         {demo ? (
-          <span className="chip chip-pending">Demo series</span>
+          <span className="chip chip-pending">{t("mkt.demoSeries")}</span>
         ) : (
           <span className="text-label uppercase tracking-label text-bone-dim">
-            Settled peer-to-peer trades
+            {t("mkt.settledP2p")}
           </span>
         )}
       </div>
@@ -141,28 +143,25 @@ export function TokenMarketPanel({
       <div className={`mt-5 grid grid-cols-2 gap-px bg-rule sm:grid-cols-5${market ? " hidden" : ""}`}>
         <Stat
           value={stats ? fmtInt(Math.round(stats.last)) : "—"}
-          label="Last · sats/1k"
+          label={t("mkt.last1k")}
           tone={stats ? (up ? "up" : "down") : undefined}
         />
         <Stat
           value={stats ? `${up ? "+" : ""}${stats.changePct.toFixed(1)}%` : "—"}
-          label="Change"
+          label={t("mkt.change")}
           tone={stats ? (up ? "up" : "down") : undefined}
         />
-        <Stat value={stats ? fmtInt(Math.round(stats.high)) : "—"} label="High" />
-        <Stat value={stats ? fmtInt(Math.round(stats.low)) : "—"} label="Low" />
-        <Stat value={stats ? fmtInt(stats.trades) : "—"} label="Trades" />
+        <Stat value={stats ? fmtInt(Math.round(stats.high)) : "—"} label={t("mkt.high")} />
+        <Stat value={stats ? fmtInt(Math.round(stats.low)) : "—"} label={t("mkt.low")} />
+        <Stat value={stats ? fmtInt(stats.trades) : "—"} label={t("mkt.trades")} />
       </div>
 
       <div className="mt-5 grid gap-px bg-rule lg:grid-cols-[1.9fr_1fr]">
         {candles.length === 0 && !loading ? (
           <div className="flex min-h-[420px] items-center justify-center border border-dashed border-rule bg-ink-3 px-6 text-center">
             <div>
-              <p className="text-sm text-bone">No trades settled yet.</p>
-              <p className="mt-2 max-w-xs text-xs leading-relaxed text-bone-dim">
-                This chart is drawn from peer-to-peer fills confirmed on Bitcoin. Buying from the
-                curve moves the reserve, not the market price, so it does not appear here.
-              </p>
+              <p className="text-sm text-bone">{t("mkt.noTrades")}</p>
+              <p className="mt-2 max-w-xs text-xs leading-relaxed text-bone-dim">{t("mkt.noTradesBody")}</p>
             </div>
           </div>
         ) : (
@@ -203,19 +202,20 @@ function Stat({ value, label, tone }: { value: string; label: string; tone?: "up
  * so the depth bar is sized by the tokens actually on offer, not by notional.
  */
 function AskLadder({ asks }: { asks: Ask[] }) {
+  const t = useT();
   const sorted = [...asks].sort((a, b) => a.unitPriceSats - b.unitPriceSats);
   const max = Math.max(1, ...sorted.map((a) => a.amountTokens));
 
   return (
     <div className="bg-ink-3 px-5 py-4">
-      <p className="eyebrow">Asks</p>
+      <p className="eyebrow">{t("mkt.asks")}</p>
       {sorted.length === 0 ? (
-        <p className="mt-5 text-xs leading-relaxed text-bone-dim">Nothing listed.</p>
+        <p className="mt-5 text-xs leading-relaxed text-bone-dim">{t("mkt.nothingListed")}</p>
       ) : (
         <div className="mt-4 space-y-px">
           <div className="flex justify-between pb-1 text-label uppercase tracking-label text-bone-dim">
-            <span>Price</span>
-            <span>Size</span>
+            <span>{t("mkt.price")}</span>
+            <span>{t("mkt.size")}</span>
           </div>
           {sorted.map((a, i) => (
             <div key={i} className="relative flex justify-between py-1.5 text-xs tabular-nums">
