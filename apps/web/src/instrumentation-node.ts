@@ -1,5 +1,6 @@
-import { watchGuardianAgreement } from "@crclaunch/cove-app";
+import { loadV3AppConfig, watchGuardianAgreement } from "@crclaunch/cove-app";
 import { getV3Services } from "@/lib/v3-server";
+import { serverEnv } from "@/lib/server-env";
 
 /**
  * Node-runtime startup (imported by instrumentation.ts).
@@ -8,7 +9,9 @@ import { getV3Services } from "@/lib/v3-server";
  * address (COVE_FEE_ADDRESS) included: the server stops on a mismatch rather
  * than serve mints and redeems the Guardian or the indexer would reject.
  */
-if (process.env.COVE_NETWORK === "mainnet") {
+loadV3AppConfig(process.env);
+
+if (serverEnv.COVE_NETWORK === "mainnet") {
   const { config, transitionSigner } = getV3Services();
   watchGuardianAgreement(transitionSigner, config, { service: "web" });
 }

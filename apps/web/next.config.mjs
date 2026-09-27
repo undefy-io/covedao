@@ -1,18 +1,26 @@
 import { config as loadEnv } from "dotenv";
 import { fileURLToPath } from "node:url";
 import sentry from "@sentry/nextjs/config";
+import { cleanEnv, str, url } from "envalid";
 
 const { withSentryConfig } = sentry;
 
 // Load the monorepo-root .env so both web + worker share one configuration.
 loadEnv({ path: fileURLToPath(new URL("../../.env", import.meta.url)) });
 
-// COVE_NETWORK is required: the browser bundle is built for one network.
-const NETWORKS = ["regtest", "signet", "testnet", "mainnet"];
-const network = process.env.COVE_NETWORK;
-if (!network || !NETWORKS.includes(network)) {
-  throw new Error(`COVE_NETWORK is required to build the web app (one of ${NETWORKS.join(", ")}); got "${network ?? ""}"`);
-}
+const buildEnv = cleanEnv(
+  {
+    COVE_NETWORK: process.env.COVE_NETWORK,
+    SENTRY_DSN: process.env.SENTRY_DSN,
+    SENTRY_ENVIRONMENT: process.env.SENTRY_ENVIRONMENT,
+  },
+  {
+    COVE_NETWORK: str({ choices: ["regtest", "signet", "testnet", "mainnet"] }),
+    SENTRY_DSN: url(),
+    SENTRY_ENVIRONMENT: str({ choices: ["dev", "staging", "prod"] }),
+  },
+);
+const network = buildEnv.COVE_NETWORK;
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -25,8 +33,8 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_COVE_NETWORK: network,
     NEXT_PUBLIC_EXPLORER_URL: network === "mainnet" ? "" : (process.env.NEXT_PUBLIC_EXPLORER_URL ?? ""),
-    NEXT_PUBLIC_SENTRY_DSN: process.env.SENTRY_DSN ?? "",
-    NEXT_PUBLIC_SENTRY_ENVIRONMENT: process.env.SENTRY_ENVIRONMENT ?? "dev",
+    NEXT_PUBLIC_SENTRY_DSN: buildEnv.SENTRY_DSN,
+    NEXT_PUBLIC_SENTRY_ENVIRONMENT: buildEnv.SENTRY_ENVIRONMENT,
   },
   transpilePackages: [
     "@crclaunch/config",

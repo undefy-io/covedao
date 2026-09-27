@@ -1,8 +1,7 @@
 import * as Sentry from "@sentry/nextjs";
+import { serverEnv } from "./lib/server-env";
 
-if (process.env.SENTRY_DSN) {
-  Sentry.init({
-    dsn: process.env.SENTRY_DSN,
-    environment: process.env.SENTRY_ENVIRONMENT ?? "dev",
-  });
-}
+Sentry.init({
+  dsn: serverEnv.SENTRY_DSN,
+  environment: serverEnv.SENTRY_ENVIRONMENT,
+});

@@ -4,6 +4,7 @@ import { CoreRpcProvider } from "@crclaunch/bitcoin";
 import type { GuardianTransitionSigner } from "@crclaunch/cove-guardian/v3";
 import { loadV3AppConfig, V3AppService, buildAppTransitionSigner, type V3AppConfig } from "@crclaunch/cove-app";
 import { AppError } from "@crclaunch/cove-app";
+import { serverEnv } from "./server-env";
 
 /**
  * Production V3 server runtime (§6/§7/§8/§11/§12). Real Core RPC + real Postgres.
@@ -31,8 +32,7 @@ export function getV3Services(): V3Services {
   if (config.network === "mainnet" && (!config.guardianEndpoint || !config.guardianAuthToken)) {
     throw new AppError("GUARDIAN_UNAVAILABLE", "COVE_GUARDIAN_ENDPOINT and COVE_GUARDIAN_AUTH_TOKEN are required on mainnet");
   }
-  const dbUrl = process.env.COVE_DATABASE_URL ?? process.env.DATABASE_URL;
-  if (!dbUrl) throw new AppError("APP_DISABLED", "COVE_DATABASE_URL is required");
+  const dbUrl = serverEnv.COVE_DATABASE_URL;
   const db = createDb(dbUrl);
   const provider = new CoreRpcProvider({
     url: config.coreRpcUrl,

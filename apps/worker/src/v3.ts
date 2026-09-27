@@ -1,5 +1,3 @@
-import { config as loadEnv } from "dotenv";
-import { fileURLToPath } from "node:url";
 import { Client } from "pg";
 import { CoreRpcProvider } from "@crclaunch/bitcoin";
 import { createDb } from "@crclaunch/db";
@@ -11,6 +9,7 @@ import {
 } from "@crclaunch/cove-indexer/v3";
 import { loadV3AppConfig, V3AppService, Metrics, buildAppTransitionSigner, watchGuardianAgreement, workerLockKey } from "@crclaunch/cove-app";
 import type { V3IndexerConfig } from "@crclaunch/cove-indexer/v3";
+import { workerEnv } from "./v3-env.js";
 
 /**
  * V3 worker runtime (§84-§86): continuous Core → persistent V3 indexer → market
@@ -18,11 +17,7 @@ import type { V3IndexerConfig } from "@crclaunch/cove-indexer/v3";
  * advisory lock per network. No MockCRCAdapter, no block mining, no graduation.
  */
 
-// The repo-root .env, like the web app (not a .env in the worker's own cwd).
-// A deploy sets real env vars and has no file; existing vars are never overridden.
-loadEnv({ path: fileURLToPath(new URL("../../../.env", import.meta.url)) });
-
-const DB_URL = process.env.COVE_DATABASE_URL ?? process.env.DATABASE_URL ?? "";
+const DB_URL = workerEnv.COVE_DATABASE_URL;
 
 
 async function acquireNetworkLock(network: string): Promise<Client> {
@@ -40,7 +35,6 @@ async function acquireNetworkLock(network: string): Promise<Client> {
 }
 
 async function main() {
-  if (!DB_URL) throw new Error("COVE_DATABASE_URL is required");
   const config = loadV3AppConfig(process.env);
   if (!config.enabled) throw new Error(`the V3 app is not enabled for ${config.network} (committed network settings)`);
   const POLL_MS = config.settings.workerPollMs;
