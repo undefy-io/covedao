@@ -122,6 +122,7 @@ export function buildGuardianService(config: GuardianServiceConfig): BuiltGuardi
   const core = new CoreRpcProvider(config.coreRpc);
   const fundingChecker = chainFundingChecker({
     chain: core,
+    expectedChain: config.network === "mainnet" ? "main" : config.network === "testnet" ? "test" : config.network,
     isCoveCarrier: async (o) => (await getLiveTokenUtxosAtDb(db, config.network, [o])).length > 0,
     assets: config.ordUrl ? ordAssetLookup(config.ordUrl) : undefined,
   });

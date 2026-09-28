@@ -10,7 +10,7 @@ import type { GuardianSigningBackend } from "./custody.js";
 import type { FundingInputChecker } from "./funding.js";
 import type { SigningJournalStore } from "./journal.js";
 import type { GuardianTransport, GuardianSignRequestWire } from "./guardianApi.js";
-import { parseBigint } from "./guardianApi.js";
+import { parseBigint, stringifyBigint, extractWitnessSig } from "./guardianApi.js";
 import type {
   AuditRecord,
   GuardianV3Network,
@@ -188,6 +188,12 @@ export class LocalGuardianTransitionSigner implements GuardianTransitionSigner {
 
   private async sign(req: TransitionSignRequest, op: "MINT" | "REDEEM"): Promise<TransitionSignOutcome> {
     const guardianXOnly = await this.signer.xOnlyPubkey();
+    const input = req.psbt.txInputs[0];
+    if (input && this.journal.readSigned) {
+      const cached = await this.journal.readSigned({ network: req.network, backingTxid: Buffer.from(input.hash).reverse().toString("hex"),
+        backingVout: input.index, unsignedTxDigest: unsignedTxDigest(req.psbt) });
+      if (cached) return this.restoreSigningResult(req, op, guardianXOnly, cached);
+    }
     const validate = await (op === "MINT"
       ? validateMintTransitionV3({ ...req, guardianXOnly })
       : validateRedeemTransitionV3({ ...req, guardianXOnly }));
@@ -252,7 +258,11 @@ export class LocalGuardianTransitionSigner implements GuardianTransitionSigner {
         backingTxid: record.backingOutpoint.txid,
         backingVout: record.backingOutpoint.vout,
         unsignedTxDigest: record.unsignedTxDigest,
+        signingResult: { psbtBase64: req.psbt.toBase64(), auditHash: receipt.auditHash, resultJson: stringifyBigint(this.signedOutcome(record)) },
       });
+      const stored = await this.journal.readSigned?.({ network: req.network, backingTxid: record.backingOutpoint.txid,
+        backingVout: record.backingOutpoint.vout, unsignedTxDigest: record.unsignedTxDigest });
+      if (stored) return this.restoreSigningResult(req, op, guardianXOnly, stored);
     } catch (e) {
       // §C6: release the reservation we just committed so a throwable signing
       // step (e.g. a missing witnessUtxo or an unsupported PSBT version) does
@@ -295,6 +305,39 @@ export class LocalGuardianTransitionSigner implements GuardianTransitionSigner {
       audit: record,
       auditFinalizationError,
     };
+  }
+  private signedOutcome(record: AuditRecord): SignedTransitionResult {
+    return { ok: true, operation: record.operation, tokenId: record.tokenId,
+      prevStateHash: record.prevStateHash, nextStateHash: record.nextStateHash,
+      expectedCmr: record.expectedCmr, actualCmr: record.actualCmr,
+      simplicityResult: record.simplicityResult, referencePolicyResult: "PASS",
+      backingOutpoint: record.backingOutpoint, signedInputIndex: 0, audit: record, auditFinalizationError: null };
+  }
+
+  private async restoreSigningResult(req: TransitionSignRequest, op: "MINT" | "REDEEM", guardianXOnly: Buffer,
+    cached: { psbtBase64: string; resultJson: string; auditHash: string }): Promise<TransitionSignOutcome> {
+    const outcome = parseBigint<SignedTransitionResult>(cached.resultJson);
+    const signed = bitcoin.Psbt.fromBase64(cached.psbtBase64);
+    const witness = signed.data.inputs[0]?.finalScriptWitness;
+    const leaf = req.psbt.data.inputs[0]?.tapLeafScript?.[0];
+    if (outcome.operation !== op || unsignedTxDigest(signed) !== unsignedTxDigest(req.psbt) || !witness || !leaf) {
+      return { ok: false, reason: "SIGNATURE_VERIFICATION_FAILED", detail: "saved signing commitment mismatch", audit: null };
+    }
+    try {
+      verifyVaultExecutionSignature(req.psbt, 0, { script: leaf.script, tapleafHash: tapleafHash(leaf.script, leaf.leafVersion) },
+        extractWitnessSig(witness), guardianXOnly);
+      if (req.psbt.data.inputs[0]!.finalScriptWitness) req.psbt.data.inputs[0]!.finalScriptWitness = Buffer.from(witness);
+      else req.psbt.updateInput(0, { finalScriptWitness: witness });
+    } catch {
+      return { ok: false, reason: "SIGNATURE_VERIFICATION_FAILED", detail: "saved signature could not be verified", audit: null };
+    }
+    try {
+      await this.audit.writeAfterSign(outcome.audit, cached.auditHash);
+    } catch (error) {
+      outcome.auditFinalizationError = error instanceof Error ? error.message : "audit finalization unavailable";
+      console.error("SIGNED_BUT_AUDIT_FINALIZATION_FAILED:", op, outcome.backingOutpoint.txid);
+    }
+    return outcome;
   }
 }
 

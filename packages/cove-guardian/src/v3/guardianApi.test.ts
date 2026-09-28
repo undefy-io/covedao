@@ -1,5 +1,5 @@
 import { CONFIRMED_FUNDING_FOR_TESTS } from "./testFunding.js";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import { ECPairFactory } from "ecpair";
@@ -87,6 +87,31 @@ function transportFor(view: CoveChainView): InProcessGuardianTransport {
 }
 
 describe("remote Guardian client (§24)", () => {
+  it.skipIf(!isSimplicityAvailable())("replays identical saved signing bytes after a lost response without signing again", async () => {
+    const { psbt, view } = mintFixture();
+    const original = psbt.toBase64();
+    const journal = new InMemorySigningJournal();
+    const backend = localSigningBackend(GuardianV3Signer.fromPrivateKey(Buffer.alloc(32, 0x42)));
+    const signing = vi.spyOn(backend, "signVaultExecutionLeaf");
+    const request = { psbt, view, network: "regtest" as const, fundingChecker: CONFIRMED_FUNDING_FOR_TESTS,
+      recoveryKeyXOnly, recoveryProfile: MAINNET1, feeScript, maxMinerFeeSats: 1_000n };
+    const first = new LocalGuardianTransitionSigner(backend, journal, memoryAudit, riskPolicy);
+    expect((await first.signMint(request)).ok).toBe(true);
+    const savedWitness = Buffer.from(psbt.data.inputs[0]!.finalScriptWitness!);
+    const restarted = new LocalGuardianTransitionSigner(backend, journal, {
+      writeBeforeSign: async () => { throw new Error("must not create a new signing audit"); }, writeAfterSign: async () => {},
+    }, riskPolicy);
+    const retry = bitcoin.Psbt.fromBase64(original);
+    expect((await restarted.signMint({ ...request, psbt: retry, view: new CoveChainView(),
+      fundingChecker: { check: async () => { throw new Error("must not sign again"); } } })).ok).toBe(true);
+    expect(retry.data.inputs[0]!.finalScriptWitness).toEqual(savedWitness);
+    expect(signing).toHaveBeenCalledTimes(1);
+    const mutated = bitcoin.Psbt.fromBase64(original);
+    mutated.addOutput({ script: Buffer.from("6a", "hex"), value: 0 });
+    expect((await restarted.signMint({ ...request, psbt: mutated, view: new CoveChainView() })).ok).toBe(false);
+    expect((await restarted.signRedeem({ ...request, psbt: bitcoin.Psbt.fromBase64(original) })).ok).toBe(false);
+    expect(signing).toHaveBeenCalledTimes(1);
+  });
   it.skipIf(!isSimplicityAvailable())("signs a MINT through the in-process transport and independently verifies", async () => {
     const { psbt, view, tokenId } = mintFixture();
     const remote = new RemoteGuardianTransitionSigner(transportFor(view), PROFILE_HASH, guardianXOnlyHex);

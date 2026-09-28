@@ -99,6 +99,13 @@
       "when": 1790613166970,
       "tag": "0013_bounded_public_reads",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790616254510,
+      "tag": "0014_durable_submissions",
+      "breakpoints": true
     }
   ]
 }

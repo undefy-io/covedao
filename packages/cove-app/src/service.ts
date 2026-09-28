@@ -2,8 +2,8 @@ import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import { randomBytes } from "node:crypto";
 import { eq, and, isNull } from "drizzle-orm";
-import { schema, type Database } from "@crclaunch/db";
-import { isRpcNotFound, type CoreRpcProvider } from "@crclaunch/bitcoin";
+import { schema, getSubmission, prepareSubmission, claimSubmission, saveSignedSubmission, publishSubmission, deferSubmission, dueSubmissions, haltSubmission, resumeSubmission, SubmissionError, type Submission, type Database } from "@crclaunch/db";
+import { isRpcNotFound, broadcastRecordedTransaction, type CoreRpcProvider } from "@crclaunch/bitcoin";
 import { TOKEN_CARRIER_SATS, applyMintV2, applyRedeemV2, stateHashV2, type CoveStateV2, type CoveCanonicalView } from "@crclaunch/cove-covenant";
 import {
   buildDeployPsbtV3,
@@ -66,6 +66,7 @@ import {
   requireTxSession,
   updateTxSession,
   findBroadcastSpendOfBacking,
+  type TxSessionRow,
 } from "./tx-session.js";
 import { upsertTokenMetadata, validateMetadata, type TokenMetadataInput } from "./metadata.js";
 import { listV3Tokens, getV3TokenDetail, getTokenHolders, getTokenActivity } from "./token-read.js";
@@ -811,8 +812,10 @@ export class V3AppService {
   }
 
   async submitLaunch(params: { sessionId: string; signedPsbtBase64: string }): Promise<{ txid: string }> {
-    this.assertEnabled();
+    this.assertMutating();
     const session = await requireTxSession(this.db, params.sessionId);
+    if (session.network !== this.config.network) throw new AppError("WRONG_NETWORK", "session belongs to another network");
+    this.assertCanaryAllowed({ tokenId: session.tokenId ?? undefined, walletScript: session.walletScript });
     if (session.operation !== "DEPLOY") throw new AppError("SESSION_STATE_INVALID", "session is not DEPLOY");
     if (session.status === "BROADCAST" || session.status === "CONFIRMED") {
       if (session.metadataJson && session.tokenId && session.txid) {
@@ -821,28 +824,43 @@ export class V3AppService {
       }
       return { txid: session.txid! };
     }
-    const psbt = parsePsbt(params.signedPsbtBase64, btcNetwork(this.config.network));
-    if (unsignedTxDigest(psbt) !== session.unsignedTxDigest) throw new AppError("PSBT_MUTATED", "unsigned tx digest changed");
-    for (let i = 0; i < psbt.data.inputs.length; i++) validateInputSignature(psbt, i);
-    psbt.finalizeAllInputs();
-    const rawTxHex = psbt.extractTransaction().toHex();
-    const validated = validateFinalizedDeployTransaction({
-      rawTxHex,
-      network: this.config.network,
-      chainIdentity: this.config.chainIdentity,
-      guardianXOnly: this.config.guardianXOnly,
-      recoveryKeyXOnly: this.config.recoveryKeyXOnly,
-      recoveryProfile: this.config.recoveryProfile,
-      feeScript: this.config.feeScript,
-    });
-    if (!("rawTxHex" in validated)) throw new AppError("GUARDIAN_REJECTED", validated.reason);
-    const txid = await this.broadcast(validated);
-    await updateTxSession(this.db, session.id, { txid, status: "BROADCAST" });
-    if (session.metadataJson && session.tokenId) {
-      await upsertTokenMetadata({ db: this.db, network: this.config.network, tokenId: session.tokenId,
-        submittedByScript: session.walletScript, deployTxid: txid, metadata: session.metadataJson });
+    const started = await this.beginSessionSubmission(session, params.signedPsbtBase64);
+    if ("txid" in started) {
+      if (session.metadataJson && session.tokenId) await upsertTokenMetadata({ db: this.db, network: this.config.network,
+        tokenId: session.tokenId, submittedByScript: session.walletScript, deployTxid: started.txid, metadata: session.metadataJson });
+      return started;
     }
-    return { txid };
+    const { job, psbt } = started;
+    try {
+      if (unsignedTxDigest(psbt) !== session.unsignedTxDigest) throw new AppError("PSBT_MUTATED", "unsigned tx digest changed");
+      for (let i = 0; i < psbt.data.inputs.length; i++) validateInputSignature(psbt, i);
+      psbt.finalizeAllInputs();
+      const rawTxHex = psbt.extractTransaction().toHex();
+      const validated = validateFinalizedDeployTransaction({
+        rawTxHex,
+        network: this.config.network,
+        chainIdentity: this.config.chainIdentity,
+        guardianXOnly: this.config.guardianXOnly,
+        recoveryKeyXOnly: this.config.recoveryKeyXOnly,
+        recoveryProfile: this.config.recoveryProfile,
+        feeScript: this.config.feeScript,
+      });
+      if (!("rawTxHex" in validated)) throw new AppError("GUARDIAN_REJECTED", validated.reason);
+      const receipt = await this.broadcastSubmission(job, validated);
+      const txid = receipt.txid;
+      if (session.metadataJson && session.tokenId) {
+        await upsertTokenMetadata({ db: this.db, network: this.config.network, tokenId: session.tokenId,
+          submittedByScript: session.walletScript, deployTxid: txid, metadata: session.metadataJson });
+      }
+      return receipt;
+    } catch (error) {
+      if (error instanceof AppError && ["GUARDIAN_REJECTED", "STATE_CHANGED", "PSBT_MUTATED", "WALLET_SIGNATURE_INVALID"].includes(error.code)) {
+        await haltSubmission(this.db, job).catch(() => {});
+      }
+      throw this.submissionError(error);
+    } finally {
+      await deferSubmission(this.db, job).catch(() => {});
+    }
   }
 
   // ── backing buy ───────────────────────────────────────────────────────────
@@ -1098,48 +1116,60 @@ export class V3AppService {
   }
 
   async submitBackingBuy(params: { sessionId: string; signedPsbtBase64: string }): Promise<{ txid: string }> {
-    this.assertEnabled();
+    this.assertMutating();
     const session = await requireTxSession(this.db, params.sessionId);
+    if (session.network !== this.config.network) throw new AppError("WRONG_NETWORK", "session belongs to another network");
+    this.assertCanaryAllowed({ tokenId: session.tokenId ?? undefined, walletScript: session.walletScript });
     if (session.operation !== "BACKING_BUY") throw new AppError("SESSION_STATE_INVALID", "session is not BACKING_BUY");
     if (session.status === "BROADCAST" || session.status === "CONFIRMED") return { txid: session.txid! };
-    const psbt = parsePsbt(params.signedPsbtBase64, btcNetwork(this.config.network));
-    if (unsignedTxDigest(psbt) !== session.unsignedTxDigest) throw new AppError("PSBT_MUTATED", "unsigned tx digest changed");
-    for (let i = 1; i < psbt.data.inputs.length; i++) {
-      validateInputSignature(psbt, i);
-      psbt.finalizeInput(i);
+    const started = await this.beginSessionSubmission(session, params.signedPsbtBase64);
+    if ("txid" in started) return started;
+    const { job, psbt } = started;
+    try {
+      if (unsignedTxDigest(psbt) !== session.unsignedTxDigest) throw new AppError("PSBT_MUTATED", "unsigned tx digest changed");
+      for (let i = 1; i < psbt.data.inputs.length; i++) {
+        validateInputSignature(psbt, i);
+        psbt.finalizeInput(i);
+      }
+      const view = this.overlayPendingBacking(
+        await this.loadView(session.tokenId!),
+        session.tokenId!,
+        await this.loadBackingAt(session.tokenId!, session.backingTxid, session.backingVout),
+      );
+      // Only now, with the buyer committed, does the Guardian sign (and reserve)
+      // the vault input.
+      const discoveryTicker = this.config.discoveryEnvelope
+        ? (await getV3TokenDetail(this.db, this.config.network, session.tokenId!))?.ticker
+        : undefined;
+      const signed = await this.transitionSigner.signMint({ psbt, view, network: this.config.network, recoveryKeyXOnly: this.config.recoveryKeyXOnly,
+        recoveryProfile: this.config.recoveryProfile, feeScript: this.config.feeScript, maxMinerFeeSats: this.config.maxMinerFeeSats, buyFeeBps: this.config.buyFeeBps,
+        buyFeeFlatSats: this.config.buyFeeFlatSats,
+        discoveryTicker, fundingChecker: this.fundingChecker });
+      if (!signed.ok) throw new AppError("GUARDIAN_REJECTED", `${signed.reason}: ${signed.detail}`);
+      const rawTxHex = psbt.extractTransaction().toHex();
+      const validated = await validateFinalizedMintTransaction({
+        rawTxHex,
+        view,
+        network: this.config.network,
+        guardianXOnly: this.config.guardianXOnly,
+        recoveryKeyXOnly: this.config.recoveryKeyXOnly,
+        recoveryProfile: this.config.recoveryProfile,
+        feeScript: this.config.feeScript,
+        maxMinerFeeSats: this.config.maxMinerFeeSats,
+        buyFeeBps: this.config.buyFeeBps,
+        buyFeeFlatSats: this.config.buyFeeFlatSats,
+      });
+      if (!("rawTxHex" in validated)) throw new AppError("GUARDIAN_REJECTED", validated.reason);
+      const receipt = await this.broadcastSubmission(job, validated);
+      return receipt;
+    } catch (error) {
+      if (error instanceof AppError && ["GUARDIAN_REJECTED", "STATE_CHANGED", "PSBT_MUTATED", "WALLET_SIGNATURE_INVALID"].includes(error.code)) {
+        await haltSubmission(this.db, job).catch(() => {});
+      }
+      throw this.submissionError(error);
+    } finally {
+      await deferSubmission(this.db, job).catch(() => {});
     }
-    const view = this.overlayPendingBacking(
-      await this.loadView(session.tokenId!),
-      session.tokenId!,
-      await this.loadBackingAt(session.tokenId!, session.backingTxid, session.backingVout),
-    );
-    // Only now, with the buyer committed, does the Guardian sign (and reserve)
-    // the vault input.
-    const discoveryTicker = this.config.discoveryEnvelope
-      ? (await getV3TokenDetail(this.db, this.config.network, session.tokenId!))?.ticker
-      : undefined;
-    const signed = await this.transitionSigner.signMint({ psbt, view, network: this.config.network, recoveryKeyXOnly: this.config.recoveryKeyXOnly,
-      recoveryProfile: this.config.recoveryProfile, feeScript: this.config.feeScript, maxMinerFeeSats: this.config.maxMinerFeeSats, buyFeeBps: this.config.buyFeeBps,
-      buyFeeFlatSats: this.config.buyFeeFlatSats,
-      discoveryTicker, fundingChecker: this.fundingChecker });
-    if (!signed.ok) throw new AppError("GUARDIAN_REJECTED", `${signed.reason}: ${signed.detail}`);
-    const rawTxHex = psbt.extractTransaction().toHex();
-    const validated = await validateFinalizedMintTransaction({
-      rawTxHex,
-      view,
-      network: this.config.network,
-      guardianXOnly: this.config.guardianXOnly,
-      recoveryKeyXOnly: this.config.recoveryKeyXOnly,
-      recoveryProfile: this.config.recoveryProfile,
-      feeScript: this.config.feeScript,
-      maxMinerFeeSats: this.config.maxMinerFeeSats,
-      buyFeeBps: this.config.buyFeeBps,
-      buyFeeFlatSats: this.config.buyFeeFlatSats,
-    });
-    if (!("rawTxHex" in validated)) throw new AppError("GUARDIAN_REJECTED", validated.reason);
-    const txid = await this.broadcast(validated);
-    await updateTxSession(this.db, session.id, { txid, status: "BROADCAST" });
-    return { txid };
   }
 
   // ── redeem ────────────────────────────────────────────────────────────────
@@ -1335,44 +1365,56 @@ export class V3AppService {
   }
 
   async submitRedeem(params: { sessionId: string; signedPsbtBase64: string }): Promise<{ txid: string }> {
-    this.assertEnabled();
+    this.assertMutating();
     const session = await requireTxSession(this.db, params.sessionId);
+    if (session.network !== this.config.network) throw new AppError("WRONG_NETWORK", "session belongs to another network");
+    this.assertCanaryAllowed({ tokenId: session.tokenId ?? undefined, walletScript: session.walletScript });
     if (session.operation !== "REDEEM") throw new AppError("SESSION_STATE_INVALID", "session is not REDEEM");
     if (session.status === "BROADCAST" || session.status === "CONFIRMED") return { txid: session.txid! };
-    const psbt = parsePsbt(params.signedPsbtBase64, btcNetwork(this.config.network));
-    if (unsignedTxDigest(psbt) !== session.unsignedTxDigest) throw new AppError("PSBT_MUTATED", "unsigned tx digest changed");
-    for (let i = 1; i < psbt.data.inputs.length; i++) {
-      validateInputSignature(psbt, i);
-      psbt.finalizeInput(i);
+    const started = await this.beginSessionSubmission(session, params.signedPsbtBase64);
+    if ("txid" in started) return started;
+    const { job, psbt } = started;
+    try {
+      if (unsignedTxDigest(psbt) !== session.unsignedTxDigest) throw new AppError("PSBT_MUTATED", "unsigned tx digest changed");
+      for (let i = 1; i < psbt.data.inputs.length; i++) {
+        validateInputSignature(psbt, i);
+        psbt.finalizeInput(i);
+      }
+      // The view must include the token carriers being redeemed.
+      const spent = psbt.txInputs.map((i) => ({ txid: Buffer.from(i.hash).reverse().toString("hex"), vout: i.index }));
+      const view = this.overlayPendingBacking(
+        await this.loadView(session.tokenId!, spent),
+        session.tokenId!,
+        await this.loadBackingAt(session.tokenId!, session.backingTxid, session.backingVout),
+      );
+      const signed = await this.transitionSigner.signRedeem({ psbt, view, network: this.config.network, recoveryKeyXOnly: this.config.recoveryKeyXOnly,
+        recoveryProfile: this.config.recoveryProfile, feeScript: this.config.feeScript, maxMinerFeeSats: this.config.maxMinerFeeSats, redeemFeeBps: this.config.redeemFeeBps,
+        redeemFeeFlatSats: this.config.redeemFeeFlatSats, fundingChecker: this.fundingChecker });
+      if (!signed.ok) throw new AppError("GUARDIAN_REJECTED", `${signed.reason}: ${signed.detail}`);
+      const rawTxHex = psbt.extractTransaction().toHex();
+      const validated = await validateFinalizedRedeemTransaction({
+        rawTxHex,
+        view,
+        network: this.config.network,
+        guardianXOnly: this.config.guardianXOnly,
+        recoveryKeyXOnly: this.config.recoveryKeyXOnly,
+        recoveryProfile: this.config.recoveryProfile,
+        feeScript: this.config.feeScript,
+        maxMinerFeeSats: this.config.maxMinerFeeSats,
+        redeemFeeBps: this.config.redeemFeeBps,
+        redeemFeeFlatSats: this.config.redeemFeeFlatSats,
+      });
+      if (!("rawTxHex" in validated)) throw new AppError("GUARDIAN_REJECTED", validated.reason);
+      const receipt = await this.broadcastSubmission(job, validated);
+      return receipt;
+    } catch (error) {
+      if (error instanceof AppError && ["GUARDIAN_REJECTED", "STATE_CHANGED", "PSBT_MUTATED", "WALLET_SIGNATURE_INVALID"].includes(error.code)) {
+        await haltSubmission(this.db, job).catch(() => {});
+      }
+      throw this.submissionError(error);
+    } finally {
+      await deferSubmission(this.db, job).catch(() => {});
     }
-    // The view must include the token carriers being redeemed.
-    const spent = psbt.txInputs.map((i) => ({ txid: Buffer.from(i.hash).reverse().toString("hex"), vout: i.index }));
-    const view = this.overlayPendingBacking(
-      await this.loadView(session.tokenId!, spent),
-      session.tokenId!,
-      await this.loadBackingAt(session.tokenId!, session.backingTxid, session.backingVout),
-    );
-    const signed = await this.transitionSigner.signRedeem({ psbt, view, network: this.config.network, recoveryKeyXOnly: this.config.recoveryKeyXOnly,
-      recoveryProfile: this.config.recoveryProfile, feeScript: this.config.feeScript, maxMinerFeeSats: this.config.maxMinerFeeSats, redeemFeeBps: this.config.redeemFeeBps,
-      redeemFeeFlatSats: this.config.redeemFeeFlatSats, fundingChecker: this.fundingChecker });
-    if (!signed.ok) throw new AppError("GUARDIAN_REJECTED", `${signed.reason}: ${signed.detail}`);
-    const rawTxHex = psbt.extractTransaction().toHex();
-    const validated = await validateFinalizedRedeemTransaction({
-      rawTxHex,
-      view,
-      network: this.config.network,
-      guardianXOnly: this.config.guardianXOnly,
-      recoveryKeyXOnly: this.config.recoveryKeyXOnly,
-      recoveryProfile: this.config.recoveryProfile,
-      feeScript: this.config.feeScript,
-      maxMinerFeeSats: this.config.maxMinerFeeSats,
-      redeemFeeBps: this.config.redeemFeeBps,
-      redeemFeeFlatSats: this.config.redeemFeeFlatSats,
-    });
-    if (!("rawTxHex" in validated)) throw new AppError("GUARDIAN_REJECTED", validated.reason);
-    const txid = await this.broadcast(validated);
-    await updateTxSession(this.db, session.id, { txid, status: "BROADCAST" });
-    return { txid };
   }
 
   // ── transfer ──────────────────────────────────────────────────────────────
@@ -1497,25 +1539,37 @@ export class V3AppService {
   }
 
   async submitTransfer(params: { sessionId: string; signedPsbtBase64: string }): Promise<{ txid: string }> {
-    this.assertEnabled();
+    this.assertMutating();
     const session = await requireTxSession(this.db, params.sessionId);
+    if (session.network !== this.config.network) throw new AppError("WRONG_NETWORK", "session belongs to another network");
+    this.assertCanaryAllowed({ tokenId: session.tokenId ?? undefined, walletScript: session.walletScript });
     if (session.operation !== "TRANSFER") throw new AppError("SESSION_STATE_INVALID", "session is not TRANSFER");
     if (session.status === "BROADCAST" || session.status === "CONFIRMED") return { txid: session.txid! };
-    const psbt = parsePsbt(params.signedPsbtBase64, btcNetwork(this.config.network));
-    if (unsignedTxDigest(psbt) !== session.unsignedTxDigest) throw new AppError("PSBT_MUTATED", "unsigned tx digest changed");
-    for (let i = 0; i < psbt.data.inputs.length; i++) validateInputSignature(psbt, i);
-    psbt.finalizeAllInputs();
-    const rawTxHex = psbt.extractTransaction().toHex();
-    const view = this.overlayPendingBacking(
-      await this.loadView(session.tokenId!),
-      session.tokenId!,
-      await this.loadBackingAt(session.tokenId!, session.backingTxid, session.backingVout),
-    );
-    const validated = validateFinalizedTransferTransaction({ rawTxHex, view, maxMinerFeeSats: this.config.maxMinerFeeSats });
-    if (!("rawTxHex" in validated)) throw new AppError("GUARDIAN_REJECTED", validated.reason);
-    const txid = await this.broadcast(validated);
-    await updateTxSession(this.db, session.id, { txid, status: "BROADCAST" });
-    return { txid };
+    const started = await this.beginSessionSubmission(session, params.signedPsbtBase64);
+    if ("txid" in started) return started;
+    const { job, psbt } = started;
+    try {
+      if (unsignedTxDigest(psbt) !== session.unsignedTxDigest) throw new AppError("PSBT_MUTATED", "unsigned tx digest changed");
+      for (let i = 0; i < psbt.data.inputs.length; i++) validateInputSignature(psbt, i);
+      psbt.finalizeAllInputs();
+      const rawTxHex = psbt.extractTransaction().toHex();
+      const view = this.overlayPendingBacking(
+        await this.loadView(session.tokenId!),
+        session.tokenId!,
+        await this.loadBackingAt(session.tokenId!, session.backingTxid, session.backingVout),
+      );
+      const validated = validateFinalizedTransferTransaction({ rawTxHex, view, maxMinerFeeSats: this.config.maxMinerFeeSats });
+      if (!("rawTxHex" in validated)) throw new AppError("GUARDIAN_REJECTED", validated.reason);
+      const receipt = await this.broadcastSubmission(job, validated);
+      return receipt;
+    } catch (error) {
+      if (error instanceof AppError && ["GUARDIAN_REJECTED", "STATE_CHANGED", "PSBT_MUTATED", "WALLET_SIGNATURE_INVALID"].includes(error.code)) {
+        await haltSubmission(this.db, job).catch(() => {});
+      }
+      throw this.submissionError(error);
+    } finally {
+      await deferSubmission(this.db, job).catch(() => {});
+    }
   }
 
   // ── tx status ─────────────────────────────────────────────────────────────
@@ -1743,8 +1797,7 @@ export class V3AppService {
     const fill = fills[0];
     if (!fill) throw new AppError("STATE_CHANGED", "fill not found");
     this.assertCanaryAllowed({ tokenId: fill.tokenId, walletScript: fill.buyerTokenScript });
-    const validated = await this.market.finalizeP2PFill(fillId);
-    return this.market.broadcastP2PFill(validated);
+    return this.market.completeFill(fillId);
   }
   getBuyRoutes(tokenId: string, amountAtoms: bigint) {
     return getBuyRoutes(this.db, this.config.network, tokenId, amountAtoms, {
@@ -1797,11 +1850,87 @@ export class V3AppService {
 
   // ── broadcast boundary ────────────────────────────────────────────────────
 
-  private async broadcast(validated: ValidatedCoveTransaction): Promise<string> {
-    const accept = await this.provider.testMempoolAccept(validated.rawTxHex);
-    if (!accept.allowed) throw new AppError("MEMPOOL_REJECTED", accept.rejectReason ?? "testmempoolaccept rejected");
-    const txid = await this.provider.broadcastTransaction(validated.rawTxHex);
-    if (txid !== validated.txid) throw new AppError("BROADCAST_FAILED", "broadcast txid mismatch");
-    return txid;
+  private submissionError(error: unknown): Error {
+    if (error instanceof SubmissionError) return new AppError(error.code === "CONFLICT" ? "PSBT_MUTATED" : "CORE_UNAVAILABLE", error.message);
+    return error instanceof Error ? error : new Error("submission failed");
+  }
+
+  private async beginSessionSubmission(session: TxSessionRow, signedPsbtBase64: string): Promise<{ job: Submission; psbt: bitcoin.Psbt } | { txid: string; submissionState: "saved" | "broadcast" }> {
+    const incoming = parsePsbt(signedPsbtBase64, btcNetwork(this.config.network));
+    if (unsignedTxDigest(incoming) !== session.unsignedTxDigest) throw new AppError("PSBT_MUTATED", "unsigned tx digest changed");
+    const first = session.operation === "BACKING_BUY" || session.operation === "REDEEM" ? 1 : 0;
+    for (let i = first; i < incoming.data.inputs.length; i++) validateInputSignature(incoming, i);
+    let job: Submission | undefined;
+    try {
+      const prepared = await prepareSubmission(this.db, { network: session.network, sourceKind: "APP", sourceId: session.id,
+        operation: session.operation, tokenId: session.tokenId, backingTxid: session.backingTxid, backingVout: session.backingVout,
+        unsignedTxDigest: session.unsignedTxDigest!, walletPsbtBase64: signedPsbtBase64 });
+      if (prepared.phase === "BROADCAST") return { txid: prepared.txid!, submissionState: "broadcast" };
+      if (prepared.phase === "RECOVERY_REQUIRED") await resumeSubmission(this.db, prepared.id);
+      job = await claimSubmission(this.db, prepared.id);
+      if (job.phase === "READY") {
+        try { return await this.broadcastSubmission(job); }
+        finally { await deferSubmission(this.db, job).catch(() => {}); }
+      }
+      return { job, psbt: parsePsbt(job.walletPsbtBase64, btcNetwork(this.config.network)) };
+    } catch (error) {
+      if (job) await deferSubmission(this.db, job).catch(() => {});
+      throw this.submissionError(error);
+    }
+  }
+
+  private async broadcastSubmission(job: Submission, validated?: ValidatedCoveTransaction): Promise<{ txid: string; submissionState: "saved" | "broadcast" }> {
+    if (job.phase === "SIGNING") {
+      if (!validated) throw new AppError("STATE_CHANGED", "submission has not been validated");
+      job = await saveSignedSubmission(this.db, job, { rawTxHex: validated.rawTxHex, txid: validated.txid });
+    }
+    if (!job.rawTxHex || !job.txid) throw new AppError("STATE_CHANGED", "submission has no signed bytes");
+    const confirmed = await this.db.select({ txid: schema.coveV3Events.txid }).from(schema.coveV3Events)
+      .where(and(eq(schema.coveV3Events.network, job.network), eq(schema.coveV3Events.txid, job.txid), eq(schema.coveV3Events.canonical, true))).limit(1);
+    try {
+      if (!confirmed.length) {
+        await this.requireHealthy();
+        await broadcastRecordedTransaction(this.provider, { rawTxHex: job.rawTxHex, txid: job.txid }, this.config.network);
+      }
+      await publishSubmission(this.db, job);
+      return { txid: job.txid, submissionState: "broadcast" };
+    } catch {
+      return { txid: job.txid, submissionState: "saved" };
+    }
+  }
+
+  async recoverSubmissions(limit = 2): Promise<{ recovered: number }> {
+    this.assertMutating();
+    let recovered = 0;
+    for (const job of await dueSubmissions(this.db, this.config.network, limit)) {
+      try {
+        if (job.sourceKind === "FILL") {
+          const receipt = await this.market.recoverSubmission(job);
+          if (receipt.submissionState === "broadcast") recovered++;
+          continue;
+        } else {
+          const owner = await requireTxSession(this.db, job.sourceId);
+          this.assertCanaryAllowed({ tokenId: owner.tokenId ?? undefined, walletScript: owner.walletScript });
+          if (job.phase === "READY") {
+            const claimed = await claimSubmission(this.db, job.id);
+            try {
+              const receipt = await this.broadcastSubmission(claimed);
+              if (receipt.submissionState === "broadcast") recovered++;
+            } finally { await deferSubmission(this.db, claimed).catch(() => {}); }
+            continue;
+          }
+          const input = { sessionId: job.sourceId, signedPsbtBase64: job.walletPsbtBase64 };
+          if (job.operation === "DEPLOY") await this.submitLaunch(input);
+          else if (job.operation === "BACKING_BUY") await this.submitBackingBuy(input);
+          else if (job.operation === "REDEEM") await this.submitRedeem(input);
+          else if (job.operation === "TRANSFER") await this.submitTransfer(input);
+          else throw new AppError("SESSION_STATE_INVALID", "unknown saved operation");
+        }
+        if ((await getSubmission(this.db, job.network, job.sourceKind, job.sourceId))?.phase === "BROADCAST") recovered++;
+      } catch (error) {
+        console.warn("submission recovery deferred:", job.id, error instanceof AppError ? error.code : "UNAVAILABLE");
+      }
+    }
+    return { recovered };
   }
 }

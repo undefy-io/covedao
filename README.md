@@ -203,6 +203,30 @@ for transactions tracked by the app or market. A provider failure returns
 `state: "unknown"`, never proof of a dropped transaction. Public transaction and
 fill status omit signing data and use `Cache-Control: no-store`.
 
+### Durable transaction submission
+
+The app saves the wallet request before asking the Guardian to sign, then saves
+its exact finalized transaction before broadcasting. The existing worker recovers
+up to two due submissions per loop. Claims last two minutes; failed attempts wait
+one minute. Retries reuse the saved bytes and transaction ID. No new environment
+variables or deployment services are needed.
+
+Submit responses may include `submissionState: "saved"`: the transaction is
+stored for recovery but node acceptance is still unconfirmed. `"broadcast"`
+means acceptance was verified. Neither proves a block confirmation. A definite
+validation rejection pauses automatic signing until an explicit wallet retry.
+Signed Guardian reservations remain permanent in either case. Signed PSBTs and
+raw transactions stay private in the database and require protected backups.
+
+Migration `0014_durable_submissions.sql` adds the submission records and stored
+Guardian signing results. Drain the old web and worker processes before applying
+migrations and starting the updated Guardian, web, and worker; old writers do not
+honor the new submission states. Both repositories carry the same migration
+history when they share a database. Apply that history once per database.
+The separate Guardian update also checks funding against one chain tip per
+validation. Pending ancestry support and database-only pending quotes/status
+remain in the API scaling plan.
+
 ### Public read limits
 
 | Read | Limits and behavior |

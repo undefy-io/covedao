@@ -67,7 +67,7 @@ export async function requireTxSession(db: Database, id: string): Promise<TxSess
 export async function createTxSession(db: Database, input: NewTxSession): Promise<TxSessionRow> {
   // Idempotency: same (network, script, op, key) → return the existing session;
   // a conflicting payload under the same key is rejected (§17).
-  const existing = await db
+  const readExisting = () => db
     .select()
     .from(schema.coveV3AppTransactions)
     .where(
@@ -78,6 +78,7 @@ export async function createTxSession(db: Database, input: NewTxSession): Promis
         eq(schema.coveV3AppTransactions.idempotencyKey, input.idempotencyKey),
       ),
     );
+  let existing = await readExisting();
   if (existing.length > 0) {
     const e = existing[0]!;
     if (
@@ -91,8 +92,14 @@ export async function createTxSession(db: Database, input: NewTxSession): Promis
   const rows = await db
     .insert(schema.coveV3AppTransactions)
     .values({ ...input, txid: input.txid ?? null })
+    .onConflictDoNothing({ target: [schema.coveV3AppTransactions.network, schema.coveV3AppTransactions.walletScript,
+      schema.coveV3AppTransactions.operation, schema.coveV3AppTransactions.idempotencyKey] })
     .returning();
-  return rows[0]!;
+  if (rows[0]) return rows[0];
+  existing = await readExisting();
+  const winner = existing[0];
+  if (winner && winner.tokenId === input.tokenId && winner.unsignedTxDigest === input.unsignedTxDigest && sameMetadata(winner.metadataJson, input.metadataJson)) return winner;
+  throw new AppError("IDEMPOTENCY_CONFLICT", "idempotency key reused with a conflicting payload");
 }
 
 export async function updateTxSession(

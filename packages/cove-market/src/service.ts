@@ -1,8 +1,9 @@
 import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import { eq, and, isNull, inArray, lte, desc } from "drizzle-orm";
-import { schema, type Database, type DbTransaction } from "@crclaunch/db";
+import { schema, prepareSubmission, claimSubmission, saveSignedSubmission, getSubmission, publishSubmission, deferSubmission, SubmissionError, type Submission, type Database, type DbTransaction } from "@crclaunch/db";
 import {
+  broadcastRecordedTransaction,
   estimateVsize,
   resolveMinerFee,
   FeeError,
@@ -31,7 +32,6 @@ import {
 } from "./presign.js";
 import {
   validateFinalizedP2PFill,
-  broadcastValidatedP2PFill,
   assertSettlementCap,
   type ValidatedP2PFill,
   type P2PFillTerms,
@@ -427,9 +427,12 @@ export class MarketService {
       const row = rows[0];
       if (!row) throw new MarketError("STATE_CHANGED", "listing not found");
       // A cancelled listing NEVER resurrects (even across reorg).
-      if (row.status === "FILLED" || row.status === "CANCELLED") {
+      if (row.status === "FILLED" || row.status === "CANCELLED" || row.status === "BROADCAST") {
         throw new MarketError("LISTING_CANCELLED", `cannot cancel ${row.status} listing`);
       }
+      const submitting = await tx.select({ id: schema.coveV3MarketFills.id }).from(schema.coveV3MarketFills)
+        .where(and(eq(schema.coveV3MarketFills.listingId, listingId), eq(schema.coveV3MarketFills.status, "SUBMITTING"))).limit(1);
+      if (submitting.length) throw new MarketError("STATE_CHANGED", "a signed fill is being submitted");
       await tx.insert(schema.coveV3MarketCancellations).values({ listingId, cancelHash, cancelNonce, signatureB64 });
       await tx
         .update(schema.coveV3MarketListings)
@@ -484,6 +487,9 @@ export class MarketService {
     if (input.buyerFundInputs.some((f) => carrierKeys.has(`${f.txid}:${f.vout}`))) {
       throw new MarketError("BUYER_FUNDS_INSUFFICIENT", "a funding coin holds tokens and cannot pay for a purchase");
     }
+    const listing = await this.loadListing(input.listingId);
+    if (!listing) throw new MarketError("STATE_CHANGED", "listing not found");
+    await this.resolveSource(listingToV1(listing));
     const tip = BigInt(await this.provider.getBestHeight());
 
     const fillId = await this.db.transaction(async (tx) => {
@@ -500,7 +506,6 @@ export class MarketService {
         throw new MarketError("LISTING_EXPIRED", "listing expired");
       }
 
-      await this.resolveSource(listingToV1(row));
 
       const marketFee = this.marketFeeFor(row.totalPriceSats);
       const [inserted] = await tx
@@ -624,10 +629,12 @@ export class MarketService {
 
     const psbtB64 = result.psbt.toBase64();
     const digest = unsignedTxDigest(result.psbt);
-    await this.db
+    const changed = await this.db
       .update(schema.coveV3MarketFills)
       .set({ psbtBase64: psbtB64, unsignedTxDigest: digest, minerFeeSats: settledMinerFeeSats, extraCarrierSats, marketFeeSats: marketFee, status: "PSBT_BUILT", updatedAt: new Date() })
-      .where(eq(schema.coveV3MarketFills.id, fillId));
+      .where(and(eq(schema.coveV3MarketFills.id, fillId), inArray(schema.coveV3MarketFills.status, ["RESERVED", "PSBT_BUILT"])))
+      .returning({ id: schema.coveV3MarketFills.id });
+    if (!changed.length) throw new MarketError("STATE_CHANGED", "fill advanced while its PSBT was being built");
     return psbtB64;
   }
 
@@ -639,7 +646,7 @@ export class MarketService {
   async submitBuyerSignedPsbt(fillId: string, psbtB64: string): Promise<void> {
     const fill = await this.loadFill(fillId);
     if (!fill) throw new MarketError("STATE_CHANGED", "fill not found");
-    if (fill.status !== "PSBT_BUILT") throw new MarketError("STATE_CHANGED", `fill is ${fill.status}`);
+    if (!["PSBT_BUILT", "BUYER_SIGNED", "SUBMITTING", "BROADCAST", "CONFIRMED"].includes(fill.status)) throw new MarketError("STATE_CHANGED", `fill is ${fill.status}`);
 
     const psbt = parsePsbt(psbtB64, btcNetwork(this.config.network));
     if (fill.unsignedTxDigest && unsignedTxDigest(psbt) !== fill.unsignedTxDigest) {
@@ -649,21 +656,40 @@ export class MarketService {
     if (partialSigOfInput(psbt, FILL_SELLER_INPUT) !== null) {
       throw new MarketError("PSBT_MUTATED", "the seller's carrier must not be signed by the buyer");
     }
-    psbt.data.inputs.forEach((_, i) => {
-      if (i !== FILL_SELLER_INPUT) validateP2wpkhPartialSig(psbt, i);
+    const expectedFunding = new Map(fillFundInputs(fill).map((input) => [`${input.txid.toLowerCase()}:${input.vout}`, input]));
+    psbt.data.inputs.forEach((input, i) => {
+      if (i === FILL_SELLER_INPUT) return;
+      const point = psbt.txInputs[i]!;
+      const expected = expectedFunding.get(`${Buffer.from(point.hash).reverse().toString("hex")}:${point.index}`);
+      if (!expected || !input.witnessUtxo || BigInt(input.witnessUtxo.value) !== expected.valueSats ||
+        input.witnessUtxo.script.toString("hex") !== expected.script.toLowerCase()) {
+        throw new MarketError("PSBT_MUTATED", "buyer funding prevout changed");
+      }
+      validateP2wpkhPartialSig(psbt, i);
     });
-
-    await this.db
+    if (fill.status !== "PSBT_BUILT") return;
+    const changed = await this.db
       .update(schema.coveV3MarketFills)
       .set({ psbtBase64: psbtB64, status: "BUYER_SIGNED", updatedAt: new Date() })
-      .where(eq(schema.coveV3MarketFills.id, fillId));
+      .where(and(eq(schema.coveV3MarketFills.id, fillId), eq(schema.coveV3MarketFills.status, "PSBT_BUILT"),
+        eq(schema.coveV3MarketFills.unsignedTxDigest, fill.unsignedTxDigest!)))
+      .returning({ id: schema.coveV3MarketFills.id });
+    if (!changed.length) {
+      const current = await this.loadFill(fillId);
+      if (!current || current.unsignedTxDigest !== fill.unsignedTxDigest ||
+        !["BUYER_SIGNED", "SUBMITTING", "BROADCAST", "CONFIRMED"].includes(current.status)) {
+        throw new MarketError("STATE_CHANGED", "fill changed while the buyer was signing");
+      }
+    }
   }
 
   /**
    * Complete a buyer-signed fill: attach the seller's presignature, finalize,
    * validate every market rule and broadcast. No seller step.
    */
-  async completeFill(fillId: string): Promise<{ txid: string }> {
+  async completeFill(fillId: string): Promise<{ txid: string; submissionState: "saved" | "broadcast" }> {
+    const existing = await getSubmission(this.db, this.config.network, "FILL", fillId);
+    if (existing) return this.recoverSubmission(existing);
     const validated = await this.finalizeP2PFill(fillId);
     return this.broadcastP2PFill(validated);
   }
@@ -672,7 +698,7 @@ export class MarketService {
     await assertMarketReady({ db: this.db, config: this.config, provider: this.provider });
     const fill = await this.loadFill(fillId);
     if (!fill) throw new MarketError("STATE_CHANGED", "fill not found");
-    if (fill.status !== "BUYER_SIGNED" && fill.status !== "BROADCAST") throw new MarketError("STATE_CHANGED", `fill is ${fill.status}`);
+    if (fill.status !== "BUYER_SIGNED" && fill.status !== "SUBMITTING" && fill.status !== "BROADCAST") throw new MarketError("STATE_CHANGED", `fill is ${fill.status}`);
     if (!fill.psbtBase64) throw new MarketError("STATE_CHANGED", "fill has no PSBT");
     const listing = await this.loadListing(fill.listingId);
     if (!listing) throw new MarketError("STATE_CHANGED", "listing not found");
@@ -690,33 +716,65 @@ export class MarketService {
     const view = await this.loadView(listing.tokenId, listing.sourceTxid, listing.sourceVout);
     const validated = validateFinalizedP2PFill({ rawTxHex, terms, view, network: this.config.network });
 
-    await this.db
-      .update(schema.coveV3MarketFills)
-      .set({ txid: validated.txid, updatedAt: new Date() })
-      .where(eq(schema.coveV3MarketFills.id, fillId));
     return validated;
   }
 
-  async broadcastP2PFill(validated: ValidatedP2PFill): Promise<{ txid: string }> {
-    const res = await broadcastValidatedP2PFill({ validated, network: this.config.network, provider: this.provider });
-    await this.db.transaction(async (tx) => {
-      await tx
-        .update(schema.coveV3MarketFills)
-        .set({ status: "BROADCAST", txid: res.txid, updatedAt: new Date() })
-        .where(eq(schema.coveV3MarketFills.id, validated.fillId));
-      await tx
-        .update(schema.coveV3MarketListings)
-        .set({ status: "BROADCAST", updatedAt: new Date() })
-        .where(eq(schema.coveV3MarketListings.listingId, validated.listingId));
-      await tx.insert(schema.coveV3MarketEvents).values({
-        network: this.config.network,
-        listingId: validated.listingId,
-        fillId: validated.fillId,
-        eventType: "FILL_BROADCAST",
-        payloadJson: { txid: res.txid },
-      });
-    });
-    return res;
+  async broadcastP2PFill(validated: ValidatedP2PFill): Promise<{ txid: string; submissionState: "saved" | "broadcast" }> {
+    const fill = await this.loadFill(validated.fillId);
+    if (!fill?.psbtBase64 || !fill.unsignedTxDigest || fill.tokenId !== validated.tokenId || fill.listingId !== validated.listingId) {
+      throw new MarketError("STATE_CHANGED", "fill commitment is unavailable");
+    }
+    try {
+      const prepared = await prepareSubmission(this.db, { network: this.config.network, sourceKind: "FILL", sourceId: fill.id,
+        operation: "P2P", tokenId: fill.tokenId, backingTxid: null, backingVout: null,
+        unsignedTxDigest: fill.unsignedTxDigest, walletPsbtBase64: fill.psbtBase64 });
+      return await this.runSubmission(prepared, validated);
+    } catch (error) {
+      if (error instanceof SubmissionError) throw new MarketError("CORE_UNAVAILABLE", error.message);
+      throw error;
+    }
+  }
+
+  async recoverSubmission(saved: Submission): Promise<{ txid: string; submissionState: "saved" | "broadcast" }> {
+    if (saved.network !== this.config.network || saved.sourceKind !== "FILL") throw new MarketError("STATE_CHANGED", "wrong saved fill");
+    if (saved.phase !== "BROADCAST") {
+      await assertMarketReady({ db: this.db, config: this.config, provider: this.provider });
+      const fill = await this.loadFill(saved.sourceId);
+      const listing = fill ? await this.loadListing(fill.listingId) : null;
+      if (!listing) throw new MarketError("STATE_CHANGED", "saved fill listing is unavailable");
+      assertSettlementCap(listing.totalPriceSats, this.config.maxP2pSettlementSats);
+    }
+    return this.runSubmission(saved);
+  }
+
+  private async runSubmission(saved: Submission, validated?: ValidatedP2PFill): Promise<{ txid: string; submissionState: "saved" | "broadcast" }> {
+    if (saved.phase === "BROADCAST") return { txid: saved.txid!, submissionState: "broadcast" };
+    let job: Submission | undefined;
+    try {
+      job = await claimSubmission(this.db, saved.id);
+      if (job.phase === "SIGNING") {
+        validated ??= await this.finalizeP2PFill(saved.sourceId);
+        job = await saveSignedSubmission(this.db, job, { rawTxHex: validated.validatedTransfer.rawTxHex, txid: validated.txid });
+      }
+      if (!job.rawTxHex || !job.txid) throw new MarketError("STATE_CHANGED", "fill has no saved transaction");
+      try {
+        const fill = await this.loadFill(job.sourceId);
+        const listing = fill ? await this.loadListing(fill.listingId) : null;
+        const source = listing ? await this.sourceUtxoRow(listing.sourceTxid, listing.sourceVout) : null;
+        if (!source?.canonical || source.spentByTxid !== job.txid) {
+          await broadcastRecordedTransaction(this.provider, { rawTxHex: job.rawTxHex, txid: job.txid }, this.config.network);
+        }
+        await publishSubmission(this.db, job);
+        return { txid: job.txid, submissionState: "broadcast" };
+      } catch {
+        return { txid: job.txid, submissionState: "saved" };
+      }
+    } catch (error) {
+      if (error instanceof SubmissionError) throw new MarketError("CORE_UNAVAILABLE", error.message);
+      throw error;
+    } finally {
+      if (job) await deferSubmission(this.db, job).catch(() => {});
+    }
   }
 
   /**
@@ -859,8 +917,10 @@ export class MarketService {
       .from(schema.coveV3MarketListings)
       .where(and(eq(schema.coveV3MarketListings.network, this.config.network), eq(schema.coveV3MarketListings.status, "ACTIVE"), lte(schema.coveV3MarketListings.expiryHeight, tip)));
     for (const listing of expListings) {
-      await this.db.update(schema.coveV3MarketListings).set({ status: "EXPIRED", updatedAt: new Date() }).where(eq(schema.coveV3MarketListings.listingId, listing.listingId));
-      expired++;
+      const changed = await this.db.update(schema.coveV3MarketListings).set({ status: "EXPIRED", updatedAt: new Date() })
+        .where(and(eq(schema.coveV3MarketListings.listingId, listing.listingId), eq(schema.coveV3MarketListings.status, "ACTIVE")))
+        .returning({ id: schema.coveV3MarketListings.id });
+      if (changed.length) expired++;
     }
     const expFills = await this.db
       .select()
@@ -875,15 +935,21 @@ export class MarketService {
         ),
       );
     for (const fill of expFills) {
-      await this.db.transaction(async (tx) => {
-        await tx.update(schema.coveV3MarketFills).set({ status: "EXPIRED", updatedAt: new Date() }).where(eq(schema.coveV3MarketFills.id, fill.id));
+      const changed = await this.db.transaction(async (tx) => {
+        await tx.select({ id: schema.coveV3MarketListings.id }).from(schema.coveV3MarketListings)
+          .where(eq(schema.coveV3MarketListings.listingId, fill.listingId)).for("update");
+        const expiredFill = await tx.update(schema.coveV3MarketFills).set({ status: "EXPIRED", updatedAt: new Date() })
+          .where(and(eq(schema.coveV3MarketFills.id, fill.id), inArray(schema.coveV3MarketFills.status, ["RESERVED", "PSBT_BUILT", "BUYER_SIGNED"]),
+            lte(schema.coveV3MarketFills.reservationExpiresAt, now))).returning({ id: schema.coveV3MarketFills.id });
+        if (!expiredFill.length) return false;
         // Release the listing back to ACTIVE if it is still RESERVED for this fill.
         await tx
           .update(schema.coveV3MarketListings)
           .set({ status: "ACTIVE", updatedAt: new Date() })
           .where(and(eq(schema.coveV3MarketListings.listingId, fill.listingId), eq(schema.coveV3MarketListings.status, "RESERVED")));
+        return true;
       });
-      expired++;
+      if (changed) expired++;
     }
 
     return { expired, invalidated, confirmed, reorged };
@@ -928,6 +994,11 @@ export class MarketService {
 
   private async invalidateListing(listingId: string, reason: string): Promise<void> {
     await this.db.transaction(async (tx) => {
+      await tx.select({ id: schema.coveV3MarketListings.id }).from(schema.coveV3MarketListings)
+        .where(eq(schema.coveV3MarketListings.listingId, listingId)).for("update");
+      const submitting = await tx.select({ id: schema.coveV3MarketFills.id }).from(schema.coveV3MarketFills)
+        .where(and(eq(schema.coveV3MarketFills.listingId, listingId), eq(schema.coveV3MarketFills.status, "SUBMITTING"))).limit(1);
+      if (submitting.length) return;
       await tx.update(schema.coveV3MarketListings).set({ status: "INVALIDATED", sellerPresignedPsbt: null, updatedAt: new Date() }).where(eq(schema.coveV3MarketListings.listingId, listingId));
       await tx
         .update(schema.coveV3MarketFills)

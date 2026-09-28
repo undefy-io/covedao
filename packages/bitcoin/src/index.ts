@@ -90,3 +90,4 @@ export {
   type SpendableInput,
   type SignatureProblem,
 } from "./spend.js";
+export { broadcastRecordedTransaction } from "./recorded-broadcast.js";

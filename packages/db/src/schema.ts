@@ -907,7 +907,7 @@ export const coveV3AppTransactions = pgTable(
       t.operation,
       t.idempotencyKey,
     ),
-    uniqueIndex("cove_v3_app_tx_txid_uq")
+    index("cove_v3_app_tx_txid_idx")
       .on(t.network, t.txid)
       .where(sql`${t.txid} IS NOT NULL`),
     index("cove_v3_app_tx_status_idx").on(t.network, t.status),
@@ -956,6 +956,37 @@ export const coveV3GuardianAudit = pgTable(
   ],
 );
 
+export const coveV3Submissions = pgTable(
+  "cove_v3_submissions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    network: text("network").notNull(),
+    sourceKind: text("source_kind").$type<"APP" | "FILL">().notNull(),
+    sourceId: uuid("source_id").notNull(),
+    operation: text("operation").notNull(),
+    tokenId: text("token_id"),
+    backingTxid: text("backing_txid"),
+    backingVout: integer("backing_vout"),
+    unsignedTxDigest: text("unsigned_tx_digest").notNull(),
+    walletPsbtBase64: text("wallet_psbt_base64").notNull(),
+    rawTxHex: text("raw_tx_hex"),
+    txid: text("txid"),
+    phase: text("phase").$type<"SIGNING" | "READY" | "BROADCAST" | "RECOVERY_REQUIRED">().notNull().default("SIGNING"),
+    leaseToken: uuid("lease_token"),
+    leaseUntil: timestamp("lease_until", { withTimezone: true }),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    attempts: integer("attempts").notNull().default(0),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("cove_v3_submission_source_uq").on(t.network, t.sourceKind, t.sourceId),
+    index("cove_v3_submission_txid_idx").on(t.network, t.txid).where(sql`${t.txid} is not null`),
+    index("cove_v3_submission_due_idx").on(t.network, t.nextAttemptAt, t.id).where(sql`${t.phase} <> 'BROADCAST'`),
+  ],
+);
+
 export const coveV3SigningJournal = pgTable(
   "cove_v3_signing_journal",
   {
@@ -965,6 +996,7 @@ export const coveV3SigningJournal = pgTable(
     backingVout: integer("backing_vout").notNull(),
     unsignedTxDigest: text("unsigned_tx_digest").notNull(),
     signatureHash: text("signature_hash"),
+    signingResult: jsonb("signing_result").$type<{ psbtBase64: string; resultJson: string; auditHash: string }>(),
     signedAt: timestamp("signed_at", { withTimezone: true }),
     committedAt: timestamp("committed_at", { withTimezone: true }).notNull().defaultNow(),
     /** Unsigned reservations expire; signed rows remain committed. */

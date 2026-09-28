@@ -100,6 +100,11 @@ async function main() {
           console.error("V3 fee refresh failed:", error instanceof Error ? error.message : String(error));
         }
       }
+      try {
+        await app.recoverSubmissions(2);
+      } catch (error) {
+        console.warn("submission recovery unavailable:", error instanceof Error ? error.name : "UNAVAILABLE");
+      }
       // 3. reconcile market
       const market = await app.market.reconcileMarket(coreHeight);
       metrics.gauge("market.listings_active", BigInt(market.confirmed));

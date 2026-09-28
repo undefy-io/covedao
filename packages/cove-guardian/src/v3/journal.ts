@@ -97,6 +97,7 @@ export function verifyGuardianAuditChain(head: { previousAuditHash: string; audi
 }
 
 export type SigningReservation = "RESERVED" | "IDEMPOTENT" | "CONFLICT";
+export interface StoredSigningResult { psbtBase64: string; resultJson: string; auditHash: string }
 
 /** An unsigned signing lease expires; a produced signature never does. */
 export const SIGNING_JOURNAL_TTL_MS = 30 * 60 * 1000; // 30 minutes
@@ -111,7 +112,8 @@ export interface SigningJournalStore {
    */
   reserve(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<SigningReservation>;
   /** Make a produced signature's conflict barrier permanent before returning it. */
-  markSigned(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<void>;
+  markSigned(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string; signingResult?: StoredSigningResult }): Promise<void>;
+  readSigned?(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<StoredSigningResult | null>;
   committedDigest(network: string, backingTxid: string, backingVout: number): Promise<string | null>;
   /**
    * Release an unsigned reservation if it still matches `unsignedTxDigest`.
@@ -122,7 +124,7 @@ export interface SigningJournalStore {
 
 /** In-memory journal (tests). A Map keyed by network:txid:vout. */
 export class InMemorySigningJournal implements SigningJournalStore {
-  private map = new Map<string, { digest: string; expiresAt: number; signed: boolean }>();
+  private map = new Map<string, { digest: string; expiresAt: number; signed: boolean; signingResult?: StoredSigningResult }>();
   constructor(private readonly clock: () => number = () => Date.now()) {}
 
   private now(): number {
@@ -139,11 +141,17 @@ export class InMemorySigningJournal implements SigningJournalStore {
     return "RESERVED";
   }
 
-  async markSigned(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<void> {
+  async markSigned(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string; signingResult?: StoredSigningResult }): Promise<void> {
     const key = `${params.network}:${params.backingTxid}:${params.backingVout}`;
     const held = this.map.get(key);
     if (!held || held.digest !== params.unsignedTxDigest) throw new Error("signing reservation lost");
     held.signed = true;
+    held.signingResult ??= params.signingResult;
+  }
+
+  async readSigned(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<StoredSigningResult | null> {
+    const held = this.map.get(`${params.network}:${params.backingTxid}:${params.backingVout}`);
+    return held?.signed && held.digest === params.unsignedTxDigest ? held.signingResult ?? null : null;
   }
 
   async committedDigest(network: string, backingTxid: string, backingVout: number): Promise<string | null> {
