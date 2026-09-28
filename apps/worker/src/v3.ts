@@ -7,7 +7,7 @@ import {
   reorgPersistentToTip,
   hydrateState,
 } from "@crclaunch/cove-indexer/v3";
-import { loadV3AppConfig, V3AppService, Metrics, buildAppTransitionSigner, watchGuardianAgreement, workerLockKey, saveChainObservation, saveFeeObservation } from "@crclaunch/cove-app";
+import { loadV3AppConfig, V3AppService, Metrics, buildAppTransitionSigner, watchGuardianAgreement, workerLockKey, saveChainObservation, saveFeeObservation, collectFeeObservation } from "@crclaunch/cove-app";
 import type { V3IndexerConfig } from "@crclaunch/cove-indexer/v3";
 import { workerEnv } from "./v3-env.js";
 
@@ -92,8 +92,13 @@ async function main() {
       // 2. catch up persistent indexer
       await persistentWorker({ db, store, state, provider, config: indexerConfig, opts: { chainInfo: info } });
       if (Date.now() - lastFeeRefresh >= 60_000) {
-        await saveFeeObservation(db, config.network, await app.feeRates());
         lastFeeRefresh = Date.now();
+        try {
+          const observation = await collectFeeObservation(provider);
+          await saveFeeObservation(db, config.network, observation.rates, observation.observedAt);
+        } catch (error) {
+          console.error("V3 fee refresh failed:", error instanceof Error ? error.message : String(error));
+        }
       }
       // 3. reconcile market
       const market = await app.market.reconcileMarket(coreHeight);

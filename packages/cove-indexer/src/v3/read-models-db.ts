@@ -1,4 +1,4 @@
-import { eq, and, or, isNull, desc } from "drizzle-orm";
+import { eq, and, or, isNull, desc, asc, sum, count, countDistinct } from "drizzle-orm";
 import { schema, type Database } from "@crclaunch/db";
 import { balanceByScript, currentBacking, tokenHolders, tokenUtxosByScript, type TokenDetail } from "./read-models.js";
 
@@ -7,8 +7,8 @@ import { balanceByScript, currentBacking, tokenHolders, tokenUtxosByScript, type
  * canonical=true AND spentByTxid IS NULL — never a legacy balance table.
  */
 
-export async function getTokenUtxosByScriptDb(db: Database, network: string, scriptPubKey: string) {
-  return db
+export async function getTokenUtxosByScriptDb(db: Database, network: string, scriptPubKey: string, page?: { limit: number; offset?: number }) {
+  const query = db
     .select()
     .from(schema.coveV3TokenUtxos)
     .where(
@@ -18,7 +18,9 @@ export async function getTokenUtxosByScriptDb(db: Database, network: string, scr
         eq(schema.coveV3TokenUtxos.canonical, true),
         isNull(schema.coveV3TokenUtxos.spentByTxid),
       ),
-    );
+    )
+    .orderBy(asc(schema.coveV3TokenUtxos.txid), asc(schema.coveV3TokenUtxos.vout));
+  return page ? query.limit(Math.max(1, Math.min(page.limit, 501))).offset(Math.max(0, page.offset ?? 0)) : query;
 }
 
 /**
@@ -41,34 +43,24 @@ export async function getLiveTokenUtxosAtDb(db: Database, network: string, outpo
 }
 
 export async function getBalanceByScriptDb(db: Database, network: string, tokenId: string, scriptPubKey: string): Promise<bigint> {
-  const rows = await db
-    .select({ amountAtoms: schema.coveV3TokenUtxos.amountAtoms })
+  const rows = await db.select({ amountAtoms: sum(schema.coveV3TokenUtxos.amountAtoms) })
     .from(schema.coveV3TokenUtxos)
-    .where(
-      and(
-        eq(schema.coveV3TokenUtxos.network, network),
-        eq(schema.coveV3TokenUtxos.tokenId, tokenId),
-        eq(schema.coveV3TokenUtxos.scriptPubKey, scriptPubKey),
-        eq(schema.coveV3TokenUtxos.canonical, true),
-        isNull(schema.coveV3TokenUtxos.spentByTxid),
-      ),
-    );
-  return rows.reduce((s, r) => s + r.amountAtoms, 0n);
+    .where(and(eq(schema.coveV3TokenUtxos.network, network), eq(schema.coveV3TokenUtxos.tokenId, tokenId),
+      eq(schema.coveV3TokenUtxos.scriptPubKey, scriptPubKey), eq(schema.coveV3TokenUtxos.canonical, true),
+      isNull(schema.coveV3TokenUtxos.spentByTxid)));
+  return BigInt(rows[0]?.amountAtoms ?? "0");
 }
 
-export async function getTokenHoldersDb(db: Database, network: string, tokenId: string) {
-  const rows = await db
-    .select()
+export async function getTokenHoldersDb(db: Database, network: string, tokenId: string, limit = 100, offset = 0) {
+  const amount = sum(schema.coveV3TokenUtxos.amountAtoms);
+  const rows = await db.select({ scriptPubKey: schema.coveV3TokenUtxos.scriptPubKey, amountAtoms: amount })
     .from(schema.coveV3TokenUtxos)
-    .where(
-      and(
-        eq(schema.coveV3TokenUtxos.network, network),
-        eq(schema.coveV3TokenUtxos.tokenId, tokenId),
-        eq(schema.coveV3TokenUtxos.canonical, true),
-        isNull(schema.coveV3TokenUtxos.spentByTxid),
-      ),
-    );
-  return tokenHolders(rows, tokenId);
+    .where(and(eq(schema.coveV3TokenUtxos.network, network), eq(schema.coveV3TokenUtxos.tokenId, tokenId),
+      eq(schema.coveV3TokenUtxos.canonical, true), isNull(schema.coveV3TokenUtxos.spentByTxid)))
+    .groupBy(schema.coveV3TokenUtxos.scriptPubKey)
+    .orderBy(desc(amount), asc(schema.coveV3TokenUtxos.scriptPubKey))
+    .limit(Math.max(1, Math.min(limit, 200))).offset(Math.max(0, offset));
+  return rows.map((row) => ({ scriptPubKey: row.scriptPubKey, amountAtoms: BigInt(row.amountAtoms ?? "0") }));
 }
 
 export async function getCurrentBackingDb(db: Database, network: string, tokenId: string) {
@@ -87,14 +79,13 @@ export async function getCurrentBackingDb(db: Database, network: string, tokenId
 export async function getTokenDetailDb(db: Database, network: string, tokenId: string, publicCapAtoms: bigint): Promise<TokenDetail | null> {
   const token = await db.select().from(schema.coveV3Tokens).where(and(eq(schema.coveV3Tokens.network, network), eq(schema.coveV3Tokens.tokenId, tokenId), eq(schema.coveV3Tokens.canonical, true)));
   const backing = await db.select().from(schema.coveV3BackingStates).where(and(eq(schema.coveV3BackingStates.network, network), eq(schema.coveV3BackingStates.tokenId, tokenId), eq(schema.coveV3BackingStates.canonical, true)));
-  const utxos = await db
-    .select()
+  const counts = await db.select({ holders: countDistinct(schema.coveV3TokenUtxos.scriptPubKey), utxos: count() })
     .from(schema.coveV3TokenUtxos)
     .where(and(eq(schema.coveV3TokenUtxos.network, network), eq(schema.coveV3TokenUtxos.tokenId, tokenId), eq(schema.coveV3TokenUtxos.canonical, true), isNull(schema.coveV3TokenUtxos.spentByTxid)));
   if (token.length === 0 || backing.length === 0) return null;
   const t = token[0]!;
   const b = backing[0]!;
-  return currentBacking(
+  const detail = currentBacking(
     {
       tokenId: t.tokenId,
       ticker: t.ticker,
@@ -123,9 +114,10 @@ export async function getTokenDetailDb(db: Database, network: string, tokenId: s
       updatedHeight: b.blockHeight,
       updatedBlockHash: b.blockHash,
     },
-    utxos,
+    [],
     publicCapAtoms,
   );
+  return { ...detail, holderCount: Number(counts[0]?.holders ?? 0), tokenUtxoCount: Number(counts[0]?.utxos ?? 0) };
 }
 
 /**

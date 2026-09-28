@@ -589,6 +589,7 @@ export const coveV3TokenUtxos = pgTable(
     uniqueIndex("cove_v3_utxo_outpoint_uq").on(t.network, t.txid, t.vout),
     index("cove_v3_utxo_token_idx").on(t.network, t.tokenId),
     index("cove_v3_utxo_script_idx").on(t.network, t.scriptPubKey),
+    index("cove_v3_utxo_live_script_idx").on(t.network, t.scriptPubKey, t.txid, t.vout).where(sql`${t.canonical} and ${t.spentByTxid} is null`),
   ],
 );
 
@@ -621,6 +622,8 @@ export const coveV3Events = pgTable(
     uniqueIndex("cove_v3_events_txid_uq").on(t.network, t.txid),
     index("cove_v3_events_block_idx").on(t.network, t.blockHeight),
     index("cove_v3_events_token_idx").on(t.network, t.tokenId),
+    index("cove_v3_events_price_time_idx").on(t.network, t.tokenId, t.createdAt.desc(), t.blockHeight.desc(), t.txid.desc()).where(sql`${t.canonical} and ${t.valid} and ${t.operation} in ('MINT','REDEEM') and ${t.grossSats} is not null`),
+    index("cove_v3_events_positive_price_time_idx").on(t.network, t.tokenId, t.createdAt.desc(), t.blockHeight.desc(), t.txid.desc()).where(sql`${t.canonical} and ${t.valid} and ${t.operation} in ('MINT','REDEEM') and ${t.amountAtoms} > 0 and ${t.grossSats}::numeric * 10000000000000 >= ${t.amountAtoms}`),
   ],
 );
 
@@ -702,6 +705,9 @@ export const coveV3MarketListings = pgTable(
   (t) => [
     uniqueIndex("cove_v3_market_listings_id_uq").on(t.listingId),
     index("cove_v3_market_listings_token_status_idx").on(t.network, t.tokenId, t.status),
+    index("cove_v3_market_listings_route_idx").on(t.network, t.tokenId, t.amountAtoms, t.totalPriceSats, t.listingId).where(sql`${t.status} = 'ACTIVE'`),
+    index("cove_v3_market_listings_seller_token_idx").on(t.network, t.sellerTokenScript, t.createdAt.desc(), t.listingId.desc()),
+    index("cove_v3_market_listings_seller_payout_idx").on(t.network, t.sellerPayoutScript, t.createdAt.desc(), t.listingId.desc()),
     index("cove_v3_market_listings_status_created_idx").on(t.network, t.status, t.createdAt),
     // One PENDING/ACTIVE/RESERVED/BROADCAST listing per source outpoint (double-list guard).
     // Literal IN-list: CREATE INDEX is DDL and cannot use bind parameters, so the
@@ -770,6 +776,8 @@ export const coveV3MarketFills = pgTable(
   (t) => [
     index("cove_v3_market_fills_listing_idx").on(t.listingId),
     index("cove_v3_market_fills_status_idx").on(t.network, t.status),
+    index("cove_v3_market_fills_buyer_token_idx").on(t.network, t.buyerTokenScript, t.createdAt.desc(), t.id.desc()),
+    index("cove_v3_market_fills_buyer_change_idx").on(t.network, t.buyerChangeScript, t.createdAt.desc(), t.id.desc()),
     uniqueIndex("cove_v3_market_fills_txid_uq")
       .on(t.network, t.txid)
       .where(sql`${t.txid} IS NOT NULL`),
@@ -814,6 +822,8 @@ export const coveV3MarketTrades = pgTable(
   (t) => [
     uniqueIndex("cove_v3_market_trades_txid_uq").on(t.network, t.txid),
     index("cove_v3_market_trades_token_idx").on(t.network, t.tokenId, t.blockHeight),
+    index("cove_v3_market_trades_price_time_idx").on(t.network, t.tokenId, t.createdAt.desc(), t.blockHeight.desc(), t.txid.desc()).where(sql`${t.canonical}`),
+    index("cove_v3_market_trades_positive_price_time_idx").on(t.network, t.tokenId, t.createdAt.desc(), t.blockHeight.desc(), t.txid.desc()).where(sql`${t.canonical} and ${t.amountAtoms} > 0 and ${t.totalPriceSats}::numeric * 10000000000000 >= ${t.amountAtoms}`),
   ],
 );
 

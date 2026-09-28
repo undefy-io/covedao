@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { chainFundingChecker, ordAssetLookup, type TxOutReader } from "./funding.js";
 
 const O = { txid: "ab".repeat(32), vout: 1 };
@@ -85,10 +85,11 @@ describe("chainFundingChecker", () => {
     const reader: TxOutReader = {
       getTxout: async () => ({
         confirmations: 1,
+        bestBlockHash: "aa".repeat(32),
         scriptPubKeyHex: "0014" + "ab".repeat(20),
         valueSats: 1_000n,
       }),
-      getBlockchainInfo: async () => ({ blocks: 101 }),
+      getBlockchainInfo: async () => ({ blocks: 101, bestBlockHash: "aa".repeat(32) }),
     };
     const checker = chainFundingChecker({ chain: reader, isCoveCarrier: noCarrier });
     expect(await checker.check(O, 100n)).toMatchObject({ ok: false, code: "FUNDING_UNCONFIRMED" });
@@ -110,6 +111,114 @@ describe("chainFundingChecker", () => {
         valueSats: 1_001n,
       }),
     ).toMatchObject({ ok: false, code: "FUNDING_PREVOUT_MISMATCH" });
+  });
+});
+
+describe("funding validation observation scope", () => {
+  function reader() {
+    return {
+      getBlockchainInfo: vi.fn(async () => ({
+        blocks: 100,
+        bestBlockHash: "aa".repeat(32),
+        chain: "regtest",
+      })),
+      getTxout: vi.fn(async () => ({
+        confirmations: 6,
+        bestBlockHash: "aa".repeat(32),
+        valueSats: 1_000n,
+        scriptPubKeyHex: "0014" + "ab".repeat(20),
+      })),
+    };
+  }
+
+  it("shares one height/hash per validation while rechecking every live prevout", async () => {
+    const rpc = reader();
+    const checker = chainFundingChecker({ chain: rpc, isCoveCarrier: noCarrier });
+    const scope = checker.forValidation!();
+    expect(await scope.check(O, 100n)).toEqual({ ok: true });
+    expect(await scope.check({ ...O, vout: 2 }, 100n)).toEqual({ ok: true });
+    expect(rpc.getBlockchainInfo).toHaveBeenCalledTimes(1);
+    expect(rpc.getTxout).toHaveBeenCalledTimes(2);
+    expect(await checker.forValidation!().check(O, 100n)).toEqual({ ok: true });
+    expect(rpc.getBlockchainInfo).toHaveBeenCalledTimes(2);
+    rpc.getTxout.mockResolvedValueOnce(null as never);
+    expect(await checker.check(O, 100n)).toMatchObject({ ok: false, code: "FUNDING_UNCONFIRMED" });
+    expect(rpc.getBlockchainInfo).toHaveBeenCalledTimes(3);
+  });
+
+  it.each(["mine", "same-height reorg"])(
+    "fails closed if %s moves the tip between input reads",
+    async () => {
+      const rpc = reader();
+      const carrier = vi.fn(noCarrier);
+      const scope = chainFundingChecker({ chain: rpc, isCoveCarrier: carrier }).forValidation!();
+      expect(await scope.check(O, 100n)).toEqual({ ok: true });
+      rpc.getTxout.mockResolvedValueOnce({
+        confirmations: 1,
+        bestBlockHash: "bb".repeat(32),
+        valueSats: 1_000n,
+        scriptPubKeyHex: "0014" + "ab".repeat(20),
+      });
+      expect(await scope.check({ ...O, vout: 2 }, 100n)).toMatchObject({
+        ok: false,
+        code: "FUNDING_CHECK_UNAVAILABLE",
+      });
+      expect(carrier).toHaveBeenCalledTimes(1);
+      expect(rpc.getBlockchainInfo).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("still rejects new confirmations beyond the indexed cursor on a stable tip", async () => {
+    const rpc = reader();
+    rpc.getBlockchainInfo.mockResolvedValueOnce({
+      blocks: 101,
+      bestBlockHash: "aa".repeat(32),
+      chain: "regtest",
+    });
+    rpc.getTxout.mockResolvedValueOnce({
+      confirmations: 1,
+      bestBlockHash: "aa".repeat(32),
+      valueSats: 1_000n,
+      scriptPubKeyHex: "0014" + "ab".repeat(20),
+    });
+    const scope = chainFundingChecker({ chain: rpc, isCoveCarrier: noCarrier }).forValidation!();
+    expect(await scope.check(O, 100n)).toMatchObject({ ok: false, code: "FUNDING_UNCONFIRMED" });
+  });
+
+  it.each([NaN, 0.5, -1])("fails closed on malformed height %s", async (blocks) => {
+    const rpc = reader();
+    rpc.getBlockchainInfo.mockResolvedValueOnce({
+      blocks,
+      bestBlockHash: "aa".repeat(32),
+      chain: "regtest",
+    });
+    expect(
+      await chainFundingChecker({ chain: rpc, isCoveCarrier: noCarrier }).check(O, 100n),
+    ).toMatchObject({ ok: false, code: "FUNDING_CHECK_UNAVAILABLE" });
+    expect(rpc.getTxout).not.toHaveBeenCalled();
+  });
+
+  it("fails closed on the wrong network or absent prevout tip identity", async () => {
+    const rpc = reader();
+    const checker = chainFundingChecker({
+      chain: rpc,
+      isCoveCarrier: noCarrier,
+      expectedChain: "signet",
+    });
+    expect(await checker.check(O, 100n)).toMatchObject({
+      ok: false,
+      code: "FUNDING_CHECK_UNAVAILABLE",
+    });
+    expect(rpc.getTxout).not.toHaveBeenCalled();
+    rpc.getTxout.mockResolvedValueOnce({
+      confirmations: 6,
+      bestBlockHash: "",
+      valueSats: 1_000n,
+      scriptPubKeyHex: "0014" + "ab".repeat(20),
+    });
+    expect(
+      await chainFundingChecker({ chain: rpc, isCoveCarrier: noCarrier }).check(O, 100n),
+    ).toMatchObject({ ok: false, code: "FUNDING_CHECK_UNAVAILABLE" });
   });
 });
 

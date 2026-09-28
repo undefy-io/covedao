@@ -65,6 +65,29 @@ export interface RpcReadOptions {
   retry?: boolean;
 }
 
+export class RpcError extends Error {
+  constructor(
+    readonly method: string,
+    readonly kind: "transport" | "http" | "rpc" | "response",
+    message: string,
+    readonly httpStatus?: number,
+    readonly rpcCode?: number,
+  ) {
+    super(`RPC ${method}: ${message}`);
+    this.name = "RpcError";
+  }
+}
+
+export function isRpcNotFound(error: unknown, method: string): boolean {
+  return error instanceof RpcError && error.kind === "rpc" && error.method === method &&
+    error.rpcCode === -5 && (error.httpStatus === 200 || error.httpStatus === 500);
+}
+
+export interface TransactionObservation {
+  state: "mempool" | "mined" | "unknown";
+  blockHash: string | null;
+}
+
 function waitForRetry(ms: number, signal?: AbortSignal): Promise<void> {
   signal?.throwIfAborted();
   return new Promise((resolve, reject) => {
@@ -120,13 +143,22 @@ export class CoreRpcProvider implements BitcoinChainProvider {
       headers.authorization = `Basic ${token}`;
     }
     const body = JSON.stringify({ jsonrpc: "1.0", id: `${++this.id}`, method, params });
+    const safeMessage = (value: string) => {
+      for (const secret of [this.cfg.apiKey, this.cfg.password, this.cfg.user]) {
+        if (secret) value = value.split(secret).join("[redacted]");
+      }
+      return value;
+    };
     for (let attempt = 0; attempt < 4; attempt++) {
-      const res = await fetch(this.cfg.url, {
-        method: "POST",
-        headers,
-        body,
-        signal: options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(20_000)]) : AbortSignal.timeout(20_000),
-      });
+      let res: Response;
+      try {
+        res = await fetch(this.cfg.url, {
+          method: "POST", headers, body,
+          signal: options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(20_000)]) : AbortSignal.timeout(20_000),
+        });
+      } catch (error) {
+        throw new RpcError(method, "transport", safeMessage(error instanceof Error ? error.message : "request failed"));
+      }
       if (res.status === 429 && attempt < 3 && options.retry !== false) {
         const retryAfterSeconds = Number(res.headers.get("retry-after"));
         const retryAfterMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0 ? retryAfterSeconds * 1_000 : 0;
@@ -134,9 +166,17 @@ export class CoreRpcProvider implements BitcoinChainProvider {
         await waitForRetry(Math.max(2_000 * (attempt + 1), retryAfterMs), options.signal);
         continue;
       }
-      if (!res.ok) throw new Error(`RPC ${method} HTTP ${res.status}`);
-      const json = (await res.json()) as { result?: T; error?: { message?: string } | null };
-      if (json.error) throw new Error(`RPC ${method}: ${json.error.message ?? "error"}`);
+      if (!res.ok && res.status !== 500) throw new RpcError(method, "http", `HTTP ${res.status}`, res.status);
+      let json: { result?: T; error?: { message?: string; code?: number } | null };
+      try {
+        json = await res.json() as typeof json;
+      } catch {
+        throw new RpcError(method, res.ok ? "response" : "http", res.ok ? "invalid JSON response" : `HTTP ${res.status}`, res.status);
+      }
+      if (!json || typeof json !== "object") throw new RpcError(method, "response", "invalid RPC response", res.status);
+      if (json.error) throw new RpcError(method, "rpc", safeMessage(typeof json.error.message === "string" ? json.error.message : "node rejected request"), res.status, json.error.code);
+      if (!res.ok) throw new RpcError(method, "http", `HTTP ${res.status}`, res.status);
+      if (!("result" in json)) throw new RpcError(method, "response", "missing RPC result", res.status);
       return json.result as T;
     }
     throw new Error(`RPC ${method} rate limit retries exhausted`);
@@ -197,6 +237,27 @@ export class CoreRpcProvider implements BitcoinChainProvider {
     return read;
   }
 
+  async observeTransaction(txid: string, options: RpcReadOptions = {}): Promise<TransactionObservation> {
+    try {
+      const entry = await this.call<{ vsize?: number }>("getmempoolentry", [txid], options);
+      if (!entry || !Number.isSafeInteger(entry.vsize) || entry.vsize! <= 0) throw new RpcError("getmempoolentry", "response", "invalid mempool entry");
+      return { state: "mempool", blockHash: null };
+    } catch (error) {
+      if (!isRpcNotFound(error, "getmempoolentry")) throw error;
+    }
+    try {
+      const tx = await this.call<{ txid: string; blockhash?: string; confirmations?: number }>("getrawtransaction", [txid, true], options);
+      if (!tx || tx.txid !== txid) throw new RpcError("getrawtransaction", "response", "transaction identity mismatch");
+      if (typeof tx.blockhash === "string" && /^[a-f0-9]{64}$/i.test(tx.blockhash) && Number.isSafeInteger(tx.confirmations) && tx.confirmations! > 0) {
+        return { state: "mined", blockHash: tx.blockhash };
+      }
+      return { state: "unknown", blockHash: null };
+    } catch (error) {
+      if (!isRpcNotFound(error, "getrawtransaction")) throw error;
+      return { state: "unknown", blockHash: null };
+    }
+  }
+
   /** Decode a raw transaction (cached; correctness never depends on the cache). */
   private async getDecodedTransaction(txid: string): Promise<BitcoinProtocolTx> {
     const cached = this.decodedCache.get(txid);
@@ -226,16 +287,22 @@ export class CoreRpcProvider implements BitcoinChainProvider {
    * Get the current UTXO for txid:vout (Core `gettxout`). Returns null when the
    * output is already spent — the authoritative "unspent" check.
    */
-  async getTxout(txid: string, vout: number): Promise<{ scriptPubKeyHex: string; valueSats: bigint; confirmations: number } | null> {
-    const res = await this.call<{ scriptPubKey?: { hex: string }; value?: number; confirmations?: number } | null>(
+  async getTxout(txid: string, vout: number): Promise<{ scriptPubKeyHex: string; valueSats: bigint; confirmations: number; bestBlockHash?: string } | null> {
+    const res = await this.call<{ scriptPubKey?: { hex: string }; value?: number; confirmations?: number; bestblock?: string } | null>(
       "gettxout",
       [txid, vout],
     );
-    if (!res || !res.scriptPubKey || typeof res.value !== "number") return null;
+    if (res === null) return null;
+    if (!res || typeof res.scriptPubKey?.hex !== "string" || !/^(?:[a-f0-9]{2})*$/i.test(res.scriptPubKey.hex) ||
+      typeof res.value !== "number" || !Number.isFinite(res.value) || res.value < 0 || res.value > 21_000_000 ||
+      !Number.isSafeInteger(res.confirmations) || res.confirmations! < 0) {
+      throw new RpcError("gettxout", "response", "invalid unspent output");
+    }
     return {
       scriptPubKeyHex: res.scriptPubKey.hex,
       valueSats: BigInt(Math.round(res.value * 1e8)),
-      confirmations: res.confirmations ?? 0,
+      confirmations: res.confirmations!,
+      bestBlockHash: res.bestblock,
     };
   }
 
@@ -315,7 +382,8 @@ export class CoreRpcProvider implements BitcoinChainProvider {
       blocks,
     ], options);
     const btcPerKvb = res?.feerate;
-    if (typeof btcPerKvb !== "number" || !Number.isFinite(btcPerKvb) || btcPerKvb <= 0) return null;
+    if (btcPerKvb === undefined && Array.isArray(res?.errors) && res.errors.length > 0 && res.errors.every((e) => typeof e === "string")) return null;
+    if (typeof btcPerKvb !== "number" || !Number.isFinite(btcPerKvb) || btcPerKvb <= 0) throw new RpcError("estimatesmartfee", "response", "invalid fee estimate");
     const rate = btcPerKvbToSatPerVb(btcPerKvb);
     if (this.cfg.maxFeeRateSatVb && rate > this.cfg.maxFeeRateSatVb) {
       return this.cfg.maxFeeRateSatVb;
@@ -335,8 +403,10 @@ export class CoreRpcProvider implements BitcoinChainProvider {
       "getmempoolinfo",
       [], options,
     );
-    const btcPerKvb = Math.max(info?.mempoolminfee ?? 0, info?.minrelaytxfee ?? 0);
-    if (!Number.isFinite(btcPerKvb) || btcPerKvb <= 0) return 1n;
+    if (typeof info?.mempoolminfee !== "number" || typeof info.minrelaytxfee !== "number" ||
+      !Number.isFinite(info.mempoolminfee) || !Number.isFinite(info.minrelaytxfee) ||
+      info.mempoolminfee < 0 || info.minrelaytxfee < 0) throw new RpcError("getmempoolinfo", "response", "invalid relay fee observation");
+    const btcPerKvb = Math.max(info.mempoolminfee, info.minrelaytxfee);
     // Round UP: a truncated floor would let a transaction through that the node
     // then refuses.
     return BigInt(Math.max(1, Math.ceil(btcPerKvb * 100_000)));

@@ -1,5 +1,7 @@
 "use client";
 
+import { fetchPortfolio } from "@/lib/portfolio";
+
 import { isMessageKey, type MessageKey } from "@/i18n";
 import { useT } from "@/i18n/LanguageProvider";
 import { useSearchParams } from "next/navigation";
@@ -35,7 +37,7 @@ interface Portfolio {
   holdings: { tokenId: string; amountAtoms: string; utxoCount: number }[];
   tokenUtxos: { txid: string; vout: number; tokenId: string; amountAtoms: string }[];
   listings: { listingId: string; tokenId: string; amountAtoms: string; totalPriceSats: string; status: string }[];
-  fills: { id: string; listingId: string; tokenId: string; status: string; amountAtoms: string; totalPriceSats: string; marketFeeSats: string; minerFeeSats: string; unsignedTxDigest: string | null; psbtBase64: string | null; txid: string | null }[];
+  fills: { id: string; listingId: string; tokenId: string; status: string; amountAtoms: string; totalPriceSats: string; marketFeeSats: string; minerFeeSats: string; txid: string | null }[];
 }
 
 function WalletContent() {
@@ -84,12 +86,15 @@ function WalletContent() {
     }
     // Holdings sit on the ordinals address; a wallet with one address for
     // everything falls back to it.
-    const r = await fetch(`/api/v3/wallet/${ordinalsAddress || address}/portfolio`).then((r) => r.json());
-    if (r.ok) {
-      setPortfolio(r.data);
-      void loadTokenInfo((r.data as Portfolio).holdings.map((h) => h.tokenId));
+    try {
+      const data = await fetchPortfolio(ordinalsAddress || address);
+      setPortfolio(data as unknown as Portfolio);
+      void loadTokenInfo(data.holdings.map((h) => h.tokenId));
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : String(error));
+    } finally {
+      setLoaded(true);
     }
-    setLoaded(true);
   }
 
   /** Ticker, mint-out status, floor and vault price for each held token. */
@@ -221,7 +226,7 @@ function WalletContent() {
     );
   }
 
-  if (!loaded || !portfolio) return <div className="text-bone-dim">{t("wallet.loading")}</div>;
+  if (!loaded || !portfolio) return <div className="text-bone-dim">{err || t("wallet.loading")}</div>;
 
   return (
     <div className="space-y-8">

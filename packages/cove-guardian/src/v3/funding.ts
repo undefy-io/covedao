@@ -29,6 +29,8 @@ export type FundingInputVerdict =
   { ok: true } | { ok: false; code: FundingInputCode; detail: string };
 
 export interface FundingInputChecker {
+  /** A new observation scope for one validation, never shared between requests. */
+  forValidation?(): FundingInputChecker;
   check(
     outpoint: OutPointRef,
     indexedHeight?: bigint,
@@ -41,8 +43,13 @@ export interface TxOutReader {
   getTxout(
     txid: string,
     vout: number,
-  ): Promise<{ confirmations: number; scriptPubKeyHex?: string; valueSats?: bigint } | null>;
-  getBlockchainInfo?(): Promise<{ blocks: number }>;
+  ): Promise<{
+    confirmations: number;
+    scriptPubKeyHex?: string;
+    valueSats?: bigint;
+    bestBlockHash?: string;
+  } | null>;
+  getBlockchainInfo?(): Promise<{ blocks: number; bestBlockHash?: string; chain?: string }>;
 }
 
 /** Names what an outpoint holds besides BTC (inscriptions, runes), or null when nothing. */
@@ -67,85 +74,122 @@ export function chainFundingChecker(params: {
   /** Inscriptions and runes. Required on mainnet (the caller enforces that). */
   assets?: AssetLookup;
   minConfirmations?: number;
+  expectedChain?: string;
 }): FundingInputChecker {
   const minConf = params.minConfirmations ?? 1;
-  return {
-    async check(o, indexedHeight, expected) {
-      const at = `${o.txid}:${o.vout}`;
-      let txout: { confirmations: number; scriptPubKeyHex?: string; valueSats?: bigint } | null;
-      try {
-        txout = await params.chain.getTxout(o.txid, o.vout);
-      } catch (e) {
-        return refuse(
-          "FUNDING_CHECK_UNAVAILABLE",
-          `could not look up ${at}: ${(e as Error).message}`,
-        );
-      }
-      if (!txout) return refuse("FUNDING_UNCONFIRMED", `funding input ${at} is spent or unknown`);
-      if (
-        expected &&
-        (txout.valueSats !== expected.valueSats ||
-          txout.scriptPubKeyHex?.toLowerCase() !== expected.script.toString("hex"))
-      ) {
-        return refuse(
-          "FUNDING_PREVOUT_MISMATCH",
-          `funding input ${at} does not match its real Core prevout`,
-        );
-      }
-      if (txout.confirmations < minConf) {
-        return refuse(
-          "FUNDING_UNCONFIRMED",
-          `funding input ${at} is unconfirmed; wait for it to confirm`,
-        );
-      }
-      // A confirmed carrier is still unknown to the indexer until its block is
-      // indexed. Do not treat it as plain BTC during that gap.
-      if (indexedHeight !== undefined) {
+  const scoped = (): FundingInputChecker => {
+    let observation: Promise<{ height: bigint; hash: string }> | null = null;
+    const getObservation = () => {
+      observation ??= (async () => {
         if (!params.chain.getBlockchainInfo)
-          return refuse(
-            "FUNDING_CHECK_UNAVAILABLE",
-            "cannot compare funding confirmation with indexer cursor",
-          );
-        let coreHeight: bigint;
+          throw new Error("cannot compare funding confirmation with indexer cursor");
+        const info = await params.chain.getBlockchainInfo();
+        if (
+          !Number.isSafeInteger(info.blocks) ||
+          info.blocks < 0 ||
+          !info.bestBlockHash ||
+          !/^[0-9a-f]{64}$/i.test(info.bestBlockHash)
+        ) {
+          throw new Error("Core returned an invalid chain observation");
+        }
+        if (params.expectedChain !== undefined && info.chain !== params.expectedChain) {
+          throw new Error("Core chain identity does not match the funding validator");
+        }
+        return { height: BigInt(info.blocks), hash: info.bestBlockHash };
+      })();
+      return observation;
+    };
+    return {
+      async check(o, indexedHeight, expected) {
+        const at = `${o.txid}:${o.vout}`;
+        let txout: {
+          confirmations: number;
+          scriptPubKeyHex?: string;
+          valueSats?: bigint;
+          bestBlockHash?: string;
+        } | null;
+        let core: { height: bigint; hash: string } | undefined;
         try {
-          coreHeight = BigInt((await params.chain.getBlockchainInfo()).blocks);
+          if (indexedHeight !== undefined) core = await getObservation();
+          txout = await params.chain.getTxout(o.txid, o.vout);
         } catch (e) {
           return refuse(
             "FUNDING_CHECK_UNAVAILABLE",
-            `could not read Core height: ${(e as Error).message}`,
+            `could not look up ${at}: ${(e as Error).message}`,
           );
         }
-        const requiredConfirmations = coreHeight - indexedHeight + 1n;
-        if (BigInt(txout.confirmations) < requiredConfirmations) {
+        if (!txout) return refuse("FUNDING_UNCONFIRMED", `funding input ${at} is spent or unknown`);
+        if (
+          expected &&
+          (txout.valueSats !== expected.valueSats ||
+            txout.scriptPubKeyHex?.toLowerCase() !== expected.script.toString("hex"))
+        ) {
+          return refuse(
+            "FUNDING_PREVOUT_MISMATCH",
+            `funding input ${at} does not match its real Core prevout`,
+          );
+        }
+        if (txout.confirmations < minConf) {
           return refuse(
             "FUNDING_UNCONFIRMED",
-            `funding input ${at} is newer than the indexed chain state`,
+            `funding input ${at} is unconfirmed; wait for it to confirm`,
           );
         }
-      }
-      try {
-        if (await params.isCoveCarrier(o))
-          return refuse("FUNDING_HOLDS_TOKEN", `funding input ${at} holds Cove tokens`);
-      } catch (e) {
-        return refuse(
-          "FUNDING_CHECK_UNAVAILABLE",
-          `could not check ${at} for Cove tokens: ${(e as Error).message}`,
-        );
-      }
-      if (params.assets) {
-        let held: string | null;
+        // A confirmed carrier is still unknown to the indexer until its block is
+        // indexed. Do not treat it as plain BTC during that gap.
+        if (indexedHeight !== undefined) {
+          if (!core || txout.bestBlockHash !== core.hash) {
+            return refuse(
+              "FUNDING_CHECK_UNAVAILABLE",
+              "Core tip changed during funding validation; retry with fresh state",
+            );
+          }
+          if (
+            !Number.isSafeInteger(txout.confirmations) ||
+            txout.confirmations < 0 ||
+            core.height < indexedHeight
+          ) {
+            return refuse(
+              "FUNDING_CHECK_UNAVAILABLE",
+              "funding confirmations are inconsistent with the indexed chain state",
+            );
+          }
+          const requiredConfirmations = core.height - indexedHeight + 1n;
+          if (BigInt(txout.confirmations) < requiredConfirmations) {
+            return refuse(
+              "FUNDING_UNCONFIRMED",
+              `funding input ${at} is newer than the indexed chain state`,
+            );
+          }
+        }
         try {
-          held = await params.assets.describeAssets(o);
+          if (await params.isCoveCarrier(o))
+            return refuse("FUNDING_HOLDS_TOKEN", `funding input ${at} holds Cove tokens`);
         } catch (e) {
           return refuse(
             "FUNDING_CHECK_UNAVAILABLE",
-            `could not check ${at} for inscriptions and runes: ${(e as Error).message}`,
+            `could not check ${at} for Cove tokens: ${(e as Error).message}`,
           );
         }
-        if (held) return refuse("FUNDING_HOLDS_TOKEN", `funding input ${at} holds ${held}`);
-      }
-      return { ok: true };
-    },
+        if (params.assets) {
+          let held: string | null;
+          try {
+            held = await params.assets.describeAssets(o);
+          } catch (e) {
+            return refuse(
+              "FUNDING_CHECK_UNAVAILABLE",
+              `could not check ${at} for inscriptions and runes: ${(e as Error).message}`,
+            );
+          }
+          if (held) return refuse("FUNDING_HOLDS_TOKEN", `funding input ${at} holds ${held}`);
+        }
+        return { ok: true };
+      },
+    };
+  };
+  return {
+    forValidation: scoped,
+    check: (outpoint, indexedHeight, expected) => scoped().check(outpoint, indexedHeight, expected),
   };
 }
 

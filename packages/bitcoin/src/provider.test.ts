@@ -1,9 +1,87 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CoreRpcProvider, btcPerKvbToSatPerVb, testMempoolAcceptParams } from "./provider.js";
+import { CoreRpcProvider, RpcError, isRpcNotFound, btcPerKvbToSatPerVb, testMempoolAcceptParams } from "./provider.js";
 
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+});
+
+describe("RPC evidence", () => {
+  const txid = "ab".repeat(32);
+  const absent = () => Response.json({ result: null, error: { code: -5, message: "not found" } }, { status: 500 });
+
+  it("recognizes Core not-found on HTTP 500 without classifying transport or gateway errors as absence", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(absent())
+      .mockResolvedValueOnce(Response.json({ error: { code: -5, message: "gateway failure" } }, { status: 502 }))
+      .mockRejectedValueOnce(new Error("offline")));
+    const provider = new CoreRpcProvider({ url: "https://example.com" });
+    const errors: unknown[] = [];
+    for (let i = 0; i < 3; i++) {
+      try { await provider.getRawTransaction(txid); } catch (error) { errors.push(error); }
+    }
+    expect(errors).toHaveLength(3);
+    expect(isRpcNotFound(errors[0], "getrawtransaction")).toBe(true);
+    expect(isRpcNotFound(errors[0], "getmempoolentry")).toBe(false);
+    expect(isRpcNotFound(errors[1], "getrawtransaction")).toBe(false);
+    expect(isRpcNotFound(errors[2], "getrawtransaction")).toBe(false);
+  });
+
+  it("redacts configured credentials from RPC errors", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("request failed with private-key")));
+    const provider = new CoreRpcProvider({ url: "https://example.com", apiKey: "private-key" });
+    await expect(provider.getRawTransaction(txid)).rejects.toThrow("[redacted]");
+    await expect(provider.getRawTransaction(txid)).rejects.not.toThrow("private-key");
+  });
+
+  it("requires an explicit successful mempool membership response", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ result: { vsize: 120 }, error: null }));
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await new CoreRpcProvider({ url: "https://example.com" }).observeTransaction(txid)).toEqual({ state: "mempool", blockHash: null });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(fetchMock.mock.calls[0]![1].body).method).toBe("getmempoolentry");
+  });
+
+  it.each([
+    [{ txid, confirmations: 0 }, { state: "unknown", blockHash: null }],
+    [{ txid, confirmations: 1, blockhash: "cd".repeat(32) }, { state: "mined", blockHash: "cd".repeat(32) }],
+  ])("raw transaction availability alone never proves mempool membership", async (raw, expected) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(absent()).mockResolvedValueOnce(Response.json({ result: raw, error: null })));
+    expect(await new CoreRpcProvider({ url: "https://example.com" }).observeTransaction(txid)).toEqual(expected);
+  });
+
+  it("keeps missing raw transactions unknown because txindex may be unavailable", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(absent));
+    expect(await new CoreRpcProvider({ url: "https://example.com" }).observeTransaction(txid)).toEqual({ state: "unknown", blockHash: null });
+  });
+
+  it.each([402, 429, 502, 503])("fails an unavailable membership probe without falling through to raw lookup: HTTP %s", async (status) => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(new CoreRpcProvider({ url: "https://example.com" }).observeTransaction(txid, { retry: false })).rejects.toBeInstanceOf(RpcError);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects malformed success responses instead of claiming membership", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ result: null, error: null })));
+    await expect(new CoreRpcProvider({ url: "https://example.com" }).observeTransaction(txid)).rejects.toBeInstanceOf(RpcError);
+  });
+
+  it("accepts only an explicit null gettxout result as an absent output", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(Response.json({ result: {}, error: null }))
+      .mockResolvedValueOnce(Response.json({ result: null, error: null })));
+    const provider = new CoreRpcProvider({ url: "https://example.com" });
+    await expect(provider.getTxout(txid, 0)).rejects.toBeInstanceOf(RpcError);
+    expect(await provider.getTxout(txid, 0)).toBeNull();
+  });
+
+  it("preserves the gettxout tip identity for coherent funding validation", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ result: {
+      bestblock: "cd".repeat(32), scriptPubKey: { hex: "0014" + "00".repeat(20) }, value: 0.001, confirmations: 3,
+    }, error: null })));
+    expect(await new CoreRpcProvider({ url: "https://example.com" }).getTxout(txid, 0)).toMatchObject({
+      bestBlockHash: "cd".repeat(32), valueSats: 100_000n, confirmations: 3,
+    });
+  });
 });
 
 describe("CoreRpcProvider authentication", () => {

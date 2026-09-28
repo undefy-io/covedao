@@ -45,12 +45,12 @@ export interface V3TokenSummary {
 async function loadSummaries(db: Database, network: string, tokenIds?: string[]): Promise<V3TokenSummary[]> {
   const tokenCond = tokenIds ? and(eq(schema.coveV3Tokens.network, network), eq(schema.coveV3Tokens.canonical, true), inArray(schema.coveV3Tokens.tokenId, tokenIds)) : and(eq(schema.coveV3Tokens.network, network), eq(schema.coveV3Tokens.canonical, true));
   const tokens = await db.select().from(schema.coveV3Tokens).where(tokenCond);
-  const backing = await db
+  const ids = tokens.map((t) => t.tokenId);
+  const backing = ids.length === 0 ? [] : await db
     .select()
     .from(schema.coveV3BackingStates)
-    .where(and(eq(schema.coveV3BackingStates.network, network), eq(schema.coveV3BackingStates.canonical, true)));
+    .where(and(eq(schema.coveV3BackingStates.network, network), eq(schema.coveV3BackingStates.canonical, true), inArray(schema.coveV3BackingStates.tokenId, ids)));
   const backingByToken = new Map(backing.map((b) => [b.tokenId, b]));
-  const ids = tokens.map((t) => t.tokenId);
   const metas = ids.length > 0 ? await listTokenMetadataByTokenIds(db, network, ids) : [];
   const metaByToken = new Map(metas.map((m) => [m.tokenId, m]));
 
@@ -138,9 +138,8 @@ export async function getV3TokenDetail(db: Database, network: string, tokenId: s
   return rows[0] ?? null;
 }
 
-export async function getTokenHolders(db: Database, network: string, tokenId: string, limit = 100) {
-  const rows = await getTokenHoldersDb(db, network, tokenId);
-  return rows.slice(0, limit);
+export async function getTokenHolders(db: Database, network: string, tokenId: string, limit = 100, offset = 0) {
+  return getTokenHoldersDb(db, network, tokenId, limit, offset);
 }
 
 export async function getTokenActivity(db: Database, network: string, tokenId: string, limit = 100) {

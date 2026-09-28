@@ -143,19 +143,22 @@ const FALLBACK_SAT_PER_VB: Record<FeeTierKey, bigint> = {
 /**
  * Ask the node for a real fee rate per tier and for the current relay floor.
  *
+ * Transport failures reject the observation; only successful no-estimate
+ * responses use the fallback ladder.
+ *
  * The node is not trusted blindly: every rate is clamped into
  * [floor, ceiling], and the tiers are forced to be non-decreasing so that
  * paying for Priority can never buy a lower rate than Eco.
  */
 export async function loadFeeRates(provider: CoreRpcProvider, options?: RpcReadOptions): Promise<FeeRates> {
   const [floor, estimates] = await Promise.all([
-    safeMempoolFloor(provider, options),
-    Promise.all(TIER_TARGETS.map((target) => safeEstimate(provider, target.blocks, options))),
+    provider.getMempoolMinFeeSatPerVb(options),
+    Promise.all(TIER_TARGETS.map((target) => provider.estimateFeeRateAt(target.blocks, options))),
   ]);
-  const floorRaw = floor.rate;
+  const floorRaw = floor;
   const floorSatPerVb = floorRaw > ABSOLUTE_FLOOR_SAT_PER_VB ? floorRaw : ABSOLUTE_FLOOR_SAT_PER_VB;
 
-  let estimated = floor.estimated;
+  let estimated = false;
   const tiers: FeeTier[] = [];
   let previous = 0n;
 
@@ -173,22 +176,6 @@ export async function loadFeeRates(provider: CoreRpcProvider, options?: RpcReadO
   }
 
   return { floorSatPerVb, ceilingSatPerVb: ABSOLUTE_CEILING_SAT_PER_VB, tiers, estimated };
-}
-
-async function safeMempoolFloor(provider: CoreRpcProvider, options?: RpcReadOptions): Promise<{ rate: bigint; estimated: boolean }> {
-  try {
-    return { rate: await provider.getMempoolMinFeeSatPerVb(options), estimated: false };
-  } catch {
-    return { rate: ABSOLUTE_FLOOR_SAT_PER_VB, estimated: true };
-  }
-}
-
-async function safeEstimate(provider: CoreRpcProvider, blocks: number, options?: RpcReadOptions): Promise<bigint | null> {
-  try {
-    return await provider.estimateFeeRateAt(blocks, options);
-  } catch {
-    return null;
-  }
 }
 
 // ── fee resolution ──────────────────────────────────────────────────────────

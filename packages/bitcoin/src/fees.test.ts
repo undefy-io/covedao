@@ -172,13 +172,15 @@ describe("loadFeeRates", () => {
     expect(rates.tiers.map((t) => t.satPerVb)).toEqual([40n, 40n, 40n]);
   });
 
-  it("survives a node that cannot answer, rather than taking the whole app down", async () => {
-    const rates = await loadFeeRates(fakeProvider({ throwOnFloor: true }));
-    expect(rates.floorSatPerVb).toBe(1n);
+  it("rejects a failed relay-floor observation rather than inventing a fresh floor", async () => {
+    await expect(loadFeeRates(fakeProvider({ throwOnFloor: true }))).rejects.toThrow("node down");
   });
 
-  it("labels the rates estimated when only the relay-floor lookup fails", async () => {
-    const rates = await loadFeeRates(fakeProvider({ throwOnFloor: true, rates: { 12: 3n, 3: 9n, 1: 20n } }));
-    expect(rates.estimated).toBe(true);
+  it.each(["HTTP 429", "request timed out", "RPC unavailable"])("rejects failed estimates: %s", async (message) => {
+    const provider = {
+      getMempoolMinFeeSatPerVb: vi.fn(async () => 2n),
+      estimateFeeRateAt: vi.fn(async () => { throw new Error(message); }),
+    } as unknown as Parameters<typeof loadFeeRates>[0];
+    await expect(loadFeeRates(provider)).rejects.toThrow(message);
   });
 });

@@ -1,4 +1,4 @@
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, asc, sum } from "drizzle-orm";
 import { schema, type Database } from "@crclaunch/db";
 import { ATOMS_PER_TOKEN, PUBLIC_SUPPLY_ATOMS } from "@crclaunch/curve";
 import { COVE_FEE_CONFIG, creatorFeeSats, deterministicFee, mintFeeSats, grossBuy, quoteRedeem } from "@crclaunch/cove-economics";
@@ -103,7 +103,9 @@ export async function getBuyRoutes(
         eq(schema.coveV3MarketListings.status, "ACTIVE"),
         eq(schema.coveV3MarketListings.amountAtoms, amountAtoms),
       ),
-    );
+    )
+    .orderBy(asc(schema.coveV3MarketListings.totalPriceSats), asc(schema.coveV3MarketListings.listingId))
+    .limit(100);
   for (const l of listings) {
     const marketFeeSats = deterministicFee(l.totalPriceSats, fees.p2pFeeBps, 0n, fees.p2pFeeMinSats ?? COVE_FEE_CONFIG.p2pFeeMinSats);
     routes.push({
@@ -133,7 +135,11 @@ export async function getSellOptions(
   tokenId: string,
   ownerScript: string,
   redeemFeeBps: bigint = COVE_FEE_CONFIG.redeemFeeBps,
-): Promise<{ redeemQuote: SellOption | null; listableUtxos: SellOption[] }> {
+): Promise<{ redeemQuote: SellOption | null; listableUtxos: SellOption[]; listableUtxosHasMore: boolean }> {
+  const balanceRows = await db.select({ balanceAtoms: sum(schema.coveV3TokenUtxos.amountAtoms) })
+    .from(schema.coveV3TokenUtxos)
+    .where(and(eq(schema.coveV3TokenUtxos.network, network), eq(schema.coveV3TokenUtxos.tokenId, tokenId),
+      eq(schema.coveV3TokenUtxos.scriptPubKey, ownerScript), eq(schema.coveV3TokenUtxos.canonical, true), isNull(schema.coveV3TokenUtxos.spentByTxid)));
   const utxos = await db
     .select()
     .from(schema.coveV3TokenUtxos)
@@ -145,9 +151,11 @@ export async function getSellOptions(
         eq(schema.coveV3TokenUtxos.canonical, true),
         isNull(schema.coveV3TokenUtxos.spentByTxid),
       ),
-    );
+    )
+    .orderBy(asc(schema.coveV3TokenUtxos.txid), asc(schema.coveV3TokenUtxos.vout))
+    .limit(201);
 
-  const listableUtxos: SellOption[] = utxos.map((u) => ({
+  const listableUtxos: SellOption[] = utxos.slice(0, 200).map((u) => ({
     kind: "listable-utxo",
     amountAtoms: u.amountAtoms,
     netSats: 0n,
@@ -157,7 +165,7 @@ export async function getSellOptions(
     vout: u.vout,
   }));
 
-  const balanceAtoms = utxos.reduce((s, u) => s + u.amountAtoms, 0n);
+  const balanceAtoms = BigInt(balanceRows[0]?.balanceAtoms ?? "0");
   let redeemQuote: SellOption | null = null;
   if (balanceAtoms > 0n && balanceAtoms % ATOMS_PER_TOKEN === 0n) {
     const backing = await db
@@ -183,5 +191,5 @@ export async function getSellOptions(
     }
   }
 
-  return { redeemQuote, listableUtxos };
+  return { redeemQuote, listableUtxos, listableUtxosHasMore: utxos.length > 200 };
 }

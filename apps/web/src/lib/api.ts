@@ -19,6 +19,11 @@ export function ok(data: unknown): Response {
   return json({ ok: true, data });
 }
 
+export function noStore(response: Response): Response {
+  response.headers.set("cache-control", "no-store");
+  return response;
+}
+
 export function fail(
   code: string,
   message: string,

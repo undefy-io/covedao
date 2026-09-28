@@ -191,9 +191,37 @@ calls. Chain observations refresh on the worker polling interval; observations
 older than 30 seconds (or three polling intervals, if longer) are marked stale.
 Fee previews refresh once per minute and become unavailable after two minutes
 without an update. Run migrations and the worker before serving these endpoints.
-Transaction builds still validate current chain health, spendable inputs, and
-fees against RPC. Quotes following unconfirmed transactions also use RPC;
+Transaction builds use the same fresh worker fee observation and still validate
+current chain health and spendable inputs against RPC. Failed fee refreshes do
+not renew the stored timestamp. Funding checks share a chain height/hash within
+each validation and reject outputs observed at a different tip.
+Quotes following unconfirmed transactions also use RPC;
 confirmed token data, holders, activity, and charts come from the indexer database.
+
+Public transaction status uses indexed confirmation first and probes RPC only
+for transactions tracked by the app or market. A provider failure returns
+`state: "unknown"`, never proof of a dropped transaction. Public transaction and
+fill status omit signing data and use `Cache-Control: no-store`.
+
+### Public read limits
+
+| Read | Limits and behavior |
+| --- | --- |
+| Holders | `limit` defaults to 100, maximum 200; `offset` maximum 10,000. Sorted by balance, then script. |
+| Wallet portfolio | `limit` defaults to 100, maximum 500; `offset` maximum 10,000. Each collection has a `pagination.hasMore` flag. Holdings contain the complete balance of each returned token. |
+| Buy routes | Cheapest 100 matching P2P listings, plus the backing route when available. |
+| Sell options | Complete redeem balance; up to 200 listable outputs with `listableUtxosHasMore`. |
+| Sparklines | Latest 32 chronological hourly prices, carrying prices through empty hours; latest raw trade price returned separately. |
+
+The wallet UI follows portfolio pages before selecting token inputs, with a
+10,000-record cap. Oversized portfolios return an error instead of a partial
+balance. Exact balance and holder aggregates still scale with matching live
+outputs. Pagination can change as new records arrive; revision-consistent reads
+are part of the remaining API scaling work.
+
+Migration `0013_bounded_public_reads.sql` adds indexes for these queries. Apply
+it before deploying the updated readers. Index creation can block writes on
+large tables, so schedule migration maintenance for a populated production DB.
 
 ---
 

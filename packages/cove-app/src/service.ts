@@ -3,7 +3,7 @@ import * as ecc from "tiny-secp256k1";
 import { randomBytes } from "node:crypto";
 import { eq, and, isNull } from "drizzle-orm";
 import { schema, type Database } from "@crclaunch/db";
-import type { CoreRpcProvider } from "@crclaunch/bitcoin";
+import { isRpcNotFound, type CoreRpcProvider } from "@crclaunch/bitcoin";
 import { TOKEN_CARRIER_SATS, applyMintV2, applyRedeemV2, stateHashV2, type CoveStateV2, type CoveCanonicalView } from "@crclaunch/cove-covenant";
 import {
   buildDeployPsbtV3,
@@ -56,7 +56,6 @@ import {
 } from "./wallet-identity.js";
 import {
   estimateOperationVsize,
-  loadFeeRates,
   resolveMinerFee,
   FeeError,
   type CoveOperation,
@@ -72,6 +71,7 @@ import { upsertTokenMetadata, validateMetadata, type TokenMetadataInput } from "
 import { listV3Tokens, getV3TokenDetail, getTokenHolders, getTokenActivity } from "./token-read.js";
 import { getWalletPortfolio } from "./wallet-read.js";
 import { getV3Status } from "./health.js";
+import { readFeeObservation } from "./runtime-snapshot.js";
 
 bitcoin.initEccLib(ecc as unknown as Parameters<typeof bitcoin.initEccLib>[0]);
 
@@ -198,12 +198,6 @@ const MAX_PENDING_BACKING_CHAIN = 24;
 const BACKING_SUCCESSOR_VOUT = 1;
 
 /**
- * How long a fee-rate reading stays usable. Short enough that a mempool floor
- * climbing mid-block is picked up before it can strand a transaction.
- */
-const FEE_RATE_CACHE_MS = 15_000;
-
-/**
  * Refuse a redemption that cannot pay out.
  *
  * The exit fee is FLAT, so a small enough sale is worth less than the fee and
@@ -234,8 +228,6 @@ export class V3AppService {
    */
   readonly fundingChecker: FundingInputChecker;
   private readonly assets: AssetLookup | null;
-  private feeRatesCache: { at: number; rates: FeeRates } | null = null;
-  private feeRatesPending: Promise<FeeRates> | null = null;
 
   constructor(
     readonly db: Database,
@@ -247,6 +239,7 @@ export class V3AppService {
     this.assets = config.ordUrl ? ordAssetLookup(config.ordUrl) : null;
     this.fundingChecker = chainFundingChecker({
       chain: provider,
+      expectedChain: config.network === "mainnet" ? "main" : config.network === "testnet" ? "test" : config.network,
       isCoveCarrier: async (o) => (await getLiveTokenUtxosAtDb(db, config.network, [o])).length > 0,
       assets: this.assets ?? undefined,
     });
@@ -331,14 +324,14 @@ export class V3AppService {
   tokenDetail(tokenId: string) {
     return getV3TokenDetail(this.db, this.config.network, tokenId);
   }
-  tokenHolders(tokenId: string, limit?: number) {
-    return getTokenHolders(this.db, this.config.network, tokenId, limit);
+  tokenHolders(tokenId: string, limit?: number, offset = 0) {
+    return getTokenHolders(this.db, this.config.network, tokenId, limit, offset);
   }
   tokenActivity(tokenId: string, limit?: number) {
     return getTokenActivity(this.db, this.config.network, tokenId, limit);
   }
-  walletPortfolio(walletScript: string) {
-    return getWalletPortfolio(this.db, this.config.network, walletScript);
+  walletPortfolio(walletScript: string, opts?: { limit?: number; offset?: number }) {
+    return getWalletPortfolio(this.db, this.config.network, walletScript, opts);
   }
 
   // ── backing state loader ──────────────────────────────────────────────────
@@ -428,10 +421,9 @@ export class V3AppService {
       let raw: string;
       try {
         raw = await this.provider.getRawTransaction(next.txid);
-      } catch {
-        // Gone from mempool and never mined. Stop here; the session reconciler
-        // owns marking it failed.
-        return tip;
+      } catch (error) {
+        throw new AppError(isRpcNotFound(error, "getrawtransaction") ? "STATE_CHANGED" : "CORE_UNAVAILABLE",
+          "the pending backing transaction cannot currently be verified");
       }
 
       const tx = bitcoin.Transaction.fromHex(raw);
@@ -439,7 +431,7 @@ export class V3AppService {
       try {
         envelope = decodeCoveOpReturnTx(tx);
       } catch {
-        return tip;
+        throw new AppError("STATE_CHANGED", "the pending backing transaction is invalid");
       }
 
       let nextState: CoveStateV2;
@@ -448,13 +440,12 @@ export class V3AppService {
       } else if (envelope.op === OP_REDEEM) {
         nextState = applyRedeemV2(tip.state, envelope.redeemAmount).nextState;
       } else {
-        // TRANSFER and DEPLOY never move the vault.
-        return tip;
+        throw new AppError("STATE_CHANGED", "the pending transaction does not move the backing vault");
       }
 
       const vaultOut = tx.outs[BACKING_SUCCESSOR_VOUT];
       const expectedValue = RESERVE_ANCHOR_SATS + nextState.backingSats;
-      if (!vaultOut || BigInt(vaultOut.value) !== expectedValue) return tip;
+      if (!vaultOut || BigInt(vaultOut.value) !== expectedValue) throw new AppError("STATE_CHANGED", "the pending backing output cannot be verified");
 
       tip = {
         state: nextState,
@@ -467,7 +458,7 @@ export class V3AppService {
         },
       };
     }
-    return tip;
+    throw new AppError("STATE_CHANGED", "the pending backing chain exceeds the verification limit");
   }
 
   /**
@@ -521,26 +512,9 @@ export class V3AppService {
 
   // ── miner fees ────────────────────────────────────────────────────────────
 
-  /**
-   * Live fee rates from the node, cached for a few seconds.
-   *
-   * Every build asks for these, and a browser buying in a hurry will hit this
-   * many times a block. The cache is short enough that a rising mempool floor
-   * is picked up well within one block.
-   */
+  /** Read the worker's successfully collected fee observation. */
   async feeRates(): Promise<FeeRates> {
-    const now = Date.now();
-    if (this.feeRatesCache && now - this.feeRatesCache.at < FEE_RATE_CACHE_MS) {
-      return this.feeRatesCache.rates;
-    }
-    if (this.feeRatesPending) return this.feeRatesPending;
-    this.feeRatesPending = loadFeeRates(this.provider, {
-      signal: AbortSignal.timeout(5_000),
-    }).then((rates) => {
-      this.feeRatesCache = { at: Date.now(), rates };
-      return rates;
-    }).finally(() => { this.feeRatesPending = null; });
-    return this.feeRatesPending;
+    return readFeeObservation(this.db, this.config.network);
   }
 
   /**
@@ -1551,15 +1525,31 @@ export class V3AppService {
     const session = rows[0] ?? null;
     const evRows = await this.db.select().from(schema.coveV3Events).where(and(eq(schema.coveV3Events.network, this.config.network), eq(schema.coveV3Events.txid, txid), eq(schema.coveV3Events.canonical, true)));
     const confirmedHeight = evRows[0]?.blockHeight ?? null;
-    if (confirmedHeight !== null) return { txid, session, mempool: false, confirmedHeight };
-    let mempool = false;
-    try {
-      await this.provider.getRawTransaction(txid);
-      mempool = true;
-    } catch {
-      mempool = false;
+    const publicSession = session ? { status: session.status } : null;
+    if (confirmedHeight !== null) return {
+      txid, session: publicSession, state: "confirmed" as const, mempool: false,
+      confirmedHeight, confirmedBlockHash: evRows[0]?.blockHash ?? null,
+      observedAt: evRows[0]?.createdAt?.toISOString() ?? null, stale: false,
+    };
+    const unknown = {
+      txid, session: publicSession, state: "unknown" as const, mempool: null,
+      confirmedHeight: null, confirmedBlockHash: null, observedAt: null, stale: true,
+    };
+    if (!session) {
+      const fills = await this.db.select({ id: schema.coveV3MarketFills.id }).from(schema.coveV3MarketFills)
+        .where(and(eq(schema.coveV3MarketFills.network, this.config.network), eq(schema.coveV3MarketFills.txid, txid))).limit(1);
+      if (fills.length === 0) return unknown;
     }
-    return { txid, session, mempool, confirmedHeight };
+    try {
+      const observation = await this.provider.observeTransaction(txid, { signal: AbortSignal.timeout(5_000), retry: false });
+      if (observation.state === "unknown") return unknown;
+      return {
+        ...unknown, state: observation.state === "mempool" ? "pending" as const : "mined" as const,
+        mempool: observation.state === "mempool", observedAt: new Date().toISOString(), stale: false,
+      };
+    } catch {
+      return unknown;
+    }
   }
 
   // ── reconcile app sessions (worker) ───────────────────────────────────────
@@ -1579,13 +1569,6 @@ export class V3AppService {
       if (ev.length > 0) {
         await updateTxSession(this.db, s.id, { status: "CONFIRMED" });
         confirmed++;
-      } else {
-        // not yet confirmed; check mempool — if absent, mark FAILED (evicted)
-        try {
-          await this.provider.getRawTransaction(s.txid);
-        } catch {
-          await updateTxSession(this.db, s.id, { status: "FAILED", errorCode: "MEMPOOL_EVICTED" });
-        }
       }
     }
     return { confirmed };
@@ -1735,6 +1718,20 @@ export class V3AppService {
   }
   getFill(fillId: string) {
     return this.db.select().from(schema.coveV3MarketFills).where(eq(schema.coveV3MarketFills.id, fillId));
+  }
+  async publicFillStatus(fillId: string) {
+    const rows = await this.db.select({
+      id: schema.coveV3MarketFills.id,
+      tokenId: schema.coveV3MarketFills.tokenId,
+      status: schema.coveV3MarketFills.status,
+      txid: schema.coveV3MarketFills.txid,
+      blockHeight: schema.coveV3MarketFills.blockHeight,
+      blockHash: schema.coveV3MarketFills.blockHash,
+      canonical: schema.coveV3MarketFills.canonical,
+      updatedAt: schema.coveV3MarketFills.updatedAt,
+    }).from(schema.coveV3MarketFills)
+      .where(and(eq(schema.coveV3MarketFills.network, this.config.network), eq(schema.coveV3MarketFills.id, fillId))).limit(1);
+    return rows[0] ?? null;
   }
   async finalizeAndBroadcastFill(fillId: string): Promise<{ txid: string }> {
     // §P0-6: this was the only mutation with no server-side guard. Gate on

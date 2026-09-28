@@ -4,9 +4,9 @@ import { eq, and, isNull, inArray, lte, desc } from "drizzle-orm";
 import { schema, type Database, type DbTransaction } from "@crclaunch/db";
 import {
   estimateVsize,
-  loadFeeRates,
   resolveMinerFee,
   FeeError,
+  isRpcNotFound,
   type CoreRpcProvider,
 } from "@crclaunch/bitcoin";
 import { TOKEN_CARRIER_SATS, type CoveCanonicalView } from "@crclaunch/cove-covenant";
@@ -37,6 +37,7 @@ import {
   type P2PFillTerms,
 } from "./finalize.js";
 import { assertMarketReady } from "./health.js";
+import { readStoredFeeObservation } from "./fee-observation.js";
 
 bitcoin.initEccLib(ecc as unknown as Parameters<typeof bitcoin.initEccLib>[0]);
 
@@ -227,8 +228,9 @@ export class MarketService {
     let raw: string;
     try {
       raw = await this.provider.getRawTransaction(listing.sourceTxid);
-    } catch {
-      throw new MarketError("LISTING_BAD_SOURCE", "source transaction not found");
+    } catch (error) {
+      throw new MarketError(isRpcNotFound(error, "getrawtransaction") ? "LISTING_BAD_SOURCE" : "CORE_UNAVAILABLE",
+        "source transaction cannot currently be verified");
     }
     const parsed = parseCoveTx(raw);
     if (parsed.kind !== "TRANSFER" || parsed.envelope.op !== OP_TRANSFER_CODE) {
@@ -564,7 +566,7 @@ export class MarketService {
     // Size the fee against the transaction that is actually about to exist:
     // the seller's carrier plus however many coins the buyer reserved, and
     // every output of the presigned layout.
-    const rates = await loadFeeRates(this.provider);
+    const rates = await readStoredFeeObservation(this.db, this.config.network);
     const standard = rates.tiers.find((t) => t.key === "standard") ?? rates.tiers[0]!;
     const vsize = estimateVsize({
       vaultInputs: 0,
@@ -831,8 +833,9 @@ export class MarketService {
       }
       // Source is spent in the mempool (unconfirmed). Determine the spender.
       const ourTxid = await this.latestFillTxid(listing.listingId);
-      const isOurs = ourTxid !== null && (await this.inMempool(ourTxid));
-      if (isOurs) {
+      const isOurs = ourTxid !== null ? await this.inMempool(ourTxid) : false;
+      if (isOurs === null) continue;
+      if (isOurs && ourTxid !== null) {
         if (listing.status === "REORGED") {
           // Our fill is back in the mempool after a reorg: re-pend it.
           await this.db.transaction(async (tx) => {
@@ -914,12 +917,12 @@ export class MarketService {
     return rows[0]?.txid ?? null;
   }
 
-  private async inMempool(txid: string): Promise<boolean> {
+  private async inMempool(txid: string): Promise<boolean | null> {
     try {
-      await this.provider.getRawTransaction(txid);
-      return true;
+      const observation = await this.provider.observeTransaction(txid, { signal: AbortSignal.timeout(5_000), retry: false });
+      return observation.state === "mempool" ? true : null;
     } catch {
-      return false;
+      return null;
     }
   }
 

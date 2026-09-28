@@ -73,3 +73,5 @@ export {
 } from "./service.js";
 export { getBuyRoutes, getSellOptions, type BuyRoute, type SellOption } from "./best-execution.js";
 export { assertMarketReady, assertMarketEnabled, healthErrorFor, marketEnabledFlag } from "./health.js";
+
+export { readStoredFeeObservation } from "./fee-observation.js";

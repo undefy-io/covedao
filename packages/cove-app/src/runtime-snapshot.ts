@@ -1,6 +1,6 @@
 import { schema, type Database } from "@crclaunch/db";
-import type { BlockchainInfo, FeeRates } from "@crclaunch/bitcoin";
-import { eq } from "drizzle-orm";
+import { loadFeeRates, type BlockchainInfo, type FeeRates, type CoreRpcProvider } from "@crclaunch/bitcoin";
+import { readStoredFeeObservation } from "@crclaunch/cove-market";
 import { AppError } from "./errors.js";
 
 export async function saveChainObservation(db: Database, network: string, info: BlockchainInfo | null): Promise<void> {
@@ -13,9 +13,9 @@ export async function saveChainObservation(db: Database, network: string, info: 
     .onConflictDoUpdate({ target: schema.coveV3Runtime.network, set: fields });
 }
 
-export async function saveFeeObservation(db: Database, network: string, rates: FeeRates): Promise<void> {
+export async function saveFeeObservation(db: Database, network: string, rates: FeeRates, observedAt: Date): Promise<void> {
   const fields = {
-    feesObservedAt: new Date(),
+    feesObservedAt: observedAt,
     feeRates: {
       ...rates, floorSatPerVb: rates.floorSatPerVb.toString(), ceilingSatPerVb: rates.ceilingSatPerVb.toString(),
       tiers: rates.tiers.map((tier) => ({ ...tier, satPerVb: tier.satPerVb.toString() })),
@@ -25,15 +25,19 @@ export async function saveFeeObservation(db: Database, network: string, rates: F
     .onConflictDoUpdate({ target: schema.coveV3Runtime.network, set: fields });
 }
 
+export async function collectFeeObservation(provider: CoreRpcProvider): Promise<{ rates: FeeRates; observedAt: Date }> {
+  const startedAt = new Date();
+  const rates = await loadFeeRates(provider, { signal: AbortSignal.timeout(5_000), retry: true });
+  return { rates, observedAt: startedAt };
+}
+
 export async function readFeeObservation(db: Database, network: string): Promise<FeeRates> {
-  const [snapshot] = await db.select().from(schema.coveV3Runtime).where(eq(schema.coveV3Runtime.network, network));
-  if (!snapshot?.feeRates || !snapshot.feesObservedAt || Date.now() - snapshot.feesObservedAt.getTime() > 120_000) {
-    throw new AppError("CORE_UNAVAILABLE", "the worker's fee observation is missing or stale");
+  try {
+    return await readStoredFeeObservation(db, network);
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "CORE_UNAVAILABLE") {
+      throw new AppError("CORE_UNAVAILABLE", error.message);
+    }
+    throw error;
   }
-  return {
-    ...snapshot.feeRates,
-    floorSatPerVb: BigInt(snapshot.feeRates.floorSatPerVb),
-    ceilingSatPerVb: BigInt(snapshot.feeRates.ceilingSatPerVb),
-    tiers: snapshot.feeRates.tiers.map((tier) => ({ ...tier, satPerVb: BigInt(tier.satPerVb) })),
-  };
 }

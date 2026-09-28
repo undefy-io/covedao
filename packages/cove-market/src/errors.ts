@@ -1,5 +1,6 @@
 /** Stable market error codes (§51). */
 export type MarketErrorCode =
+  | "CORE_UNAVAILABLE"
   | "MARKET_DISABLED"
   | "INDEXER_UNHEALTHY"
   | "INDEXER_BEHIND"

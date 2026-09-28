@@ -1,4 +1,4 @@
-import { ok, handleError } from "@/lib/api";
+import { ok, fail, handleError, noStore } from "@/lib/api";
 import { getV3Services } from "@/lib/v3-server";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -7,13 +7,12 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request, { params }: { params: Promise<{ fillId: string }> }) {
   try {
     const limited = checkRateLimit(req, "read-fill");
-    if (limited) return limited;
+    if (limited) return noStore(limited);
     const { app } = getV3Services();
     const { fillId } = await params;
-    const rows = await app.getFill(fillId);
-    if (rows.length === 0) return ok(null);
-    return ok(rows[0]);
+    if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(fillId)) return noStore(fail("BAD_REQUEST", "Invalid fill id", 400));
+    return noStore(ok(await app.publicFillStatus(fillId.toLowerCase())));
   } catch (e) {
-    return handleError(e);
+    return noStore(handleError(e));
   }
 }

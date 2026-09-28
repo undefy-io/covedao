@@ -57,3 +57,46 @@ it("reads fee previews from DB without RPC and restores bigint amounts", async (
 it.each([{ rows: [] }, { rows: [{ feeRates: fees, feesObservedAt: new Date(Date.now() - 121_000) }] }])("rejects missing or stale fee previews: %j", async ({ rows }) => {
   await expect(readFeeObservation(dbWithResults([rows]), "signet")).rejects.toThrow("CORE_UNAVAILABLE");
 });
+
+it("cold start collects RPC fees directly and persists their original observation age", async () => {
+  const { collectFeeObservation, saveFeeObservation } = await import("./runtime-snapshot.js");
+  const provider = {
+    getMempoolMinFeeSatPerVb: vi.fn(async () => 3n),
+    estimateFeeRateAt: vi.fn(async () => null),
+  } as unknown as Parameters<typeof collectFeeObservation>[0];
+  const fields: Record<string, unknown> = {};
+  const db = {
+    insert: () => ({ values: (values: Record<string, unknown>) => ({ onConflictDoUpdate: async () => { Object.assign(fields, values); } }) }),
+    select: () => ({ from: () => ({ where: async () => fields.feeRates ? [fields] : [] }) }),
+  } as unknown as Database;
+  await expect(readFeeObservation(db, "signet")).rejects.toThrow("CORE_UNAVAILABLE");
+  const observation = await collectFeeObservation(provider);
+  const originalTime = observation.observedAt.getTime();
+  await saveFeeObservation(db, "signet", observation.rates, observation.observedAt);
+  expect((fields.feesObservedAt as Date).getTime()).toBe(originalTime);
+  expect((await readFeeObservation(db, "signet")).estimated).toBe(true);
+  expect(provider.estimateFeeRateAt).toHaveBeenCalledTimes(3);
+  expect(provider.getMempoolMinFeeSatPerVb).toHaveBeenCalledWith(expect.objectContaining({ retry: true, signal: expect.any(AbortSignal) }));
+});
+
+it.each(["HTTP 429", "timeout", "node down"])("failed fee refresh preserves previous values and successful age: %s", async (message) => {
+  const { collectFeeObservation, saveFeeObservation } = await import("./runtime-snapshot.js");
+  const previous = { feeRates: fees, feesObservedAt: new Date(Date.now() - 121_000) };
+  const write = vi.fn();
+  const db = {
+    insert: () => ({ values: () => ({ onConflictDoUpdate: write }) }),
+    select: () => ({ from: () => ({ where: async () => [previous] }) }),
+  } as unknown as Database;
+  const provider = {
+    getMempoolMinFeeSatPerVb: vi.fn(async () => { throw new Error(message); }),
+    estimateFeeRateAt: vi.fn(async () => 5n),
+  } as unknown as Parameters<typeof collectFeeObservation>[0];
+  const refresh = async () => {
+    const observation = await collectFeeObservation(provider);
+    await saveFeeObservation(db, "signet", observation.rates, observation.observedAt);
+  };
+  await expect(refresh()).rejects.toThrow(message);
+  expect(write).not.toHaveBeenCalled();
+  expect(previous.feeRates).toBe(fees);
+  await expect(readFeeObservation(db, "signet")).rejects.toThrow("CORE_UNAVAILABLE");
+});

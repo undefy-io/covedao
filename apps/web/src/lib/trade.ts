@@ -1,5 +1,7 @@
 "use client";
 
+import { fetchPortfolio } from "./portfolio";
+
 import { tr, translateError } from "@/i18n";
 import { verifyClientIntent, verifyListingIntent } from "@crclaunch/wallets";
 import { scriptOf, bitcoinNetwork } from "@/lib/wallets/resolve";
@@ -141,9 +143,8 @@ export async function createListing(params: {
   if (!/^\d+$/.test(params.totalPriceSats) || BigInt(params.totalPriceSats) <= 0n) throw new Error(tr("trade.enterPrice"));
   const tokenScript = params.walletFields.ordinalsScript || params.walletFields.walletScript!;
   const payoutScript = params.walletFields.walletScript!;
-  const pf = await fetch(`/api/v3/wallet/${params.tokenAddress}/portfolio`).then((r) => r.json());
-  const mine = ((pf.data?.tokenUtxos ?? []) as { txid: string; vout: number; tokenId: string; amountAtoms: string }[])
-    .filter((u) => u.tokenId === params.tokenId);
+  const pf = await fetchPortfolio(params.tokenAddress, { onlyTokenUtxos: true });
+  const mine = pf.tokenUtxos.filter((u) => u.tokenId === params.tokenId);
   const held = mine.reduce((a, u) => a + BigInt(u.amountAtoms), 0n);
   if (held < params.amountAtoms) throw new Error(tr("trade.notEnoughTokens"));
 

@@ -8,8 +8,8 @@ function mockDb(rows: { listings?: unknown[]; backing?: unknown[] }): Database {
   return {
     select: () => ({
       from: (table: unknown) => ({
-        where: async () => {
-          if (table === schema.coveV3MarketListings) return rows.listings ?? [];
+        where: () => {
+          if (table === schema.coveV3MarketListings) return { orderBy: () => ({ limit: (limit: number) => (rows.listings ?? []).slice(0, limit) }) };
           if (table === schema.coveV3BackingStates) return rows.backing ?? [];
           return [];
         },

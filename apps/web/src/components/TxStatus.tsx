@@ -3,21 +3,12 @@
 import { useT } from "@/i18n/LanguageProvider";
 import { useEffect, useState } from "react";
 
-/**
- * What happened to the transaction the user just signed.
- *
- * Broadcasting used to end the story: a txid appeared and nothing ever
- * updated. A transaction can sit unconfirmed for a long time, and it can be
- * dropped from the mempool entirely — in which case the trade never happened
- * and the user needs to know rather than assume. The backend already tracks
- * both; this just says so.
- */
-
 interface TxState {
   txid: string;
-  mempool: boolean;
+  mempool: boolean | null;
+  state: "confirmed" | "pending" | "mined" | "unknown";
   confirmedHeight: string | null;
-  session: { status: string; errorCode: string | null } | null;
+  session: { status: string } | null;
 }
 
 export function TxStatus({ txid, explorerBase }: { txid: string; explorerBase?: string }) {
@@ -27,13 +18,15 @@ export function TxStatus({ txid, explorerBase }: { txid: string; explorerBase?: 
   useEffect(() => {
     if (!txid) return;
     let live = true;
+    setState(null);
+    const unknown: TxState = { txid, mempool: null, state: "unknown", confirmedHeight: null, session: null };
     const poll = () => {
-      void fetch(`/api/v3/tx/${txid}`)
+      void fetch(`/api/v3/tx/${txid}`, { signal: AbortSignal.timeout(8_000), cache: "no-store" })
         .then((r) => r.json())
         .then((j) => {
-          if (live && j.ok) setState(j.data as TxState);
+          if (live) setState(j.ok ? j.data as TxState : unknown);
         })
-        .catch(() => {});
+        .catch(() => { if (live) setState(unknown); });
     };
     poll();
     const timer = setInterval(poll, 10_000);
@@ -46,14 +39,16 @@ export function TxStatus({ txid, explorerBase }: { txid: string; explorerBase?: 
   if (!txid) return null;
 
   const confirmed = state?.confirmedHeight != null;
-  const dropped = state != null && !confirmed && !state.mempool;
+  const unknown = !state || state.state === "unknown";
+  const mined = state?.state === "mined";
 
-  const chip = confirmed ? "chip chip-verified" : dropped ? "chip chip-rejected" : "chip chip-pending";
-  const label = confirmed ? t("tx.confirmed") : dropped ? t("tx.dropped") : t("tx.mempool");
+  const chip = confirmed ? "chip chip-verified" : "chip chip-pending";
+  const label = confirmed ? t("tx.confirmed") : unknown ? t("tx.unknown") : mined ? t("tx.mined") : t("tx.mempool");
   const detail = confirmed
     ? t("tx.settled", { height: state!.confirmedHeight! })
-    : dropped
-      ? t("tx.droppedDetail")
+    : unknown
+      ? t("tx.unknownDetail")
+      : mined ? t("tx.minedDetail")
       : t("tx.waitingDetail");
 
   return (
