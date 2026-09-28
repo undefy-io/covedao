@@ -11,13 +11,14 @@ loadEnv({ path: fileURLToPath(new URL("../../.env", import.meta.url)) });
 const buildEnv = cleanEnv(
   {
     COVE_NETWORK: process.env.COVE_NETWORK,
-    SENTRY_DSN: process.env.SENTRY_DSN,
-    SENTRY_ENVIRONMENT: process.env.SENTRY_ENVIRONMENT,
+    SENTRY_DSN: process.env.SENTRY_DSN || undefined,
+    SENTRY_ENVIRONMENT: process.env.SENTRY_ENVIRONMENT || undefined,
   },
   {
     COVE_NETWORK: str({ choices: ["regtest", "signet", "testnet", "mainnet"] }),
-    SENTRY_DSN: url(),
-    SENTRY_ENVIRONMENT: str({ choices: ["dev", "staging", "prod"] }),
+    // Optional: without a DSN, Sentry stays off (local dev, CI).
+    SENTRY_DSN: url({ default: undefined }),
+    SENTRY_ENVIRONMENT: str({ choices: ["dev", "staging", "prod"], default: "dev" }),
   },
 );
 const network = buildEnv.COVE_NETWORK;
@@ -33,7 +34,7 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_COVE_NETWORK: network,
     NEXT_PUBLIC_EXPLORER_URL: network === "mainnet" ? "" : (process.env.NEXT_PUBLIC_EXPLORER_URL ?? ""),
-    NEXT_PUBLIC_SENTRY_DSN: buildEnv.SENTRY_DSN,
+    NEXT_PUBLIC_SENTRY_DSN: buildEnv.SENTRY_DSN ?? "",
     NEXT_PUBLIC_SENTRY_ENVIRONMENT: buildEnv.SENTRY_ENVIRONMENT,
   },
   transpilePackages: [

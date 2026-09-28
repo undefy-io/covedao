@@ -3,12 +3,12 @@ import { cleanEnv, str, url } from "envalid";
 
 const env = cleanEnv(
   {
-    SENTRY_DSN: process.env.SENTRY_DSN,
-    SENTRY_ENVIRONMENT: process.env.SENTRY_ENVIRONMENT,
+    SENTRY_DSN: process.env.SENTRY_DSN || undefined,
+    SENTRY_ENVIRONMENT: process.env.SENTRY_ENVIRONMENT || undefined,
   },
   {
-    SENTRY_DSN: url(),
-    SENTRY_ENVIRONMENT: str({ choices: ["dev", "staging", "prod"] }),
+    SENTRY_DSN: url({ default: undefined }),
+    SENTRY_ENVIRONMENT: str({ choices: ["dev", "staging", "prod"], default: "dev" }),
   },
 );
 

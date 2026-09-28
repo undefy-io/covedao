@@ -19,6 +19,13 @@ describe("persistent block continuity", () => {
     ).toBe(true);
   });
 
+  it("with activation at genesis, accepts block 1 from an empty cursor (fresh start or full rollback)", () => {
+    expect(blockExtendsCursor({ height: 0n, blockHash: "" }, { height: 1n, parentHash: "genesis" }, 0n)).toBe(true);
+    // ...but not a later block, and not when something is already indexed.
+    expect(blockExtendsCursor({ height: 0n, blockHash: "" }, { height: 2n, parentHash: "x" }, 0n)).toBe(false);
+    expect(blockExtendsCursor({ height: 0n, blockHash: "" }, { height: 1n, parentHash: "genesis" }, 100n)).toBe(false);
+  });
+
   it("rejects a successor from a competing branch or a skipped height", () => {
     expect(
       blockExtendsCursor({ height: 100n, blockHash: "a" }, { height: 101n, parentHash: "b" }, 100n),

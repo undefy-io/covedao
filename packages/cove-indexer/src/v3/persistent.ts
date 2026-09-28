@@ -12,6 +12,10 @@ export function blockExtendsCursor(
   activationHeight: bigint,
 ): boolean {
   if (cursor.height === 0n && block.height === activationHeight) return true;
+  // Nothing indexed yet (a fresh start, or a reorg that rolled back to the
+  // start): the first block is the activation height, or block 1 when Cove
+  // is active from genesis (block 0 carries no Cove transactions).
+  if (cursor.height === 0n && cursor.blockHash === "" && activationHeight === 0n && block.height === 1n) return true;
   return block.height === cursor.height + 1n && block.parentHash === cursor.blockHash;
 }
 
