@@ -96,7 +96,7 @@ signature against the committed `guardianXOnly` before accepting it.
 piece.
 
 **Failure mode mid-sign:** the custody service's own `writeBeforeSign`/journal
-steps keep double-sign protection, and the client's independent verification
+steps preserve immutable results for each valid candidate, and the client's independent verification
 rejects a spoofed or wrong-key signature (`SIGNATURE_VERIFICATION_FAILED`).
 
 ## Decision checklist before ceremony

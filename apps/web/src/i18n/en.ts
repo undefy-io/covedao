@@ -35,6 +35,8 @@ export const en = {
   "dev.badge": "Dev wallet · {name} · {address}…",
   "tip.whatIs": "What is {label}?",
   "tx.confirmed": "Confirmed",
+  "tx.conflicted": "Trade did not land",
+  "tx.conflictedDetail": "Another transaction spent this vault first. Request a fresh quote to try again.",
   "tx.unknown": "Status unavailable",
   "tx.unknownDetail": "The latest transaction status is unavailable. We’ll check again.",
   "tx.mined": "Awaiting indexer",

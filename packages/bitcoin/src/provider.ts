@@ -237,14 +237,33 @@ export class CoreRpcProvider implements BitcoinChainProvider {
     return read;
   }
 
-  async observeTransaction(txid: string, options: RpcReadOptions = {}): Promise<TransactionObservation> {
+  async getMempoolSpender(txid: string, vout: number, options: RpcReadOptions = {}): Promise<string | null | undefined> {
+    let rows: { txid?: string; vout?: number; spendingtxid?: string }[];
+    try { rows = await this.call("gettxspendingprevout", [[{ txid, vout }]], options); }
+    catch (error) {
+      if (error instanceof RpcError && error.kind === "rpc" && error.rpcCode === -32601) return undefined;
+      throw error;
+    }
+    if (!Array.isArray(rows) || rows.length !== 1 || rows[0]?.txid !== txid || rows[0]?.vout !== vout ||
+      (rows[0]?.spendingtxid !== undefined && !/^[0-9a-f]{64}$/i.test(rows[0].spendingtxid))) {
+      throw new RpcError("gettxspendingprevout", "response", "invalid mempool spender response");
+    }
+    return rows[0]!.spendingtxid?.toLowerCase() ?? null;
+  }
+
+  async isTransactionInMempool(txid: string, options: RpcReadOptions = {}): Promise<boolean> {
     try {
       const entry = await this.call<{ vsize?: number }>("getmempoolentry", [txid], options);
       if (!entry || !Number.isSafeInteger(entry.vsize) || entry.vsize! <= 0) throw new RpcError("getmempoolentry", "response", "invalid mempool entry");
-      return { state: "mempool", blockHash: null };
+      return true;
     } catch (error) {
       if (!isRpcNotFound(error, "getmempoolentry")) throw error;
+      return false;
     }
+  }
+
+  async observeTransaction(txid: string, options: RpcReadOptions = {}): Promise<TransactionObservation> {
+    if (await this.isTransactionInMempool(txid, options)) return { state: "mempool", blockHash: null };
     try {
       const tx = await this.call<{ txid: string; blockhash?: string; confirmations?: number }>("getrawtransaction", [txid, true], options);
       if (!tx || tx.txid !== txid) throw new RpcError("getrawtransaction", "response", "transaction identity mismatch");
@@ -285,12 +304,13 @@ export class CoreRpcProvider implements BitcoinChainProvider {
 
   /**
    * Get the current UTXO for txid:vout (Core `gettxout`). Returns null when the
-   * output is already spent — the authoritative "unspent" check.
+   * output is spent in the selected view. Omitting includeMempool includes
+   * pending spends; false reads the confirmed UTXO set for competing candidates.
    */
-  async getTxout(txid: string, vout: number): Promise<{ scriptPubKeyHex: string; valueSats: bigint; confirmations: number; bestBlockHash?: string } | null> {
+  async getTxout(txid: string, vout: number, includeMempool?: boolean): Promise<{ scriptPubKeyHex: string; valueSats: bigint; confirmations: number; bestBlockHash?: string } | null> {
     const res = await this.call<{ scriptPubKey?: { hex: string }; value?: number; confirmations?: number; bestblock?: string } | null>(
       "gettxout",
-      [txid, vout],
+      includeMempool === undefined ? [txid, vout] : [txid, vout, includeMempool],
     );
     if (res === null) return null;
     if (!res || typeof res.scriptPubKey?.hex !== "string" || !/^(?:[a-f0-9]{2})*$/i.test(res.scriptPubKey.hex) ||

@@ -14,7 +14,7 @@ import { PostgresGuardianAudit } from "./audit.js";
  * Real-Postgres integration test for the durable signer stores (Phase 8 §19-§23).
  * Skips unless COVE_TEST_DATABASE_URL is set (run explicitly in the persistent
  * truth-gate CI alongside a Postgres service). Verifies the signing journal's
- * RESERVED/IDEMPOTENT/CONFLICT semantics + restart survival, and the tamper-evident
+ * independent candidates and idempotent retry semantics + restart survival, and the tamper-evident
  * audit hash chain (canonical hash, linkage, restart survival, signedAt).
  */
 
@@ -75,9 +75,9 @@ function toFields(r: AuditRecord): GuardianAuditDigestFields {
 }
 
 describe.skipIf(!URL)("Postgres durable signer stores (journal + audit)", () => {
-  it("signing journal: RESERVED → IDEMPOTENT → CONFLICT, survives a fresh store, 20-concurrent race → 1 RESERVED", async () => {
+  it("signing journal: distinct candidates coexist across restart and concurrent writers", async () => {
     const db = createDb(URL!);
-    // Unique outpoint per run (journal's unique index is per network:txid:vout).
+    // Unique outpoint per run; each digest has its own immutable record.
     const o1 = {
       network: NETWORK,
       backingTxid: hex32(randomUUID().replace(/-/g, "").slice(0, 64)),
@@ -88,19 +88,19 @@ describe.skipIf(!URL)("Postgres durable signer stores (journal + audit)", () => 
     const j1 = new PostgresSigningJournal(db);
     expect(await j1.reserve({ ...o1, unsignedTxDigest: dA })).toBe("RESERVED");
     expect(await j1.reserve({ ...o1, unsignedTxDigest: dA })).toBe("IDEMPOTENT");
-    expect(await j1.reserve({ ...o1, unsignedTxDigest: dB })).toBe("CONFLICT");
+    expect(await j1.reserve({ ...o1, unsignedTxDigest: dB })).toBe("RESERVED");
 
     // Restart survival: a fresh store instance (new object, same DB) still sees it.
     const j2 = new PostgresSigningJournal(db);
-    expect(await j2.committedDigest(NETWORK, o1.backingTxid, o1.backingVout)).toBe(dA);
+    expect(await j2.committedDigest(NETWORK, o1.backingTxid, o1.backingVout, dA)).toBe(dA);
     await j2.markSigned({ ...o1, unsignedTxDigest: dA });
     await db.update(schema.coveV3SigningJournal).set({ expiresAt: new Date(0) })
       .where(eq(schema.coveV3SigningJournal.backingTxid, o1.backingTxid));
     await j2.release({ ...o1, unsignedTxDigest: dA });
-    expect(await j2.committedDigest(NETWORK, o1.backingTxid, o1.backingVout)).toBe(dA);
-    expect(await j2.reserve({ ...o1, unsignedTxDigest: dB })).toBe("CONFLICT");
+    expect(await j2.committedDigest(NETWORK, o1.backingTxid, o1.backingVout, dA)).toBe(dA);
+    expect(await j2.reserve({ ...o1, unsignedTxDigest: dB })).toBe("RESERVED");
 
-    // 20 concurrent distinct digests on a fresh outpoint → exactly 1 RESERVED.
+    // Distinct candidates reserve independently; the chain determines the winner.
     const o2 = {
       network: NETWORK,
       backingTxid: hex32(randomUUID().replace(/-/g, "").slice(0, 64)),
@@ -111,8 +111,7 @@ describe.skipIf(!URL)("Postgres durable signer stores (journal + audit)", () => 
         j1.reserve({ ...o2, unsignedTxDigest: `d${String(i).padStart(2, "0")}`.repeat(32) }),
       ),
     );
-    expect(results.filter((r) => r === "RESERVED")).toHaveLength(1);
-    expect(results.filter((r) => r === "CONFLICT")).toHaveLength(19);
+    expect(results.filter((r) => r === "RESERVED")).toHaveLength(20);
   });
 
   it("audit: canonical hash chain, linkage, restart survival, writeAfterSign marks signedAt", async () => {

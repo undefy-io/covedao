@@ -4,10 +4,9 @@
  * A MINT or REDEEM may carry the user's own BTC inputs to pay for it. The
  * Guardian refuses any such input that is:
  *
- * - UNCONFIRMED. The vault chains: the next mint spends this one's successor
- *   vault output. If a funding input is still in the mempool, its owner can
- *   double-spend it, which drops this transition and every later transition
- *   that other users built on top of it.
+ * - UNCONFIRMED. Plain funding must be confirmed and old enough for the
+ *   indexer to identify assets. A confirmed input may have competing mempool
+ *   spends; Bitcoin chooses the canonical spend and losing trades must retry.
  * - HOLDING TOKENS of any kind: a Cove carrier (of any token), an inscription
  *   or a rune. Spent as plain BTC, whatever it holds is destroyed.
  *
@@ -38,11 +37,12 @@ export interface FundingInputChecker {
   ): Promise<FundingInputVerdict>;
 }
 
-/** The one Core call the checker needs (`gettxout`, mempool included). */
+/** The one Core call the checker needs (`gettxout`, confirmed UTXO set). */
 export interface TxOutReader {
   getTxout(
     txid: string,
     vout: number,
+    includeMempool?: boolean,
   ): Promise<{
     confirmations: number;
     scriptPubKeyHex?: string;
@@ -111,7 +111,7 @@ export function chainFundingChecker(params: {
         let core: { height: bigint; hash: string } | undefined;
         try {
           if (indexedHeight !== undefined) core = await getObservation();
-          txout = await params.chain.getTxout(o.txid, o.vout);
+          txout = await params.chain.getTxout(o.txid, o.vout, false);
         } catch (e) {
           return refuse(
             "FUNDING_CHECK_UNAVAILABLE",

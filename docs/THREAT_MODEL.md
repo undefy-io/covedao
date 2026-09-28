@@ -10,7 +10,7 @@ authority.
 |---|---|---|---|
 | Malicious web/API | no keys in web; remote signer revalidates; caps at signer | audit, alerts | read-only safe; fails closed |
 | Malicious user | signatures; indexer/Core revalidation | mempool/conflict | rejection |
-| Compromised Guardian key | durable-before-sign audit; signing journal | double-sign alert | emergency recovery (threshold) |
+| Compromised Guardian key | isolated custody; signer validation and caps while uncompromised | invalid state/signature alerts; durable audit | a stolen key can bypass validation; emergency recovery (threshold) |
 | Dead Guardian | liveness noted publicly | heartbeat | recovery path |
 | 1/3 recovery key lost | 2-of-3 threshold | — | still operable |
 | 2/3 recovery compromised | threshold | — | documented residual risk (delayed authority) |

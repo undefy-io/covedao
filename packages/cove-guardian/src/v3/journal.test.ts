@@ -51,23 +51,22 @@ describe("Guardian durable audit + signing journal (§17-§23)", () => {
     expect(h2).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it("signing journal: first digest wins; conflicting digest is rejected; same digest idempotent", async () => {
+  it("signing journal: independent candidates coexist; identical candidates are idempotent", async () => {
     const j = new InMemorySigningJournal();
     const outpoint = { network: "regtest", backingTxid: "bb".repeat(32), backingVout: 1 };
     expect(await j.reserve({ ...outpoint, unsignedTxDigest: "11".repeat(32) })).toBe("RESERVED");
-    expect(await j.reserve({ ...outpoint, unsignedTxDigest: "22".repeat(32) })).toBe("CONFLICT");
+    expect(await j.reserve({ ...outpoint, unsignedTxDigest: "22".repeat(32) })).toBe("RESERVED");
     expect(await j.reserve({ ...outpoint, unsignedTxDigest: "11".repeat(32) })).toBe("IDEMPOTENT");
-    expect(await j.committedDigest(outpoint.network, outpoint.backingTxid, outpoint.backingVout)).toBe("11".repeat(32));
+    expect(await j.committedDigest(outpoint.network, outpoint.backingTxid, outpoint.backingVout, "11".repeat(32))).toBe("11".repeat(32));
   });
 
-  it("signing journal: 20 concurrent distinct digests → exactly one RESERVED, 19 CONFLICT", async () => {
+  it("signing journal: 20 concurrent distinct candidates all reserve independently", async () => {
     const j = new InMemorySigningJournal();
     const outpoint = { network: "regtest", backingTxid: "cc".repeat(32), backingVout: 3 };
     const results = await Promise.all(
       Array.from({ length: 20 }, (_, i) => j.reserve({ ...outpoint, unsignedTxDigest: i.toString(16).padStart(64, "0") })),
     );
-    expect(results.filter((r) => r === "RESERVED")).toHaveLength(1);
-    expect(results.filter((r) => r === "CONFLICT")).toHaveLength(19);
+    expect(results.filter((r) => r === "RESERVED")).toHaveLength(20);
   });
 
   it("verifyGuardianAuditChain validates hashes + chaining (§C10)", () => {
@@ -103,21 +102,19 @@ describe("Guardian durable audit + signing journal (§17-§23)", () => {
     const outpoint = { network: "regtest", backingTxid: "dd".repeat(32), backingVout: 1 };
     expect(await j.reserve({ ...outpoint, unsignedTxDigest: "11".repeat(32) })).toBe("RESERVED");
     await j.release({ ...outpoint, unsignedTxDigest: "11".repeat(32) });
-    expect(await j.committedDigest(outpoint.network, outpoint.backingTxid, outpoint.backingVout)).toBeNull();
+    expect(await j.committedDigest(outpoint.network, outpoint.backingTxid, outpoint.backingVout, "11".repeat(32))).toBeNull();
     expect(await j.reserve({ ...outpoint, unsignedTxDigest: "22".repeat(32) })).toBe("RESERVED");
   });
 
-  it("an expired reservation self-heals (re-reservable with a new digest) (§C1)", async () => {
+  it("an expired unsigned candidate can be reserved again", async () => {
     let t = 0;
     const j = new InMemorySigningJournal(() => t);
     const outpoint = { network: "regtest", backingTxid: "ee".repeat(32), backingVout: 1 };
     expect(await j.reserve({ ...outpoint, unsignedTxDigest: "11".repeat(32) })).toBe("RESERVED");
-    // Before expiry, a different digest is a conflict.
-    expect(await j.reserve({ ...outpoint, unsignedTxDigest: "22".repeat(32) })).toBe("CONFLICT");
-    // After expiry, a different digest re-reserves.
-    t = SIGNING_JOURNAL_TTL_MS + 1;
     expect(await j.reserve({ ...outpoint, unsignedTxDigest: "22".repeat(32) })).toBe("RESERVED");
-    expect(await j.committedDigest(outpoint.network, outpoint.backingTxid, outpoint.backingVout)).toBe("22".repeat(32));
+    t = SIGNING_JOURNAL_TTL_MS + 1;
+    expect(await j.reserve({ ...outpoint, unsignedTxDigest: "11".repeat(32) })).toBe("RESERVED");
+    expect(await j.committedDigest(outpoint.network, outpoint.backingTxid, outpoint.backingVout, "11".repeat(32))).toBe("11".repeat(32));
   });
 
   it("a signed reservation never expires or releases", async () => {
@@ -129,7 +126,7 @@ describe("Guardian durable audit + signing journal (§17-§23)", () => {
     await j.markSigned(first);
     t = SIGNING_JOURNAL_TTL_MS + 1;
     await j.release(first);
-    expect(await j.committedDigest(outpoint.network, outpoint.backingTxid, outpoint.backingVout)).toBe(first.unsignedTxDigest);
-    expect(await j.reserve({ ...outpoint, unsignedTxDigest: "22".repeat(32) })).toBe("CONFLICT");
+    expect(await j.committedDigest(outpoint.network, outpoint.backingTxid, outpoint.backingVout, "11".repeat(32))).toBe(first.unsignedTxDigest);
+    expect(await j.reserve({ ...outpoint, unsignedTxDigest: "22".repeat(32) })).toBe("RESERVED");
   });
 });

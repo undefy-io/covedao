@@ -11,6 +11,7 @@ import { buildDeployPsbtV3, buildMintPsbtV3, RESERVE_ANCHOR_SATS } from "./build
 import { GuardianV3Signer } from "./signer.js";
 import { localSigningBackend } from "./custody.js";
 import { LocalGuardianTransitionSigner, RemoteGuardianTransitionSigner, type GuardianRiskPolicy, type DurableAuditSink } from "./transitionSigner.js";
+import { unsignedTxDigest } from "./resolve.js";
 import { InMemorySigningJournal } from "./journal.js";
 import { InProcessGuardianTransport, HttpGuardianTransport, type GuardianTransport } from "./guardianApi.js";
 import type { AuditRecord } from "./types.js";
@@ -183,14 +184,15 @@ describe("remote Guardian client (§24)", () => {
     expect(out.ok).toBe(true);
     if (out.ok) {
       expect(out.auditFinalizationError).not.toBeNull();
-      // A conflicting digest for the SAME backing outpoint must still be refused.
+      // Audit finalization failure retains this signature without blocking competitors.
       const conflict = await journal.reserve({
         network: "regtest",
         backingTxid: out.backingOutpoint.txid,
         backingVout: out.backingOutpoint.vout,
         unsignedTxDigest: "ff".repeat(32),
       });
-      expect(conflict).toBe("CONFLICT");
+      expect(conflict).toBe("RESERVED");
+      expect(await journal.readSigned({ network: "regtest", backingTxid: out.backingOutpoint.txid, backingVout: out.backingOutpoint.vout, unsignedTxDigest: unsignedTxDigest(psbt) })).not.toBeNull();
     }
   });
 

@@ -215,7 +215,7 @@ Submit responses may include `submissionState: "saved"`: the transaction is
 stored for recovery but node acceptance is still unconfirmed. `"broadcast"`
 means acceptance was verified. Neither proves a block confirmation. A definite
 validation rejection pauses automatic signing until an explicit wallet retry.
-Signed Guardian reservations remain permanent in either case. Signed PSBTs and
+Saved Guardian signatures remain immutable for each transaction candidate. Signed PSBTs and
 raw transactions stay private in the database and require protected backups.
 
 Migration `0014_durable_submissions.sql` adds the submission records and stored
@@ -231,6 +231,28 @@ changes abort validation; an exact signed retry can recover its original
 signature without signing again. Let legacy pending transactions without stored
 signing results confirm before this rollout. Database-only pending quotes/status
 remain in the API scaling plan.
+
+### Competing vault transactions
+
+The Guardian signs each independently valid candidate, including competing
+transactions spending the same backing output. Its journal is keyed by network,
+backing outpoint and unsigned transaction digest. A saved signature does not
+reserve the vault against other users. Bitcoin chooses the canonical spend;
+being signed or accepted into the mempool does not guarantee confirmation.
+
+Quotes follow the node's accepted mempool branch using `gettxspendingprevout`.
+An explicitly unsupported method uses bounded candidate membership checks;
+provider failures abort the quote. Missing candidates can expose the parent only
+when the node verifies that parent is still unspent. Descendants of a replaced
+branch require a fresh quote. Transaction status reports `conflicted` when the
+indexed chain proves a competing spend, including an ancestor conflict, and
+re-evaluates that evidence after reorgs. Pending absence remains `unknown`.
+
+Migration `0015_competing_signatures.sql` replaces the journal's unique outpoint
+index with a unique candidate index without deleting saved signatures. Stop old
+Guardian, web and worker writers, apply the shared migration history once per
+database, then start the matching releases together. The live stack is not
+updated merely by pulling this code.
 
 ### Public read limits
 

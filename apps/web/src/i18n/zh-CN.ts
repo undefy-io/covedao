@@ -37,6 +37,8 @@ export const zhCN: Record<MessageKey, string> = {
   "dev.badge": "测试钱包 · {name} · {address}…",
   "tip.whatIs": "{label} 是什么？",
   "tx.confirmed": "已确认",
+  "tx.conflicted": "交易未确认",
+  "tx.conflictedDetail": "另一笔交易已先花费此金库。请获取新的报价后重试。",
   "tx.unknown": "状态暂不可用",
   "tx.unknownDetail": "暂时无法获取交易的最新状态，稍后会再次检查。",
   "tx.mined": "等待索引器",

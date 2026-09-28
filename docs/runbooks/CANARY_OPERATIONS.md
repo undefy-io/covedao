@@ -50,8 +50,8 @@ every required health signal is green:
   and `checkSupplyInvariant` (sum unspent token UTXOs == issued supply) — any
   CRITICAL result halts signing.
 - Guardian audit hash chain (`cove_v3_guardian_audit`) + signing journal
-  (`cove_v3_signing_journal`): every sign is durable-before-sign; a CONFLICT
-  (double-sign attempt) is refused.
+  (`cove_v3_signing_journal`): every candidate is validated and recorded before
+  signing. Valid competing candidates are allowed; Bitcoin chooses the winner.
 
 ## Caps + allowlist (signer-enforced)
 

@@ -224,16 +224,14 @@ export class LocalGuardianTransitionSigner implements GuardianTransitionSigner {
       return { ok: false, reason: "AUDIT_PERSISTENCE_FAILED", detail: (e as Error).message, audit: record };
     }
 
-    // 2. Reserve the backing outpoint (double-sign protection).
+    // 2. Persist this candidate without excluding other valid successors.
     const reservation = await this.journal.reserve({
       network: req.network,
       backingTxid: record.backingOutpoint.txid,
       backingVout: record.backingOutpoint.vout,
       unsignedTxDigest: record.unsignedTxDigest,
     });
-    if (reservation === "CONFLICT") {
-      return { ok: false, reason: "BACKING_ALREADY_SIGNED", detail: "backing outpoint already signed with a different digest", audit: record };
-    }
+
 
     // 3. Sign (script-path execution leaf).
     const prevVault = buildBackingVaultV3({

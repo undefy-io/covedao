@@ -281,14 +281,14 @@ async function main(): Promise<void> {
   });
   console.log(`✓ MINT ${mint1Txid} (durable audit #${audit.links.length})`);
 
-  // Double-sign protection: same outpoint, DIFFERENT digest → CONFLICT.
+  // Distinct candidates have independent records; Bitcoin determines the winner.
   const conflict = await journal.reserve({
     network: "regtest",
     backingTxid: deployTxid,
     backingVout: vaultVout,
     unsignedTxDigest: "f".repeat(64),
   });
-  assert(conflict === "CONFLICT", `expected CONFLICT, got ${conflict}`);
+  assert(conflict === "RESERVED", `expected independent candidate reservation, got ${conflict}`);
 
   // ── REDEEM via durable transition signer ──
   console.log("STEP 3/4 — REDEEM (durable signer, full 10k)");

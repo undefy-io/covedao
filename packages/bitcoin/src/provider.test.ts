@@ -194,3 +194,28 @@ describe("testMempoolAcceptParams (RPC arg shape)", () => {
     expect(testMempoolAcceptParams("00ff", 0.0005)).toEqual([["00ff"], 0.0005]);
   });
 });
+
+describe("competing transaction observations", () => {
+  const txid = "ab".repeat(32), spender = "cd".repeat(32);
+  it("reads the confirmed UTXO set explicitly when validating competing inputs", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ result: null, error: null }));
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await new CoreRpcProvider({ url: "https://example.com" }).getTxout(txid, 1, false)).toBeNull();
+    expect(JSON.parse(fetchMock.mock.calls[0]![1].body).params).toEqual([txid, 1, false]);
+  });
+  it.each([undefined, spender])("identifies the current mempool spender in one lookup: %s", async (spendingtxid) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ result: [{ txid, vout: 1, ...(spendingtxid ? { spendingtxid } : {}) }], error: null })));
+    expect(await new CoreRpcProvider({ url: "https://example.com" }).getMempoolSpender(txid, 1)).toBe(spendingtxid ?? null);
+  });
+  it("allows compatibility fallback only for an explicitly unsupported method", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(Response.json({ result: null, error: { code: -32601, message: "unsupported" } }, { status: 500 }))
+      .mockResolvedValueOnce(new Response(null, { status: 429 })));
+    const provider = new CoreRpcProvider({ url: "https://example.com" });
+    expect(await provider.getMempoolSpender(txid, 1, { retry: false })).toBeUndefined();
+    await expect(provider.getMempoolSpender(txid, 1, { retry: false })).rejects.toBeInstanceOf(RpcError);
+  });
+  it.each([{ result: [] }, { result: [{}] }, { result: [{ txid, vout: 2 }] }, { result: [{ txid, vout: 1, spendingtxid: "invalid" }] }])("rejects malformed mempool spender evidence", async ({ result }) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ result, error: null })));
+    await expect(new CoreRpcProvider({ url: "https://example.com" }).getMempoolSpender(txid, 1)).rejects.toBeInstanceOf(RpcError);
+  });
+});

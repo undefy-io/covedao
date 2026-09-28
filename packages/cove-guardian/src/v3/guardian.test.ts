@@ -19,6 +19,7 @@ import {
 import { GuardianV3Signer } from "./signer.js";
 import { validateAndSignMintTransition, validateAndSignRedeemTransition } from "./guardian.js";
 import { LocalGuardianTransitionSigner, type GuardianRiskPolicy } from "./transitionSigner.js";
+import { unsignedTxDigest } from "./resolve.js";
 import { InMemorySigningJournal } from "./journal.js";
 import type { AuditRecord } from "./types.js";
 import type { FundingInputChecker } from "./funding.js";
@@ -295,7 +296,7 @@ describe("Production Guardian V3 — validateAndSignMintTransition", async () =>
     expect(out.ok).toBe(false);
     if (!out.ok) expect(out.reason).toBe("SIGNING_FAILED");
     // Reservation released → the backing outpoint is not bricked.
-    expect(await journal.committedDigest("regtest", DEPLOY_TXID, 1)).toBeNull();
+    expect(await journal.committedDigest("regtest", DEPLOY_TXID, 1, unsignedTxDigest(mint.psbt))).toBeNull();
   });
 
   it("extra output → refused, zero signatures", async () => {

@@ -1,11 +1,6 @@
 import { createHash } from "node:crypto";
 
-/**
- * Phase 8 durable-before-sign audit + per-backing signing journal (§17-§23).
- * The audit history is a tamper-evident hash chain (`Cove/GuardianAudit/v1`);
- * the signing journal prevents the Guardian from ever signing TWO DIFFERENT
- * successors for the same backing outpoint. Both survive process restart.
- */
+/** Durable audit history and immutable signing results for each candidate. */
 
 export const GUARDIAN_AUDIT_DOMAIN = "Cove/GuardianAudit/v1";
 
@@ -96,33 +91,20 @@ export function verifyGuardianAuditChain(head: { previousAuditHash: string; audi
   return true;
 }
 
-export type SigningReservation = "RESERVED" | "IDEMPOTENT" | "CONFLICT";
+export type SigningReservation = "RESERVED" | "IDEMPOTENT";
 export interface StoredSigningResult { psbtBase64: string; resultJson: string; auditHash: string }
 
 /** An unsigned signing lease expires; a produced signature never does. */
 export const SIGNING_JOURNAL_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
-/** Durable per-backing-outpoint signing journal (double-sign protection). */
 export interface SigningJournalStore {
-  /**
-   * Reserve a backing outpoint for `unsignedTxDigest`. CONFLICT means a
-   * DIFFERENT digest was already committed (never sign); IDEMPOTENT means the
-   * SAME digest was already committed (may recover the same signing result).
-   * Only an unsigned reservation whose TTL has elapsed can be re-reserved.
-   */
   reserve(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<SigningReservation>;
-  /** Make a produced signature's conflict barrier permanent before returning it. */
   markSigned(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string; signingResult?: StoredSigningResult }): Promise<void>;
   readSigned?(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<StoredSigningResult | null>;
-  committedDigest(network: string, backingTxid: string, backingVout: number): Promise<string | null>;
-  /**
-   * Release an unsigned reservation if it still matches `unsignedTxDigest`.
-   * A produced signature's barrier cannot be released through this method.
-   */
+  committedDigest(network: string, backingTxid: string, backingVout: number, unsignedTxDigest: string): Promise<string | null>;
   release(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<void>;
 }
 
-/** In-memory journal (tests). A Map keyed by network:txid:vout. */
 export class InMemorySigningJournal implements SigningJournalStore {
   private map = new Map<string, { digest: string; expiresAt: number; signed: boolean; signingResult?: StoredSigningResult }>();
   constructor(private readonly clock: () => number = () => Date.now()) {}
@@ -132,17 +114,17 @@ export class InMemorySigningJournal implements SigningJournalStore {
   }
 
   async reserve(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<SigningReservation> {
-    const key = `${params.network}:${params.backingTxid}:${params.backingVout}`;
+    const key = `${params.network}:${params.backingTxid}:${params.backingVout}:${params.unsignedTxDigest}`;
     const existing = this.map.get(key);
     if (existing !== undefined && (existing.signed || existing.expiresAt > this.now())) {
-      return existing.digest === params.unsignedTxDigest ? "IDEMPOTENT" : "CONFLICT";
+      return "IDEMPOTENT";
     }
     this.map.set(key, { digest: params.unsignedTxDigest, expiresAt: this.now() + SIGNING_JOURNAL_TTL_MS, signed: false });
     return "RESERVED";
   }
 
   async markSigned(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string; signingResult?: StoredSigningResult }): Promise<void> {
-    const key = `${params.network}:${params.backingTxid}:${params.backingVout}`;
+    const key = `${params.network}:${params.backingTxid}:${params.backingVout}:${params.unsignedTxDigest}`;
     const held = this.map.get(key);
     if (!held || held.digest !== params.unsignedTxDigest) throw new Error("signing reservation lost");
     held.signed = true;
@@ -150,12 +132,12 @@ export class InMemorySigningJournal implements SigningJournalStore {
   }
 
   async readSigned(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<StoredSigningResult | null> {
-    const held = this.map.get(`${params.network}:${params.backingTxid}:${params.backingVout}`);
+    const held = this.map.get(`${params.network}:${params.backingTxid}:${params.backingVout}:${params.unsignedTxDigest}`);
     return held?.signed && held.digest === params.unsignedTxDigest ? held.signingResult ?? null : null;
   }
 
-  async committedDigest(network: string, backingTxid: string, backingVout: number): Promise<string | null> {
-    const key = `${network}:${backingTxid}:${backingVout}`;
+  async committedDigest(network: string, backingTxid: string, backingVout: number, unsignedTxDigest: string): Promise<string | null> {
+    const key = `${network}:${backingTxid}:${backingVout}:${unsignedTxDigest}`;
     const existing = this.map.get(key);
     if (existing !== undefined && !existing.signed && existing.expiresAt <= this.now()) {
       this.map.delete(key);
@@ -165,7 +147,7 @@ export class InMemorySigningJournal implements SigningJournalStore {
   }
 
   async release(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<void> {
-    const key = `${params.network}:${params.backingTxid}:${params.backingVout}`;
+    const key = `${params.network}:${params.backingTxid}:${params.backingVout}:${params.unsignedTxDigest}`;
     const existing = this.map.get(key);
     if (existing?.digest === params.unsignedTxDigest && !existing.signed) this.map.delete(key);
   }

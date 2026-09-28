@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 interface TxState {
   txid: string;
   mempool: boolean | null;
-  state: "confirmed" | "pending" | "mined" | "unknown";
+  state: "confirmed" | "pending" | "mined" | "unknown" | "conflicted";
   confirmedHeight: string | null;
   session: { status: string } | null;
 }
@@ -40,11 +40,12 @@ export function TxStatus({ txid, explorerBase }: { txid: string; explorerBase?: 
 
   const confirmed = state?.confirmedHeight != null;
   const unknown = !state || state.state === "unknown";
+  const conflicted = state?.state === "conflicted";
   const mined = state?.state === "mined";
 
   const chip = confirmed ? "chip chip-verified" : "chip chip-pending";
-  const label = confirmed ? t("tx.confirmed") : unknown ? t("tx.unknown") : mined ? t("tx.mined") : t("tx.mempool");
-  const detail = confirmed
+  const label = conflicted ? t("tx.conflicted") : confirmed ? t("tx.confirmed") : unknown ? t("tx.unknown") : mined ? t("tx.mined") : t("tx.mempool");
+  const detail = conflicted ? t("tx.conflictedDetail") : confirmed
     ? t("tx.settled", { height: state!.confirmedHeight! })
     : unknown
       ? t("tx.unknownDetail")

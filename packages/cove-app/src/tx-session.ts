@@ -1,4 +1,4 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray, isNotNull } from "drizzle-orm";
 import { schema, type Database } from "@crclaunch/db";
 import { AppError } from "./errors.js";
 import type { TokenMetadataInput } from "./metadata.js";
@@ -144,42 +144,20 @@ export async function listPendingSessions(db: Database, network: string): Promis
     );
 }
 
-/**
- * The broadcast-but-unmined transition that spends a given backing outpoint,
- * if one exists.
- *
- * The vault is a chain: each MINT or REDEEM spends the previous vault output
- * and creates the next. Following that chain through the mempool is what lets
- * more than one buyer be served per block. Only BROADCAST is followed —
- * anything still BUILT or WALLET_SIGNED has not been handed to the network and
- * may never be, and CONFIRMED is already in the indexer's state.
- *
- * The unique index on (network, txid) guarantees at most one row per
- * transaction, and a backing outpoint can only be spent once, so the chain
- * cannot fork here.
- */
-export async function findBroadcastSpendOfBacking(
+/** Bounded distinct candidates; a broadcast receipt alone does not select a branch. */
+export async function listSubmittedSpendsOfBacking(
   db: Database,
   network: string,
   tokenId: string,
   backingTxid: string,
   backingVout: number,
-): Promise<{ txid: string | null; operation: string } | null> {
-  const rows = await db
-    .select({
-      txid: schema.coveV3AppTransactions.txid,
-      operation: schema.coveV3AppTransactions.operation,
-    })
+): Promise<{ txid: string | null; operation: string }[]> {
+  return db.selectDistinct({ txid: schema.coveV3AppTransactions.txid, operation: schema.coveV3AppTransactions.operation })
     .from(schema.coveV3AppTransactions)
-    .where(
-      and(
-        eq(schema.coveV3AppTransactions.network, network),
-        eq(schema.coveV3AppTransactions.tokenId, tokenId),
-        eq(schema.coveV3AppTransactions.backingTxid, backingTxid),
-        eq(schema.coveV3AppTransactions.backingVout, backingVout),
-        eq(schema.coveV3AppTransactions.status, "BROADCAST"),
-      ),
-    )
-    .limit(1);
-  return rows[0] ?? null;
+    .where(and(
+      eq(schema.coveV3AppTransactions.network, network), eq(schema.coveV3AppTransactions.tokenId, tokenId),
+      eq(schema.coveV3AppTransactions.backingTxid, backingTxid), eq(schema.coveV3AppTransactions.backingVout, backingVout),
+      inArray(schema.coveV3AppTransactions.status, ["WALLET_SIGNED", "BROADCAST", "CONFIRMED", "REORGED"]),
+      isNotNull(schema.coveV3AppTransactions.txid),
+    )).limit(65);
 }

@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS "cove_v3_signing_journal_outpoint_uq";--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "cove_v3_signing_journal_candidate_uq" ON "cove_v3_signing_journal" USING btree ("network","backing_txid","backing_vout","unsigned_tx_digest");

@@ -21,7 +21,7 @@ describe.skipIf(!isolated)("durable Guardian signing results on isolated Postgre
     expect(await restarted.readSigned(key)).toEqual(first);
     expect(await restarted.readSigned({ ...key, unsignedTxDigest: "ff".repeat(32) })).toBeNull();
     await restarted.release(key);
-    expect(await restarted.reserve({ ...key, unsignedTxDigest: "ff".repeat(32) })).toBe("CONFLICT");
+    expect(await restarted.reserve({ ...key, unsignedTxDigest: "ff".repeat(32) })).toBe("RESERVED");
     await db.delete(schema.coveV3SigningJournal).where(eq(schema.coveV3SigningJournal.network, key.network));
   });
 });
