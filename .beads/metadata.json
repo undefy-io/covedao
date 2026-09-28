@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "covedao",
+  "project_id": "9880e709-6653-449e-91f7-c791df1cf211"
+}

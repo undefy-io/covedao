@@ -64,3 +64,8 @@ fr.html
 
 # Docs built into the web app (pnpm --filter @crclaunch/docs build:web)
 /apps/web/public/docs/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
