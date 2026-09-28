@@ -31,6 +31,7 @@ export const en = {
   "health.rebuilding": "rebuilding",
   "health.diverged": "diverged",
   "health.unavailable": "unavailable",
+  "health.stale": "worker data is stale",
   "dev.badge": "Dev wallet · {name} · {address}…",
   "tip.whatIs": "What is {label}?",
   "tx.confirmed": "Confirmed",

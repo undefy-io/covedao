@@ -1,4 +1,4 @@
-import type { CoreRpcProvider } from "@crclaunch/bitcoin";
+import type { CoreRpcProvider, BlockchainInfo } from "@crclaunch/bitcoin";
 import type { Database } from "@crclaunch/db";
 import { hydrateState } from "./hydrate.js";
 import type { V3Store } from "./store.js";
@@ -32,11 +32,11 @@ export async function persistentWorker(params: {
   state: V3IndexerState;
   provider: CoreRpcProvider;
   config: V3IndexerConfig;
-  opts?: { rebuilding?: boolean };
+  opts?: { rebuilding?: boolean; chainInfo?: BlockchainInfo };
 }): Promise<{ indexed: number; finalHeight: bigint; stateRoot: string }> {
   const { db, store, state, provider } = params;
   const rebuilding = params.opts?.rebuilding ?? false;
-  const info = await provider.getBlockchainInfo();
+  const info = params.opts?.chainInfo ?? await provider.getBlockchainInfo();
   const tip = BigInt(info.blocks);
   let indexed = 0;
 

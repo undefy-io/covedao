@@ -170,6 +170,11 @@ docker compose -f docker-compose.signet.yml up -d --build --wait
 curl http://127.0.0.1:3000/api/v3/status
 ```
 
+The signet web container builds the application before starting `next start`.
+Allow about a minute for startup. This gives stable request timings without
+development-time route compilation. Rebuild the image to apply source changes;
+the build uses the network and public Sentry settings from `.env.signet.local`.
+
 To stop signet without deleting its database, run
 `docker compose -f docker-compose.signet.yml stop`. After that,
 `pnpm dev:stack` starts the retained regtest stack again.
@@ -179,6 +184,16 @@ Build the Simplicity predicate and verify the frozen CMRs:
 ```bash
 cd packages/cove-simplicity/rust && cargo build --release
 ```
+
+The worker writes chain observations and fee estimates to `cove_v3_runtime`.
+`/api/v3/status` and `/api/v3/fees` read these database snapshots without RPC
+calls. Chain observations refresh on the worker polling interval; observations
+older than 30 seconds (or three polling intervals, if longer) are marked stale.
+Fee previews refresh once per minute and become unavailable after two minutes
+without an update. Run migrations and the worker before serving these endpoints.
+Transaction builds still validate current chain health, spendable inputs, and
+fees against RPC. Quotes following unconfirmed transactions also use RPC;
+confirmed token data, holders, activity, and charts come from the indexer database.
 
 ---
 

@@ -33,6 +33,7 @@ export const zhCN: Record<MessageKey, string> = {
   "health.rebuilding": "重建中",
   "health.diverged": "数据分叉",
   "health.unavailable": "不可用",
+  "health.stale": "同步数据已过期",
   "dev.badge": "测试钱包 · {name} · {address}…",
   "tip.whatIs": "{label} 是什么？",
   "tx.confirmed": "已确认",

@@ -721,8 +721,8 @@ export class MarketService {
    * Idempotent reconciliation: expiry, external/mempool source-spend
    * invalidation, indexer-confirmed fill promotion, and reorg handling.
    */
-  async reconcileMarket(): Promise<{ expired: number; invalidated: number; confirmed: number; reorged: number }> {
-    const tip = BigInt(await this.provider.getBestHeight());
+  async reconcileMarket(observedTip?: bigint): Promise<{ expired: number; invalidated: number; confirmed: number; reorged: number }> {
+    const tip = observedTip ?? BigInt(await this.provider.getBestHeight());
     const now = new Date();
     let expired = 0;
     let invalidated = 0;

@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { schema, type Database } from "@crclaunch/db";
-import type { CoreRpcProvider } from "@crclaunch/bitcoin";
+import type { CoreRpcProvider, RpcReadOptions } from "@crclaunch/bitcoin";
 
 /**
  * Indexer health gate (§5). The future Guardian/API must be able to require
@@ -14,6 +14,7 @@ export interface HealthReport {
   cursorHeight: bigint;
   cursorBlockHash: string;
   coreHeight: bigint;
+  coreTip?: string;
   coreBlockHashAtCursor: string | null;
   lag: bigint;
   stateRoot: string;
@@ -24,6 +25,7 @@ export async function computeHealth(params: {
   db: Database;
   network: string;
   provider: CoreRpcProvider;
+  rpcOptions?: RpcReadOptions;
 }): Promise<HealthReport> {
   const cursor = await params.db.select().from(schema.coveV3Cursor).where(eq(schema.coveV3Cursor.network, params.network));
   const c = cursor[0];
@@ -32,11 +34,13 @@ export async function computeHealth(params: {
   }
 
   let coreHeight: bigint;
+  let coreTip: string;
   let coreBlockHashAtCursor: string | null = null;
   try {
-    const info = await params.provider.getBlockchainInfo();
+    const info = await params.provider.getBlockchainInfo(params.rpcOptions);
     coreHeight = BigInt(info.blocks);
-    if (c.height > 0n && c.height <= coreHeight) coreBlockHashAtCursor = await params.provider.getBlockHash(Number(c.height));
+    coreTip = info.bestBlockHash;
+    if (c.height > 0n && c.height <= coreHeight) coreBlockHashAtCursor = await params.provider.getBlockHash(Number(c.height), params.rpcOptions);
   } catch {
     return { health: "CORE_UNREACHABLE", cursorHeight: c.height, cursorBlockHash: c.blockHash, coreHeight: 0n, coreBlockHashAtCursor: null, lag: 0n, stateRoot: c.stateRoot, rebuilding: c.rebuilding };
   }
@@ -54,6 +58,7 @@ export async function computeHealth(params: {
     cursorHeight: c.height,
     cursorBlockHash: c.blockHash,
     coreHeight,
+    coreTip,
     coreBlockHashAtCursor,
     lag,
     stateRoot: c.stateRoot,

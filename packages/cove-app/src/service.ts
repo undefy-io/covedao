@@ -235,6 +235,7 @@ export class V3AppService {
   readonly fundingChecker: FundingInputChecker;
   private readonly assets: AssetLookup | null;
   private feeRatesCache: { at: number; rates: FeeRates } | null = null;
+  private feeRatesPending: Promise<FeeRates> | null = null;
 
   constructor(
     readonly db: Database,
@@ -322,7 +323,7 @@ export class V3AppService {
   // ── reads ─────────────────────────────────────────────────────────────────
 
   status() {
-    return getV3Status({ db: this.db, provider: this.provider, config: this.config });
+    return getV3Status({ db: this.db, config: this.config });
   }
   listTokens(opts?: { ticker?: string; search?: string; limit?: number }) {
     return listV3Tokens(this.db, this.config.network, opts);
@@ -532,9 +533,14 @@ export class V3AppService {
     if (this.feeRatesCache && now - this.feeRatesCache.at < FEE_RATE_CACHE_MS) {
       return this.feeRatesCache.rates;
     }
-    const rates = await loadFeeRates(this.provider);
-    this.feeRatesCache = { at: now, rates };
-    return rates;
+    if (this.feeRatesPending) return this.feeRatesPending;
+    this.feeRatesPending = loadFeeRates(this.provider, {
+      signal: AbortSignal.timeout(5_000),
+    }).then((rates) => {
+      this.feeRatesCache = { at: Date.now(), rates };
+      return rates;
+    }).finally(() => { this.feeRatesPending = null; });
+    return this.feeRatesPending;
   }
 
   /**
@@ -1543,6 +1549,9 @@ export class V3AppService {
   async txStatus(txid: string) {
     const rows = await this.db.select().from(schema.coveV3AppTransactions).where(and(eq(schema.coveV3AppTransactions.network, this.config.network), eq(schema.coveV3AppTransactions.txid, txid)));
     const session = rows[0] ?? null;
+    const evRows = await this.db.select().from(schema.coveV3Events).where(and(eq(schema.coveV3Events.network, this.config.network), eq(schema.coveV3Events.txid, txid), eq(schema.coveV3Events.canonical, true)));
+    const confirmedHeight = evRows[0]?.blockHeight ?? null;
+    if (confirmedHeight !== null) return { txid, session, mempool: false, confirmedHeight };
     let mempool = false;
     try {
       await this.provider.getRawTransaction(txid);
@@ -1550,9 +1559,6 @@ export class V3AppService {
     } catch {
       mempool = false;
     }
-    let confirmedHeight: bigint | null = null;
-    const evRows = await this.db.select().from(schema.coveV3Events).where(and(eq(schema.coveV3Events.network, this.config.network), eq(schema.coveV3Events.txid, txid), eq(schema.coveV3Events.canonical, true)));
-    if (evRows.length > 0) confirmedHeight = evRows[0]!.blockHeight;
     return { txid, session, mempool, confirmedHeight };
   }
 

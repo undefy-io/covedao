@@ -7,6 +7,21 @@ afterEach(() => {
 });
 
 describe("CoreRpcProvider authentication", () => {
+  it("shares simultaneous transaction reads without caching mempool presence", async () => {
+    let release!: (response: Response) => void;
+    const fetchMock = vi.fn().mockImplementationOnce(() => new Promise<Response>((resolve) => { release = resolve; }))
+      .mockResolvedValueOnce(Response.json({ result: null, error: { message: "transaction not found" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    const provider = new CoreRpcProvider({ url: "https://example.com" });
+    const a = provider.getRawTransaction("ab".repeat(32));
+    const b = provider.getRawTransaction("ab".repeat(32));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    release(Response.json({ result: "raw", error: null }));
+    expect(await Promise.all([a, b])).toEqual(["raw", "raw"]);
+    await expect(provider.getRawTransaction("ab".repeat(32))).rejects.toThrow("transaction not found");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("sends an API key in x-api-key without Basic authorization", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ result: 123, error: null }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
@@ -34,6 +49,40 @@ describe("CoreRpcProvider authentication", () => {
     await vi.runAllTimersAsync();
     expect(await height).toBe(123);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry a rate-limited status probe", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 429 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const provider = new CoreRpcProvider({ url: "https://example.com" });
+    await expect(provider.getBlockchainInfo({ retry: false })).rejects.toThrow("HTTP 429");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancels a rate-limit backoff when the caller's budget expires", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 429, headers: { "retry-after": "60" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    const provider = new CoreRpcProvider({ url: "https://example.com" });
+    const controller = new AbortController();
+    const pending = provider.getBlockchainInfo({ signal: controller.signal });
+    const rejected = expect(pending).rejects.toThrow("fee deadline");
+    await Promise.resolve();
+    await Promise.resolve();
+    controller.abort(new Error("fee deadline"));
+    await rejected;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancels a slow status RPC with the caller's deadline", async () => {
+    vi.stubGlobal("fetch", vi.fn((_url, request: RequestInit) => new Promise((_resolve, reject) => {
+      request.signal?.addEventListener("abort", () => reject(request.signal?.reason), { once: true });
+    })));
+    const provider = new CoreRpcProvider({ url: "https://example.com" });
+    const controller = new AbortController();
+    const pending = provider.getBlockchainInfo({ signal: controller.signal, retry: false });
+    const rejected = expect(pending).rejects.toThrow("status deadline");
+    controller.abort(new Error("status deadline"));
+    await rejected;
   });
 });
 

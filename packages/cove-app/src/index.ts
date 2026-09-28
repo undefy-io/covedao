@@ -81,3 +81,4 @@ export {
   type ResolvedRole,
 } from "./wallet-identity.js";
 export { workerLockKey } from "./readiness-probes.js";
+export { saveChainObservation, saveFeeObservation, readFeeObservation } from "./runtime-snapshot.js";

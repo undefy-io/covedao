@@ -1,5 +1,6 @@
 import { addressToScript } from "@/lib/address";
-import { EsploraUtxoProvider } from "@crclaunch/bitcoin";
+import { EsploraUtxoProvider, type ChainUtxo } from "@crclaunch/bitcoin";
+import * as Sentry from "@sentry/nextjs";
 import { ok, fail, handleError } from "@/lib/api";
 import { getV3Services } from "@/lib/v3-server";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -80,8 +81,14 @@ export async function GET(req: Request) {
         503,
       );
     }
-    const height = await provider.getBestHeight();
-    const found = await new EsploraUtxoProvider(esplora, config.network).getUtxos(address, height);
+    let found: ChainUtxo[];
+    try {
+      found = await new EsploraUtxoProvider(esplora, config.network).getUtxos(address);
+    } catch (e) {
+      console.error("[wallet/utxos] address index unavailable:", e);
+      Sentry.captureException(e);
+      return fail("ADDRESS_INDEX_UNAVAILABLE", "The wallet address index is unavailable. Please try again shortly.", 503, true);
+    }
     const utxos = found
       .filter((u) => u.valueSats > BigInt(TOKEN_CARRIER_SATS))
       .map((u) => ({ txid: u.txid, vout: u.vout, valueSats: u.valueSats.toString(), confirmations: u.confirmations }));

@@ -1,4 +1,4 @@
-import type { CoreRpcProvider } from "./provider.js";
+import type { CoreRpcProvider, RpcReadOptions } from "./provider.js";
 
 /**
  * A miner fee that would not relay, or that is plainly a mistake. Carried as a
@@ -147,16 +147,20 @@ const FALLBACK_SAT_PER_VB: Record<FeeTierKey, bigint> = {
  * [floor, ceiling], and the tiers are forced to be non-decreasing so that
  * paying for Priority can never buy a lower rate than Eco.
  */
-export async function loadFeeRates(provider: CoreRpcProvider): Promise<FeeRates> {
-  const floorRaw = await safeMempoolFloor(provider);
+export async function loadFeeRates(provider: CoreRpcProvider, options?: RpcReadOptions): Promise<FeeRates> {
+  const [floor, estimates] = await Promise.all([
+    safeMempoolFloor(provider, options),
+    Promise.all(TIER_TARGETS.map((target) => safeEstimate(provider, target.blocks, options))),
+  ]);
+  const floorRaw = floor.rate;
   const floorSatPerVb = floorRaw > ABSOLUTE_FLOOR_SAT_PER_VB ? floorRaw : ABSOLUTE_FLOOR_SAT_PER_VB;
 
-  let estimated = false;
+  let estimated = floor.estimated;
   const tiers: FeeTier[] = [];
   let previous = 0n;
 
-  for (const target of TIER_TARGETS) {
-    let rate = await safeEstimate(provider, target.blocks);
+  for (const [index, target] of TIER_TARGETS.entries()) {
+    let rate = estimates[index] ?? null;
     if (rate === null) {
       estimated = true;
       rate = FALLBACK_SAT_PER_VB[target.key];
@@ -171,17 +175,17 @@ export async function loadFeeRates(provider: CoreRpcProvider): Promise<FeeRates>
   return { floorSatPerVb, ceilingSatPerVb: ABSOLUTE_CEILING_SAT_PER_VB, tiers, estimated };
 }
 
-async function safeMempoolFloor(provider: CoreRpcProvider): Promise<bigint> {
+async function safeMempoolFloor(provider: CoreRpcProvider, options?: RpcReadOptions): Promise<{ rate: bigint; estimated: boolean }> {
   try {
-    return await provider.getMempoolMinFeeSatPerVb();
+    return { rate: await provider.getMempoolMinFeeSatPerVb(options), estimated: false };
   } catch {
-    return ABSOLUTE_FLOOR_SAT_PER_VB;
+    return { rate: ABSOLUTE_FLOOR_SAT_PER_VB, estimated: true };
   }
 }
 
-async function safeEstimate(provider: CoreRpcProvider, blocks: number): Promise<bigint | null> {
+async function safeEstimate(provider: CoreRpcProvider, blocks: number, options?: RpcReadOptions): Promise<bigint | null> {
   try {
-    return await provider.estimateFeeRateAt(blocks);
+    return await provider.estimateFeeRateAt(blocks, options);
   } catch {
     return null;
   }

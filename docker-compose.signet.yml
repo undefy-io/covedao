@@ -47,7 +47,9 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     working_dir: /app/apps/web
-    command: ["pnpm", "exec", "next", "dev", "--hostname", "0.0.0.0"]
+    command: ["sh", "-c", "pnpm build && exec pnpm exec next start --hostname 0.0.0.0"]
+    environment:
+      NODE_ENV: production
     env_file: .env.signet.local
     depends_on:
       worker: { condition: service_started }
@@ -63,7 +65,7 @@ services:
       interval: 20s
       timeout: 10s
       retries: 12
-      start_period: 90s
+      start_period: 120s
 
 volumes:
   pgdata:

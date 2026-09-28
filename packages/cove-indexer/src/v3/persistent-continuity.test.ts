@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { CoreRpcProvider } from "@crclaunch/bitcoin";
 import type { Database } from "@crclaunch/db";
 import { blockExtendsCursor, persistentWorker, reorgPersistentToTip } from "./persistent.js";
@@ -6,6 +6,23 @@ import { V3IndexerState } from "./state.js";
 import type { V3Store } from "./store.js";
 
 describe("persistent block continuity", () => {
+  it("uses the worker's observed tip without fetching it again", async () => {
+    const config = {
+      network: "regtest" as const, chainIdentity: "bitcoin-regtest",
+      guardianXOnly: Buffer.alloc(32), recoveryKeyXOnly: Buffer.alloc(32),
+      feeScript: Buffer.alloc(22), genesisHeight: 99n,
+    };
+    const state = new V3IndexerState(config);
+    state.applyBlock({ height: 99n, hash: "a".repeat(64), parentHash: "0".repeat(64), txs: [] });
+    const provider = { getBlockchainInfo: vi.fn() } as unknown as CoreRpcProvider;
+    const result = await persistentWorker({
+      db: {} as Database, store: {} as V3Store, state, provider, config,
+      opts: { chainInfo: { chain: "regtest", blocks: 99, bestBlockHash: "a".repeat(64) } },
+    });
+    expect(result.indexed).toBe(0);
+    expect(provider.getBlockchainInfo).not.toHaveBeenCalled();
+  });
+
   it("accepts the activation block and a direct successor", () => {
     expect(
       blockExtendsCursor(

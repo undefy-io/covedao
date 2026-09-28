@@ -1,7 +1,5 @@
 import { schema, type Database } from "@crclaunch/db";
 import { eq } from "drizzle-orm";
-import type { CoreRpcProvider } from "@crclaunch/bitcoin";
-import { computeHealth } from "@crclaunch/cove-indexer/v3";
 import type { V3AppConfig } from "./config.js";
 
 /**
@@ -16,6 +14,8 @@ export interface V3Status {
     reachable: boolean;
     height: bigint;
     tip: string;
+    observedAt: string | null;
+    stale: boolean;
   };
   indexer: {
     health: string;
@@ -35,42 +35,38 @@ export interface V3Status {
 
 export async function getV3Status(params: {
   db: Database;
-  provider: CoreRpcProvider;
   config: V3AppConfig;
 }): Promise<V3Status> {
-  const { db, provider, config } = params;
-  const health = await computeHealth({ db, network: config.network, provider });
-
-  let coreReachable = true;
-  let coreHeight = health.coreHeight;
-  let tip = health.coreBlockHashAtCursor ?? "";
-  if (health.health === "CORE_UNREACHABLE") {
-    coreReachable = false;
-    coreHeight = 0n;
-    tip = "";
-  } else {
-    try {
-      const info = await provider.getBlockchainInfo();
-      coreHeight = BigInt(info.blocks);
-      tip = info.bestBlockHash;
-    } catch {
-      coreReachable = false;
-    }
-  }
-
-  const marketFlag = await db.select().from(schema.featureFlags).where(eq(schema.featureFlags.id, "cove-v3-market"));
+  const { db, config } = params;
+  const [runtimeRows, cursorRows, marketFlag] = await Promise.all([
+    db.select().from(schema.coveV3Runtime).where(eq(schema.coveV3Runtime.network, config.network)),
+    db.select().from(schema.coveV3Cursor).where(eq(schema.coveV3Cursor.network, config.network)),
+    db.select().from(schema.featureFlags).where(eq(schema.featureFlags.id, "cove-v3-market")),
+  ]);
+  const runtime = runtimeRows[0];
+  const cursor = cursorRows[0];
+  const stale = !runtime?.chainObservedAt || Date.now() - runtime.chainObservedAt.getTime() > Math.max(30_000, config.settings.workerPollMs * 3);
+  const coreReachable = !stale && runtime?.coreReachable === true;
+  const coreHeight = runtime?.coreHeight ?? 0n;
+  const indexedHeight = cursor?.height ?? 0n;
+  const lag = coreHeight > indexedHeight ? coreHeight - indexedHeight : 0n;
+  const rebuilding = cursor?.rebuilding ?? true;
+  const health = stale ? "STALE" : !coreReachable ? "CORE_UNREACHABLE"
+    : rebuilding ? "REBUILDING"
+      : indexedHeight > coreHeight || (indexedHeight === coreHeight && cursor?.blockHash !== runtime?.coreTip) ? "DIVERGED"
+        : lag > 2n ? "BEHIND" : "HEALTHY";
 
   return {
     network: config.network,
     appEnabled: config.enabled,
-    core: { reachable: coreReachable, height: coreHeight, tip },
+    core: { reachable: coreReachable, height: coreHeight, tip: runtime?.coreTip ?? "", observedAt: runtime?.chainObservedAt?.toISOString() ?? null, stale },
     indexer: {
-      health: health.health,
-      indexedHeight: health.cursorHeight,
-      indexedBlockHash: health.cursorBlockHash,
-      stateRoot: health.stateRoot,
-      lag: health.lag,
-      rebuilding: health.rebuilding,
+      health,
+      indexedHeight,
+      indexedBlockHash: cursor?.blockHash ?? "",
+      stateRoot: cursor?.stateRoot ?? "",
+      lag,
+      rebuilding,
     },
     guardian: { configured: config.guardianPrivateKey !== null },
     market: { enabled: marketFlag[0]?.enabled ?? true },

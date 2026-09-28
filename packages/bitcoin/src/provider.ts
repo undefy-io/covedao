@@ -60,6 +60,27 @@ interface RpcConfig {
   maxFeeRateSatVb?: bigint;
 }
 
+export interface RpcReadOptions {
+  signal?: AbortSignal;
+  retry?: boolean;
+}
+
+function waitForRetry(ms: number, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
+  return new Promise((resolve, reject) => {
+    const abort = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", abort);
+      reject(signal?.reason);
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", abort);
+      resolve();
+    }, ms);
+    signal?.addEventListener("abort", abort, { once: true });
+  });
+}
+
 /**
  * Convert Bitcoin Core's `estimatesmartfee.feerate` (BTC/kvB) to sat/vB.
  * sat/vB = BTC/kvB × 100,000 (1 BTC = 1e8 sats; 1 kvB = 1000 vB).
@@ -83,13 +104,14 @@ export function testMempoolAcceptParams(hex: string, maxfeerateBtcPerKvb?: numbe
 export class CoreRpcProvider implements BitcoinChainProvider {
   private id = 0;
   private decodedCache = new Map<string, BitcoinProtocolTx>();
+  private rawTransactionPending = new Map<string, Promise<string>>();
   constructor(private readonly cfg: RpcConfig) {
     if (cfg.apiKey && (cfg.user || cfg.password)) {
       throw new Error("RPC API key and Basic credentials cannot be combined");
     }
   }
 
-  private async call<T>(method: string, params: unknown[] = []): Promise<T> {
+  private async call<T>(method: string, params: unknown[] = [], options: RpcReadOptions = {}): Promise<T> {
     const headers: Record<string, string> = { "content-type": "application/json" };
     if (this.cfg.apiKey) {
       headers["x-api-key"] = this.cfg.apiKey;
@@ -103,12 +125,13 @@ export class CoreRpcProvider implements BitcoinChainProvider {
         method: "POST",
         headers,
         body,
-        signal: AbortSignal.timeout(20_000),
+        signal: options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(20_000)]) : AbortSignal.timeout(20_000),
       });
-      if (res.status === 429 && attempt < 3) {
+      if (res.status === 429 && attempt < 3 && options.retry !== false) {
         const retryAfterSeconds = Number(res.headers.get("retry-after"));
         const retryAfterMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0 ? retryAfterSeconds * 1_000 : 0;
-        await new Promise((resolve) => setTimeout(resolve, Math.max(2_000 * (attempt + 1), retryAfterMs)));
+        await res.body?.cancel();
+        await waitForRetry(Math.max(2_000 * (attempt + 1), retryAfterMs), options.signal);
         continue;
       }
       if (!res.ok) throw new Error(`RPC ${method} HTTP ${res.status}`);
@@ -123,13 +146,14 @@ export class CoreRpcProvider implements BitcoinChainProvider {
     return this.call<number>("getblockcount");
   }
 
-  async getBlockHash(height: number): Promise<string> {
-    return this.call<string>("getblockhash", [height]);
+  async getBlockHash(height: number, options?: RpcReadOptions): Promise<string> {
+    return this.call<string>("getblockhash", [height], options);
   }
 
-  async getBlockchainInfo(): Promise<BlockchainInfo> {
+  async getBlockchainInfo(options?: RpcReadOptions): Promise<BlockchainInfo> {
     const info = await this.call<{ chain: string; blocks: number; bestblockhash: string }>(
       "getblockchaininfo",
+      [], options,
     );
     return { chain: info.chain, blocks: info.blocks, bestBlockHash: info.bestblockhash };
   }
@@ -164,7 +188,13 @@ export class CoreRpcProvider implements BitcoinChainProvider {
   }
 
   async getRawTransaction(txid: string): Promise<string> {
-    return this.call<string>("getrawtransaction", [txid, false]);
+    const pending = this.rawTransactionPending.get(txid);
+    if (pending) return pending;
+    const read = this.call<string>("getrawtransaction", [txid, false]).finally(() => {
+      this.rawTransactionPending.delete(txid);
+    });
+    this.rawTransactionPending.set(txid, read);
+    return read;
   }
 
   /** Decode a raw transaction (cached; correctness never depends on the cache). */
@@ -280,10 +310,10 @@ export class CoreRpcProvider implements BitcoinChainProvider {
    * into a low number here: the caller decides the fallback, because only the
    * caller knows whether guessing is acceptable.
    */
-  async estimateFeeRateAt(blocks: number): Promise<bigint | null> {
+  async estimateFeeRateAt(blocks: number, options?: RpcReadOptions): Promise<bigint | null> {
     const res = await this.call<{ feerate?: number; errors?: string[] }>("estimatesmartfee", [
       blocks,
-    ]);
+    ], options);
     const btcPerKvb = res?.feerate;
     if (typeof btcPerKvb !== "number" || !Number.isFinite(btcPerKvb) || btcPerKvb <= 0) return null;
     const rate = btcPerKvbToSatPerVb(btcPerKvb);
@@ -300,9 +330,10 @@ export class CoreRpcProvider implements BitcoinChainProvider {
    * evicting. A transaction below it is not "slow" — it is refused outright,
    * so it is the hard floor every build must clear.
    */
-  async getMempoolMinFeeSatPerVb(): Promise<bigint> {
+  async getMempoolMinFeeSatPerVb(options?: RpcReadOptions): Promise<bigint> {
     const info = await this.call<{ mempoolminfee?: number; minrelaytxfee?: number }>(
       "getmempoolinfo",
+      [], options,
     );
     const btcPerKvb = Math.max(info?.mempoolminfee ?? 0, info?.minrelaytxfee ?? 0);
     if (!Number.isFinite(btcPerKvb) || btcPerKvb <= 0) return 1n;

@@ -505,6 +505,19 @@ export const coveV3Blocks = pgTable(
   ],
 );
 
+export const coveV3Runtime = pgTable("cove_v3_runtime", {
+  network: text("network").primaryKey(),
+  coreHeight: atoms("core_height").notNull().default(sql`0`),
+  coreTip: text("core_tip").notNull().default(""),
+  coreReachable: boolean("core_reachable").notNull().default(false),
+  chainObservedAt: timestamp("chain_observed_at", { withTimezone: true }),
+  feeRates: jsonb("fee_rates").$type<{
+    floorSatPerVb: string; ceilingSatPerVb: string; estimated: boolean;
+    tiers: { key: "eco" | "standard" | "priority"; label: string; blocks: number; satPerVb: string }[];
+  }>(),
+  feesObservedAt: timestamp("fees_observed_at", { withTimezone: true }),
+});
+
 export const coveV3Tokens = pgTable(
   "cove_v3_tokens",
   {

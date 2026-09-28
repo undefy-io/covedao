@@ -7,7 +7,7 @@ import {
   reorgPersistentToTip,
   hydrateState,
 } from "@crclaunch/cove-indexer/v3";
-import { loadV3AppConfig, V3AppService, Metrics, buildAppTransitionSigner, watchGuardianAgreement, workerLockKey } from "@crclaunch/cove-app";
+import { loadV3AppConfig, V3AppService, Metrics, buildAppTransitionSigner, watchGuardianAgreement, workerLockKey, saveChainObservation, saveFeeObservation } from "@crclaunch/cove-app";
 import type { V3IndexerConfig } from "@crclaunch/cove-indexer/v3";
 import { workerEnv } from "./v3-env.js";
 
@@ -68,15 +68,21 @@ async function main() {
 
   const state = await hydrateState(db, config.network, indexerConfig);
   console.log(`V3 worker started (${config.network}), cursor ${state.cursor.height}`);
+  let lastFeeRefresh = 0;
 
   const tick = async () => {
     try {
       // 1. check Core + reorg
-      const info = await provider.getBlockchainInfo();
+      const info = await provider.getBlockchainInfo().catch(async (e: unknown) => {
+        await saveChainObservation(db, config.network, null);
+        throw e;
+      });
+      await saveChainObservation(db, config.network, info);
       const coreHeight = BigInt(info.blocks);
       if (state.cursor.height > 0n) {
         const shorterTip = state.cursor.height > coreHeight;
-        const coreHashAtCursor = shorterTip ? null : await provider.getBlockHash(Number(state.cursor.height));
+        const coreHashAtCursor = shorterTip ? null : state.cursor.height === coreHeight
+          ? info.bestBlockHash : await provider.getBlockHash(Number(state.cursor.height));
         if (shorterTip || coreHashAtCursor !== state.cursor.blockHash) {
           console.log(`reorg detected at height ${state.cursor.height}; rolling back to tip`);
           await reorgPersistentToTip({ db, store, state, provider, config: indexerConfig });
@@ -84,9 +90,13 @@ async function main() {
         }
       }
       // 2. catch up persistent indexer
-      await persistentWorker({ db, store, state, provider, config: indexerConfig });
+      await persistentWorker({ db, store, state, provider, config: indexerConfig, opts: { chainInfo: info } });
+      if (Date.now() - lastFeeRefresh >= 60_000) {
+        await saveFeeObservation(db, config.network, await app.feeRates());
+        lastFeeRefresh = Date.now();
+      }
       // 3. reconcile market
-      const market = await app.market.reconcileMarket();
+      const market = await app.market.reconcileMarket(coreHeight);
       metrics.gauge("market.listings_active", BigInt(market.confirmed));
       metrics.inc("market.confirmations", market.confirmed);
       // 4. reconcile app tx sessions

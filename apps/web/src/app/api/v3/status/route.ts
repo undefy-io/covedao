@@ -8,8 +8,7 @@ export async function GET(req: Request) {
   try {
     const limited = checkRateLimit(req, "read-status");
     if (limited) return limited;
-    const { app } = getV3Services();
-    return ok(await app.status());
+    return ok(await getV3Services().app.status());
   } catch (e) {
     return handleError(e);
   }

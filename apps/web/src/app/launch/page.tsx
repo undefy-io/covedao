@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useWallet } from "@/components/WalletProvider";
 import { verifyClientIntent } from "@crclaunch/wallets";
 import { FeePicker, useFeeRates } from "@/components/FeePicker";
@@ -177,9 +178,9 @@ export default function LaunchPage() {
       {status && <p className="text-sm text-success">{status}</p>}
       {error && <p className="text-sm text-danger">{error}</p>}
       {tokenId && (
-        <a href={`/token/${tokenId}`} className="block text-center text-sm text-signal hover:underline">
+        <Link href={`/token/${tokenId}`} className="block text-center text-sm text-signal hover:underline">
           {t("launch.openToken")}
-        </a>
+        </Link>
       )}
     </div>
   );

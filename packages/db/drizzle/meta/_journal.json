@@ -85,6 +85,13 @@
       "when": 1790485916882,
       "tag": "0011_common_silvermane",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790598739290,
+      "tag": "0012_runtime_snapshots",
+      "breakpoints": true
     }
   ]
 }

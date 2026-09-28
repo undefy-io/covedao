@@ -22,7 +22,7 @@ export class EsploraUtxoProvider {
     private readonly network: NetworkName = "signet",
   ) {}
 
-  async getUtxos(address: string, bestHeight: number): Promise<ChainUtxo[]> {
+  async getUtxos(address: string, bestHeight?: number): Promise<ChainUtxo[]> {
     const net = btcNetwork(this.network);
     const script = bitcoin.address.toOutputScript(address, net);
     const scriptHex = script.toString("hex");
@@ -33,9 +33,19 @@ export class EsploraUtxoProvider {
     if (!res.ok) throw new Error(`Esplora utxo HTTP ${res.status}`);
     const utxos = (await res.json()) as EsploraUtxoJson[];
 
+    if (bestHeight === undefined && utxos.some((u) => u.status?.confirmed)) {
+      const tip = await fetch(`${this.baseUrl}/blocks/tip/height`, {
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!tip.ok) throw new Error(`Esplora tip HTTP ${tip.status}`);
+      const rawHeight = (await tip.text()).trim();
+      bestHeight = /^\d+$/.test(rawHeight) ? Number(rawHeight) : NaN;
+      if (!Number.isSafeInteger(bestHeight)) throw new Error("Esplora returned an invalid tip height");
+    }
+
     return utxos.map((u) => {
       const blockHeight = u.status?.block_height;
-      const confirmations = u.status?.confirmed && blockHeight !== undefined ? bestHeight - blockHeight + 1 : 0;
+      const confirmations = u.status?.confirmed && blockHeight !== undefined && bestHeight !== undefined ? bestHeight - blockHeight + 1 : 0;
       return {
         txid: u.txid,
         vout: u.vout,

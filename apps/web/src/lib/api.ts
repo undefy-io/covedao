@@ -62,10 +62,12 @@ function codeOf(e: unknown): string {
 
 /** Map V3 errors to stable client codes + human copy (§71/§72). Never expose stacks. */
 export function handleError(e: unknown): Response {
-  console.error("[api] error:", e instanceof Error ? (e.stack ?? e.message) : String(e));
   const code = codeOf(e);
   if (code === "INTERNAL_ERROR") {
+    console.error("[api] error:", e instanceof Error ? (e.stack ?? e.message) : String(e));
     Sentry.captureException(e instanceof Error ? e : new Error(String(e)));
+  } else {
+    console.warn(`[api] ${code}`);
   }
   const human = humanCopy(code);
   const retryable = [
@@ -80,6 +82,8 @@ export function handleError(e: unknown): Response {
   const status =
     code === "INTERNAL_ERROR"
       ? 500
+      : code === "CORE_UNAVAILABLE"
+        ? 503
       : code === "REQUEST_TOO_LARGE"
         ? 413
         : code === "WRONG_NETWORK" || code === "MAINNET_DISABLED"

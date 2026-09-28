@@ -21,6 +21,7 @@ export {
   type BitcoinBlock,
   type ChainUtxo,
   type BlockchainInfo,
+  type RpcReadOptions,
 } from "./provider.js";
 export {
   buildUnsignedPsbt,

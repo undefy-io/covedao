@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   estimateVsize,
   outputVbytes,
@@ -118,6 +118,20 @@ describe("resolveMinerFee", () => {
 });
 
 describe("loadFeeRates", () => {
+  it("starts independent fee reads together and keeps tiers ordered", async () => {
+    let releaseFloor!: (value: bigint) => void;
+    const floor = new Promise<bigint>((resolve) => { releaseFloor = resolve; });
+    const provider = {
+      getMempoolMinFeeSatPerVb: vi.fn(() => floor),
+      estimateFeeRateAt: vi.fn(async (blocks: number) => BigInt(20 - blocks)),
+    } as unknown as Parameters<typeof loadFeeRates>[0];
+    const pending = loadFeeRates(provider);
+    expect(provider.estimateFeeRateAt).toHaveBeenCalledTimes(3);
+    releaseFloor(10n);
+    const rates = await pending;
+    expect(rates.tiers.map((t) => t.satPerVb)).toEqual([10n, 17n, 19n]);
+  });
+
   function fakeProvider(opts: {
     floor?: bigint;
     rates?: Record<number, bigint | null>;
@@ -161,5 +175,10 @@ describe("loadFeeRates", () => {
   it("survives a node that cannot answer, rather than taking the whole app down", async () => {
     const rates = await loadFeeRates(fakeProvider({ throwOnFloor: true }));
     expect(rates.floorSatPerVb).toBe(1n);
+  });
+
+  it("labels the rates estimated when only the relay-floor lookup fails", async () => {
+    const rates = await loadFeeRates(fakeProvider({ throwOnFloor: true, rates: { 12: 3n, 3: 9n, 1: 20n } }));
+    expect(rates.estimated).toBe(true);
   });
 });
