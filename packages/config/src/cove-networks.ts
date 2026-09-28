@@ -30,7 +30,12 @@ export interface CoveNetworkSettings {
    * inscriptions or runes. Required on mainnet.
    */
   ordUrl: string | null;
-  /** Also write the advisory crc-20 JSON OP_RETURN (needs Core 30+ relay). */
+  /**
+   * Also write the crc-20 JSON OP_RETURN ({"p":"crc-20","op":"mint",...}) so
+   * explorers and crc-20 tools read covs transactions like LEAF and BONS.
+   * Needs Bitcoin Core 30+ relay (two OP_RETURNs). Off on regtest because the
+   * CI nodes run Core 28.1; turn it on locally with COVE_V3_DISCOVERY_ENVELOPE.
+   */
   discoveryEnvelope: boolean;
 }
 
@@ -51,7 +56,7 @@ export const COVE_NETWORK_SETTINGS: Record<CoveNetworkName, CoveNetworkSettings>
     explorerUrl: "https://mempool.space/signet",
     esploraUrl: "https://mempool.space/signet/api",
     ordUrl: null,
-    discoveryEnvelope: false,
+    discoveryEnvelope: true,
   },
   testnet: {
     v3Enabled: true,
@@ -60,7 +65,7 @@ export const COVE_NETWORK_SETTINGS: Record<CoveNetworkName, CoveNetworkSettings>
     explorerUrl: "https://mempool.space/testnet",
     esploraUrl: "https://mempool.space/testnet/api",
     ordUrl: null,
-    discoveryEnvelope: false,
+    discoveryEnvelope: true,
   },
   mainnet: {
     v3Enabled: true,
@@ -69,7 +74,7 @@ export const COVE_NETWORK_SETTINGS: Record<CoveNetworkName, CoveNetworkSettings>
     explorerUrl: "https://mempool.space",
     esploraUrl: "https://mempool.space/api",
     ordUrl: "https://ordinals.com",
-    discoveryEnvelope: false,
+    discoveryEnvelope: true,
   },
 };
 

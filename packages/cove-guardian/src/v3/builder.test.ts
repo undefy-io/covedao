@@ -328,7 +328,7 @@ describe("crc-20 discovery envelope in the built PSBT (§D1)", () => {
     expect(last.script[0]).toBe(0x6a);
     expect(last.value).toBe(0);
     expect(Buffer.from(last.script).subarray(2).toString("utf8")).toBe(
-      '{"p":"crc-20","op":"mint","tick":"FROG","amt":"100000000000000"}',
+      '{"p":"crc-20","op":"mint","tick":"FROG"}',
     );
   });
 

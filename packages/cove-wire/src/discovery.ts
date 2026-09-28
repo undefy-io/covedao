@@ -78,7 +78,9 @@ export function discoveryFor(binary: ParsedEnvelopeV2): DiscoveryEnvelope {
     case OP_DEPLOY:
       return { p: COVE_PROTOCOL_ID, op, tick: canonicalTicker(binary.ticker) };
     case OP_MINT:
-      return { p: COVE_PROTOCOL_ID, op, tick: "", amt: binary.amount.toString() };
+      // Same shape as every other crc-20 mint (LEAF, BONS): no amount. The
+      // amount lives in the binary envelope; the crc-20 line only announces it.
+      return { p: COVE_PROTOCOL_ID, op, tick: "" };
     case OP_TRANSFER: {
       const total = binary.allocations.reduce((a, x) => a + x.amount, 0n);
       return { p: COVE_PROTOCOL_ID, op, tick: "", amt: total.toString() };
