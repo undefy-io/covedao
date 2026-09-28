@@ -288,12 +288,14 @@ async function main() {
   // ── DB-backed snapshot → real Guardian ──
   const health = await computeHealth({ db, network: "regtest", provider });
   if (health.health !== "HEALTHY") throw new Error(`health not HEALTHY: ${health.health}`);
+  // Fund first, then snapshot: the Guardian refuses a funding coin newer than
+  // the indexed state it is judged against.
+  const newBuyer = REGTEST_KEYS.carol;
+  const newBuyerFund = await fund(newBuyer, 1.0);
   const snapshot = await loadCanonicalViewSnapshotFromDb({ db, network: "regtest", tokenId: tokenIdHex });
   // cross-token lookup must return null
   if (snapshot.getCurrentBackingState(Buffer.alloc(32, 0x01)) !== null) throw new Error("cross-token snapshot leaked backing");
   // use snapshot directly in a Guardian MINT (no in-memory V3IndexerState)
-  const newBuyer = REGTEST_KEYS.carol;
-  const newBuyerFund = await fund(newBuyer, 1.0);
   const mint3 = buildMintPsbtV3({
     network: bitcoin.networks.regtest, tokenId, prevState: mint2.nextState,
     prevBacking: { txid: mint2Txid, vout: 1, script: mint2.nextVault.scriptPubKey, valueSats: RESERVE_ANCHOR_SATS + mint2.nextState.backingSats },

@@ -135,8 +135,8 @@ test("ZH-005 launch and mint in Chinese", async ({ browser }, testInfo) => {
   await expect(page.getByRole("button", { name: "铸造", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "卖回", exact: true })).toBeVisible();
   await page.getByRole("button", { name: /连接钱包/ }).last().click();
-  await page.getByLabel("花费 · sats").fill("200000");
-  await expect(page.getByText(/≈ .* ZHCN/)).toBeVisible({ timeout: 30_000 });
+  await page.getByLabel(/^铸造 · ZHCN/).fill("20000");
+  await expect(page.getByRole("button", { name: "确认铸造" })).toBeEnabled({ timeout: 30_000 });
   await page.getByRole("button", { name: "确认铸造" }).click();
   await expect(page.getByText("你正在铸造")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("曲线价格", { exact: true })).toBeVisible();

@@ -137,10 +137,10 @@ test("X-002 buy lands the tokens on the Taproot address", async ({ browser }) =>
   const page = await walletPage(browser, DAVE);
   await page.goto(`${BASE}/token/${tokenId}`);
   await page.getByRole("button", { name: /connect wallet/i }).click();
-  await page.getByLabel(/Spend . sats/i).fill("400000");
-  await expect(page.getByText(/≈ .* DAVE/)).toBeVisible({ timeout: 30_000 });
-  const q = await fetch(`${BASE}/api/v3/backing/buy/quote-sats`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ tokenId, budgetSats: "400000" }) }).then((r) => r.json());
-  minted = BigInt(q.data.amountAtoms);
+  // The mint box takes a token amount in whole lots of 1,000.
+  await page.getByLabel(/^Mint . DAVE/).fill("1000000");
+  minted = 1_000_000n * T;
+  await expect(page.getByRole("button", { name: /review mint/i })).toBeEnabled({ timeout: 30_000 });
   await page.getByRole("button", { name: /review mint/i }).click();
   await expect(page.getByText(/you are minting/i)).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: /confirm . sign/i }).click();

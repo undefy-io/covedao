@@ -136,23 +136,19 @@ test("E2E-002 mint: Alice mints by spending sats", async ({ browser }) => {
   await page.getByRole("button", { name: /connect wallet/i }).click();
   // Before mint-out the only trades are with the curve.
   await expect(page.getByRole("button", { name: "List", exact: true })).toHaveCount(0);
-  // The first quick button is the smallest mint that works right now, and it
-  // really does mint something.
+  // The mint box takes a token amount in whole lots of 1,000. A part lot is refused.
+  const mintBox = page.getByLabel(/^Mint . FROG/);
+  await mintBox.fill("1500");
+  await expect(page.getByRole("button", { name: /review mint/i })).toBeDisabled();
+  // The sats quote still says the smallest spend that mints one lot.
   const zero = await fetch(`${BASE}/api/v3/backing/buy/quote-sats`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ tokenId: aliceTokenId, budgetSats: "0" }) }).then((r) => r.json());
   const minSpend = BigInt(zero.data.minSpendSats);
-  const minLabel = minSpend.toLocaleString("en-US");
-  await page.getByRole("button", { name: minLabel, exact: true }).click();
-  await expect(page.getByLabel(/Spend . sats/i)).toHaveValue(minSpend.toString());
-  await expect(page.getByText(/≈ 1K FROG/)).toBeVisible({ timeout: 30_000 });
   const one = await fetch(`${BASE}/api/v3/backing/buy/quote-sats`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ tokenId: aliceTokenId, budgetSats: (minSpend - 1n).toString() }) }).then((r) => r.json());
   expect(one.data.amountAtoms).toBe("0"); // one sat less mints nothing
 
-  await page.getByLabel(/Spend . sats/i).fill("200000");
-  await expect(page.getByText(/≈ .* FROG/)).toBeVisible({ timeout: 30_000 });
-  const q = await fetch(`${BASE}/api/v3/backing/buy/quote-sats`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ tokenId: aliceTokenId, budgetSats: "200000" }) }).then((r) => r.json());
-  minted = BigInt(q.data.amountAtoms);
-  expect(minted).toBeGreaterThan(10_000n * T);
-  expect(minted % (1_000n * T)).toBe(0n); // whole lots
+  await mintBox.fill("1000000");
+  minted = 1_000_000n * T;
+  await expect(page.getByRole("button", { name: /review mint/i })).toBeEnabled({ timeout: 30_000 });
   // A budget below one lot (the flat fee alone is 5,000 sats) quotes nothing, not a 500.
   const tiny = await fetch(`${BASE}/api/v3/backing/buy/quote-sats`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ tokenId: aliceTokenId, budgetSats: "100" }) }).then((r) => r.json());
   expect(tiny.ok).toBe(true);
@@ -296,8 +292,10 @@ test("E2E-009 mint-out: the page switches to Buy / Sell / Redeem, and the market
   for (let i = 0; i < 40; i++) {
     const d = await fetch(`${BASE}/api/v3/tokens/${fullId}`).then((r) => r.json());
     if (BigInt(d.data.issuedSupplyAtoms) >= 21_000_000n * T) break;
-    await carol.getByLabel(/Spend . sats/i).fill("150000000");
-    await expect(carol.getByText(/most one mint can take|last tokens on the curve/i)).toBeVisible({ timeout: 30_000 });
+    // The most one mint can take right now, from the sats quote.
+    const q = await fetch(`${BASE}/api/v3/backing/buy/quote-sats`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ tokenId: fullId, budgetSats: "150000000" }) }).then((r) => r.json());
+    await carol.getByLabel(/^Mint . FULL/).fill((BigInt(q.data.amountAtoms) / T).toString());
+    await expect(carol.getByRole("button", { name: /review mint/i })).toBeEnabled({ timeout: 30_000 });
     await carol.getByRole("button", { name: /review mint/i }).click();
     await carol.getByRole("button", { name: /confirm . sign/i }).click();
     await expect(carol.getByText(/^minted\./i).first()).toBeVisible({ timeout: 60_000 });
@@ -324,6 +322,8 @@ test("E2E-009 mint-out: the page switches to Buy / Sell / Redeem, and the market
   await bob.goto(`${BASE}/token/${fullId}`);
   await bob.getByRole("button", { name: /connect wallet/i }).click();
   await bob.getByRole("button", { name: "Buy", exact: true }).first().click();
+  // Buy by token amount: it has to match a listing exactly.
+  await bob.getByLabel(/^Buy . FULL amount/).fill("1000");
   await bob.getByRole("button", { name: "Buy", exact: true }).last().click();
   await expect(bob.getByText(/^bought — arrives when/i).first()).toBeVisible({ timeout: 60_000 });
   expect(signsBy(IDENTITIES.carol)).toBe(carolSignsBefore);
