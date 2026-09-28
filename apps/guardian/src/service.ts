@@ -2,13 +2,14 @@ import * as bitcoin from "bitcoinjs-lib";
 import { createDb } from "@crclaunch/db";
 import type { MainnetProfile, ResolvedMainnetProfile } from "@crclaunch/cove-mainnet";
 import type { VaultRecoveryProfile } from "@crclaunch/cove-vault";
-import { CoreRpcProvider } from "@crclaunch/bitcoin";
+import { CoreRpcProvider, checkSpendSignature, unfinalizeKeyInputs } from "@crclaunch/bitcoin";
 import {
   LocalGuardianTransitionSigner,
   custodySigningBackend,
   InProcessGuardianTransport,
   chainFundingChecker,
   ordAssetLookup,
+  verifyPendingBackingView,
   type GuardianCustodyBackend,
   type GuardianSigningBackend,
   type GuardianRiskPolicy,
@@ -164,7 +165,12 @@ export function buildGuardianService(config: GuardianServiceConfig): BuiltGuardi
     guardianXOnly,
     network: config.network,
     decode: (psbtBase64) => ({ psbt: bitcoin.Psbt.fromBase64(psbtBase64) }),
-    loadView: async (tokenId) => {
+    loadView: async (tokenId, psbt) => {
+      const authorization = psbt.clone();
+      unfinalizeKeyInputs(authorization);
+      for (let index = 1; index < authorization.data.inputs.length; index++) {
+        if (!checkSpendSignature(authorization, index).ok) throw new Error("Guardian wallet signature is invalid");
+      }
       const view = await loadCanonicalViewSnapshotFromDb({ db, network: config.network, tokenId });
       if (view.rebuilding) throw new Error("Guardian indexer view is rebuilding");
       const tip = await core.getBlockchainInfo();
@@ -172,7 +178,20 @@ export function buildGuardianService(config: GuardianServiceConfig): BuiltGuardi
       if (view.cursorHeight > 0n && await core.getBlockHash(Number(view.cursorHeight)) !== view.cursorBlockHash) {
         throw new Error("Guardian indexer cursor diverged from Core");
       }
-      return view;
+      const input = psbt.txInputs[0];
+      if (!input) throw new Error("Guardian request has no vault input");
+      return verifyPendingBackingView({ view, target: { txid: Buffer.from(input.hash).reverse().toString("hex"), vout: input.index },
+        tokenId: Buffer.from(tokenId, "hex"), requestedInputs: psbt.txInputs.slice(1).map((input) => ({ txid: Buffer.from(input.hash).reverse().toString("hex"), vout: input.index })), provider: core, journal, network: config.network,
+        guardianXOnly: Buffer.from(guardianXOnly, "hex"), recoveryKeyXOnly, recoveryProfile, feeScript,
+        buyFeeBps: BigInt(profile.buyFeeBps!), redeemFeeBps: BigInt(profile.redeemFeeBps!), maxMinerFeeSats: MAX_MINER_FEE_SATS,
+        assertCurrent: async () => {
+          const latest = await loadCanonicalViewSnapshotFromDb({ db, network: config.network, tokenId });
+          const before = view.getBackingOutpoint(Buffer.from(tokenId, "hex"));
+          const after = latest.getBackingOutpoint(Buffer.from(tokenId, "hex"));
+          if (latest.rebuilding || latest.cursorHeight !== view.cursorHeight || latest.cursorBlockHash !== view.cursorBlockHash || latest.stateRoot !== view.stateRoot ||
+            after?.txid !== before?.txid || after?.vout !== before?.vout) throw new Error("Guardian indexer view changed during pending validation");
+        },
+      });
     },
     recoveryKeyXOnly,
     recoveryProfile,

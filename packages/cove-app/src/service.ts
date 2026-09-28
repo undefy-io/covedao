@@ -1145,7 +1145,10 @@ export class V3AppService {
         recoveryProfile: this.config.recoveryProfile, feeScript: this.config.feeScript, maxMinerFeeSats: this.config.maxMinerFeeSats, buyFeeBps: this.config.buyFeeBps,
         buyFeeFlatSats: this.config.buyFeeFlatSats,
         discoveryTicker, fundingChecker: this.fundingChecker });
-      if (!signed.ok) throw new AppError("GUARDIAN_REJECTED", `${signed.reason}: ${signed.detail}`);
+      if (!signed.ok) {
+        const transient = ["GUARDIAN_TIMEOUT", "REMOTE_GUARDIAN_UNAVAILABLE", "FUNDING_CHECK_UNAVAILABLE", "AUDIT_PERSISTENCE_FAILED", "SIGNING_FAILED"].includes(signed.reason);
+        throw new AppError(transient ? "CORE_UNAVAILABLE" : "GUARDIAN_REJECTED", `${signed.reason}: ${signed.detail}`);
+      }
       const rawTxHex = psbt.extractTransaction().toHex();
       const validated = await validateFinalizedMintTransaction({
         rawTxHex,
@@ -1390,7 +1393,10 @@ export class V3AppService {
       const signed = await this.transitionSigner.signRedeem({ psbt, view, network: this.config.network, recoveryKeyXOnly: this.config.recoveryKeyXOnly,
         recoveryProfile: this.config.recoveryProfile, feeScript: this.config.feeScript, maxMinerFeeSats: this.config.maxMinerFeeSats, redeemFeeBps: this.config.redeemFeeBps,
         redeemFeeFlatSats: this.config.redeemFeeFlatSats, fundingChecker: this.fundingChecker });
-      if (!signed.ok) throw new AppError("GUARDIAN_REJECTED", `${signed.reason}: ${signed.detail}`);
+      if (!signed.ok) {
+        const transient = ["GUARDIAN_TIMEOUT", "REMOTE_GUARDIAN_UNAVAILABLE", "FUNDING_CHECK_UNAVAILABLE", "AUDIT_PERSISTENCE_FAILED", "SIGNING_FAILED"].includes(signed.reason);
+        throw new AppError(transient ? "CORE_UNAVAILABLE" : "GUARDIAN_REJECTED", `${signed.reason}: ${signed.detail}`);
+      }
       const rawTxHex = psbt.extractTransaction().toHex();
       const validated = await validateFinalizedRedeemTransaction({
         rawTxHex,

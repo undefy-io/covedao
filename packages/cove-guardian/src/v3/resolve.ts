@@ -73,24 +73,9 @@ export function decodeCoveOpReturnTx(tx: bitcoin.Transaction): ParsedEnvelopeV2 
  * used for the audit digest and for independent BIP341 sighash computation.
  */
 export function unsignedTransaction(psbt: bitcoin.Psbt): bitcoin.Transaction {
-  const tx = new bitcoin.Transaction();
-  tx.version = 2;
-  for (const i of psbt.txInputs) {
-    tx.ins.push({
-      hash: Buffer.from(i.hash),
-      index: i.index,
-      script: Buffer.alloc(0),
-      sequence: i.sequence ?? 0xffffffff,
-      witness: [],
-    });
-  }
-  for (const o of psbt.txOutputs) {
-    tx.outs.push({ script: Buffer.from(o.script), value: o.value });
-  }
-  return tx;
+  return bitcoin.Transaction.fromBuffer(psbt.data.globalMap.unsignedTx.toBuffer());
 }
 
-/** Compute the unsigned transaction digest (txid of the unsigned transaction). */
 export function unsignedTxDigest(psbt: bitcoin.Psbt): string {
   return unsignedTransaction(psbt).getId();
 }

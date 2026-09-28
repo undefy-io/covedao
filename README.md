@@ -223,8 +223,13 @@ Guardian signing results. Drain the old web and worker processes before applying
 migrations and starting the updated Guardian, web, and worker; old writers do not
 honor the new submission states. Both repositories carry the same migration
 history when they share a database. Apply that history once per database.
-The separate Guardian update also checks funding against one chain tip per
-validation. Pending ancestry support and database-only pending quotes/status
+The separate Guardian verifies up to 24 pending vault ancestors against its
+own signing journal and node. Each parent must remain in the mempool, connect
+to indexed backing, and pass signature, state, successor and fee checks. New
+signing also verifies wallet signatures and live token inputs. Tip or indexer
+changes abort validation; an exact signed retry can recover its original
+signature without signing again. Let legacy pending transactions without stored
+signing results confirm before this rollout. Database-only pending quotes/status
 remain in the API scaling plan.
 
 ### Public read limits

@@ -110,8 +110,22 @@ describe("remote Guardian client (§24)", () => {
     mutated.addOutput({ script: Buffer.from("6a", "hex"), value: 0 });
     expect((await restarted.signMint({ ...request, psbt: mutated, view: new CoveChainView() })).ok).toBe(false);
     expect((await restarted.signRedeem({ ...request, psbt: bitcoin.Psbt.fromBase64(original) })).ok).toBe(false);
+    const changedLocktime = bitcoin.Psbt.fromBase64(original);
+    changedLocktime.setLocktime(1);
+    expect((await restarted.signMint({ ...request, psbt: changedLocktime, view: new CoveChainView() })).ok).toBe(false);
+    const changedVersion = bitcoin.Psbt.fromBase64(original);
+    changedVersion.setVersion(3);
+    expect((await restarted.signMint({ ...request, psbt: changedVersion, view: new CoveChainView() })).ok).toBe(false);
     expect(signing).toHaveBeenCalledTimes(1);
   });
+  it("cross-checks the requested token and operation against the transaction before signing", async () => {
+    const { psbt, view, tokenId } = mintFixture();
+    const transport = transportFor(view);
+    const input = { requestId: "commitment", network: "regtest" as const, operation: "MINT" as const, psbtBase64: psbt.toBase64(), tokenId };
+    expect(await transport.sign({ ...input, tokenId: "cd".repeat(32) })).toMatchObject({ ok: false, reason: "REQUEST_COMMITMENT_MISMATCH" });
+    expect(await transport.sign({ ...input, operation: "REDEEM" })).toMatchObject({ ok: false, reason: "REQUEST_COMMITMENT_MISMATCH" });
+  });
+
   it.skipIf(!isSimplicityAvailable())("signs a MINT through the in-process transport and independently verifies", async () => {
     const { psbt, view, tokenId } = mintFixture();
     const remote = new RemoteGuardianTransitionSigner(transportFor(view), PROFILE_HASH, guardianXOnlyHex);
@@ -198,7 +212,7 @@ describe("remote Guardian client (§24)", () => {
       feeScript,
       maxMinerFeeSats: 1_000n,
     });
-    const empty = new bitcoin.Psbt({ network: bitcoin.networks.regtest });
+    const empty = mintFixture().psbt;
     await transport.sign({
       requestId: "x",
       operation: "MINT",
