@@ -13,6 +13,32 @@ export function clientIp(req: Request, trustedHeader = "none"): string {
 
 export function createRateLimiter(): FixedWindowRateLimiter { return new FixedWindowRateLimiter(); }
 
+export function createStatusRateLimiter(
+  now: () => number = () => performance.now(),
+  limits = { total: 120_000, perIp: 1_200, subjects: 10_000 },
+) {
+  let window = -1, total = 0;
+  const counts = new Map<string, number>();
+  return (ip: string): boolean => {
+    const current = Math.floor(now() / 60_000);
+    if (current !== window) {
+      window = current;
+      total = 0;
+      counts.clear();
+    }
+    if (total >= limits.total) return false;
+    if (ip !== "local") {
+      const count = counts.get(ip) ?? 0;
+      if (count >= limits.perIp || (!counts.has(ip) && counts.size >= limits.subjects)) return false;
+      counts.set(ip, count + 1);
+    }
+    total++;
+    return true;
+  };
+}
+
+const allowStatus = createStatusRateLimiter();
+
 let checking = 0;
 
 export async function checkRateLimit(req: Request, operation: string, limiter?: FixedWindowRateLimiter): Promise<Response | null> {
@@ -22,6 +48,8 @@ export async function checkRateLimit(req: Request, operation: string, limiter?: 
     return response;
   };
   if (limiter) return limiter.check({ scope: "ip", subject: clientIp(req), operation }, { limit: 120, windowMs: 60_000 }).allowed ? null : denied();
+  if (operation === "read-status")
+    return allowStatus(clientIp(req, serverEnv.COVE_TRUSTED_CLIENT_IP_HEADER)) ? null : denied();
   const unavailable = () => {
     const response = fail("CAPACITY_UNAVAILABLE", "Please retry shortly.", 503, true);
     response.headers.set("retry-after", "2");

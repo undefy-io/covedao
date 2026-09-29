@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkRateLimit, clientIp, createRateLimiter } from "./rate-limit.js";
+import { checkRateLimit, clientIp, createRateLimiter, createStatusRateLimiter } from "./rate-limit.js";
 
 function req(ip?: string): Request {
   return { headers: { get: () => ip ?? null } } as unknown as Request;
@@ -24,4 +24,19 @@ describe("web rate limiting (§M4)", () => {
     expect(response!.status).toBe(429);
     expect(response!.headers.get("retry-after")).toBe("60");
   });
+});
+
+it("bounds status requests, IP cardinality and windows without a database", () => {
+  let now = 0;
+  const allow = createStatusRateLimiter(() => now, { total: 5, perIp: 2, subjects: 2 });
+  expect(allow("1.1.1.1")).toBe(true);
+  expect(allow("1.1.1.1")).toBe(true);
+  expect(allow("1.1.1.1")).toBe(false);
+  expect(allow("2.2.2.2")).toBe(true);
+  expect(allow("3.3.3.3")).toBe(false);
+  expect(allow("local")).toBe(true);
+  expect(allow("local")).toBe(true);
+  expect(allow("local")).toBe(false);
+  now = 60_000;
+  expect(allow("3.3.3.3")).toBe(true);
 });

@@ -18,7 +18,7 @@ mean the enclosed operation calls RPC.
 
 | Method | Path | Data source / external call |
 | --- | --- | --- |
-| GET | `/status` | DB runtime, cursor and observation epochs |
+| GET | `/status` | Shared one-second snapshot of DB runtime, cursor and observation epochs; no per-reader SQL |
 | GET | `/fees` | DB worker fee observation; no RPC fallback |
 | GET | `/tokens` | DB |
 | GET | `/tokens/sparklines` | DB |
@@ -35,7 +35,7 @@ mean the enclosed operation calls RPC.
 | POST | `/backing/buy/quote` | DB cached pending backing, with indexed backing fallback |
 | POST | `/backing/buy/quote-sats` | DB cached pending backing, with indexed backing fallback |
 | POST | `/backing/redeem/quote` | DB cached pending backing, with indexed backing fallback |
-| POST | `/tokens/[tokenId]/buy/routes` | DB validated effective pending backing and listings; unavailable observations fail closed |
+| POST | `/tokens/[tokenId]/buy/routes` | DB cached effective backing and listings |
 | POST | `/launch/prepare` | Local token identity / launch terms |
 | POST | `/market/listings/[listingId]/cancel/prepare` | Local signed-message payload |
 | POST | `/market/listings/[listingId]/reserve/prepare` | Local signed-message payload |
@@ -240,3 +240,19 @@ signatures do not invalidate the cache, including after broadcast; the worker
 updates it from chain observations. Live funding, signing and broadcast checks
 still validate the actual backing output. Competing transactions can receive
 the same quote; chain acceptance resolves the winning spend.
+
+## Shared status snapshot (2026-09-29)
+
+`/status` shares a dedicated one-second response cache per web process. Concurrent
+readers coalesce into one snapshot query; cache hits execute no SQL and make no
+Bitcoin RPC calls. Query parameters cannot create new status cache keys. The
+response is refreshed from worker/indexer DB observations, preserving pending
+transactions, fees and health updates between blocks. Chain tip changes appear
+after the worker observes them and the shared snapshot refreshes.
+
+Status admission uses bounded process-local counters instead of the shared
+PostgreSQL read-quota row: 120,000 requests/minute per web process, 1,200/minute
+per trusted IP, and at most 10,000 IP entries cleared each window. These limits
+apply separately to each web process. Other API quotas and shared RPC budgets
+retain database enforcement. Clients still poll once every five seconds while
+visible; the 1,000-reader test performs one status load without per-reader SQL.

@@ -3,6 +3,7 @@ import { getV3Services } from "./v3-server";
 import { PublicReadCache } from "./read-cache";
 
 const cache = new PublicReadCache();
+const statusCache = new PublicReadCache(1, 64 * 1024, 1);
 export type PublicReadScope = "confirmed" | "market" | "trades" | "status" | "fees";
 function normalizedRequest(req: Request) {
   const url = new URL(req.url),
@@ -35,6 +36,11 @@ export async function cachePublic(
   load: () => Promise<Response>,
 ): Promise<Response> {
   const { db, config } = getV3Services();
+  if (scope === "status") {
+    const response = await statusCache.read(`${config.network}:status`, async () => "snapshot", ttlMs, load);
+    response.headers.set("cache-control", "no-store");
+    return response;
+  }
   const generation = async () => {
     const result =
       await db.execute(sql`select e.chain_generation::text, e.trade_revision::text, e.metadata_revision::text, e.market_revision::text, e.pending_revision::text,
@@ -43,12 +49,10 @@ export async function cachePublic(
       left join cove_v3_cursor c on c.network = n.network left join cove_v3_runtime r on r.network = n.network`);
     const r = result.rows[0] ?? {};
     const values = [r.chain_generation, r.block_hash, r.rebuilding, r.metadata_revision];
-    if (scope === "market" || scope === "status") values.push(r.market_revision);
-    if (scope === "trades" || scope === "market" || scope === "status")
+    if (scope === "market") values.push(r.market_revision);
+    if (scope === "trades" || scope === "market")
       values.push(r.trade_revision);
-    if (scope === "status")
-      values.push(r.pending_revision, r.chain_observed_at, r.pending_observed_at);
-    if (scope === "fees" || scope === "status") values.push(r.fees_observed_at, r.core_reachable);
+    if (scope === "fees") values.push(r.fees_observed_at, r.core_reachable);
     return JSON.stringify(values);
   };
   const response = await cache.read(

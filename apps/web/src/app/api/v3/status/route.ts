@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   try {
     const limited = await checkRateLimit(req, "read-status");
     if (limited) return limited;
-    return await cachePublic(req, "status", 500, async () => {
+    return await cachePublic(req, "status", 1_000, async () => {
       return ok(await getV3Services().app.status());
     });
   } catch (e) {
