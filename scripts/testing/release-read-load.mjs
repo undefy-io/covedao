@@ -26,32 +26,34 @@ if (!token)
 async function fresh() {
   await db.query(`update cove_v3_runtime r set core_reachable=true, core_height=c.height, core_tip=c.block_hash,
     chain_observed_at=clock_timestamp(), pending_observed_at=clock_timestamp(), fees_observed_at=clock_timestamp(),
-    fee_rates='{"slow":1,"normal":2,"fast":3}'::jsonb from cove_v3_cursor c where r.network=c.network and r.network='regtest';
+    fee_rates='{"floorSatPerVb":"1","ceilingSatPerVb":"500","estimated":false,"tiers":[{"key":"standard","label":"Standard","blocks":3,"satPerVb":"2"}]}'::jsonb from cove_v3_cursor c where r.network=c.network and r.network='regtest';
     update cove_pending_backing p set observed_at=clock_timestamp() where network='regtest' and payload is not null`);
 }
-if (mode === "seed") {
-  await db.query(
-    `insert into cove_v3_tokens (network,token_id,ticker,policy_version,nonce,deploy_txid,deploy_height,deploy_block_hash,creator_script)
+if (mode === "seed" || mode === "seed-smoke") {
+  if (mode === "seed") {
+    await db.query(
+      `insert into cove_v3_tokens (network,token_id,ticker,policy_version,nonce,deploy_txid,deploy_height,deploy_block_hash,creator_script)
     select 'regtest',md5('load-token-'||n)||md5('load-token-extra-'||n),'LOAD'||n,policy_version,nonce,deploy_txid,deploy_height,deploy_block_hash,creator_script
     from cove_v3_tokens cross join generate_series(1,100) n where token_id=$1 on conflict do nothing`,
-    [token],
-  );
-  await db.query(
-    `insert into cove_v3_market_trades (network,token_id,listing_id,fill_id,seller_token_script,buyer_token_script,
+      [token],
+    );
+    await db.query(
+      `insert into cove_v3_market_trades (network,token_id,listing_id,fill_id,seller_token_script,buyer_token_script,
     amount_atoms,total_price_sats,market_fee_sats,miner_fee_sats,txid,block_height,block_hash,created_at)
     select 'regtest',case when n<=20000 then $1 else md5('load-token-'||(1+n%100))||md5('load-token-extra-'||(1+n%100)) end,
       md5('listing-'||n),md5('fill-'||n),'51','51',100000000000000,100000,500,1000,
       md5('load-trade-'||n)||md5('load-trade-extra-'||n),c.height,c.block_hash,clock_timestamp()-(n||' seconds')::interval
     from cove_v3_cursor c cross join generate_series(1,100000) n where c.network='regtest' on conflict do nothing`,
-    [token],
-  );
-  await db.query(
-    `insert into cove_v3_token_utxos (network,txid,vout,token_id,amount_atoms,script_pub_key,created_height,created_block_hash)
+      [token],
+    );
+    await db.query(
+      `insert into cove_v3_token_utxos (network,txid,vout,token_id,amount_atoms,script_pub_key,created_height,created_block_hash)
     select 'regtest',md5('load-holder-'||n)||md5('load-holder-extra-'||n),0,$1,100000000,
       '0014'||md5('holder-script-'||n)||substr(md5('holder-extra-'||n),1,8),c.height,c.block_hash
     from cove_v3_cursor c cross join generate_series(1,10000) n where c.network='regtest' on conflict do nothing`,
-    [token],
-  );
+      [token],
+    );
+  }
   await db.query(`update cove_pending_backing p set observed_revision=p.requested_revision,chain_generation=e.chain_generation,
     base_txid=b.txid,base_vout=b.vout,payload=jsonb_build_object('tokenId',b.token_id,'stateVersion',b.state_version,'policyVersion',b.policy_version,
       'issuedSupplyAtoms',b.issued_supply_atoms::text,'backingSats',b.backing_sats::text,'curveStage',b.curve_stage,'stateHash',b.state_hash,
@@ -60,7 +62,7 @@ if (mode === "seed") {
     where p.network=b.network and p.token_id=b.token_id and b.canonical and p.network='regtest'`);
   await fresh();
   await db.query("analyze");
-  console.log(JSON.stringify({ tokens: 101, trades: 100000, holders: 10000, token }));
+  console.log(JSON.stringify({ mode, token }));
 } else if (mode === "serve") {
   let attempts = 0;
   let paused = false;
@@ -93,12 +95,13 @@ if (mode === "seed") {
       server.close();
       db.end();
     });
-} else if (mode === "run") {
+} else if (mode === "run" || mode === "smoke") {
   const base = process.env.RELEASE_TEST_WEB_URL || "http://127.0.0.1:3003";
   if (!/^http:\/\/127\.0\.0\.1:300[34]$/.test(base))
     throw new Error("Only isolated web ports 3003/3004 are allowed");
   const cases = [
     ["/api/v3/status"],
+    ["/api/v3/fees"],
     ["/api/v3/tokens"],
     [`/api/v3/tokens/${token}`],
     [`/api/v3/tokens/${token}/market`],
@@ -106,6 +109,7 @@ if (mode === "seed") {
     [`/api/v3/tokens/${token}/candles?timeframe=1h`],
     ["/api/v3/tx/" + "aa".repeat(32)],
     ["/api/v3/backing/buy/quote", { tokenId: token, amountAtoms: "100000000000000" }],
+    [`/api/v3/tokens/${token}/buy/routes`, { amountAtoms: "100000000000000" }],
     ["/api/v3/backing/buy/quote-sats", { tokenId: token, budgetSats: "100000" }],
     ["/api/v3/backing/redeem/quote", { tokenId: token, amountAtoms: "100000000000000" }],
   ];
@@ -130,8 +134,8 @@ if (mode === "seed") {
     const times = [],
       statuses = {};
     await Promise.all(
-      Array.from({ length: 50 }, async () => {
-        for (let i = 0; i < 10; i++) {
+      Array.from({ length: mode === "smoke" ? 1 : 50 }, async () => {
+        for (let i = 0; i < (mode === "smoke" ? 1 : 10); i++) {
           const start = performance.now();
           const response = await fetch(base + path, options);
           await response.arrayBuffer();
@@ -146,14 +150,15 @@ if (mode === "seed") {
     console.log(
       JSON.stringify({
         path,
-        concurrency: 50,
+        concurrency: mode === "smoke" ? 1 : 50,
         requests: times.length,
         statuses,
         p95Ms: +p95.toFixed(3),
         p99Ms: +p99.toFixed(3),
       }),
     );
-    if (statuses[200] !== 500 || p95 > 250 || p99 > 500) process.exitCode = 1;
+    if (mode === "smoke" ? statuses[200] !== 1 : statuses[200] !== 500 || p95 > 250 || p99 > 500)
+      process.exitCode = 1;
   }
   const rpc = await fetch("http://127.0.0.1:18553").then((r) => r.json());
   console.log(JSON.stringify({ publicRpcAttempts: rpc.attempts }));
@@ -212,5 +217,5 @@ if (mode === "seed") {
     await fresh();
     await fetch("http://127.0.0.1:18553/resume");
   }
-} else throw new Error("Choose seed, serve, or run");
+} else throw new Error("Choose seed, seed-smoke, serve, run, smoke, or faults");
 if (mode !== "serve") await db.end();

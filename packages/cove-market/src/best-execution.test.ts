@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { schema, type Database } from "@crclaunch/db";
-import { deterministicFee } from "@crclaunch/cove-economics";
+import { deterministicFee, grossBuy, mintFeeSats, creatorFeeSats, COVE_FEE_CONFIG } from "@crclaunch/cove-economics";
 import { getBuyRoutes } from "./best-execution.js";
 
 /** Minimal drizzle-shaped mock: `select().from(table).where()` resolves to rows by table. */
@@ -28,5 +28,41 @@ describe("best-execution fee threading (§M6)", () => {
       expect(p2p.breakdown.feeBps).toBe(200n);
       expect(p2p.breakdown.marketFeeSats).toBe(deterministicFee(100_000n, 200n));
     }
+  });
+});
+
+describe("best execution uses the validated pending price", () => {
+  const amount = 1000n * 100_000_000n;
+  const tokenId = "cd".repeat(32);
+  function observed(supply: bigint, fresh = true) {
+    const db = mockDb({ backing: [{ supplyAtoms: 0n }], listings: [] });
+    const execute = vi.fn().mockResolvedValue({ rows: [{
+      payload: { issuedSupplyAtoms: supply.toString() }, fresh,
+      height: "100", block_hash: "ab".repeat(32), revision: "1", generation: "2", observed_at: new Date(),
+    }] });
+    Object.assign(db, { execute });
+    return { db, execute };
+  }
+  it.each([10_000n, 9_000n, 12_000n])("prices accepted mint/redeem supply %s rather than confirmed zero", async (supply) => {
+    const { db, execute } = observed(supply * 100_000_000n);
+    const routes = await getBuyRoutes(db, "regtest", tokenId, amount);
+    const gross = grossBuy(supply, 1000n);
+    expect(routes[0]).toMatchObject({ kind: "backing", totalCostSats:
+      gross + mintFeeSats(gross, amount, COVE_FEE_CONFIG.buyFeeBps, COVE_FEE_CONFIG.buyFeeFlatSats) + creatorFeeSats(gross) });
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+  it("fails closed on invalidated or stale observations", async () => {
+    const { db } = observed(10_000n * 100_000_000n, false);
+    await expect(getBuyRoutes(db, "regtest", tokenId, amount)).rejects.toThrow("CORE_UNAVAILABLE");
+  });
+  it("does not invent a route for a missing token", async () => {
+    const { db, execute } = observed(0n);
+    execute.mockResolvedValue({ rows: [] });
+    await expect(getBuyRoutes(db, "regtest", tokenId, amount)).rejects.toThrow("TOKEN_NOT_FOUND");
+  });
+  it("retains cap and lot eligibility without using confirmed supply", async () => {
+    const { db } = observed(21_000_000n * 100_000_000n);
+    expect(await getBuyRoutes(db, "regtest", tokenId, amount)).toEqual([]);
+    expect(await getBuyRoutes(db, "regtest", tokenId, 100_000_000n)).toEqual([]);
   });
 });

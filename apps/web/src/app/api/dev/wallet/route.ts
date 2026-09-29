@@ -1,6 +1,7 @@
 import { ok, fail, handleError, readJson, strField } from "@/lib/api";
 import { getV3Services } from "@/lib/v3-server";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { regtestScans, type ScanRpcCaller } from "@/lib/regtest-scan";
 import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import { ECPairFactory } from "ecpair";
@@ -74,17 +75,13 @@ function identity(name: string) {
  */
 async function spendableUtxos(
   ids: { address: string; script: string }[],
+  signal: AbortSignal,
 ): Promise<{ txid: string; vout: number; sats: number; script: string }[]> {
   const { provider } = getV3Services();
-  const res = await (
-    provider as unknown as {
-      call<T>(m: string, p: unknown[]): Promise<T>;
-    }
-  ).call<{ unspents: { txid: string; vout: number; amount: number; scriptPubKey: string }[] }>(
-    "scantxoutset",
-    ["start", ids.map((id) => ({ desc: `addr(${id.address})` }))],
-  );
-  return (res.unspents ?? [])
+  const unspents = await regtestScans.scan<{
+    txid: string; vout: number; amount: number; scriptPubKey: string;
+  }>(provider as unknown as ScanRpcCaller, ids.map((id) => id.address), signal);
+  return unspents
     .map((u) => ({ txid: u.txid, vout: u.vout, sats: Math.round(u.amount * 1e8), script: u.scriptPubKey }))
     .filter((u) => u.sats > 1000);
 }
@@ -100,7 +97,7 @@ export async function GET(req: Request) {
     if (name === null) {
       // Every identity with its spendable BTC, for the wallet picker.
       const ids = Object.keys(IDENTITIES).map((n) => ({ name: n, ...identity(n) }));
-      const utxos = await spendableUtxos(ids);
+      const utxos = await spendableUtxos(ids, req.signal);
       const identities = ids.map((id) => ({
         identity: id.name,
         address: id.address,
@@ -137,7 +134,7 @@ export async function POST(req: Request) {
       return ok({ signatureB64: signBip322WithKey(strField(body, "message"), id.privHex) });
     }
     if (action === "getUtxos") {
-      const utxos = (await spendableUtxos([id])).map((u) => ({ txid: u.txid, vout: u.vout, valueSats: String(u.sats), confirmations: 1 }));
+      const utxos = (await spendableUtxos([id], req.signal)).map((u) => ({ txid: u.txid, vout: u.vout, valueSats: String(u.sats), confirmations: 1 }));
       return ok({ utxos });
     }
     return fail("UNKNOWN_ACTION", `unknown action "${action}"`, 400);

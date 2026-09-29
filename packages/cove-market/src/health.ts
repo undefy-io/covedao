@@ -37,12 +37,14 @@ export async function assertMarketReady(params: {
   db: Database;
   config: MarketConfig;
   provider: CoreRpcProvider;
+  observation?: HealthReport;
 }): Promise<HealthReport> {
   assertMarketEnabled(params.config);
   const report = await computeHealth({
     db: params.db,
     network: params.config.network,
     provider: params.provider,
+    observation: params.observation,
   });
   const err = healthErrorFor(report);
   if (err) throw err;

@@ -490,6 +490,9 @@ The reproducible load harness is `scripts/testing/release-read-load.mjs`.
 It only accepts the isolated database `127.0.0.1:5435/release_load` and web ports
 3003/3004. Copy a successful isolated competing-regtest fixture into that database,
 then run `seed`, `serve`, `run` and `faults` with `RELEASE_TEST_DATABASE_URL` set.
+For a quick HTTP check, use `seed-smoke`, `serve`, `smoke` and `faults`. Build the
+web image for regtest and set `COVE_REGTEST_MAX_MINT_GROSS_SATS=2100000000000000`
+only on this isolated fixture server, matching the competition test limits.
 The fixture clocks support synthetic read-load measurements; they must never run
 against an application database. Real Core competing-spend tests and separate
 Guardian HTTP integration tests independently verify branch selection and signing.

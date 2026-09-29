@@ -4,6 +4,7 @@ import type { GuardianTransport } from "@crclaunch/cove-guardian/v3";
 import { safeEqual, FixedWindowRateLimiter, readJsonWithLimit } from "./auth.js";
 
 function json(res: ServerResponse, status: number, body: unknown): void {
+  if (res.destroyed || res.writableEnded) return;
   res.writeHead(status, { "content-type": "application/json" });
   res.end(JSON.stringify(body));
 }
@@ -21,11 +22,22 @@ export function createGuardianHttpServer(config: { transport: GuardianTransport;
       if (req.method === "POST" && url === "/sign") {
         if (signing >= 2) { res.setHeader("retry-after", "2"); return json(res, 503, { error: "signing capacity unavailable" }); }
         signing++;
+        const controller = new AbortController();
+        const abort = () => controller.abort(new Error("Guardian client disconnected"));
+        const closed = () => { if (!res.writableFinished) abort(); };
+        req.once("aborted", abort);
+        res.once("close", closed);
+        const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(180_000)]);
         try {
-          const body = await readJsonWithLimit(req, 1_000_000);
-          const result = await withRpcDeadline(AbortSignal.timeout(180_000), () => config.transport.sign(body as never));
+          const body = await readJsonWithLimit(req, 1_000_000, signal);
+          signal.throwIfAborted();
+          const result = await withRpcDeadline(signal, () => config.transport.sign(body as never));
           return json(res, 200, result);
-        } finally { signing--; }
+        } finally {
+          signing--;
+          req.removeListener("aborted", abort);
+          res.removeListener("close", closed);
+        }
       }
       return json(res, 404, { error: "not found" });
     } catch (error) {

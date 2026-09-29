@@ -7,6 +7,7 @@ import * as Sentry from "@sentry/nextjs";
 import { ok, fail, handleError } from "@/lib/api";
 import { getV3Services } from "@/lib/v3-server";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { regtestScans, type ScanRpcCaller } from "@/lib/regtest-scan";
 
 export const dynamic = "force-dynamic";
 
@@ -35,40 +36,6 @@ async function addressGeneration(): Promise<string> {
 }
 
 type Unspent = { txid: string; vout: number; amount: number };
-type RpcCaller = { call<T>(m: string, p: unknown[]): Promise<T> };
-
-/**
- * Bitcoin Core runs one `scantxoutset` at a time and refuses a second with
- * "Scan already in progress". Pages refresh on every block, so two lookups
- * overlap easily: queue this process's scans, and retry briefly when another
- * client holds the scanner.
- */
-let scanQueue: Promise<unknown> = Promise.resolve();
-let queuedScans = 0;
-function scanAddress(rpc: RpcCaller, address: string): Promise<Unspent[]> {
-  if (queuedScans >= 4) return Promise.reject(new AddressLookupBusy());
-  queuedScans++;
-  const run = async (): Promise<Unspent[]> => {
-    for (let attempt = 0; ; attempt++) {
-      try {
-        const res = await rpc.call<{ unspents?: Unspent[] }>("scantxoutset", [
-          "start",
-          [{ desc: `addr(${address})` }],
-        ]);
-        return res.unspents ?? [];
-      } catch (e) {
-        if (attempt >= 40 || !/scan already in progress/i.test((e as Error).message)) throw e;
-        await new Promise((r) => setTimeout(r, 250));
-      }
-    }
-  };
-  const next = scanQueue.then(run, run).finally(() => {
-    queuedScans--;
-  });
-  scanQueue = next.catch(() => undefined);
-  return next;
-}
-
 export async function GET(req: Request) {
   try {
     const limited = await checkRateLimit(req, "read-utxos");
@@ -85,7 +52,7 @@ export async function GET(req: Request) {
     if (config.network === "regtest") {
       // A regtest chain is small enough to scan outright, and there is no
       // Esplora for it.
-      const unspents = await scanAddress(provider as unknown as RpcCaller, address);
+      const unspents = await regtestScans.scan<Unspent>(provider as unknown as ScanRpcCaller, [address], req.signal);
       const utxos = unspents
         .filter((u) => Math.round(u.amount * 1e8) > TOKEN_CARRIER_SATS)
         .map((u) => ({

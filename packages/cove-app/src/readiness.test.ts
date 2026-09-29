@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { CoreRpcProvider } from "@crclaunch/bitcoin";
 import type { MainnetProfile } from "@crclaunch/cove-mainnet";
 import { checkCoreAgreement, computeMainnetReadiness, deriveReadinessState, verifyMainnetGenesis, BITCOIN_MAINNET_GENESIS_HASH, type MainnetReadinessInput } from "./readiness.js";
@@ -71,6 +71,19 @@ describe("core quorum + readiness aggregator (§27-§30)", () => {
     const r = await checkCoreAgreement(a, b);
     expect(r.agreed).toBe(true);
     expect(r.comparisonHeight).toBe(100);
+  });
+
+  it("reuses the primary phase observation while checking the secondary independently", async () => {
+    const info = { chain: "main", blocks: 100, bestBlockHash: "h100" };
+    const primary = { getBlockchainInfo: vi.fn(), getBlockHash: vi.fn() } as unknown as CoreRpcProvider;
+    const secondary = { getBlockchainInfo: vi.fn().mockResolvedValue(info), getBlockHash: vi.fn() } as unknown as CoreRpcProvider;
+    expect((await checkCoreAgreement(primary, secondary, { primaryInfo: info })).agreed).toBe(true);
+    expect(primary.getBlockchainInfo).not.toHaveBeenCalled();
+    expect(primary.getBlockHash).not.toHaveBeenCalled();
+    expect(secondary.getBlockchainInfo).toHaveBeenCalledTimes(1);
+    expect(secondary.getBlockHash).not.toHaveBeenCalled();
+    vi.mocked(secondary.getBlockchainInfo).mockRejectedValue(new Error("offline"));
+    expect((await checkCoreAgreement(primary, secondary, { primaryInfo: info })).agreed).toBe(false);
   });
 
   it("checkCoreAgreement disagrees on hash mismatch", async () => {

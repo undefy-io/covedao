@@ -2,7 +2,7 @@
 
 Fresh source audit of application commit `f17e3cd` and standalone Guardian
 commit `a0aa8f2`. Task: `covedao-853`. This inventories current call paths;
-it does not claim that the follow-up findings have been fixed.
+the original findings are preserved below, followed by implementation verification.
 
 ## Public endpoint inventory
 
@@ -35,7 +35,7 @@ mean the enclosed operation calls RPC.
 | POST | `/backing/buy/quote` | DB validated pending backing observation |
 | POST | `/backing/buy/quote-sats` | DB validated pending backing observation |
 | POST | `/backing/redeem/quote` | DB validated pending backing observation |
-| POST | `/tokens/[tokenId]/buy/routes` | DB confirmed supply and listings; pricing finding below |
+| POST | `/tokens/[tokenId]/buy/routes` | DB validated effective pending backing and listings; unavailable observations fail closed |
 | POST | `/launch/prepare` | Local token identity / launch terms |
 | POST | `/market/listings/[listingId]/cancel/prepare` | Local signed-message payload |
 | POST | `/market/listings/[listingId]/reserve/prepare` | Local signed-message payload |
@@ -84,8 +84,8 @@ each attempt, including retries. Core calls have a 30-second total call
 deadline, a 20-second fetch deadline and a 9 MB response limit. Read 429
 responses can retry three times, bounded by the deadline; broadcasting disables
 automatic retry. Most RPC-capable routes and worker tasks have an enclosing
-180-second Core deadline. This deadline does not currently encompass every
-external dependency; see `covedao-ox1`.
+180-second Core deadline. The enclosing cancellation signal also bounds ord and remote Guardian work;
+each dependency retains its own shorter deadline and bounded response body.
 
 Configured allowance defaults to three requests/second for hosted networks.
 The budget reserves lanes for public requests, worker and Guardian; at that
@@ -145,7 +145,8 @@ is immediately warm after startup.
   ten-second request deadline. Cache misses remain external chain reads.
 - Mainnet ord asset lookup uses an aliased `doFetch`, not `fetch(` directly:
   `packages/cove-guardian/src/v3/funding.ts:201`. App and Guardian both use it.
-  It currently has only a five-second per-request timeout; follow-up below.
+  It now has a shared PostgreSQL account budget, bounded response bodies,
+  cancellation during queue admission/body reading and a five-second deadline.
 - `EsploraChainProvider`, manual index/verify/readiness commands, lifecycle
   proofs, canary and recovery tools can make unbudgeted calls. They are not
   installed as background services in the running signet compose. Running
@@ -153,8 +154,8 @@ is immediately warm after startup.
 - Legacy `start:v1` and `PrecopCRCAdapter` are not the deployed worker/web
   entrypoints. `pnpm start` in the worker launches `src/v3.ts`.
 - Local regtest compose has direct Bitcoin CLI health/mining/funding/tool
-  calls, appropriate to the bundled local node. Its worker health probe also
-  contains a direct fetch bypass; signet already uses the DB-only probe.
+  calls, appropriate to the bundled local node. Both worker health probes now read only the database. Wallet scans share
+  a bounded queue and a 30-second lifetime that includes admission and retries.
 
 ## Findings recorded in Beads
 
@@ -167,10 +168,13 @@ is immediately warm after startup.
 | `covedao-ox1` | P2 | Ord requests lack shared budget/body bounds and enclosing cancellation; remote Guardian HTTP uses a separate timeout |
 | `covedao-xt2` | P3 | Local regtest worker health bypasses shared Core budget; scan queue/retries lack a total lifetime bound |
 
-These are follow-up issues, not evidence that live funding/signature checks
-should be removed. No transaction validation changes were made during the audit.
+These original findings have been fixed in the seven implementation tasks
+(including Guardian disconnect handling `covedao-iq0`). Independent live funding,
+signature, network and broadcast checks remain enforced. Genesis verification
+remains live because a hosted gateway can change its backend behind a stable URL.
+The audit itself made no transaction validation changes; the implementation did.
 
-## Verification and limits
+## Original audit verification and limits
 
 - 104 targeted tests passed: Bitcoin provider/Esplora/recorded broadcast (61),
   application funding/readiness/token reads/runtime snapshots/fees/tx status
@@ -197,3 +201,31 @@ should be removed. No transaction validation changes were made during the audit.
   zero RPC calls. This audit did not broadcast, sign or create transactions,
   change chain or transaction state, restart services or run a new mutation
   load test. Normal request quota/budget accounting still applies to probes.
+
+## Fix verification
+
+The implementation evidence is recorded in
+`scripts/testing/rpc-fix-verification-results.json`.
+
+- Invalid structural/local/DB transaction requests reject before Core, ord or
+  Guardian calls; valid-looking funding still requires live validation.
+- Unsupported spender capability is cached only for method-not-found. Accepted
+  mempool candidates are joined before SQL limits. Isolated PostgreSQL tests
+  place the winning transaction behind 65, 100 and 2,000 losing records.
+- Native and nested funding competition tests exercise accepted branches,
+  replacement, eviction and reorgs on isolated Bitcoin Core. Buy routes and
+  buy quotes agree on accepted pending supply with public RPC forbidden.
+- Health reuse is private, frozen and limited to the same provider, network,
+  cursor and generation within 500 milliseconds measured from before RPC.
+  A delayed hash lookup cannot renew the window. Independent secondary-node
+  checking and fresh submission recovery checks remain.
+- Ord quotas coordinate replicas. Cancellation releases queued/streaming
+  capacity. Guardian premature disconnects cancel work, normal completed POST
+  bodies do not, and persisted signatures recover without signing again.
+- Workspace typechecks, lint and tests, Rust build, profile agreement and both
+  deployment images are checked. HTTP smoke uses an isolated production build
+  and a recording transport that rejects every public Core attempt.
+
+Current deployment scope is signet with the local signer. Remote Guardian and
+ord are exercised in isolated tests; these checks do not constitute a live
+mainnet canary or mainnet deployment.

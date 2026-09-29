@@ -1,5 +1,6 @@
 import * as bitcoin from "bitcoinjs-lib";
 import { randomUUID } from "node:crypto";
+import { getRpcOperationSignal } from "@crclaunch/bitcoin";
 import { stateHashV2, type CoveCanonicalView } from "@crclaunch/cove-covenant";
 import { buildBackingVaultV3, tapleafHash, type VaultRecoveryProfile } from "@crclaunch/cove-vault";
 import { COVE_POLICY_V3 } from "@crclaunch/cove-wire";
@@ -203,9 +204,11 @@ export class LocalGuardianTransitionSigner implements GuardianTransitionSigner {
     req: TransitionSignRequest,
     op: "MINT" | "REDEEM",
   ): Promise<TransitionSignOutcome> {
+    getRpcOperationSignal()?.throwIfAborted();
     const guardianXOnly = await this.signer.xOnlyPubkey();
     const cached = await this.recoverSigned(req, op);
     if (cached) return cached;
+    getRpcOperationSignal()?.throwIfAborted();
     const validate = await (op === "MINT"
       ? validateMintTransitionV3({ ...req, guardianXOnly })
       : validateRedeemTransitionV3({ ...req, guardianXOnly }));
@@ -213,6 +216,7 @@ export class LocalGuardianTransitionSigner implements GuardianTransitionSigner {
       return { ok: false, reason: validate.reason, detail: validate.detail, audit: null };
     }
     const analysis = validate.analysis;
+    getRpcOperationSignal()?.throwIfAborted();
 
     // 0. Risk policy (operational brake) enforced BEFORE audit/sign.
     const risk = checkRiskPolicy(this.riskPolicy, analysis, op);
@@ -246,6 +250,7 @@ export class LocalGuardianTransitionSigner implements GuardianTransitionSigner {
     }
 
     // 2. Persist this candidate without excluding other valid successors.
+    getRpcOperationSignal()?.throwIfAborted();
     const reservation = await this.journal.reserve({
       network: req.network,
       backingTxid: record.backingOutpoint.txid,
@@ -270,6 +275,7 @@ export class LocalGuardianTransitionSigner implements GuardianTransitionSigner {
     const control = op === "MINT" ? prevVault.mintControlBlock : prevVault.redeemControlBlock;
     let signatureProduced = false;
     try {
+      getRpcOperationSignal()?.throwIfAborted();
       await this.signer.signVaultExecutionLeaf(req.psbt, 0, leaf, control);
       signatureProduced = true;
       await this.journal.markSigned({

@@ -5,6 +5,7 @@ import type { SignedTransitionResult, GuardianV3Network } from "./types.js";
 import { decodeCoveOpReturn } from "./resolve.js";
 import { OP_MINT, OP_REDEEM } from "@crclaunch/cove-wire";
 import type { FundingInputChecker } from "./funding.js";
+import { getRpcOperationSignal, operationSignal, readBoundedJson } from "@crclaunch/bitcoin";
 
 /**
  * Guardian SERVICE protocol + transport abstraction (Phase 8.1 §19-§20, §24).
@@ -165,6 +166,7 @@ export class InProcessGuardianTransport implements GuardianTransport {
     return { ...base, ...p, signingEnabled: p.custodyBackendReady && p.auditHealthy && p.signingJournalHealthy };
   }
   async sign(req: GuardianSignRequestWire): Promise<GuardianSignResponseWire> {
+    getRpcOperationSignal()?.throwIfAborted();
     const { psbt } = this.opts.decode(req.psbtBase64);
     const envelope = decodeCoveOpReturn(psbt);
     if ((req.operation !== "MINT" && req.operation !== "REDEEM") ||
@@ -173,7 +175,9 @@ export class InProcessGuardianTransport implements GuardianTransport {
       return { ok: false, reason: "REQUEST_COMMITMENT_MISMATCH", detail: "operation or token does not match the transaction" };
     }
     const recovered = await this.opts.signer.recoverSigned?.({ psbt, network: this.opts.network }, req.operation);
+    getRpcOperationSignal()?.throwIfAborted();
     const view = recovered ? null : await this.opts.loadView(req.tokenId, psbt);
+    getRpcOperationSignal()?.throwIfAborted();
     const base = {
       // §C3: journal/validation must use the SERVICE's configured network, never
       // the client-supplied `req.network` (a caller-controlled field).
@@ -236,6 +240,8 @@ export class HttpGuardianTransport implements GuardianTransport {
     return (await this.request("POST", "/sign", req)) as GuardianSignResponseWire;
   }
   private async request(method: "GET" | "POST", path: string, body?: unknown): Promise<unknown> {
+    const signal = operationSignal(AbortSignal.timeout(this.timeoutMs));
+    signal.throwIfAborted();
     const res = await fetch(`${this.endpoint}${path}`, {
       method,
       headers: {
@@ -243,9 +249,12 @@ export class HttpGuardianTransport implements GuardianTransport {
         authorization: `Bearer ${this.authToken}`,
       },
       body: body ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(this.timeoutMs),
+      signal,
     });
-    if (!res.ok) throw new Error(`guardian ${method} ${path}: HTTP ${res.status}`);
-    return res.json();
+    if (!res.ok) {
+      await res.body?.cancel();
+      throw new Error(`guardian ${method} ${path}: HTTP ${res.status}`);
+    }
+    return readBoundedJson(res, 2_000_000, signal);
   }
 }

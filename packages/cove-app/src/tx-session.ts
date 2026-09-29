@@ -1,4 +1,4 @@
-import { eq, and, desc, inArray, isNotNull } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { schema, type Database } from "@crclaunch/db";
 import { AppError } from "./errors.js";
 import type { TokenMetadataInput } from "./metadata.js";
@@ -67,17 +67,18 @@ export async function requireTxSession(db: Database, id: string): Promise<TxSess
 export async function createTxSession(db: Database, input: NewTxSession): Promise<TxSessionRow> {
   // Idempotency: same (network, script, op, key) → return the existing session;
   // a conflicting payload under the same key is rejected (§17).
-  const readExisting = () => db
-    .select()
-    .from(schema.coveV3AppTransactions)
-    .where(
-      and(
-        eq(schema.coveV3AppTransactions.network, input.network),
-        eq(schema.coveV3AppTransactions.walletScript, input.walletScript),
-        eq(schema.coveV3AppTransactions.operation, input.operation),
-        eq(schema.coveV3AppTransactions.idempotencyKey, input.idempotencyKey),
-      ),
-    );
+  const readExisting = () =>
+    db
+      .select()
+      .from(schema.coveV3AppTransactions)
+      .where(
+        and(
+          eq(schema.coveV3AppTransactions.network, input.network),
+          eq(schema.coveV3AppTransactions.walletScript, input.walletScript),
+          eq(schema.coveV3AppTransactions.operation, input.operation),
+          eq(schema.coveV3AppTransactions.idempotencyKey, input.idempotencyKey),
+        ),
+      );
   let existing = await readExisting();
   if (existing.length > 0) {
     const e = existing[0]!;
@@ -92,13 +93,25 @@ export async function createTxSession(db: Database, input: NewTxSession): Promis
   const rows = await db
     .insert(schema.coveV3AppTransactions)
     .values({ ...input, txid: input.txid ?? null })
-    .onConflictDoNothing({ target: [schema.coveV3AppTransactions.network, schema.coveV3AppTransactions.walletScript,
-      schema.coveV3AppTransactions.operation, schema.coveV3AppTransactions.idempotencyKey] })
+    .onConflictDoNothing({
+      target: [
+        schema.coveV3AppTransactions.network,
+        schema.coveV3AppTransactions.walletScript,
+        schema.coveV3AppTransactions.operation,
+        schema.coveV3AppTransactions.idempotencyKey,
+      ],
+    })
     .returning();
   if (rows[0]) return rows[0];
   existing = await readExisting();
   const winner = existing[0];
-  if (winner && winner.tokenId === input.tokenId && winner.unsignedTxDigest === input.unsignedTxDigest && sameMetadata(winner.metadataJson, input.metadataJson)) return winner;
+  if (
+    winner &&
+    winner.tokenId === input.tokenId &&
+    winner.unsignedTxDigest === input.unsignedTxDigest &&
+    sameMetadata(winner.metadataJson, input.metadataJson)
+  )
+    return winner;
   throw new AppError("IDEMPOTENCY_CONFLICT", "idempotency key reused with a conflicting payload");
 }
 
@@ -151,13 +164,18 @@ export async function listSubmittedSpendsOfBacking(
   tokenId: string,
   backingTxid: string,
   backingVout: number,
+  membership: ReadonlySet<string>,
 ): Promise<{ txid: string | null; operation: string }[]> {
-  return db.selectDistinct({ txid: schema.coveV3AppTransactions.txid, operation: schema.coveV3AppTransactions.operation })
-    .from(schema.coveV3AppTransactions)
-    .where(and(
-      eq(schema.coveV3AppTransactions.network, network), eq(schema.coveV3AppTransactions.tokenId, tokenId),
-      eq(schema.coveV3AppTransactions.backingTxid, backingTxid), eq(schema.coveV3AppTransactions.backingVout, backingVout),
-      inArray(schema.coveV3AppTransactions.status, ["WALLET_SIGNED", "BROADCAST", "CONFIRMED", "REORGED"]),
-      isNotNull(schema.coveV3AppTransactions.txid),
-    )).limit(65);
+  if (membership.size > 100_000)
+    throw new AppError("CORE_UNAVAILABLE", "mempool snapshot exceeds capacity");
+  if (!membership.size) return [];
+  const result = await db.execute(sql`with accepted as (
+    select jsonb_array_elements_text(${JSON.stringify([...membership])}::jsonb) as txid
+  ) select distinct s.txid, s.operation from cove_v3_app_transactions s
+    join accepted a on a.txid = s.txid
+    where s.network = ${network} and s.token_id = ${tokenId}
+      and s.backing_txid = ${backingTxid} and s.backing_vout = ${backingVout}
+      and s.status in ('WALLET_SIGNED', 'BROADCAST', 'CONFIRMED', 'REORGED')
+    limit 65`);
+  return result.rows.map((row) => ({ txid: String(row.txid), operation: String(row.operation) }));
 }

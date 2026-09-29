@@ -39,7 +39,7 @@ async function withFundingLookupSlot<T>(work: () => Promise<T>): Promise<T> {
   }
 }
 
-function validateFundingCandidates(candidates: FundingCandidate[]): void {
+export function validateFundingCandidates(candidates: FundingCandidate[]): void {
   if (!Array.isArray(candidates) || candidates.length > MAX_FUNDING_INPUTS) {
     throw new AppError(
       "FUNDING_INPUT_INVALID",

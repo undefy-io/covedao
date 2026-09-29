@@ -314,14 +314,12 @@ describe("competing transaction observations", () => {
     async (spendingtxid) => {
       vi.stubGlobal(
         "fetch",
-        vi
-          .fn()
-          .mockResolvedValue(
-            Response.json({
-              result: [{ txid, vout: 1, ...(spendingtxid ? { spendingtxid } : {}) }],
-              error: null,
-            }),
-          ),
+        vi.fn().mockResolvedValue(
+          Response.json({
+            result: [{ txid, vout: 1, ...(spendingtxid ? { spendingtxid } : {}) }],
+            error: null,
+          }),
+        ),
       );
       expect(
         await new CoreRpcProvider({ url: "https://example.com" }).getMempoolSpender(txid, 1),
@@ -343,9 +341,35 @@ describe("competing transaction observations", () => {
     );
     const provider = new CoreRpcProvider({ url: "https://example.com" });
     expect(await provider.getMempoolSpender(txid, 1, { retry: false })).toBeUndefined();
+    expect(await provider.getMempoolSpender(txid, 1, { retry: false })).toBeUndefined();
+    await expect(
+      new CoreRpcProvider({ url: "https://example.com" }).getMempoolSpender(txid, 1, {
+        retry: false,
+      }),
+    ).rejects.toBeInstanceOf(RpcError);
+  });
+  it("does not cache transport errors or share capability by API key", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 429 }))
+      .mockResolvedValueOnce(Response.json({ result: [{ txid, vout: 1, spendingtxid: spender }] }))
+      .mockResolvedValueOnce(Response.json({ error: { code: -32601, message: "unsupported" } }))
+      .mockResolvedValueOnce(Response.json({ result: [{ txid, vout: 1, spendingtxid: spender }] }));
+    vi.stubGlobal("fetch", fetchMock);
+    const provider = new CoreRpcProvider({ url: "https://first.example", apiKey: "shared-key" });
     await expect(provider.getMempoolSpender(txid, 1, { retry: false })).rejects.toBeInstanceOf(
       RpcError,
     );
+    expect(await provider.getMempoolSpender(txid, 1)).toBe(spender);
+    expect(await provider.getMempoolSpender(txid, 1)).toBeUndefined();
+    expect(await provider.getMempoolSpender(txid, 1)).toBeUndefined();
+    expect(
+      await new CoreRpcProvider({
+        url: "https://second.example",
+        apiKey: "shared-key",
+      }).getMempoolSpender(txid, 1),
+    ).toBe(spender);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
   });
   it.each([
     { result: [] },

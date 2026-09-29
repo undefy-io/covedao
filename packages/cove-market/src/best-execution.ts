@@ -1,6 +1,7 @@
 import { eq, and, isNull, asc, sum } from "drizzle-orm";
-import { schema, type Database } from "@crclaunch/db";
-import { ATOMS_PER_TOKEN, PUBLIC_SUPPLY_ATOMS } from "@crclaunch/curve";
+import { schema, effectiveBackingObservation, type Database } from "@crclaunch/db";
+import { ATOMS_PER_TOKEN, LOT_TOKENS, PUBLIC_SUPPLY_ATOMS } from "@crclaunch/curve";
+import { MarketError } from "./errors.js";
 import { COVE_FEE_CONFIG, creatorFeeSats, deterministicFee, mintFeeSats, grossBuy, quoteRedeem } from "@crclaunch/cove-economics";
 
 /**
@@ -50,7 +51,7 @@ export interface SellOption {
 
 /**
  * Compare all ways a buyer can obtain `amountAtoms` of `tokenId`, cheapest
- * first. Backing requires a whole-token amount; P2P (V1) is all-or-none so only
+ * first. Backing requires a whole-lot amount; P2P (V1) is all-or-none so only
  * listings whose amount exactly equals the request are candidates.
  */
 export async function getBuyRoutes(
@@ -62,19 +63,13 @@ export async function getBuyRoutes(
 ): Promise<BuyRoute[]> {
   const routes: BuyRoute[] = [];
 
-  // Backing route (primary issuance) — whole display tokens only.
-  if (amountAtoms > 0n && amountAtoms % ATOMS_PER_TOKEN === 0n) {
-    const backing = await db
-      .select({ supplyAtoms: schema.coveV3BackingStates.issuedSupplyAtoms })
-      .from(schema.coveV3BackingStates)
-      .where(
-        and(
-          eq(schema.coveV3BackingStates.network, network),
-          eq(schema.coveV3BackingStates.tokenId, tokenId),
-          eq(schema.coveV3BackingStates.canonical, true),
-        ),
-      );
-    const supplyAtoms = backing[0]?.supplyAtoms ?? 0n;
+  // Backing route (primary issuance) — whole mint lots only.
+  if (amountAtoms > 0n && amountAtoms % (LOT_TOKENS * ATOMS_PER_TOKEN) === 0n) {
+    const backing = await effectiveBackingObservation(db, network, tokenId);
+    if (!backing) throw new MarketError("TOKEN_NOT_FOUND", "token not found");
+    if (!backing.fresh || !backing.payload)
+      throw new MarketError("CORE_UNAVAILABLE", "a fresh validated backing observation is not available; retry shortly");
+    const supplyAtoms = BigInt(backing.payload.issuedSupplyAtoms);
     if (supplyAtoms + amountAtoms <= PUBLIC_SUPPLY_ATOMS) {
       const grossSats = grossBuy(supplyAtoms / ATOMS_PER_TOKEN, amountAtoms / ATOMS_PER_TOKEN);
       // The same fee the buy transaction will charge — flat, per lot and

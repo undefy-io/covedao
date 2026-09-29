@@ -24,7 +24,7 @@ import {
   type CoreRpcProvider,
 } from "@crclaunch/bitcoin";
 import { TOKEN_CARRIER_SATS, type CoveCanonicalView } from "@crclaunch/cove-covenant";
-import { loadCanonicalViewSnapshotFromDb, parseCoveTx } from "@crclaunch/cove-indexer/v3";
+import { loadCanonicalViewSnapshotFromDb, parseCoveTx, type HealthReport } from "@crclaunch/cove-indexer/v3";
 import { deterministicFee, dustThreshold } from "@crclaunch/cove-economics";
 import { OP_TRANSFER as OP_TRANSFER_CODE } from "@crclaunch/cove-wire";
 import { scriptForKind, spendKindOf } from "@crclaunch/bitcoin";
@@ -57,7 +57,7 @@ import {
   type ValidatedP2PFill,
   type P2PFillTerms,
 } from "./finalize.js";
-import { assertMarketReady } from "./health.js";
+import { assertMarketReady, assertMarketEnabled } from "./health.js";
 import { readStoredFeeObservation } from "./fee-observation.js";
 
 bitcoin.initEccLib(ecc as unknown as Parameters<typeof bitcoin.initEccLib>[0]);
@@ -362,7 +362,6 @@ export class MarketService {
         `listing chainIdentity ${input.chainIdentity} != server ${this.config.chainIdentity}`,
       );
     }
-    await assertMarketReady({ db: this.db, config: this.config, provider: this.provider });
     validateListingShape(input);
 
     // A listing must actually expire. `maxListingBlocks` was configured but
@@ -393,6 +392,7 @@ export class MarketService {
         "a listing sells a whole token carrier; split off the amount first",
       );
     }
+    await assertMarketReady({ db: this.db, config: this.config, provider: this.provider });
     // Live if the carrier is indexed; PENDING if it is a fresh split still in
     // the mempool (checked against the transaction itself).
     let pending = false;
@@ -598,7 +598,6 @@ export class MarketService {
     ) {
       throw new MarketError("LISTING_BAD_SIGNATURE", "reservation BIP-322 signature invalid");
     }
-    await assertMarketReady({ db: this.db, config: this.config, provider: this.provider });
     for (const f of input.buyerFundInputs) {
       if (f.script !== input.buyerChangeScript) {
         throw new MarketError(
@@ -633,6 +632,7 @@ export class MarketService {
     }
     const listing = await this.loadListing(input.listingId);
     if (!listing) throw new MarketError("STATE_CHANGED", "listing not found");
+    await assertMarketReady({ db: this.db, config: this.config, provider: this.provider });
     await this.resolveSource(listingToV1(listing));
     const tip = BigInt(await this.provider.getBestHeight());
 
@@ -702,7 +702,7 @@ export class MarketService {
     fee: bigint | { feeRateSatPerVb?: bigint; minerFeeSats?: bigint },
   ): Promise<string> {
     const feeInput = typeof fee === "bigint" ? { minerFeeSats: fee } : fee;
-    await assertMarketReady({ db: this.db, config: this.config, provider: this.provider });
+    assertMarketEnabled(this.config);
 
     const fill = await this.loadFill(fillId);
     if (!fill) throw new MarketError("STATE_CHANGED", "fill not found");
@@ -710,6 +710,7 @@ export class MarketService {
       throw new MarketError("STATE_CHANGED", `fill is ${fill.status}`);
     const listing = await this.loadListing(fill.listingId);
     if (!listing) throw new MarketError("STATE_CHANGED", "listing not found");
+    await assertMarketReady({ db: this.db, config: this.config, provider: this.provider });
 
     const source = await this.resolveSource(listingToV1(listing));
     const marketFee = this.marketFeeFor(listing.totalPriceSats);
@@ -877,15 +878,16 @@ export class MarketService {
    */
   async completeFill(
     fillId: string,
+    observation?: HealthReport,
   ): Promise<{ txid: string; submissionState: "saved" | "broadcast" }> {
     const existing = await getSubmission(this.db, this.config.network, "FILL", fillId);
     if (existing) return this.recoverSubmission(existing);
-    const validated = await this.finalizeP2PFill(fillId);
+    const validated = await this.finalizeP2PFill(fillId, observation);
     return this.broadcastP2PFill(validated);
   }
 
-  async finalizeP2PFill(fillId: string): Promise<ValidatedP2PFill> {
-    await assertMarketReady({ db: this.db, config: this.config, provider: this.provider });
+  async finalizeP2PFill(fillId: string, observation?: HealthReport): Promise<ValidatedP2PFill> {
+    assertMarketEnabled(this.config);
     const fill = await this.loadFill(fillId);
     if (!fill) throw new MarketError("STATE_CHANGED", "fill not found");
     if (
@@ -901,6 +903,8 @@ export class MarketService {
       throw new MarketError("LISTING_CANCELLED", "the listing's signature is gone (cancelled)");
     // Re-check the canary cap at fill time (§P0-6), not just at listing creation.
     assertSettlementCap(listing.totalPriceSats, this.config.maxP2pSettlementSats);
+
+    await assertMarketReady({ db: this.db, config: this.config, provider: this.provider, observation });
 
     const network = btcNetwork(this.config.network);
     const psbt = parsePsbt(fill.psbtBase64, network);

@@ -4,6 +4,8 @@ import { loadV3AppConfig } from "./config.js";
 import { RpcError, type CoreRpcProvider } from "@crclaunch/bitcoin";
 import type { Database } from "@crclaunch/db";
 import type { GuardianTransitionSigner } from "@crclaunch/cove-guardian/v3";
+import { PgDialect } from "drizzle-orm/pg-core";
+import type { SQL } from "drizzle-orm";
 
 const txid = "ab".repeat(32);
 function fixture(results: unknown[][], observeTransaction = vi.fn()) {
@@ -13,7 +15,13 @@ function fixture(results: unknown[][], observeTransaction = vi.fn()) {
   });
   const select = vi.fn((_fields?: Record<string, unknown>) => ({ from: () => ({ where }) }));
   const db = {
-    execute: vi.fn().mockResolvedValue({ rows: [] }),
+    execute: vi.fn((query: SQL) =>
+      Promise.resolve({
+        rows: new PgDialect().sqlToQuery(query).sql.includes("with accepted")
+          ? (results.shift() ?? [])
+          : [{ height: "100", block_hash: "11".repeat(32), generation: "1", rebuilding: false }],
+      }),
+    ),
     select,
     selectDistinct: select,
     update: vi.fn(),
@@ -21,6 +29,8 @@ function fixture(results: unknown[][], observeTransaction = vi.fn()) {
   const provider = {
     observeTransaction,
     getMempoolSpender: vi.fn().mockResolvedValue(undefined),
+    getMempoolSnapshot: vi.fn().mockImplementation(async () => new Set([txid])),
+    getBlockchainInfo: vi.fn().mockResolvedValue({ blocks: 100, bestBlockHash: "11".repeat(32) }),
     isTransactionInMempool: vi.fn().mockResolvedValue(true),
     getTxout: vi.fn(),
     getRawTransaction: vi.fn(),
@@ -162,7 +172,7 @@ it.each([
 
 it("a positively absent pending candidate leaves its verified unspent parent tradable", async () => {
   const { app, provider } = fixture([[{ txid, operation: "BACKING_BUY" }]]);
-  vi.mocked(provider.isTransactionInMempool).mockResolvedValue(false);
+  vi.mocked(provider.getMempoolSnapshot).mockResolvedValue(new Set());
   const script = Buffer.from("5120" + "aa".repeat(32), "hex");
   vi.mocked(provider.getTxout).mockResolvedValue({
     scriptPubKeyHex: script.toString("hex"),
@@ -179,8 +189,8 @@ it("a positively absent pending candidate leaves its verified unspent parent tra
 
 it("a failed membership lookup cannot expose the parent as tradable", async () => {
   const { app, provider } = fixture([[{ txid, operation: "BACKING_BUY" }]]);
-  vi.mocked(provider.isTransactionInMempool).mockRejectedValue(
-    new RpcError("getmempoolentry", "http", "HTTP 429", 429),
+  vi.mocked(provider.getMempoolSnapshot).mockRejectedValue(
+    new RpcError("getrawmempool", "http", "HTTP 429", 429),
   );
   const follow = app as unknown as {
     followPendingBacking(id: string, backing: unknown): Promise<unknown>;

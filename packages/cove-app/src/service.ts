@@ -4,6 +4,8 @@ import { randomBytes } from "node:crypto";
 import { eq, and, sql, isNull } from "drizzle-orm";
 import {
   schema,
+  PostgresRpcBudget,
+  providerAccount,
   databaseDate,
   effectiveBackingObservation,
   acceptedObservationCandidate,
@@ -60,6 +62,8 @@ import {
 import {
   loadCanonicalViewSnapshotFromDb,
   computeHealth,
+  healthChainObservation,
+  type HealthReport,
   getTokenUtxosByScriptDb,
   getLiveTokenUtxosAtDb,
 } from "@crclaunch/cove-indexer/v3";
@@ -105,7 +109,7 @@ import {
   validateInputSignature,
   walletDeltaSats,
 } from "./psbt.js";
-import { resolveFundingUtxos, type FundingCandidate, type ResolvedFunding } from "./funding.js";
+import { resolveFundingUtxos, validateFundingCandidates, type FundingCandidate, type ResolvedFunding } from "./funding.js";
 import {
   resolveWalletIdentity,
   walletIdentityFrom,
@@ -293,7 +297,9 @@ export class V3AppService {
     readonly transitionSigner: GuardianTransitionSigner,
     readonly secondaryProvider: CoreRpcProvider | null = null,
   ) {
-    this.assets = config.ordUrl ? ordAssetLookup(config.ordUrl) : null;
+    this.assets = config.ordUrl ? ordAssetLookup(config.ordUrl, {
+      budget: new PostgresRpcBudget(db, `ord:${providerAccount({ url: config.ordUrl })}`, "public", 3),
+    }) : null;
     this.fundingChecker = chainFundingChecker({
       chain: provider,
       expectedChain:
@@ -373,7 +379,7 @@ export class V3AppService {
     }
   }
 
-  private async requireHealthy(): Promise<void> {
+  private async requireHealthy(): Promise<HealthReport> {
     const health = await computeHealth({
       db: this.db,
       network: this.config.network,
@@ -390,7 +396,9 @@ export class V3AppService {
     // Two-Core quorum (§29/§38): if a secondary Core is configured, mutations
     // fail closed unless the two nodes agree.
     if (this.secondaryProvider) {
-      const agreement = await checkCoreAgreement(this.provider, this.secondaryProvider);
+      const agreement = await checkCoreAgreement(this.provider, this.secondaryProvider, {
+        primaryInfo: healthChainObservation(health, this.provider),
+      });
       if (!agreement.agreed)
         throw new AppError(
           "CORE_UNAVAILABLE",
@@ -413,6 +421,15 @@ export class V3AppService {
         );
       }
     }
+    return health;
+  }
+
+  private validateTokenAmount(tokenId: string, amountAtoms: bigint, multiple = 1n): void {
+    if (!/^[0-9a-f]{64}$/i.test(tokenId))
+      throw new AppError("TOKEN_NOT_FOUND", "token id must be 32-byte hex");
+    if (typeof amountAtoms !== "bigint" || amountAtoms <= 0n ||
+      amountAtoms > PUBLIC_SUPPLY_ATOMS || amountAtoms % multiple !== 0n)
+      throw new AppError("TOKEN_AMOUNT_INVALID", "invalid token amount");
   }
 
   // ── reads ─────────────────────────────────────────────────────────────────
@@ -529,12 +546,54 @@ export class V3AppService {
   ): Promise<BackingRow> {
     let tip = confirmed;
     const visited: string[] = [];
+    const cursor = () => this.db.execute(sql`select c.height::text as height, c.block_hash,
+      c.rebuilding, e.chain_generation::text as generation from cove_v3_cursor c
+      left join cove_observation_epochs e on e.network = c.network
+      where c.network = ${this.config.network}`);
+    const captured = (await cursor()).rows[0];
+    if (!captured || captured.rebuilding)
+      throw new AppError("STATE_CHANGED", "the indexed chain is not ready for pending verification");
+    let chain;
+    try {
+      chain = await this.provider.getBlockchainInfo({ retry: false });
+    } catch {
+      throw new AppError("CORE_UNAVAILABLE", "the chain tip cannot currently be observed");
+    }
+    let membership: Set<string> | undefined;
+    const readMembership = async () => {
+      try {
+        return await this.provider.getMempoolSnapshot({ retry: false });
+      } catch {
+        throw new AppError("CORE_UNAVAILABLE", "the pending branch cannot currently be observed");
+      }
+    };
+    const verifyFence = async () => {
+      if (visited.length) {
+        const current = await readMembership();
+        if (visited.some((txid) => !current.has(txid)))
+          throw new AppError("STATE_CHANGED", "the pending branch changed during observation");
+      }
+      let currentChain;
+      try {
+        currentChain = await this.provider.getBlockchainInfo({ retry: false });
+      } catch {
+        throw new AppError("CORE_UNAVAILABLE", "the chain tip cannot currently be verified");
+      }
+      const current = (await cursor()).rows[0];
+      if (currentChain.bestBlockHash !== chain.bestBlockHash || currentChain.blocks !== chain.blocks ||
+        !current || current.rebuilding || current.height !== captured.height ||
+        current.block_hash !== captured.block_hash || current.generation !== captured.generation)
+        throw new AppError("STATE_CHANGED", "the chain changed during pending verification");
+    };
 
     for (let depth = 0; depth < MAX_PENDING_BACKING_CHAIN; depth++) {
       // Submitting a transaction revalidates it against the outpoint it was
       // BUILT on, which may be behind the current tip if others have queued
       // since. Stopping there keeps the check exact.
-      if (stopAt && tip.input.txid === stopAt.txid && tip.input.vout === stopAt.vout) return tip;
+      if (stopAt && tip.input.txid === stopAt.txid && tip.input.vout === stopAt.vout) {
+        await verifyFence();
+        return tip;
+      }
       let spendingTxid: string | null | undefined;
       try {
         spendingTxid = await this.provider.getMempoolSpender(tip.input.txid, tip.input.vout, {
@@ -546,12 +605,14 @@ export class V3AppService {
       }
       let next: { txid: string } | null = spendingTxid ? { txid: spendingTxid } : null;
       if (spendingTxid === undefined) {
+        membership ??= await readMembership();
         const candidates = await listSubmittedSpendsOfBacking(
           this.db,
           this.config.network,
           tokenId,
           tip.input.txid,
           tip.input.vout,
+          membership,
         );
         if (candidates.length > 64)
           throw new AppError(
@@ -560,19 +621,6 @@ export class V3AppService {
           );
         for (const candidate of candidates) {
           if (!candidate.txid) continue;
-          let accepted: boolean;
-          try {
-            accepted = await this.provider.isTransactionInMempool(candidate.txid, {
-              retry: false,
-              signal: AbortSignal.timeout(5_000),
-            });
-          } catch {
-            throw new AppError(
-              "CORE_UNAVAILABLE",
-              "the pending branch cannot currently be observed",
-            );
-          }
-          if (!accepted) continue;
           if (next)
             throw new AppError("STATE_CHANGED", "the accepted branch changed during observation");
           next = { txid: candidate.txid };
@@ -584,6 +632,7 @@ export class V3AppService {
             "STATE_CHANGED",
             "the requested backing is no longer on the accepted branch; request a fresh quote",
           );
+        await verifyFence();
         let unspent;
         try {
           unspent = await this.provider.getTxout(tip.input.txid, tip.input.vout);
@@ -600,22 +649,6 @@ export class V3AppService {
             "the backing output has changed; request a fresh quote",
           );
         }
-        for (const txid of visited) {
-          let present: boolean;
-          try {
-            present = await this.provider.isTransactionInMempool(txid, {
-              retry: false,
-              signal: AbortSignal.timeout(5_000),
-            });
-          } catch {
-            throw new AppError(
-              "CORE_UNAVAILABLE",
-              "the pending branch cannot currently be verified",
-            );
-          }
-          if (!present)
-            throw new AppError("STATE_CHANGED", "the pending branch changed during observation");
-        }
         return tip;
       }
       visited.push(next.txid);
@@ -630,7 +663,12 @@ export class V3AppService {
         );
       }
 
-      const tx = bitcoin.Transaction.fromHex(raw);
+      let tx: bitcoin.Transaction;
+      try {
+        tx = bitcoin.Transaction.fromHex(raw);
+      } catch {
+        throw new AppError("STATE_CHANGED", "the pending backing transaction is invalid");
+      }
       if (
         tx.getId() !== next.txid ||
         !tx.ins[0] ||
@@ -1005,8 +1043,11 @@ export class V3AppService {
     idempotencyKey: string;
   }): Promise<{ sessionId: string; psbtBase64: string; intent: IntentV3; tokenId: string }> {
     this.assertMutating();
-    await this.requireHealthy();
     const wallet = resolveWalletIdentity(walletIdentityFrom(params));
+    validateFundingCandidates(params.funding);
+    const metadataJson = validateMetadata(params.metadata);
+    if (!/^[0-9a-f]{64}$/i.test(params.nonceHex))
+      throw new AppError("TOKEN_AMOUNT_INVALID", "nonce must be 32-byte hex");
     // The creator is paid at their payment address, where BTC belongs.
     const creatorScript = wallet.payments.scriptBuffer;
     const tokenId = computeTokenId({
@@ -1017,6 +1058,7 @@ export class V3AppService {
       creatorScript,
     }).toString("hex");
     this.assertCanaryAllowed({ tokenId, walletScript: params.walletScript });
+    await this.requireHealthy();
     // The deploy funds the vault anchor, the creator record (which comes back
     // to the creator's own address) and the miner fee.
     const { inputs: deployerInputs, minerFeeSats } = await this.resolveFundingAndFee({
@@ -1046,7 +1088,6 @@ export class V3AppService {
     });
     const psbtBase64 = result.psbt.toBase64();
     const digest = unsignedTxDigest(result.psbt);
-    const metadataJson = validateMetadata(params.metadata);
     const session = await createTxSession(this.db, {
       network: this.config.network,
       operation: "DEPLOY",
@@ -1358,9 +1399,21 @@ export class V3AppService {
     idempotencyKey: string;
   }): Promise<{ sessionId: string; psbtBase64: string; intent: IntentV3 }> {
     this.assertMutating();
-    await this.requireHealthy();
+    this.validateTokenAmount(params.tokenId, params.amountAtoms, LOT_TOKENS * ATOMS_PER_TOKEN);
+    if (params.amountAtoms > this.mintLimits().maxMintAtoms)
+      throw new AppError("TOKEN_AMOUNT_INVALID", "exceeds the per-mint token limit");
     this.assertCanaryAllowed({ tokenId: params.tokenId, walletScript: params.walletScript });
     const wallet = resolveWalletIdentity(walletIdentityFrom(params));
+    validateFundingCandidates(params.funding);
+    const binding = params.quoteBinding;
+    if (!binding || !/^[0-9a-f]{64}$/i.test(binding.stateHash) ||
+      !binding.backingOutpoint || !/^[0-9a-f]{64}$/i.test(binding.backingOutpoint.txid) ||
+      binding.backingOutpoint.vout !== 1 ||
+      (binding.expiresAtHeight !== null &&
+        (typeof binding.expiresAtHeight !== "bigint" || binding.expiresAtHeight < 0n)))
+      throw new AppError("QUOTE_STALE", "invalid quote binding");
+    await this.loadConfirmedBacking(params.tokenId);
+    await this.requireHealthy();
     const backing = await this.loadBacking(params.tokenId);
     if (
       backing.stateHash !== params.quoteBinding.stateHash ||
@@ -1631,10 +1684,11 @@ export class V3AppService {
     funding?: FundingCandidate[];
   }): Promise<{ sessionId: string; psbtBase64: string; intent: IntentV3 }> {
     this.assertMutating();
-    await this.requireHealthy();
+    this.validateTokenAmount(params.tokenId, params.amountAtoms, LOT_TOKENS * ATOMS_PER_TOKEN);
     this.assertCanaryAllowed({ tokenId: params.tokenId, walletScript: params.walletScript });
     const wallet = resolveWalletIdentity(walletIdentityFrom(params));
-    const backing = await this.loadBacking(params.tokenId);
+    validateFundingCandidates(params.funding ?? []);
+    await this.loadConfirmedBacking(params.tokenId);
     // Token carriers live on the ORDINALS address, not the one holding BTC.
     const tokenUtxos = await getTokenUtxosByScriptDb(
       this.db,
@@ -1678,6 +1732,8 @@ export class V3AppService {
           `or redeem a smaller amount.`,
       );
     }
+    await this.requireHealthy();
+    const backing = await this.loadBacking(params.tokenId);
     // A carrier on a Taproot ordinals address cannot be signed without its
     // internal key, so the public key travels with every token input.
     const tokenInputs: ResolvedInput[] = selected.map((u) => ({
@@ -1924,8 +1980,12 @@ export class V3AppService {
     idempotencyKey: string;
   }): Promise<{ sessionId: string; psbtBase64: string; intent: IntentV3 }> {
     this.assertMutating();
-    await this.requireHealthy();
+    this.validateTokenAmount(params.tokenId, params.amountAtoms);
     const wallet = resolveWalletIdentity(walletIdentityFrom(params));
+    validateFundingCandidates(params.funding);
+    if (!/^(?:0014[0-9a-f]{40}|5120[0-9a-f]{64})$/i.test(params.recipientScript))
+      throw new AppError("TOKEN_AMOUNT_INVALID", "recipient must be a token carrier script");
+    await this.loadConfirmedBacking(params.tokenId);
     const tokenUtxos = await getTokenUtxosByScriptDb(
       this.db,
       this.config.network,
@@ -1965,6 +2025,7 @@ export class V3AppService {
           `yourself, or send a smaller amount.`,
       );
     }
+    await this.requireHealthy();
     // A carrier on a Taproot ordinals address cannot be signed without its
     // internal key, so the public key travels with every token input.
     const tokenInputs: ResolvedInput[] = selected.map((u) => ({
@@ -2390,12 +2451,14 @@ export class V3AppService {
     // enabled + network (config-driven), health/quorum, and the canary
     // allowlist before finalizing or broadcasting anything.
     this.assertMutating();
-    await this.requireHealthy();
     const fills = await this.getFill(fillId);
     const fill = fills[0];
     if (!fill) throw new AppError("STATE_CHANGED", "fill not found");
     this.assertCanaryAllowed({ tokenId: fill.tokenId, walletScript: fill.buyerTokenScript });
-    return this.market.completeFill(fillId);
+    if (!["BUYER_SIGNED", "SUBMITTING", "BROADCAST", "CONFIRMED"].includes(fill.status))
+      throw new AppError("STATE_CHANGED", `fill is ${fill.status}`);
+    const observation = await this.requireHealthy();
+    return this.market.completeFill(fillId, observation);
   }
   getBuyRoutes(tokenId: string, amountAtoms: bigint) {
     return getBuyRoutes(this.db, this.config.network, tokenId, amountAtoms, {

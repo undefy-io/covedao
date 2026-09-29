@@ -282,7 +282,36 @@ describe.skipIf(!isolated)("competing vault spends on isolated Bitcoin Core and 
           backing: unknown,
         ): Promise<{ input: { txid: string }; state: typeof deploy.s0 }>;
       };
+      await db.insert(schema.coveV3AppTransactions).values(
+        Array.from({ length: 100 }, (_, i) => ({
+          network: "regtest",
+          operation: "BACKING_BUY",
+          tokenId: deploy.tokenId.toString("hex"),
+          walletScript: payment.output!.toString("hex"),
+          backingTxid: deployTxid,
+          backingVout: 1,
+          txid: i.toString(16).padStart(64, "0"),
+          status: "BROADCAST",
+          idempotencyKey: randomUUID(),
+        })),
+      );
       const compare = async (expectedTxid: string) => {
+        for (let current = expectedTxid; current !== deployTxid;) {
+          const accepted = bitcoin.Transaction.fromHex(await provider.getRawTransaction(current));
+          const parent = Buffer.from(accepted.ins[0]!.hash).reverse().toString("hex");
+          await db.insert(schema.coveV3AppTransactions).values({
+            network: "regtest",
+            operation: "BACKING_BUY",
+            tokenId: deploy.tokenId.toString("hex"),
+            walletScript: payment.output!.toString("hex"),
+            backingTxid: parent,
+            backingVout: accepted.ins[0]!.index,
+            txid: current,
+            status: "BROADCAST",
+            idempotencyKey: randomUUID(),
+          });
+          current = parent;
+        }
         await saveChainObservation(db, "regtest", await provider.getBlockchainInfo());
         expect((await projections.refresh()).published).toBe(1);
         const observed = await app.quoteBackingBuy(
@@ -301,6 +330,36 @@ describe.skipIf(!isolated)("competing vault spends on isolated Bitcoin Core and 
         expect(observed.backingOutpoint.txid).toBe(expectedTxid);
         expect(observed.supplyBeforeAtoms).toBe(legacy.state.issuedPublicSupplyAtoms);
         expect(observed.backingBeforeSats).toBe(legacy.state.backingSats);
+        const fallbackApp = new V3AppService(
+          db,
+          new Proxy(provider, {
+            get: (target, property) =>
+              property === "getMempoolSpender"
+                ? async () => undefined
+                : property === "isTransactionInMempool"
+                  ? () => {
+                      throw new Error("per-competitor RPC forbidden");
+                    }
+                  : typeof Reflect.get(target, property) === "function"
+                    ? Reflect.get(target, property).bind(target)
+                    : Reflect.get(target, property),
+          }),
+          config,
+          signer,
+        ) as unknown as typeof follow;
+        expect(
+          (
+            await fallbackApp.followPendingBacking(deploy.tokenId.toString("hex"), {
+              state: deploy.s0,
+              input: {
+                txid: deployTxid,
+                vout: 1,
+                script: deploy.vault.scriptPubKey,
+                valueSats: 10_000n,
+              },
+            })
+          ).input.txid,
+        ).toBe(expectedTxid);
         const noRpc = new V3AppService(
           db,
           new Proxy({} as CoreRpcProvider, {
@@ -315,6 +374,10 @@ describe.skipIf(!isolated)("competing vault spends on isolated Bitcoin Core and 
           (await noRpc.quoteBackingBuy(deploy.tokenId.toString("hex"), 1_000_000n * 100_000_000n))
             .stateHash,
         ).toBe(observed.stateHash);
+        const routeQuote = await noRpc.quoteBackingBuy(deploy.tokenId.toString("hex"), 1_000_000n * 100_000_000n);
+        const routes = await noRpc.getBuyRoutes(deploy.tokenId.toString("hex"), routeQuote.amountAtoms);
+        expect(routes.find((route) => route.kind === "backing")?.totalCostSats)
+          .toBe(routeQuote.grossSats + routeQuote.feeSats + routeQuote.creatorFeeSats);
         await noRpc.quoteBuyForSats(deploy.tokenId.toString("hex"), 100_000n);
         if (legacy.state.issuedPublicSupplyAtoms > 0n)
           await noRpc.quoteRedeem(deploy.tokenId.toString("hex"), 1_000_000n * 100_000_000n);

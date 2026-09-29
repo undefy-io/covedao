@@ -1,0 +1,342 @@
+{
+  "date": "2026-09-29",
+  "scope": "RPC fix release verification; isolated regtest transaction/DB tests, recording HTTP transport, deployed local signet reads. This is not a live mainnet canary.",
+  "baseCommit": "a9eabb8",
+  "workspace": {
+    "typecheck": "37 tasks passed",
+    "lint": "37 tasks passed",
+    "test": "37 tasks passed",
+    "packageTestSummaries": {
+      "@crclaunch/config": {
+        "passed": 23,
+        "skipped": 0
+      },
+      "@crclaunch/cove-wire": {
+        "passed": 60,
+        "skipped": 1
+      },
+      "@crclaunch/curve": {
+        "passed": 59,
+        "skipped": 0
+      },
+      "@crclaunch/db": {
+        "passed": 4,
+        "skipped": 17
+      },
+      "@crclaunch/bitcoin": {
+        "passed": 152,
+        "skipped": 0
+      },
+      "@crclaunch/cove-economics": {
+        "passed": 62,
+        "skipped": 0
+      },
+      "@crclaunch/cove-covenant": {
+        "passed": 59,
+        "skipped": 0
+      },
+      "@crclaunch/wallets": {
+        "passed": 26,
+        "skipped": 0
+      },
+      "@crclaunch/cove-vault": {
+        "passed": 30,
+        "skipped": 0
+      },
+      "@crclaunch/protocol": {
+        "passed": 113,
+        "skipped": 0
+      },
+      "@crclaunch/cove-simplicity": {
+        "passed": 38,
+        "skipped": 0
+      },
+      "@crclaunch/cove-recovery": {
+        "passed": 6,
+        "skipped": 0
+      },
+      "@crclaunch/cove-mainnet": {
+        "passed": 39,
+        "skipped": 0
+      },
+      "@crclaunch/cove-guardian": {
+        "passed": 180,
+        "skipped": 0
+      },
+      "@crclaunch/cove-indexer": {
+        "passed": 77,
+        "skipped": 1
+      },
+      "@crclaunch/cove-market": {
+        "passed": 57,
+        "skipped": 5
+      },
+      "@crclaunch/cove-app": {
+        "passed": 127,
+        "skipped": 16
+      },
+      "@crclaunch/guardian": {
+        "passed": 25,
+        "skipped": 14
+      },
+      "@crclaunch/web": {
+        "passed": 106,
+        "skipped": 8
+      }
+    },
+    "secretScan": {
+      "status": "passed",
+      "publicFiles": 727,
+      "regressionTests": 18,
+      "checks": [
+        "deterministic fixture private keys",
+        "WIF-like keys",
+        "committed env credentials"
+      ]
+    },
+    "architectureScan": "passed",
+    "productionBuild": "passed"
+  },
+  "regressions": {
+    "localPreflightZeroExternalCalls": 15,
+    "healthScopeAndTimestamp": 10,
+    "quorumAndReadiness": 8,
+    "bestExecutionUnitCases": 7,
+    "realCoreNativeAndNestedCompetition": 2,
+    "acceptedWinnerAfterLosingRecords": [
+      65,
+      100,
+      2000
+    ],
+    "sharedOrdDatabaseQuotaTest": 1,
+    "durableSignatureCancellationRecovery": "passed",
+    "regtestScanDeadlineAndAdmission": "passed"
+  },
+  "standaloneGuardian": {
+    "typecheck": "passed",
+    "lint": "passed",
+    "rustBuild": "passed",
+    "recursiveTestsPassed": 194,
+    "recursiveTestsSkipped": 41,
+    "additionalDatabaseTestsPassed": 18,
+    "changedTypeScriptFilesWithoutComments": 46,
+    "httpHealthStatus": 200,
+    "healthFlags": {
+      "auditHealthy": true,
+      "signingJournalHealthy": true,
+      "custodyBackendReady": true,
+      "signingEnabled": true
+    },
+    "profileHash": "f2b589edda9214bfaac9d35f3c32827d58fee58affcb85180b05b662fb0cc541",
+    "userReadmeModificationPreserved": true,
+    "commit": "c7370e7",
+    "secretScan": {
+      "status": "passed",
+      "publicFiles": 348
+    }
+  },
+  "images": {
+    "signetApp": "sha256:5c8dcff8fe491f098f0fba2a103ba35560e86f217369b14e22fb0c1abc98d86a",
+    "isolatedRegtestApp": "sha256:2a40f4d6b85b7da2fed204cc24fbc2b00d4ba2af7f8cdc9db0d1b21515c813d4",
+    "guardian": "sha256:3c2103ddfab43648899ff5226d4a5bf78828184761b69415a5956095567947f2"
+  },
+  "profileTomlSha256": "00b6e533ac6e963e4a21ae1cf07643d68f0e004d9b5f2e7926b662a5c10b89af",
+  "isolatedHttpSmoke": [
+    {
+      "path": "/api/v3/status",
+      "concurrency": 1,
+      "requests": 1,
+      "statuses": {
+        "200": 1
+      },
+      "p95Ms": 5.23,
+      "p99Ms": 5.23
+    },
+    {
+      "path": "/api/v3/fees",
+      "concurrency": 1,
+      "requests": 1,
+      "statuses": {
+        "200": 1
+      },
+      "p95Ms": 3.518,
+      "p99Ms": 3.518
+    },
+    {
+      "path": "/api/v3/tokens",
+      "concurrency": 1,
+      "requests": 1,
+      "statuses": {
+        "200": 1
+      },
+      "p95Ms": 3.362,
+      "p99Ms": 3.362
+    },
+    {
+      "path": "/api/v3/tokens/c20eee269833c1832fd5965ab1d961e9f7215f8a742076a3ca629564337a390f",
+      "concurrency": 1,
+      "requests": 1,
+      "statuses": {
+        "200": 1
+      },
+      "p95Ms": 3.338,
+      "p99Ms": 3.338
+    },
+    {
+      "path": "/api/v3/tokens/c20eee269833c1832fd5965ab1d961e9f7215f8a742076a3ca629564337a390f/market",
+      "concurrency": 1,
+      "requests": 1,
+      "statuses": {
+        "200": 1
+      },
+      "p95Ms": 5.009,
+      "p99Ms": 5.009
+    },
+    {
+      "path": "/api/v3/tokens/c20eee269833c1832fd5965ab1d961e9f7215f8a742076a3ca629564337a390f/holders",
+      "concurrency": 1,
+      "requests": 1,
+      "statuses": {
+        "200": 1
+      },
+      "p95Ms": 3.336,
+      "p99Ms": 3.336
+    },
+    {
+      "path": "/api/v3/tokens/c20eee269833c1832fd5965ab1d961e9f7215f8a742076a3ca629564337a390f/candles?timeframe=1h",
+      "concurrency": 1,
+      "requests": 1,
+      "statuses": {
+        "200": 1
+      },
+      "p95Ms": 2.984,
+      "p99Ms": 2.984
+    },
+    {
+      "path": "/api/v3/tx/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "concurrency": 1,
+      "requests": 1,
+      "statuses": {
+        "200": 1
+      },
+      "p95Ms": 4.077,
+      "p99Ms": 4.077
+    },
+    {
+      "path": "/api/v3/backing/buy/quote",
+      "concurrency": 1,
+      "requests": 1,
+      "statuses": {
+        "200": 1
+      },
+      "p95Ms": 3.771,
+      "p99Ms": 3.771
+    },
+    {
+      "path": "/api/v3/tokens/c20eee269833c1832fd5965ab1d961e9f7215f8a742076a3ca629564337a390f/buy/routes",
+      "concurrency": 1,
+      "requests": 1,
+      "statuses": {
+        "200": 1
+      },
+      "p95Ms": 3.481,
+      "p99Ms": 3.481
+    },
+    {
+      "path": "/api/v3/backing/buy/quote-sats",
+      "concurrency": 1,
+      "requests": 1,
+      "statuses": {
+        "200": 1
+      },
+      "p95Ms": 2.815,
+      "p99Ms": 2.815
+    },
+    {
+      "path": "/api/v3/backing/redeem/quote",
+      "concurrency": 1,
+      "requests": 1,
+      "statuses": {
+        "200": 1
+      },
+      "p95Ms": 2.894,
+      "p99Ms": 2.894
+    },
+    {
+      "publicRpcAttempts": 0
+    }
+  ],
+  "isolatedFreshnessFaults": [
+    {
+      "fault": "expired pending observation",
+      "status": 503,
+      "retryable": true
+    },
+    {
+      "fault": "obsolete chain generation",
+      "status": 503,
+      "retryable": true
+    },
+    {
+      "fault": "missing positive proof",
+      "status": 503,
+      "retryable": true
+    },
+    {
+      "fault": "invalidated pending revision",
+      "status": 503,
+      "retryable": true
+    },
+    {
+      "fault": "expired chain observation",
+      "status": 503
+    },
+    {
+      "recovered": 200,
+      "publicRpcAttempts": 0
+    }
+  ],
+  "deployedSignetSmoke": [
+    {
+      "path": "/api/v3/status",
+      "status": 200,
+      "ms": 62,
+      "indexerHealth": "HEALTHY",
+      "coreReachable": true
+    },
+    {
+      "path": "/api/v3/fees",
+      "status": 200,
+      "ms": 12
+    },
+    {
+      "path": "/api/v3/tokens",
+      "status": 200,
+      "ms": 22
+    },
+    {
+      "path": "/api/v3/tx/abababababababababababababababababababababababababababababababab",
+      "status": 200,
+      "ms": 24
+    },
+    {
+      "path": "/api/dev/wallet",
+      "status": 403,
+      "ms": 9
+    }
+  ],
+  "deployment": {
+    "network": "signet",
+    "signer": "local",
+    "web": "healthy",
+    "worker": "healthy",
+    "sourceMounts": false,
+    "productionTransactionsBroadcastByVerification": 0
+  },
+  "limits": [
+    "HTTP smoke samples are single warm requests, not concurrency or tunnel latency measurements.",
+    "Genesis verification remains live because hosted backend identity is not immutable.",
+    "Independent live funding/signing/broadcast checks remain enabled.",
+    "Standalone database ancestry tests use a 30-second CLI test timeout; service timeouts are unchanged."
+  ]
+}

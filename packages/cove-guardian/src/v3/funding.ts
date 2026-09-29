@@ -13,6 +13,8 @@
  * Every check fails closed: if a source cannot answer, the input is refused.
  */
 
+import { operationSignal, readBoundedJson } from "@crclaunch/bitcoin";
+
 export interface OutPointRef {
   txid: string;
   vout: number;
@@ -200,19 +202,54 @@ export function chainFundingChecker(params: {
  */
 export function ordAssetLookup(
   baseUrl: string,
-  opts: { timeoutMs?: number; fetchImpl?: typeof fetch } = {},
+  opts: { timeoutMs?: number; fetchImpl?: typeof fetch; budget?: { acquire(signal: AbortSignal): Promise<() => Promise<void>> }; maxResponseBytes?: number } = {},
 ): AssetLookup {
   const base = baseUrl.replace(/\/+$/, "");
   const doFetch = opts.fetchImpl ?? fetch;
   const timeoutMs = opts.timeoutMs ?? 5_000;
+  let active = 0;
+  const waiting: { start: () => void; abort: () => void }[] = [];
+  const acquire = (signal: AbortSignal): Promise<() => void> => {
+    signal.throwIfAborted();
+    if (waiting.length >= 32) return Promise.reject(new Error("ord capacity unavailable"));
+    return new Promise((resolve, reject) => {
+      const entry = {
+        start: () => {
+          signal.removeEventListener("abort", entry.abort);
+          active++;
+          resolve(() => { active--; waiting.shift()?.start(); });
+        },
+        abort: () => {
+          const index = waiting.indexOf(entry);
+          if (index >= 0) waiting.splice(index, 1);
+          signal.removeEventListener("abort", entry.abort);
+          reject(signal.reason);
+        },
+      };
+      if (active < 4) entry.start();
+      else {
+        waiting.push(entry);
+        signal.addEventListener("abort", entry.abort, { once: true });
+      }
+    });
+  };
   return {
     async describeAssets(o) {
+      const signal = operationSignal(AbortSignal.timeout(timeoutMs));
+      const releaseLocal = await acquire(signal);
+      let releaseShared: (() => Promise<void>) | undefined;
+      try {
+      releaseShared = await opts.budget?.acquire(signal);
+      signal.throwIfAborted();
       const res = await doFetch(`${base}/output/${o.txid}:${o.vout}`, {
         headers: { accept: "application/json" },
-        signal: AbortSignal.timeout(timeoutMs),
+        signal,
       });
-      if (!res.ok) throw new Error(`ord replied ${res.status}`);
-      const body = (await res.json()) as {
+      if (!res.ok) {
+        await res.body?.cancel();
+        throw new Error(`ord replied ${res.status}`);
+      }
+      const body = (await readBoundedJson(res, opts.maxResponseBytes ?? 256_000, signal)) as {
         indexed?: unknown;
         inscriptions?: unknown;
         runes?: unknown;
@@ -230,6 +267,10 @@ export function ordAssetLookup(
       if (body.inscriptions.length > 0) held.push(`${body.inscriptions.length} inscription(s)`);
       if (runeCount > 0) held.push(`${runeCount} rune(s)`);
       return held.length > 0 ? held.join(" and ") : null;
+      } finally {
+        await releaseShared?.().catch(() => {});
+        releaseLocal();
+      }
     },
   };
 }

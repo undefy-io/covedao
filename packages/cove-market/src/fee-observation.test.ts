@@ -1,12 +1,16 @@
 import { afterEach, expect, it, vi } from "vitest";
 import type { Database } from "@crclaunch/db";
 import type * as Presign from "./presign.js";
+import type * as Health from "./health.js";
 import type { CoreRpcProvider } from "@crclaunch/bitcoin";
 import { MarketService } from "./service.js";
 import { defaultMarketConfig } from "./config.js";
 
 const build = vi.hoisted(() => vi.fn(() => { throw new Error("BUILD_REACHED"); }));
-vi.mock("./health.js", () => ({ assertMarketReady: vi.fn() }));
+vi.mock("./health.js", async (importOriginal) => ({
+  ...await importOriginal<typeof Health>(),
+  assertMarketReady: vi.fn(),
+}));
 vi.mock("./presign.js", async (importOriginal) => ({
   ...await importOriginal<typeof Presign>(),
   buildPresignedFillPsbt: build,

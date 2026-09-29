@@ -43,26 +43,42 @@ export class FixedWindowRateLimiter {
 }
 
 /** Read the JSON body, rejecting it if it exceeds maxBytes. */
-export function readJsonWithLimit(req: IncomingMessage, maxBytes: number): Promise<unknown> {
+export function readJsonWithLimit(req: IncomingMessage, maxBytes: number, signal?: AbortSignal): Promise<unknown> {
   return new Promise((resolve, reject) => {
+    signal?.throwIfAborted();
     const chunks: Buffer[] = [];
     let total = 0;
-    req.on("data", (c: Buffer) => {
+    const cleanup = () => {
+      req.removeListener("data", data);
+      req.removeListener("end", end);
+      req.removeListener("error", fail);
+      req.removeListener("aborted", aborted);
+      signal?.removeEventListener("abort", abort);
+    };
+    const fail = (error: unknown) => { cleanup(); reject(error); };
+    const abort = () => fail(signal?.reason);
+    const aborted = () => fail(new Error("request aborted"));
+    const data = (c: Buffer) => {
       total += c.length;
       if (total > maxBytes) {
-        reject(new Error(`request body exceeds ${maxBytes} bytes`));
+        fail(new Error(`request body exceeds ${maxBytes} bytes`));
         req.destroy();
         return;
       }
       chunks.push(c);
-    });
-    req.on("end", () => {
+    };
+    const end = () => {
+      cleanup();
       try {
         resolve(chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {});
       } catch (e) {
         reject(e);
       }
-    });
-    req.on("error", reject);
+    };
+    req.on("data", data);
+    req.on("end", end);
+    req.on("error", fail);
+    req.once("aborted", aborted);
+    signal?.addEventListener("abort", abort, { once: true });
   });
 }

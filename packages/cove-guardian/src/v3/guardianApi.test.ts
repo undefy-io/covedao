@@ -1,5 +1,6 @@
 import { CONFIRMED_FUNDING_FOR_TESTS } from "./testFunding.js";
 import { describe, expect, it, vi } from "vitest";
+import { withRpcDeadline } from "@crclaunch/bitcoin";
 import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import { ECPairFactory } from "ecpair";
@@ -88,6 +89,42 @@ function transportFor(view: CoveChainView): InProcessGuardianTransport {
 }
 
 describe("remote Guardian client (§24)", () => {
+  it.skipIf(!isSimplicityAvailable())("keeps a persisted signature after cancellation and recovers identical bytes", async () => {
+    const { psbt, view } = mintFixture();
+    const original = psbt.toBase64();
+    const controller = new AbortController();
+    const journal = new InMemorySigningJournal();
+    const markSigned = journal.markSigned.bind(journal);
+    vi.spyOn(journal, "markSigned").mockImplementation(async (entry) => {
+      await markSigned(entry);
+      controller.abort(new Error("client disconnected after persistence"));
+    });
+    const backend = localSigningBackend(GuardianV3Signer.fromPrivateKey(Buffer.alloc(32, 0x42)));
+    const signing = vi.spyOn(backend, "signVaultExecutionLeaf");
+    const service = new LocalGuardianTransitionSigner(backend, journal, memoryAudit, riskPolicy);
+    const request = { psbt, view, network: "regtest" as const, fundingChecker: CONFIRMED_FUNDING_FOR_TESTS,
+      recoveryKeyXOnly, recoveryProfile: MAINNET1, feeScript, maxMinerFeeSats: 1_000n };
+    expect((await withRpcDeadline(controller.signal, () => service.signMint(request))).ok).toBe(true);
+    const witness = Buffer.from(psbt.data.inputs[0]!.finalScriptWitness!);
+    const retry = bitcoin.Psbt.fromBase64(original);
+    expect((await service.signMint({ ...request, psbt: retry, view: new CoveChainView() })).ok).toBe(true);
+    expect(retry.data.inputs[0]!.finalScriptWitness).toEqual(witness);
+    expect(signing).toHaveBeenCalledOnce();
+  });
+
+  it.skipIf(!isSimplicityAvailable())("cancellation during durable pre-sign audit produces no signature", async () => {
+    const { psbt, view } = mintFixture();
+    const controller = new AbortController();
+    const backend = localSigningBackend(GuardianV3Signer.fromPrivateKey(Buffer.alloc(32, 0x42)));
+    const signing = vi.spyOn(backend, "signVaultExecutionLeaf");
+    const service = new LocalGuardianTransitionSigner(backend, new InMemorySigningJournal(), {
+      writeBeforeSign: async () => { controller.abort(new Error("client left before sign")); return { auditHash: "0".repeat(64) }; },
+      writeAfterSign: async () => {},
+    }, riskPolicy);
+    await expect(withRpcDeadline(controller.signal, () => service.signMint({ psbt, view, network: "regtest", fundingChecker: CONFIRMED_FUNDING_FOR_TESTS,
+      recoveryKeyXOnly, recoveryProfile: MAINNET1, feeScript, maxMinerFeeSats: 1_000n }))).rejects.toThrow("client left before sign");
+    expect(signing).not.toHaveBeenCalled();
+  });
   it.skipIf(!isSimplicityAvailable())("replays identical saved signing bytes after a lost response without signing again", async () => {
     const { psbt, view } = mintFixture();
     const original = psbt.toBase64();
