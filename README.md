@@ -145,15 +145,17 @@ profile in `packages/cove-mainnet/src/committed-profile.ts`. See
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#configuration).
 
 Signet with real browser wallets: `scripts/signet-up.sh`.
-For a hosted signet RPC such as Tatum, set `COVE_NETWORK=signet`,
-`COVE_BITCOIN_RPC_URL=https://bitcoin-signet.gateway.tatum.io`, and
-`COVE_BITCOIN_RPC_API_KEY` on the web and worker. The key is sent in the
-`x-api-key` header; leave `COVE_BITCOIN_RPC_USER` and
-`COVE_BITCOIN_RPC_PASSWORD` unset. The local `scripts/signet-up.sh` starts its
-own Bitcoin Core node and does not use this hosted-RPC setup.
+For the public signet RPC tested with the Docker stack, set
+`COVE_NETWORK=signet` and
+`COVE_BITCOIN_RPC_URL=https://bitcoin-signet-rpc.publicnode.com` on the web
+and worker, with `COVE_BITCOIN_RPC_API_KEY`, `COVE_BITCOIN_RPC_USER`, and
+`COVE_BITCOIN_RPC_PASSWORD` unset. A hosted provider such as Tatum also works:
+use its signet URL and put its key in `COVE_BITCOIN_RPC_API_KEY`. The key is
+sent in the `x-api-key` header. `scripts/signet-up.sh` starts its own Bitcoin
+Core node and does not use either hosted RPC.
 
 For the local Docker signet stack, keep `.env.signet.local` (gitignored) with
-the RPC settings above, `COVE_DATABASE_URL` and `DATABASE_URL` both set to
+one of the RPC settings above, `COVE_DATABASE_URL` and `DATABASE_URL` both set to
 `postgres://cove:cove@postgres:5432/cove_signet`, signet-only
 `COVE_GUARDIAN_PRIVATE_KEY_HEX`, `COVE_RECOVERY_PRIVATE_KEY_HEX`, and
 `COVE_FEE_PRIVATE_KEY_HEX`, plus `COVE_ACTIVATION_HEIGHT`, `SENTRY_DSN`, and

@@ -160,6 +160,16 @@ describe("loadFeeRates", () => {
     expect(rates.tiers.map((t) => t.satPerVb)).toEqual([2n, 5n, 10n]);
   });
 
+  it("uses the relay floor and fallback rates without trusting signet fee estimates", async () => {
+    const provider = fakeProvider({ floor: 8n, rates: { 12: 292n, 3: 500n, 1: 500n } });
+    const estimate = vi.spyOn(provider, "estimateFeeRateAt");
+    const rates = await loadFeeRates(provider, undefined, "relay-floor-fallback");
+    expect(rates.estimated).toBe(true);
+    expect(rates.floorSatPerVb).toBe(8n);
+    expect(rates.tiers.map((tier) => tier.satPerVb)).toEqual([8n, 8n, 10n]);
+    expect(estimate).not.toHaveBeenCalled();
+  });
+
   it("lifts every tier to the current relay floor", async () => {
     // A filling mempool raises the floor above the node's own slow estimate.
     const rates = await loadFeeRates(fakeProvider({ floor: 15n, rates: { 12: 3n, 3: 9n, 1: 20n } }));

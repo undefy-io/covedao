@@ -143,17 +143,25 @@ const FALLBACK_SAT_PER_VB: Record<FeeTierKey, bigint> = {
 /**
  * Ask the node for a real fee rate per tier and for the current relay floor.
  *
- * Transport failures reject the observation; only successful no-estimate
- * responses use the fallback ladder.
+ * Transport failures reject the observation. A successful no-estimate response
+ * or the signet relay-floor mode uses the fallback ladder.
  *
  * The node is not trusted blindly: every rate is clamped into
  * [floor, ceiling], and the tiers are forced to be non-decreasing so that
  * paying for Priority can never buy a lower rate than Eco.
  */
-export async function loadFeeRates(provider: CoreRpcProvider, options?: RpcReadOptions): Promise<FeeRates> {
+export async function loadFeeRates(
+  provider: CoreRpcProvider,
+  options?: RpcReadOptions,
+  mode: "node" | "relay-floor-fallback" = "node",
+): Promise<FeeRates> {
   const [floor, estimates] = await Promise.all([
     provider.getMempoolMinFeeSatPerVb(options),
-    Promise.all(TIER_TARGETS.map((target) => provider.estimateFeeRateAt(target.blocks, options))),
+    mode === "relay-floor-fallback"
+      ? Promise.resolve(TIER_TARGETS.map(() => null))
+      : Promise.all(
+          TIER_TARGETS.map((target) => provider.estimateFeeRateAt(target.blocks, options)),
+        ),
   ]);
   const floorRaw = floor;
   const floorSatPerVb = floorRaw > ABSOLUTE_FLOOR_SAT_PER_VB ? floorRaw : ABSOLUTE_FLOOR_SAT_PER_VB;

@@ -182,7 +182,7 @@ async function main() {
     }),
     runLoop("pending projections", 1_000, () => observations.refresh()),
     runLoop("fees", 60_000, async () => {
-      const observation = await collectFeeObservation(provider);
+      const observation = await collectFeeObservation(provider, config.network);
       await db.transaction(async (tx) => {
         await assertObservationWorker(tx, config.network, workerEpoch);
         await saveFeeObservation(tx, config.network, observation.rates, observation.observedAt);

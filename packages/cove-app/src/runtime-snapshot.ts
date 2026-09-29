@@ -47,9 +47,14 @@ export async function saveFeeObservation(
 
 export async function collectFeeObservation(
   provider: CoreRpcProvider,
+  network?: string,
 ): Promise<{ rates: FeeRates; observedAt: Date }> {
   const startedAt = new Date();
-  const rates = await loadFeeRates(provider, { signal: AbortSignal.timeout(20_000), retry: true });
+  const rates = await loadFeeRates(
+    provider,
+    { signal: AbortSignal.timeout(20_000), retry: true },
+    network === "signet" ? "relay-floor-fallback" : "node",
+  );
   return { rates, observedAt: startedAt };
 }
 

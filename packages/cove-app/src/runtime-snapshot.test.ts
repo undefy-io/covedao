@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import type { Database } from "@crclaunch/db";
 import { getV3Status } from "./health.js";
-import { readFeeObservation } from "./runtime-snapshot.js";
+import { collectFeeObservation, readFeeObservation } from "./runtime-snapshot.js";
 import { loadV3AppConfig } from "./config.js";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -129,6 +129,17 @@ it("cold start collects RPC fees directly and persists their original observatio
   expect(provider.getMempoolMinFeeSatPerVb).toHaveBeenCalledWith(
     expect.objectContaining({ retry: true, signal: expect.any(AbortSignal) }),
   );
+});
+
+it("uses signet's live relay floor without the node's inflated fee estimates", async () => {
+  const provider = {
+    getMempoolMinFeeSatPerVb: vi.fn(async () => 1n),
+    estimateFeeRateAt: vi.fn(async () => 500n),
+  } as unknown as Parameters<typeof collectFeeObservation>[0];
+  const observation = await collectFeeObservation(provider, "signet");
+  expect(observation.rates.estimated).toBe(true);
+  expect(observation.rates.tiers.map((tier) => tier.satPerVb)).toEqual([2n, 5n, 10n]);
+  expect(provider.estimateFeeRateAt).not.toHaveBeenCalled();
 });
 
 it.each(["HTTP 429", "timeout", "node down"])(
