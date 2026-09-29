@@ -113,6 +113,20 @@
       "when": 1790621426015,
       "tag": "0015_competing_signatures",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790630000000,
+      "tag": "0016_deployment_metadata",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790630100000,
+      "tag": "0017_shared_capacity",
+      "breakpoints": true
     }
   ]
 }

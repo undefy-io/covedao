@@ -1,5 +1,5 @@
 import * as bitcoin from "bitcoinjs-lib";
-import type { BitcoinBlock, ChainUtxo } from "./provider.js";
+import type { BitcoinBlock, ChainUtxo, RpcConfig } from "./provider.js";
 import { decodeRawTransaction, type BitcoinProtocolTx } from "./decoder.js";
 import { btcNetwork, type NetworkName } from "./decoder.js";
 
@@ -10,6 +10,21 @@ interface EsploraUtxoJson {
   status?: { confirmed: boolean; block_height?: number };
 }
 
+async function boundedText(response: Response, maxBytes: number): Promise<string> {
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("Esplora empty response");
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.length;
+    if (size > maxBytes) { await reader.cancel(); throw new Error("Esplora response too large"); }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
 /**
  * Address-indexed UTXO source via a public Esplora HTTP API (blockstream.info
  * or mempool.space). Used to resolve REAL funding UTXOs for the signer — the
@@ -17,30 +32,61 @@ interface EsploraUtxoJson {
  * the test execution path.
  */
 export class EsploraUtxoProvider {
+  private height: { value: number; expires: number } | undefined;
+  private heightPending: Promise<number> | undefined;
+  private generation = 0;
+
+  invalidateHeight(): void { this.generation++; this.height = undefined; this.heightPending = undefined; }
+
+  private async getHeight(signal: AbortSignal): Promise<number> {
+    if (this.height && this.height.expires > Date.now()) return this.height.value;
+    if (this.heightPending) return this.heightPending;
+    const generation = this.generation;
+    const pending = (async () => {
+      const rawHeight = (await this.fetchText("/blocks/tip/height", signal, 32)).trim();
+      const value = /^\d+$/.test(rawHeight) ? Number(rawHeight) : NaN;
+      if (!Number.isSafeInteger(value)) throw new Error("Esplora returned an invalid tip height");
+      if (this.generation === generation) this.height = { value, expires: Date.now() + 5_000 };
+      return value;
+    })();
+    this.heightPending = pending;
+    try { return await pending; } finally { if (this.heightPending === pending) this.heightPending = undefined; }
+  }
+
   constructor(
     private readonly baseUrl: string,
     private readonly network: NetworkName = "signet",
+    private readonly budget?: RpcConfig["budget"],
   ) {}
+
+  private async fetchText(path: string, signal: AbortSignal, maxBytes: number): Promise<string> {
+    let release: (() => Promise<void>) | undefined;
+    try {
+      if (this.budget) release = await this.budget.acquire(signal);
+      signal.throwIfAborted();
+      const response = await fetch(`${this.baseUrl}${path}`, { signal });
+      if (!response.ok) { await response.body?.cancel(); throw new Error(`Esplora ${path.includes("/height") ? "tip" : "utxo"} HTTP ${response.status}`); }
+      return await boundedText(response, maxBytes);
+    } finally { await release?.().catch(() => {}); }
+  }
 
   async getUtxos(address: string, bestHeight?: number): Promise<ChainUtxo[]> {
     const net = btcNetwork(this.network);
     const script = bitcoin.address.toOutputScript(address, net);
     const scriptHex = script.toString("hex");
 
-    const res = await fetch(`${this.baseUrl}/address/${address}/utxo`, {
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (!res.ok) throw new Error(`Esplora utxo HTTP ${res.status}`);
-    const utxos = (await res.json()) as EsploraUtxoJson[];
+    const signal = AbortSignal.timeout(10_000);
+    const utxos: EsploraUtxoJson[] = JSON.parse(await this.fetchText(`/address/${encodeURIComponent(address)}/utxo`, signal, 512_000));
+    if (!Array.isArray(utxos) || utxos.length > 2_000 || utxos.some((u) => !u ||
+      !/^[0-9a-f]{64}$/i.test(u.txid) || !Number.isSafeInteger(u.vout) || u.vout < 0 ||
+      !Number.isSafeInteger(u.value) || u.value < 0 || (u.status !== undefined &&
+        (typeof u.status.confirmed !== "boolean" || (u.status.confirmed &&
+          (!Number.isSafeInteger(u.status.block_height) || u.status.block_height! < 0)))))) {
+      throw new Error("Esplora returned invalid UTXOs");
+    }
 
     if (bestHeight === undefined && utxos.some((u) => u.status?.confirmed)) {
-      const tip = await fetch(`${this.baseUrl}/blocks/tip/height`, {
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (!tip.ok) throw new Error(`Esplora tip HTTP ${tip.status}`);
-      const rawHeight = (await tip.text()).trim();
-      bestHeight = /^\d+$/.test(rawHeight) ? Number(rawHeight) : NaN;
-      if (!Number.isSafeInteger(bestHeight)) throw new Error("Esplora returned an invalid tip height");
+      bestHeight = await this.getHeight(signal);
     }
 
     return utxos.map((u) => {

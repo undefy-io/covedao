@@ -15,6 +15,7 @@ export {
 } from "./decoder.js";
 export {
   CoreRpcProvider,
+  withRpcDeadline,
   RpcError,
   isRpcNotFound,
   type TransactionObservation,
@@ -25,6 +26,7 @@ export {
   type ChainUtxo,
   type BlockchainInfo,
   type RpcReadOptions,
+  type RpcConfig,
 } from "./provider.js";
 export {
   buildUnsignedPsbt,
@@ -91,3 +93,5 @@ export {
   type SignatureProblem,
 } from "./spend.js";
 export { broadcastRecordedTransaction } from "./recorded-broadcast.js";
+
+export { AddressUtxoCache, AddressLookupBusy } from "./address-cache.js";

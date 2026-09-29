@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: Request, { params }: { params: Promise<{ listingId: string }> }) {
   try {
-    const limited = checkRateLimit(req, "reserve");
+    const limited = await checkRateLimit(req, "reserve");
     if (limited) return limited;
     getV3Services();
     const { listingId } = await params;

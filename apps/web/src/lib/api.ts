@@ -1,3 +1,4 @@
+import { withRpcDeadline } from "@crclaunch/bitcoin";
 import { AppError } from "@crclaunch/cove-app";
 import { MarketError } from "@crclaunch/cove-market";
 import { BackingError } from "@crclaunch/cove-economics";
@@ -67,6 +68,11 @@ function codeOf(e: unknown): string {
 
 /** Map V3 errors to stable client codes + human copy (§71/§72). Never expose stacks. */
 export function handleError(e: unknown): Response {
+  if (e instanceof Error && e.name === "CapacityUnavailable") {
+    const response = fail("CAPACITY_UNAVAILABLE", "Please retry shortly.", 503, true);
+    response.headers.set("retry-after", "2");
+    return response;
+  }
   const code = codeOf(e);
   if (code === "INTERNAL_ERROR") {
     console.error("[api] error:", e instanceof Error ? (e.stack ?? e.message) : String(e));
@@ -194,4 +200,8 @@ export function bigintField(body: Record<string, unknown>, key: string, fallback
   if (typeof v === "string" && /^\d+$/.test(v)) return BigInt(v);
   if (typeof v === "bigint") return v;
   return fallback;
+}
+
+export function rpcOperation<T>(work: () => Promise<T>): Promise<T> {
+  return withRpcDeadline(AbortSignal.timeout(180_000), work);
 }

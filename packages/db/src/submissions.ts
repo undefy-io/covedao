@@ -1,3 +1,4 @@
+import { saveDeploymentMetadata } from "./deployment-metadata.js";
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray, isNull, lte, or, sql, asc } from "drizzle-orm";
 import { schema, type Database, type DbTransaction } from "./client.js";
@@ -125,8 +126,7 @@ export async function publishSubmission(db: Database, job: Submission): Promise<
       const session = owner as typeof schema.coveV3AppTransactions.$inferSelect;
       if (session.operation === "DEPLOY" && session.metadataJson && session.tokenId) {
         const fields = { ...session.metadataJson, submittedByScript: session.walletScript, deployTxid: job.txid! };
-        await tx.insert(schema.coveV3TokenMetadata).values({ network: job.network, tokenId: session.tokenId, ...fields })
-          .onConflictDoUpdate({ target: [schema.coveV3TokenMetadata.network, schema.coveV3TokenMetadata.tokenId], set: { ...fields, updatedAt: new Date() } });
+        await saveDeploymentMetadata(tx, { network: job.network, tokenId: session.tokenId, ...fields });
       }
       await tx.update(schema.coveV3AppTransactions).set({ status: "BROADCAST", txid: job.txid, updatedAt: new Date() })
         .where(and(eq(schema.coveV3AppTransactions.id, job.sourceId), inArray(schema.coveV3AppTransactions.status, ["BUILT", "WALLET_SIGNED"])));

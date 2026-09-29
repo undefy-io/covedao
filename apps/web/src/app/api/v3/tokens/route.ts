@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   try {
-    const limited = checkRateLimit(req, "read-tokens");
+    const limited = await checkRateLimit(req, "read-tokens");
     if (limited) return limited;
     const { app } = getV3Services();
     const url = new URL(req.url);

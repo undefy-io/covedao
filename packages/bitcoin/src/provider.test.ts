@@ -219,3 +219,46 @@ describe("competing transaction observations", () => {
     await expect(new CoreRpcProvider({ url: "https://example.com" }).getMempoolSpender(txid, 1)).rejects.toBeInstanceOf(RpcError);
   });
 });
+
+describe("RPC attempt budgeting", () => {
+  it("reacquires shared capacity for every gateway retry and releases before backoff", async () => {
+    vi.useFakeTimers();
+    const release = vi.fn(async () => {});
+    const acquire = vi.fn(async () => release);
+    const fetchMock = vi.fn().mockImplementationOnce(async () => new Response(null, { status: 429 }))
+      .mockImplementationOnce(async () => new Response(null, { status: 429 }))
+      .mockImplementationOnce(async () => Response.json({ result: 100, error: null }));
+    vi.stubGlobal("fetch", fetchMock);
+    const result = new CoreRpcProvider({ url: "https://example.com", budget: { acquire } }).getBestHeight();
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(acquire).toHaveBeenCalledTimes(1);
+    expect(release).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(await result).toBe(100);
+    expect(acquire).toHaveBeenCalledTimes(3);
+    expect(release).toHaveBeenCalledTimes(3);
+  });
+
+  it("holds the shared concurrency lease until the response body is consumed", async () => {
+    const release = vi.fn(async () => {});
+    let controller!: ReadableStreamDefaultController<Uint8Array>;
+    const body = new ReadableStream<Uint8Array>({ start(value) { controller = value; } });
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(body)));
+    const result = new CoreRpcProvider({ url: "https://example.com", budget: { acquire: async () => release } }).getBestHeight();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(release).not.toHaveBeenCalled();
+    controller.enqueue(new TextEncoder().encode('{"result":123,"error":null}'));
+    controller.close();
+    expect(await result).toBe(123);
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it("never starts RPC when shared capacity is exhausted", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const error = new Error("busy"); error.name = "CapacityUnavailable";
+    const provider = new CoreRpcProvider({ url: "https://example.com", budget: { acquire: async () => { throw error; } } });
+    await expect(provider.getBestHeight()).rejects.toBe(error);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});

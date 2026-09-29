@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request, { params }: { params: Promise<{ txid: string }> }) {
   try {
-    const limited = checkRateLimit(req, "read-tx");
+    const limited = await checkRateLimit(req, "read-tx");
     if (limited) return noStore(limited);
     const { app } = getV3Services();
     const { txid } = await params;

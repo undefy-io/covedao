@@ -1,5 +1,8 @@
+import { PostgresRpcBudget, providerAccount } from "@crclaunch/db";
+import { serverEnv } from "@/lib/server-env";
+import { sql } from "drizzle-orm";
 import { addressToScript } from "@/lib/address";
-import { EsploraUtxoProvider, type ChainUtxo } from "@crclaunch/bitcoin";
+import { AddressUtxoCache, AddressLookupBusy, type ChainUtxo } from "@crclaunch/bitcoin";
 import * as Sentry from "@sentry/nextjs";
 import { ok, fail, handleError } from "@/lib/api";
 import { getV3Services } from "@/lib/v3-server";
@@ -21,6 +24,14 @@ export const dynamic = "force-dynamic";
  * tokens. Spending one as fee change would destroy the tokens riding on it.
  */
 const TOKEN_CARRIER_SATS = 1_000;
+const addressCache = new AddressUtxoCache();
+async function addressGeneration(): Promise<string> {
+  const { db, config } = getV3Services();
+  const result = await db.execute(sql`select c.block_hash, c.height, c.rebuilding,
+    (select max(accepted_at) from cove_v3_submissions where network = ${config.network}) as broadcast_at
+    from cove_v3_cursor c where c.network = ${config.network}`);
+  return JSON.stringify(result.rows[0] ?? {});
+}
 
 type Unspent = { txid: string; vout: number; amount: number };
 type RpcCaller = { call<T>(m: string, p: unknown[]): Promise<T> };
@@ -32,7 +43,10 @@ type RpcCaller = { call<T>(m: string, p: unknown[]): Promise<T> };
  * client holds the scanner.
  */
 let scanQueue: Promise<unknown> = Promise.resolve();
+let queuedScans = 0;
 function scanAddress(rpc: RpcCaller, address: string): Promise<Unspent[]> {
+  if (queuedScans >= 4) return Promise.reject(new AddressLookupBusy());
+  queuedScans++;
   const run = async (): Promise<Unspent[]> => {
     for (let attempt = 0; ; attempt++) {
       try {
@@ -44,14 +58,14 @@ function scanAddress(rpc: RpcCaller, address: string): Promise<Unspent[]> {
       }
     }
   };
-  const next = scanQueue.then(run, run);
+  const next = scanQueue.then(run, run).finally(() => { queuedScans--; });
   scanQueue = next.catch(() => undefined);
   return next;
 }
 
 export async function GET(req: Request) {
   try {
-    const limited = checkRateLimit(req, "read-utxos");
+    const limited = await checkRateLimit(req, "read-utxos");
     if (limited) return limited;
 
     const address = new URL(req.url).searchParams.get("address")?.trim();
@@ -60,7 +74,7 @@ export async function GET(req: Request) {
     // as exactly that instead of an internal error from the index.
     addressToScript(address, getV3Services().config.network);
 
-    const { provider, config } = getV3Services();
+    const { provider, config, db } = getV3Services();
 
     if (config.network === "regtest") {
       // A regtest chain is small enough to scan outright, and there is no
@@ -83,8 +97,9 @@ export async function GET(req: Request) {
     }
     let found: ChainUtxo[];
     try {
-      found = await new EsploraUtxoProvider(esplora, config.network).getUtxos(address);
+      found = await addressCache.read(esplora, config.network, address, await addressGeneration(), addressGeneration, new PostgresRpcBudget(db, providerAccount({ url: esplora }), "public", serverEnv.COVE_RPC_REQUESTS_PER_SECOND));
     } catch (e) {
+      if (e instanceof AddressLookupBusy || (e instanceof Error && e.name === "CapacityUnavailable")) return fail("ADDRESS_INDEX_BUSY", "Please retry shortly.", 503, true);
       console.error("[wallet/utxos] address index unavailable:", e);
       Sentry.captureException(e);
       return fail("ADDRESS_INDEX_UNAVAILABLE", "The wallet address index is unavailable. Please try again shortly.", 503, true);

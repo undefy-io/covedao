@@ -25,7 +25,7 @@ const MAX_TOKENS = 100;
  */
 export async function GET(req: Request) {
   try {
-    const limited = checkRateLimit(req, "read-sparklines");
+    const limited = await checkRateLimit(req, "read-sparklines");
     if (limited) return limited;
 
     const url = new URL(req.url);

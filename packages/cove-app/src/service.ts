@@ -1,7 +1,7 @@
 import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import { randomBytes } from "node:crypto";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, sql, isNull } from "drizzle-orm";
 import { schema, getSubmission, prepareSubmission, claimSubmission, saveSignedSubmission, publishSubmission, deferSubmission, dueSubmissions, haltSubmission, resumeSubmission, SubmissionError, type Submission, type Database } from "@crclaunch/db";
 import { isRpcNotFound, broadcastRecordedTransaction, type CoreRpcProvider } from "@crclaunch/bitcoin";
 import { buildBackingVaultV3 } from "@crclaunch/cove-vault";
@@ -66,7 +66,6 @@ import {
 import {
   createTxSession,
   requireTxSession,
-  updateTxSession,
   listSubmittedSpendsOfBacking,
   type TxSessionRow,
 } from "./tx-session.js";
@@ -1634,23 +1633,21 @@ export class V3AppService {
   // ── reconcile app sessions (worker) ───────────────────────────────────────
 
   async reconcileAppSessions(): Promise<{ confirmed: number }> {
-    let confirmed = 0;
-    const pending = await this.db
-      .select()
-      .from(schema.coveV3AppTransactions)
-      .where(and(eq(schema.coveV3AppTransactions.network, this.config.network), eq(schema.coveV3AppTransactions.status, "BROADCAST")));
-    for (const s of pending) {
-      if (!s.txid) continue;
-      const ev = await this.db
-        .select()
-        .from(schema.coveV3Events)
-        .where(and(eq(schema.coveV3Events.network, this.config.network), eq(schema.coveV3Events.txid, s.txid), eq(schema.coveV3Events.canonical, true)));
-      if (ev.length > 0) {
-        await updateTxSession(this.db, s.id, { status: "CONFIRMED" });
-        confirmed++;
-      }
-    }
-    return { confirmed };
+    return this.db.transaction(async (tx) => {
+      const confirmed = await tx.execute(sql`update cove_v3_app_transactions s set status = 'CONFIRMED', updated_at = clock_timestamp()
+        where s.network = ${this.config.network} and s.id in (
+          select p.id from cove_v3_app_transactions p where p.network = ${this.config.network}
+          and p.status in ('BROADCAST','REORGED') and exists (
+            select 1 from cove_v3_events e where e.network = p.network and e.txid = p.txid and e.canonical and e.valid) limit 200)
+        and s.status in ('BROADCAST','REORGED') returning s.id`);
+      await tx.execute(sql`update cove_v3_app_transactions s set status = 'REORGED', updated_at = clock_timestamp()
+        where s.network = ${this.config.network} and s.id in (
+          select p.id from cove_v3_app_transactions p where p.network = ${this.config.network} and p.status = 'CONFIRMED'
+          and not exists (select 1 from cove_v3_events e where e.network = p.network and e.txid = p.txid and e.canonical and e.valid)
+          and exists (select 1 from cove_v3_cursor c where c.network = p.network and not c.rebuilding) limit 200)
+        and s.status = 'CONFIRMED'`);
+      return { confirmed: confirmed.rows.length };
+    });
   }
 
   // ── market (P2P) ──────────────────────────────────────────────────────────

@@ -62,6 +62,7 @@ describe("public transaction status", () => {
 
 it("reconciliation never fails a broadcast session when indexing has not confirmed it", async () => {
   const { app, provider, db } = fixture([[{ id: "session", txid }], []]);
+  Object.assign(db, { transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn({ execute: async () => ({ rows: [] }) }) });
   expect(await app.reconcileAppSessions()).toEqual({ confirmed: 0 });
   expect(db.update).not.toHaveBeenCalled();
   expect(provider.getRawTransaction).not.toHaveBeenCalled();

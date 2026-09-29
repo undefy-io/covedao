@@ -14,7 +14,7 @@ export interface FundingCandidate {
 }
 
 export const MAX_FUNDING_INPUTS = 64;
-const FUNDING_LOOKUP_CONCURRENCY = 8;
+const FUNDING_LOOKUP_CONCURRENCY = 4;
 const GLOBAL_FUNDING_LOOKUP_CONCURRENCY = 16;
 const MAX_PENDING_FUNDING_LOOKUPS = 128;
 let activeFundingLookups = 0;

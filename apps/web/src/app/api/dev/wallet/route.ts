@@ -91,7 +91,7 @@ async function spendableUtxos(
 
 export async function GET(req: Request) {
   try {
-    const limited = checkRateLimit(req, "dev-wallet");
+    const limited = await checkRateLimit(req, "dev-wallet");
     if (limited) return limited;
     const allowed = assertDevWalletAllowed();
     if (!allowed.ok) return fail("DEV_WALLET_DISABLED", allowed.reason, 403);
@@ -119,7 +119,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const limited = checkRateLimit(req, "dev-wallet");
+    const limited = await checkRateLimit(req, "dev-wallet");
     if (limited) return limited;
     const allowed = assertDevWalletAllowed();
     if (!allowed.ok) return fail("DEV_WALLET_DISABLED", allowed.reason, 403);

@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request, { params }: { params: Promise<{ address: string }> }) {
   try {
-    const limited = checkRateLimit(req, "read-portfolio");
+    const limited = await checkRateLimit(req, "read-portfolio");
     if (limited) return limited;
     const query = new URL(req.url).searchParams;
     const rawLimit = query.get("limit") ?? "100";

@@ -1,4 +1,10 @@
-import { bool, cleanEnv, str, url } from "envalid";
+import { bool, cleanEnv, str, url, makeValidator } from "envalid";
+
+const budgetRate = makeValidator((value: string) => {
+  const rate = Number(value);
+  if (!Number.isSafeInteger(rate) || rate < 3 || rate > 300) throw new Error("RPC budget must be 3..300 requests per second");
+  return rate;
+});
 
 /**
  * Validated on first use, not at import. `next build` imports every route to
@@ -8,6 +14,8 @@ import { bool, cleanEnv, str, url } from "envalid";
 function loadServerEnv() {
   const env = cleanEnv(
     {
+      COVE_RPC_REQUESTS_PER_SECOND: process.env.COVE_RPC_REQUESTS_PER_SECOND,
+      COVE_TRUSTED_CLIENT_IP_HEADER: process.env.COVE_TRUSTED_CLIENT_IP_HEADER,
       COVE_NETWORK: process.env.COVE_NETWORK,
       COVE_DATABASE_URL: process.env.COVE_DATABASE_URL || process.env.DATABASE_URL,
       COVE_BITCOIN_RPC_URL: process.env.COVE_BITCOIN_RPC_URL || undefined,
@@ -20,6 +28,8 @@ function loadServerEnv() {
       SENTRY_ENVIRONMENT: process.env.SENTRY_ENVIRONMENT || undefined,
     },
     {
+      COVE_RPC_REQUESTS_PER_SECOND: budgetRate({ default: process.env.COVE_NETWORK === "regtest" ? 90 : 3 }),
+      COVE_TRUSTED_CLIENT_IP_HEADER: str({ choices: ["none", "cf-connecting-ip", "x-real-ip"], default: "none" }),
       COVE_NETWORK: str({ choices: ["regtest", "signet", "testnet", "mainnet"] }),
       COVE_DATABASE_URL: url(),
       COVE_BITCOIN_RPC_URL: url({ default: undefined }),

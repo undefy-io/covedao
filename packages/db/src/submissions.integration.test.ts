@@ -1,10 +1,12 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { sharedQuota, PostgresRpcBudget, providerAccount } from "./quotas.js";
 import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { sql, eq } from "drizzle-orm";
 import { fileURLToPath } from "node:url";
+import { saveDeploymentMetadata, canonicalDeploymentMetadata } from "./deployment-metadata.js";
 import { schema } from "./client.js";
 import { prepareSubmission, claimSubmission, saveSignedSubmission, publishSubmission, deferSubmission, getSubmission, dueSubmissions, haltSubmission, resumeSubmission, type SubmissionInput } from "./submissions.js";
 
@@ -141,4 +143,55 @@ describe.skipIf(!isolated)("durable submissions on isolated PostgreSQL", () => {
     expect(metadata?.deployTxid).toBe(txid);
     expect(metadata?.displayName).toBe("Name");
   });
+  it("keeps competing launch metadata separate through confirmation and reorg", async () => {
+    await db!.delete(schema.coveV3Tokens).where(eq(schema.coveV3Tokens.network, network));
+    const a = "11".repeat(32), b = "22".repeat(32);
+    const metadata = (deployTxid: string, displayName: string) => saveDeploymentMetadata(db!, {
+      network, tokenId: "metadata-token", submittedByScript: "wallet", deployTxid, displayName });
+    await Promise.all([metadata(a, "winner"), metadata(b, "competitor")]);
+    await db!.insert(schema.coveV3Tokens).values({ network, tokenId: "metadata-token", ticker: "TEST", deployTxid: a,
+      deployHeight: 1n, policyVersion: 3, nonce: "nonce", canonical: true, deployBlockHash: "block" });
+    await Promise.all(Array.from({ length: 12 }, (_, i) => metadata(b, `competitor-${i}`)));
+    expect((await canonicalDeploymentMetadata(db!, network, ["metadata-token"]))[0]?.displayName).toBe("winner");
+    await db!.update(schema.coveV3Tokens).set({ deployTxid: b }).where(eq(schema.coveV3Tokens.network, network));
+    expect((await canonicalDeploymentMetadata(db!, network, ["metadata-token"]))[0]?.deployTxid).toBe(b);
+    await db!.update(schema.coveV3Tokens).set({ deployTxid: a }).where(eq(schema.coveV3Tokens.network, network));
+    expect((await canonicalDeploymentMetadata(db!, network, ["metadata-token"]))[0]?.displayName).toBe("winner");
+  });
+
+  it("shares public quotas across replicas under concurrent requests", async () => {
+    const key = randomUUID();
+    const decisions = await Promise.all(Array.from({ length: 50 }, () => sharedQuota(db!, key, 7, 60_000)));
+    expect(decisions.filter(Boolean)).toHaveLength(7);
+  });
+
+  it("budgets actual attempts across replicas while preserving each critical lane", async () => {
+    const account = randomUUID();
+    const budgets = [new PostgresRpcBudget(db!, account, "public"), new PostgresRpcBudget(db!, account, "public"),
+      new PostgresRpcBudget(db!, account, "worker"), new PostgresRpcBudget(db!, account, "guardian")];
+    const starts: number[] = [];
+    await Promise.all(budgets.map(async (budget) => {
+      for (let i = 0; i < 2; i++) {
+        const release = await budget.acquire(AbortSignal.timeout(15_000));
+        starts.push(Date.now());
+        await release();
+      }
+    }));
+    starts.sort((a, b) => a - b);
+    for (const start of starts) expect(starts.filter((t) => t >= start && t < start + 1_000).length).toBeLessThanOrEqual(3);
+    await expect(new PostgresRpcBudget(db!, account, "public", 9).acquire(AbortSignal.timeout(1000))).rejects.toThrow("configuration differs");
+  }, 15_000);
+
+  it("reserves concurrent capacity for worker and Guardian even with stalled public RPC", async () => {
+    const account = randomUUID();
+    const publicBudget = new PostgresRpcBudget(db!, account, "public", 300);
+    const releases = [await publicBudget.acquire(AbortSignal.timeout(1000)), await publicBudget.acquire(AbortSignal.timeout(1000))];
+    const blocked = publicBudget.acquire(AbortSignal.timeout(200));
+    await expect(blocked).rejects.toBeDefined();
+    releases.push(await new PostgresRpcBudget(db!, account, "worker", 300).acquire(AbortSignal.timeout(1000)));
+    releases.push(await new PostgresRpcBudget(db!, account, "guardian", 300).acquire(AbortSignal.timeout(1000)));
+    await Promise.all(releases.map((release) => release()));
+    expect(providerAccount({ url: "https://a.example/signet", apiKey: "fixture-key" })).toBe(providerAccount({ url: "https://b.example/mainnet", apiKey: "fixture-key" }));
+  });
+
 });

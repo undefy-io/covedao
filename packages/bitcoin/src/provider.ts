@@ -1,5 +1,11 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import * as bitcoin from "bitcoinjs-lib";
 import { decodeRawTransaction, type BitcoinProtocolTx } from "./decoder.js";
+
+const rpcDeadline = new AsyncLocalStorage<AbortSignal>();
+export function withRpcDeadline<T>(signal: AbortSignal, work: () => Promise<T>): Promise<T> {
+  return rpcDeadline.run(signal, work);
+}
 
 export interface BitcoinBlock {
   hash: string;
@@ -51,7 +57,8 @@ export interface BitcoinChainProvider {
   getMempoolMinFeeSatPerVb(): Promise<bigint>;
 }
 
-interface RpcConfig {
+export interface RpcConfig {
+  budget?: { acquire(signal: AbortSignal): Promise<() => Promise<void>> };
   url: string;
   user?: string;
   password?: string;
@@ -135,6 +142,8 @@ export class CoreRpcProvider implements BitcoinChainProvider {
   }
 
   private async call<T>(method: string, params: unknown[] = [], options: RpcReadOptions = {}): Promise<T> {
+    const signals = [AbortSignal.timeout(30_000), options.signal, rpcDeadline.getStore()].filter((s): s is AbortSignal => s !== undefined);
+    const signal = AbortSignal.any(signals);
     const headers: Record<string, string> = { "content-type": "application/json" };
     if (this.cfg.apiKey) {
       headers["x-api-key"] = this.cfg.apiKey;
@@ -151,25 +160,46 @@ export class CoreRpcProvider implements BitcoinChainProvider {
     };
     for (let attempt = 0; attempt < 4; attempt++) {
       let res: Response;
+      let responseText = "";
+      let release: (() => Promise<void>) | undefined;
       try {
+        if (this.cfg.budget) release = await this.cfg.budget.acquire(signal);
+        signal.throwIfAborted();
         res = await fetch(this.cfg.url, {
           method: "POST", headers, body,
-          signal: options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(20_000)]) : AbortSignal.timeout(20_000),
+          signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]),
         });
+        if (res.status !== 429) {
+          const reader = res.body?.getReader();
+          if (!reader) throw new RpcError(method, "response", "empty response", res.status);
+          const chunks: Uint8Array[] = [];
+          let bytes = 0;
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            bytes += value.byteLength;
+            if (bytes > 9_000_000) { await reader.cancel(); throw new RpcError(method, "response", "response too large", res.status); }
+            chunks.push(value);
+          }
+          responseText = Buffer.concat(chunks).toString("utf8");
+        } else { await res.body?.cancel(); }
       } catch (error) {
+        if (error instanceof RpcError) throw error;
+        if (error instanceof Error && error.name === "CapacityUnavailable") throw error;
         throw new RpcError(method, "transport", safeMessage(error instanceof Error ? error.message : "request failed"));
+      } finally {
+        await release?.().catch(() => {});
       }
       if (res.status === 429 && attempt < 3 && options.retry !== false) {
         const retryAfterSeconds = Number(res.headers.get("retry-after"));
         const retryAfterMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0 ? retryAfterSeconds * 1_000 : 0;
-        await res.body?.cancel();
-        await waitForRetry(Math.max(2_000 * (attempt + 1), retryAfterMs), options.signal);
+        await waitForRetry(Math.min(10_000, Math.max(2_000 * (attempt + 1), retryAfterMs)) + Math.floor(Math.random() * 250), signal);
         continue;
       }
       if (!res.ok && res.status !== 500) throw new RpcError(method, "http", `HTTP ${res.status}`, res.status);
       let json: { result?: T; error?: { message?: string; code?: number } | null };
       try {
-        json = await res.json() as typeof json;
+        json = JSON.parse(responseText) as typeof json;
       } catch {
         throw new RpcError(method, res.ok ? "response" : "http", res.ok ? "invalid JSON response" : `HTTP ${res.status}`, res.status);
       }
@@ -283,7 +313,7 @@ export class CoreRpcProvider implements BitcoinChainProvider {
     if (cached) return cached;
     const raw = await this.getRawTransaction(txid);
     const tx = decodeRawTransaction(raw);
-    if (this.decodedCache.size >= 10_000) this.decodedCache.clear(); // bound memory
+    if (this.decodedCache.size >= 1_024) this.decodedCache.delete(this.decodedCache.keys().next().value!);
     this.decodedCache.set(txid, tx);
     return tx;
   }

@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(req: Request) {
   try {
-    const limited = checkRateLimit(req, "read-fees");
+    const limited = await checkRateLimit(req, "read-fees");
     if (limited) return limited;
     const { db, config } = getV3Services();
     const rates = await readFeeObservation(db, config.network);

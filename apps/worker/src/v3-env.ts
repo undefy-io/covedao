@@ -1,4 +1,10 @@
-import { bool, cleanEnv, str, url } from "envalid";
+import { bool, cleanEnv, str, url, makeValidator } from "envalid";
+
+const budgetRate = makeValidator((value: string) => {
+  const rate = Number(value);
+  if (!Number.isSafeInteger(rate) || rate < 3 || rate > 300) throw new Error("RPC budget must be 3..300 requests per second");
+  return rate;
+});
 import { config as loadEnv } from "dotenv";
 import { fileURLToPath } from "node:url";
 
@@ -6,6 +12,7 @@ loadEnv({ path: fileURLToPath(new URL("../../../.env", import.meta.url)) });
 
 export const workerEnv = cleanEnv(
   {
+    COVE_RPC_REQUESTS_PER_SECOND: process.env.COVE_RPC_REQUESTS_PER_SECOND,
     COVE_NETWORK: process.env.COVE_NETWORK,
     COVE_DATABASE_URL: process.env.COVE_DATABASE_URL || process.env.DATABASE_URL,
     COVE_BITCOIN_RPC_URL: process.env.COVE_BITCOIN_RPC_URL || undefined,
@@ -16,7 +23,8 @@ export const workerEnv = cleanEnv(
     COVE_V3_CANARY_ACTIVE: process.env.COVE_V3_CANARY_ACTIVE || undefined,
   },
   {
-    COVE_NETWORK: str({ choices: ["regtest", "signet", "testnet", "mainnet"] }),
+    COVE_RPC_REQUESTS_PER_SECOND: budgetRate({ default: process.env.COVE_NETWORK === "regtest" ? 90 : 3 }),
+      COVE_NETWORK: str({ choices: ["regtest", "signet", "testnet", "mainnet"] }),
     COVE_DATABASE_URL: url(),
     COVE_BITCOIN_RPC_URL: url({ default: undefined }),
     COVE_BITCOIN_RPC_API_KEY: str({ default: undefined }),

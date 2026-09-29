@@ -74,4 +74,21 @@ describe.skipIf(!isolated)("market recovery on isolated PostgreSQL", () => {
     await expect(market.recoverSubmission(ready)).rejects.toThrow();
     expect(provider.broadcastTransaction).not.toHaveBeenCalled();
   });
+  it("does no RPC for thousands of ordinary active asks and fairly pages pending observations", async () => {
+    const { db, listingId, market, provider } = await fixture();
+    const [base] = await db.select().from(schema.coveV3MarketListings).where(eq(schema.coveV3MarketListings.listingId, listingId));
+    await db.insert(schema.coveV3MarketListings).values(Array.from({ length: 1_000 }, () => ({ ...base!,
+      id: randomUUID(), listingId: randomBytes(32).toString("hex"), sourceTxid: randomBytes(32).toString("hex"), status: "ACTIVE" })));
+    await market.reconcileMarket(100n, "generation-a");
+    await market.reconcileMarket(100n, "generation-a");
+    expect(provider.getTxout).not.toHaveBeenCalled();
+    await db.insert(schema.coveV3MarketListings).values(Array.from({ length: 10 }, () => ({ ...base!,
+      id: randomUUID(), listingId: randomBytes(32).toString("hex"), sourceTxid: randomBytes(32).toString("hex"), status: "PENDING" })));
+    await market.reconcileMarket(100n, "generation-a");
+    expect(provider.getTxout).toHaveBeenCalledTimes(2);
+    await market.reconcileMarket(100n, "generation-a");
+    expect(provider.getTxout).toHaveBeenCalledTimes(4);
+    expect(new Set(provider.getTxout.mock.calls.map((call: unknown[]) => call[0])).size).toBe(4);
+  });
+
 });

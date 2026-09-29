@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
-    const limited = checkRateLimit(req, "prepare-launch");
+    const limited = await checkRateLimit(req, "prepare-launch");
     if (limited) return limited;
     const { app } = assertV3Enabled();
     const body = await readJson(req);

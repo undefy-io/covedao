@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { createDb, type Database } from "@crclaunch/db";
+import { createDb, PostgresRpcBudget, providerAccount, type Database } from "@crclaunch/db";
 import { CoreRpcProvider } from "@crclaunch/bitcoin";
 import type { GuardianTransitionSigner } from "@crclaunch/cove-guardian/v3";
 import { loadV3AppConfig, V3AppService, buildAppTransitionSigner, type V3AppConfig } from "@crclaunch/cove-app";
@@ -34,7 +34,9 @@ export function getV3Services(): V3Services {
   }
   const dbUrl = serverEnv.COVE_DATABASE_URL;
   const db = createDb(dbUrl);
+  const budget = new PostgresRpcBudget(db, providerAccount({ url: config.coreRpcUrl, apiKey: config.coreRpcApiKey, user: config.coreRpcUser, password: config.coreRpcPassword }), "public", serverEnv.COVE_RPC_REQUESTS_PER_SECOND);
   const provider = new CoreRpcProvider({
+    budget,
     url: config.coreRpcUrl,
     user: config.coreRpcUser,
     password: config.coreRpcPassword,
@@ -42,7 +44,7 @@ export function getV3Services(): V3Services {
   });
   // §P1-2: arm the two-node Core quorum when a secondary Core is configured.
   const secondaryProvider = config.coreRpcUrlSecondary
-    ? new CoreRpcProvider({ url: config.coreRpcUrlSecondary, user: config.coreRpcUser, password: config.coreRpcPassword, apiKey: config.coreRpcApiKey })
+    ? new CoreRpcProvider({ budget: new PostgresRpcBudget(db, providerAccount({ url: config.coreRpcUrlSecondary, apiKey: config.coreRpcApiKey, user: config.coreRpcUser, password: config.coreRpcPassword }), "public", serverEnv.COVE_RPC_REQUESTS_PER_SECOND), url: config.coreRpcUrlSecondary, user: config.coreRpcUser, password: config.coreRpcPassword, apiKey: config.coreRpcApiKey })
     : null;
 
   // §C4: the transition signer is REQUIRED — local for non-mainnet, remote for

@@ -700,9 +700,11 @@ export const coveV3MarketListings = pgTable(
     sellerPresignedPsbt: text("seller_presigned_psbt"),
     status: text("status").notNull().default("ACTIVE"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastObservedAt: timestamp("last_observed_at", { withTimezone: true }).notNull().default(new Date(0)),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
+    index("cove_v3_listing_observation_idx").on(t.network, t.status, t.lastObservedAt),
     uniqueIndex("cove_v3_market_listings_id_uq").on(t.listingId),
     index("cove_v3_market_listings_token_status_idx").on(t.network, t.tokenId, t.status),
     index("cove_v3_market_listings_route_idx").on(t.network, t.tokenId, t.amountAtoms, t.totalPriceSats, t.listingId).where(sql`${t.status} = 'ACTIVE'`),
@@ -864,7 +866,7 @@ export const coveV3TokenMetadata = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("cove_v3_token_metadata_token_uq").on(t.network, t.tokenId)],
+  (t) => [uniqueIndex("cove_v3_token_metadata_deploy_uq").on(t.network, t.tokenId, t.deployTxid)],
 );
 
 // ── Cove V3 application transaction sessions (coordination state only) ─────
@@ -982,6 +984,7 @@ export const coveV3Submissions = pgTable(
   },
   (t) => [
     uniqueIndex("cove_v3_submission_source_uq").on(t.network, t.sourceKind, t.sourceId),
+    index("cove_v3_submissions_accepted_idx").on(t.network, t.acceptedAt).where(sql`${t.acceptedAt} is not null`),
     index("cove_v3_submission_txid_idx").on(t.network, t.txid).where(sql`${t.txid} is not null`),
     index("cove_v3_submission_due_idx").on(t.network, t.nextAttemptAt, t.id).where(sql`${t.phase} <> 'BROADCAST'`),
   ],
@@ -1006,3 +1009,10 @@ export const coveV3SigningJournal = pgTable(
     uniqueIndex("cove_v3_signing_journal_candidate_uq").on(t.network, t.backingTxid, t.backingVout, t.unsignedTxDigest),
   ],
 );
+
+export const coveApiQuotas = pgTable("cove_api_quotas", {
+  key: text("key").primaryKey(), windowStart: atoms("window_start").notNull(), count: integer("count").notNull(),
+}, (t) => [index("cove_api_quotas_window_idx").on(t.windowStart)]);
+export const coveRpcBudgets = pgTable("cove_rpc_budgets", {
+  account: text("account").primaryKey(), state: jsonb("state").notNull().default({ rate: 3, concurrency: 6, next: 0, lanes: {}, leases: [] }),
+});

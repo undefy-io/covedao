@@ -1,6 +1,6 @@
 import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
-import { eq, and, isNull, inArray, lte, desc } from "drizzle-orm";
+import { eq, and, isNull, inArray, lte, desc, asc, sql } from "drizzle-orm";
 import { schema, prepareSubmission, claimSubmission, saveSignedSubmission, getSubmission, publishSubmission, deferSubmission, SubmissionError, type Submission, type Database, type DbTransaction } from "@crclaunch/db";
 import {
   broadcastRecordedTransaction,
@@ -781,9 +781,10 @@ export class MarketService {
    * Idempotent reconciliation: expiry, external/mempool source-spend
    * invalidation, indexer-confirmed fill promotion, and reorg handling.
    */
-  async reconcileMarket(observedTip?: bigint): Promise<{ expired: number; invalidated: number; confirmed: number; reorged: number }> {
+  private reconciledGeneration = "";
+
+  async reconcileMarket(observedTip?: bigint, indexedGeneration?: string): Promise<{ expired: number; invalidated: number; confirmed: number; reorged: number }> {
     const tip = observedTip ?? BigInt(await this.provider.getBestHeight());
-    const now = new Date();
     let expired = 0;
     let invalidated = 0;
     let confirmed = 0;
@@ -795,8 +796,10 @@ export class MarketService {
     const pendingListings = await this.db
       .select()
       .from(schema.coveV3MarketListings)
-      .where(and(eq(schema.coveV3MarketListings.network, this.config.network), eq(schema.coveV3MarketListings.status, "PENDING")));
+      .where(and(eq(schema.coveV3MarketListings.network, this.config.network), eq(schema.coveV3MarketListings.status, "PENDING")))
+      .orderBy(asc(schema.coveV3MarketListings.lastObservedAt)).limit(2);
     for (const listing of pendingListings) {
+      await this.db.update(schema.coveV3MarketListings).set({ lastObservedAt: new Date() }).where(eq(schema.coveV3MarketListings.listingId, listing.listingId));
       const utxo = await this.sourceUtxoRow(listing.sourceTxid, listing.sourceVout);
       if (utxo && utxo.canonical && !utxo.spentByTxid) {
         const matches =
@@ -823,7 +826,9 @@ export class MarketService {
     const broadcastFills = await this.db
       .select()
       .from(schema.coveV3MarketFills)
-      .where(and(eq(schema.coveV3MarketFills.network, this.config.network), eq(schema.coveV3MarketFills.status, "BROADCAST")));
+      .where(and(eq(schema.coveV3MarketFills.network, this.config.network), eq(schema.coveV3MarketFills.status, "BROADCAST"), sql`exists (
+        select 1 from cove_v3_market_listings l join cove_v3_token_utxos u on u.network = l.network and u.txid = l.source_txid and u.vout = l.source_vout
+        where l.network = ${this.config.network} and l.listing_id = ${schema.coveV3MarketFills.listingId} and u.canonical and u.spent_by_txid = ${schema.coveV3MarketFills.txid})`)).limit(200);
     for (const fill of broadcastFills) {
       const listing = await this.loadListing(fill.listingId);
       if (!listing) continue;
@@ -840,10 +845,12 @@ export class MarketService {
     }
 
     // (B) Reorg: CONFIRMED fills whose source is no longer spent by their tx.
-    const confirmedFills = await this.db
+    const confirmedFills = indexedGeneration !== undefined && indexedGeneration === this.reconciledGeneration ? [] : await this.db
       .select()
       .from(schema.coveV3MarketFills)
-      .where(and(eq(schema.coveV3MarketFills.network, this.config.network), eq(schema.coveV3MarketFills.status, "CONFIRMED")));
+      .where(and(eq(schema.coveV3MarketFills.network, this.config.network), eq(schema.coveV3MarketFills.status, "CONFIRMED"), sql`not exists (
+        select 1 from cove_v3_market_listings l join cove_v3_token_utxos u on u.network = l.network and u.txid = l.source_txid and u.vout = l.source_vout
+        where l.network = ${this.config.network} and l.listing_id = ${schema.coveV3MarketFills.listingId} and u.canonical and u.spent_by_txid = ${schema.coveV3MarketFills.txid})`)).limit(200);
     for (const fill of confirmedFills) {
       const listing = await this.loadListing(fill.listingId);
       if (!listing) continue;
@@ -858,6 +865,8 @@ export class MarketService {
       reorged++;
     }
 
+    if (indexedGeneration !== undefined && confirmedFills.length < 200) this.reconciledGeneration = indexedGeneration;
+
     // (C) Reconcile open listings (ACTIVE/RESERVED/BROADCAST) and reorged
     // listings (REORGED): detect external spends and restore post-reorg state.
     const openListings = await this.db
@@ -867,9 +876,13 @@ export class MarketService {
         and(
           eq(schema.coveV3MarketListings.network, this.config.network),
           inArray(schema.coveV3MarketListings.status, ["ACTIVE", "RESERVED", "BROADCAST", "REORGED"]),
+          sql`(${schema.coveV3MarketListings.status} in ('BROADCAST','REORGED') or exists (
+            select 1 from cove_v3_token_utxos u where u.network = ${this.config.network} and u.txid = ${schema.coveV3MarketListings.sourceTxid}
+              and u.vout = ${schema.coveV3MarketListings.sourceVout} and u.canonical and u.spent_by_txid is not null))`,
         ),
-      );
+      ).orderBy(asc(schema.coveV3MarketListings.lastObservedAt)).limit(2);
     for (const listing of openListings) {
+      await this.db.update(schema.coveV3MarketListings).set({ lastObservedAt: new Date() }).where(eq(schema.coveV3MarketListings.listingId, listing.listingId));
       const utxo = await this.sourceUtxoRow(listing.sourceTxid, listing.sourceVout);
       if (utxo && utxo.spentByTxid) {
         // Indexer says the source is confirmed-spent by some tx.
@@ -911,11 +924,19 @@ export class MarketService {
       invalidated++;
     }
 
+    expired += (await this.expireReservations(tip)).expired;
+
+    return { expired, invalidated, confirmed, reorged };
+  }
+
+  async expireReservations(tip: bigint): Promise<{ expired: number }> {
+    const now = new Date();
+    let expired = 0;
     // (D) Expire listings + reservations.
     const expListings = await this.db
       .select()
       .from(schema.coveV3MarketListings)
-      .where(and(eq(schema.coveV3MarketListings.network, this.config.network), eq(schema.coveV3MarketListings.status, "ACTIVE"), lte(schema.coveV3MarketListings.expiryHeight, tip)));
+      .where(and(eq(schema.coveV3MarketListings.network, this.config.network), eq(schema.coveV3MarketListings.status, "ACTIVE"), lte(schema.coveV3MarketListings.expiryHeight, tip))).limit(200);
     for (const listing of expListings) {
       const changed = await this.db.update(schema.coveV3MarketListings).set({ status: "EXPIRED", updatedAt: new Date() })
         .where(and(eq(schema.coveV3MarketListings.listingId, listing.listingId), eq(schema.coveV3MarketListings.status, "ACTIVE")))
@@ -933,7 +954,7 @@ export class MarketService {
           inArray(schema.coveV3MarketFills.status, ["RESERVED", "PSBT_BUILT", "BUYER_SIGNED"]),
           lte(schema.coveV3MarketFills.reservationExpiresAt, now),
         ),
-      );
+      ).limit(200);
     for (const fill of expFills) {
       const changed = await this.db.transaction(async (tx) => {
         await tx.select({ id: schema.coveV3MarketListings.id }).from(schema.coveV3MarketListings)
@@ -952,7 +973,7 @@ export class MarketService {
       if (changed) expired++;
     }
 
-    return { expired, invalidated, confirmed, reorged };
+    return { expired };
   }
 
   // ── reconcile helpers ─────────────────────────────────────────────────────

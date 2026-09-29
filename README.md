@@ -373,6 +373,41 @@ procedure is [`docs/CANARY_DAY_ONE.md`](docs/CANARY_DAY_ONE.md).
 
 ---
 
+## Shared API capacity
+
+`COVE_RPC_REQUESTS_PER_SECOND` is the combined provider allowance, including
+retries. It defaults to 3 outside regtest and 90 on regtest. Set the same value
+on web, worker and Guardian. PostgreSQL reserves a third of the rate and
+concurrency for each of indexing/background work, Guardian verification, and
+public transaction work. Requests receive retryable errors when capacity is
+full. Wallets still support up to 64 funding inputs; a transaction with many
+inputs takes longer on a small gateway allowance. Remote signing permits up
+to three minutes, with bounded concurrent work and RPC deadlines.
+
+The normal deployment shares the app database. If Guardian uses its own
+canonical database but the same RPC account, set its
+`COVE_RPC_BUDGET_DATABASE_URL` to the app database so all attempts use one
+coordinator. A different provider budget configuration for an existing account
+fails closed; drain the services before deliberately changing its saved policy.
+No additional service is required.
+
+Forwarded client IPs are ignored by default. Set
+`COVE_TRUSTED_CLIENT_IP_HEADER=cf-connecting-ip` or `x-real-ip` only when the
+trusted ingress overwrites that header and direct access to the backend is
+blocked. Shared global quotas still protect expensive operations without a
+trusted client header. Do not set it to a header that callers can supply.
+
+Wallet address lookups share a five-second cache, their own provider height,
+response and concurrency limits. Indexed tip changes and accepted local
+broadcasts invalidate cached balances. Core resolves funding again before a
+transaction is signed; the address cache cannot authorize a spend.
+
+Launch metadata belongs to a specific deployment transaction. Public token
+reads join it to the canonical deployment, including after reorgs. Apply the
+matching migrations before updating either application image.
+
+---
+
 ## Security
 
 Cove has been through three independent adversarial audits covering the

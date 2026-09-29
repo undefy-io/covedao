@@ -29,7 +29,7 @@ const MAX_TRADES = 5_000;
  */
 export async function GET(req: Request, { params }: { params: Promise<{ tokenId: string }> }) {
   try {
-    const limited = checkRateLimit(req, "read-candles");
+    const limited = await checkRateLimit(req, "read-candles");
     if (limited) return limited;
 
     const { tokenId } = await params;

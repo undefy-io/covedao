@@ -1,3 +1,4 @@
+import { rpcOperation } from "@/lib/api";
 import { ok, handleError, readJson, strField } from "@/lib/api";
 import { assertV3Enabled } from "@/lib/v3-server";
 import { resolveFundingUtxos } from "@crclaunch/cove-app";
@@ -7,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: Request, { params }: { params: Promise<{ listingId: string }> }) {
   try {
-    const limited = checkRateLimit(req, "reserve");
+    const limited = await checkRateLimit(req, "reserve");
     if (limited) return limited;
     const { app, provider } = assertV3Enabled();
     const { listingId } = await params;
@@ -16,10 +17,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ listing
     const buyerChangeScript = strField(body, "buyerChangeScript");
     const reserveNonce = strField(body, "nonceHex");
     const signatureB64 = strField(body, "signatureB64");
-    await app.preflightReserveListing({ listingId, buyerTokenScript, reserveNonce, signatureB64 });
+    await rpcOperation(() => app.preflightReserveListing({ listingId, buyerTokenScript, reserveNonce, signatureB64 }));
     const candidates = (body.funding ?? body.buyerFundInputs ?? []) as { txid: string; vout: number }[];
     const resolved = await resolveFundingUtxos(provider, candidates);
-    const fillId = await app.reserveListing({
+    const fillId = await rpcOperation(() => app.reserveListing({
       listingId,
       buyerTokenScript,
       buyerChangeScript,
@@ -27,7 +28,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ listing
       buyerFundPublicKey: strField(body, "buyerFundPublicKey") || undefined,
       reserveNonce,
       signatureB64,
-    });
+    }));
     return ok({ fillId });
   } catch (e) {
     return handleError(e);

@@ -10,7 +10,8 @@ describe("token detail backing lookup", () => {
     const db = { select: () => ({ from: (table: unknown) => {
       const rows = table === schema.coveV3Tokens ? [{ tokenId: "requested", ticker: "TOK", deployTxid: "tx", deployHeight: 1n, policyVersion: 1 }] : [];
       const result = Promise.resolve(rows);
-      return { where: (condition: SQL) => { conditions.set(table, condition); return { then: result.then.bind(result), groupBy: () => result }; } };
+      const chain = { innerJoin: () => chain, where: (condition: SQL) => { conditions.set(table, condition); return { then: result.then.bind(result), groupBy: () => result }; } };
+      return chain;
     } }) } as unknown as Database;
     const detail = await getV3TokenDetail(db, "signet", "requested");
     expect(detail?.tokenId).toBe("requested");

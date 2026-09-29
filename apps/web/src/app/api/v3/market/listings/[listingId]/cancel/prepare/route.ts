@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: Request, { params }: { params: Promise<{ listingId: string }> }) {
   try {
-    const limited = checkRateLimit(req, "prepare-cancel");
+    const limited = await checkRateLimit(req, "prepare-cancel");
     if (limited) return limited;
     const { app } = assertV3Enabled();
     const { listingId } = await params;

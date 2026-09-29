@@ -1,5 +1,5 @@
 import * as bitcoin from "bitcoinjs-lib";
-import { createDb } from "@crclaunch/db";
+import { createDb, PostgresRpcBudget, providerAccount } from "@crclaunch/db";
 import type { MainnetProfile, ResolvedMainnetProfile } from "@crclaunch/cove-mainnet";
 import type { VaultRecoveryProfile } from "@crclaunch/cove-vault";
 import { CoreRpcProvider, checkSpendSignature, unfinalizeKeyInputs } from "@crclaunch/bitcoin";
@@ -40,7 +40,9 @@ export interface GuardianServiceConfig {
    * The Guardian's OWN Bitcoin Core, used to refuse unconfirmed funding
    * inputs. Never the app's: a compromised app could lie about confirmations.
    */
-  coreRpc: { url: string; user?: string; password?: string };
+  coreRpc: { url: string; user?: string; password?: string; apiKey?: string };
+  rpcRequestsPerSecond?: number;
+  rpcBudgetDatabaseUrl?: string;
   /** ord server (with --index-runes) for inscriptions and runes. Required on mainnet. */
   ordUrl?: string;
 }
@@ -120,7 +122,8 @@ export function buildGuardianService(config: GuardianServiceConfig): BuiltGuardi
   const riskPolicy = riskPolicyFromProfile(profile);
 
   const db: Database = createDb(config.databaseUrl);
-  const core = new CoreRpcProvider(config.coreRpc);
+  const budgetDb = config.rpcBudgetDatabaseUrl ? createDb(config.rpcBudgetDatabaseUrl) : db;
+  const core = new CoreRpcProvider({ ...config.coreRpc, budget: new PostgresRpcBudget(budgetDb, providerAccount(config.coreRpc), "guardian", config.rpcRequestsPerSecond ?? (config.network === "regtest" ? 90 : 3)) });
   const fundingChecker = chainFundingChecker({
     chain: core,
     expectedChain: config.network === "mainnet" ? "main" : config.network === "testnet" ? "test" : config.network,

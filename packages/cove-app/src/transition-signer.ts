@@ -62,12 +62,13 @@ export function buildAppTransitionSigner(db: Database, config: V3AppConfig): Gua
   }
 
   const transport: GuardianTransport = config.guardianEndpoint
-    ? new HttpGuardianTransport(config.guardianEndpoint, config.guardianAuthToken ?? "")
+    ? new HttpGuardianTransport(config.guardianEndpoint, config.guardianAuthToken ?? "", 180_000)
     : failClosedTransport();
   return new RemoteGuardianTransitionSigner(
     transport,
     config.mainnetProfileHash ?? "",
     config.guardianXOnly.toString("hex"),
+    180_000,
   );
 }
 

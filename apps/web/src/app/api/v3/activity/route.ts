@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   try {
-    const limited = checkRateLimit(req, "read-activity");
+    const limited = await checkRateLimit(req, "read-activity");
     if (limited) return limited;
     const { db, config } = getV3Services();
     const events = await db

@@ -1,5 +1,4 @@
-import { eq, and, inArray } from "drizzle-orm";
-import { schema, type Database } from "@crclaunch/db";
+import { saveDeploymentMetadata, canonicalDeploymentMetadata, type Database } from "@crclaunch/db";
 import { AppError } from "./errors.js";
 
 /**
@@ -23,8 +22,7 @@ function bounded(text: string, max: number): string {
   const s = text.trim();
   if (s.length === 0) throw new AppError("METADATA_INVALID", "text must not be empty");
   if (s.length > max) throw new AppError("METADATA_INVALID", `text exceeds ${max} characters`);
-  // eslint-disable-next-line no-control-regex
-  if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(s))
+  if (Array.from(s).some((char) => { const code = char.charCodeAt(0); return code <= 8 || code === 11 || code === 12 || (code >= 14 && code <= 31); }))
     throw new AppError("METADATA_INVALID", "control characters not allowed");
   return s;
 }
@@ -57,60 +55,15 @@ export async function upsertTokenMetadata(params: {
   metadata: TokenMetadataInput;
 }): Promise<void> {
   const m = validateMetadata(params.metadata);
-  await params.db
-    .insert(schema.coveV3TokenMetadata)
-    .values({
-      network: params.network,
-      tokenId: params.tokenId,
-      displayName: m.displayName,
-      description: m.description,
-      websiteUrl: m.websiteUrl,
-      xUrl: m.xUrl,
-      imageUrl: m.imageUrl,
-      submittedByScript: params.submittedByScript,
-      deployTxid: params.deployTxid,
-    })
-    .onConflictDoUpdate({
-      target: [schema.coveV3TokenMetadata.network, schema.coveV3TokenMetadata.tokenId],
-      set: {
-        displayName: m.displayName,
-        description: m.description,
-        websiteUrl: m.websiteUrl,
-        xUrl: m.xUrl,
-        imageUrl: m.imageUrl,
-        submittedByScript: params.submittedByScript,
-        deployTxid: params.deployTxid,
-        updatedAt: new Date(),
-      },
-    });
+  if (!params.deployTxid) throw new AppError("METADATA_INVALID", "deployment transaction is required");
+  await saveDeploymentMetadata(params.db, { network: params.network, tokenId: params.tokenId,
+    ...m, submittedByScript: params.submittedByScript, deployTxid: params.deployTxid });
 }
 
 export async function getTokenMetadata(db: Database, network: string, tokenId: string) {
-  const rows = await db
-    .select()
-    .from(schema.coveV3TokenMetadata)
-    .where(
-      and(
-        eq(schema.coveV3TokenMetadata.network, network),
-        eq(schema.coveV3TokenMetadata.tokenId, tokenId),
-      ),
-    );
-  return rows[0] ?? null;
+  return (await canonicalDeploymentMetadata(db, network, [tokenId]))[0] ?? null;
 }
 
-export async function listTokenMetadataByTokenIds(
-  db: Database,
-  network: string,
-  tokenIds: string[],
-) {
-  if (tokenIds.length === 0) return [];
-  return db
-    .select()
-    .from(schema.coveV3TokenMetadata)
-    .where(
-      and(
-        eq(schema.coveV3TokenMetadata.network, network),
-        inArray(schema.coveV3TokenMetadata.tokenId, tokenIds),
-      ),
-    );
+export async function listTokenMetadataByTokenIds(db: Database, network: string, tokenIds: string[]) {
+  return canonicalDeploymentMetadata(db, network, tokenIds);
 }

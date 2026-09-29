@@ -26,7 +26,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  */
 export async function GET(req: Request, { params }: { params: Promise<{ tokenId: string }> }) {
   try {
-    const limited = checkRateLimit(req, "read-market-stats");
+    const limited = await checkRateLimit(req, "read-market-stats");
     if (limited) return limited;
 
     const { tokenId } = await params;

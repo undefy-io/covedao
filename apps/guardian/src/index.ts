@@ -28,6 +28,8 @@ async function main(): Promise<void> {
     signingArmed: boot.canaryActive,
     custodyBackend: boot.custodyBackend,
     coreRpc: boot.coreRpc,
+    rpcRequestsPerSecond: boot.rpcRequestsPerSecond,
+    rpcBudgetDatabaseUrl: boot.rpcBudgetDatabaseUrl,
     ordUrl: boot.ordUrl,
   });
   // Refuse to start on the wrong chain, or with a key that is not the profile's.
