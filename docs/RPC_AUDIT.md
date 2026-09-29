@@ -195,4 +195,5 @@ should be removed. No transaction validation changes were made during the audit.
   in the results rather than hidden by later successful samples.
 - Source tracing establishes RPC reachability. HTTP timing alone cannot prove
   zero RPC calls. This audit did not broadcast, sign or create transactions,
-  modify chain/DB state, restart services or run a new mutation load test.
+  change chain or transaction state, restart services or run a new mutation
+  load test. Normal request quota/budget accounting still applies to probes.
