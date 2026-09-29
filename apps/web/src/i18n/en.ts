@@ -473,7 +473,7 @@ export const en = {
   "err.WALLET_REQUIRED": "Connect a wallet to continue.",
   "err.WALLET_UNSUPPORTED": "Your wallet does not support this action.",
   "err.WRONG_NETWORK": "Your wallet is connected to the wrong network.",
-  "err.CORE_UNAVAILABLE": "Bitcoin Core is unreachable. Trading is temporarily paused.",
+  "err.CORE_UNAVAILABLE": "Trading data is temporarily unavailable. Please retry shortly.",
   "err.INDEXER_UNHEALTHY": "The covs indexer is catching up. Trading is temporarily paused.",
   "err.INDEXER_REBUILDING": "covs is rebuilding chain state. Trading is temporarily paused.",
   "err.INDEXER_DIVERGED": "The indexer disagrees with the node. Trading is paused until it is resolved.",

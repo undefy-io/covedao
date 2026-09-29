@@ -462,11 +462,17 @@ export class V3AppService {
   private async loadQuoteBacking(tokenId: string) {
     const observation = await effectiveBackingObservation(this.db, this.config.network, tokenId);
     if (!observation) throw new AppError("TOKEN_NOT_FOUND", "token not found");
-    if (!observation.fresh || !observation.payload)
+    if (!observation.fresh || !observation.payload) {
+      console.warn("[quote-unavailable]", JSON.stringify({
+        tokenId, reason: observation.unavailableReason,
+        observedAt: observation.observedAt?.toISOString(),
+        revision: observation.revision, generation: observation.generation,
+      }));
       throw new AppError(
         "CORE_UNAVAILABLE",
         "a fresh validated backing observation is not available; retry shortly",
       );
+    }
     const p = observation.payload;
     return {
       state: {

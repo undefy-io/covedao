@@ -122,7 +122,7 @@ function humanCopy(code: string): string {
     case "INDEXER_UNHEALTHY":
       return "The covs indexer is catching up. Trading is temporarily paused.";
     case "CORE_UNAVAILABLE":
-      return "Bitcoin Core is unreachable. Trading is temporarily paused.";
+      return "Trading data is temporarily unavailable. Please retry shortly.";
     case "WALLET_REQUIRED":
       return "Connect a wallet to continue.";
     case "WALLET_UNSUPPORTED":

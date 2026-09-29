@@ -152,7 +152,20 @@ export async function effectiveBackingObservation(db: Database, network: string,
       and r.chain_observed_at >= clock_timestamp() - interval '30 seconds'
       and p.chain_generation = e.chain_generation and p.observed_revision = p.requested_revision
       and p.base_txid = b.txid and p.base_vout = b.vout
-      and p.observed_at >= clock_timestamp() - interval '15 seconds' and p.payload is not null) as fresh
+      and p.observed_at >= clock_timestamp() - interval '15 seconds' and p.payload is not null) as fresh,
+    case
+      when c.rebuilding then 'indexer_rebuilding'
+      when r.core_reachable is not true then 'core_unreachable'
+      when r.core_height is distinct from c.height or r.core_tip is distinct from c.block_hash then 'indexer_tip_changed'
+      when r.chain_observed_at is null or r.chain_observed_at < clock_timestamp() - interval '30 seconds' then 'chain_observation_expired'
+      when p.token_id is null then 'backing_observation_missing'
+      when p.chain_generation is distinct from e.chain_generation then 'chain_generation_changed'
+      when p.observed_revision is distinct from p.requested_revision then 'pending_revision_changed'
+      when p.base_txid is distinct from b.txid or p.base_vout is distinct from b.vout then 'canonical_backing_changed'
+      when p.payload is null then 'backing_proof_unavailable'
+      when p.observed_at is null or p.observed_at < clock_timestamp() - interval '15 seconds' then 'backing_observation_expired'
+      else null
+    end as unavailable_reason
     from cove_v3_backing_states b join cove_v3_cursor c on c.network = b.network
     join cove_observation_epochs e on e.network = b.network
     left join cove_v3_runtime r on r.network = b.network
@@ -163,6 +176,7 @@ export async function effectiveBackingObservation(db: Database, network: string,
   return {
     payload: row.payload as BackingObservationPayload | null,
     fresh: row.fresh === true,
+    unavailableReason: row.unavailable_reason == null ? null : String(row.unavailable_reason),
     observedAt: databaseDate(row.observed_at),
     revision: String(row.revision ?? "0"),
     indexedHeight: BigInt(String(row.height)),

@@ -117,9 +117,9 @@ describe.skipIf(!isolated)("fenced worker observations on isolated PostgreSQL", 
     );
   });
 
-  it("does not overwrite a signature or submission notification with an older refresh", async () => {
+  it("keeps fresh quotes while a submission is prepared and signed, then fences acceptance", async () => {
     const { base, epoch } = await fixture();
-    await db!
+    const [submission] = await db!
       .insert(schema.coveV3Submissions)
       .values({
         network,
@@ -131,7 +131,21 @@ describe.skipIf(!isolated)("fenced worker observations on isolated PostgreSQL", 
         backingVout: 1,
         unsignedTxDigest: "digest",
         walletPsbtBase64: "fixture",
-      });
+      }).returning();
+    expect((await effectiveBackingObservation(db!, network, tokenId))?.fresh).toBe(true);
+    await db!.execute(sql`insert into cove_v3_signing_journal
+      (network, backing_txid, backing_vout, unsigned_tx_digest, expires_at)
+      values (${network}, ${parent}, 1, 'digest', clock_timestamp() + interval '1 minute')`);
+    await db!.execute(sql`update cove_v3_signing_journal set signed_at = clock_timestamp(),
+      signing_result = jsonb_build_object('resultJson', ${JSON.stringify({ tokenId })}::text)
+      where network = ${network} and unsigned_tx_digest = 'digest'`);
+    expect((await effectiveBackingObservation(db!, network, tokenId))?.fresh).toBe(true);
+    await db!.execute(sql`update cove_v3_submissions set raw_tx_hex = 'signed', txid = 'signed', phase = 'READY'
+      where id = ${submission!.id}`);
+    expect((await effectiveBackingObservation(db!, network, tokenId))?.fresh).toBe(true);
+    expect(await publishBackingObservation(db!, base, epoch, base.backing, new Date())).toBe(true);
+    await db!.execute(sql`update cove_v3_submissions set accepted_at = clock_timestamp(), phase = 'BROADCAST'
+      where id = ${submission!.id}`);
     expect((await effectiveBackingObservation(db!, network, tokenId))?.fresh).toBe(false);
     expect(await publishBackingObservation(db!, base, epoch, base.backing, new Date())).toBe(false);
     const current = (await backingObservationBase(db!, network, tokenId))!;
@@ -159,6 +173,44 @@ describe.skipIf(!isolated)("fenced worker observations on isolated PostgreSQL", 
     expect((await effectiveBackingObservation(db!, network, tokenId))?.fresh).toBe(false);
     await db!.execute(sql`update cove_v3_cursor set rebuilding = true where network = ${network}`);
     expect(await publishBackingObservation(db!, base, epoch, base.backing, new Date())).toBe(false);
+  });
+  it("keeps quotes available for competing signers and fences a racing refresh on acceptance", async () => {
+    const { base, epoch } = await fixture();
+    const submissions = await Promise.all(Array.from({ length: 32 }, async (_, i) => {
+      const [submission] = await db!.insert(schema.coveV3Submissions).values({
+        network, sourceKind: "APP", sourceId: randomUUID(), operation: "BACKING_BUY",
+        tokenId, backingTxid: parent, backingVout: 1, unsignedTxDigest: `competitor-${i}`,
+        walletPsbtBase64: "fixture", rawTxHex: `raw-${i}`, txid: `tx-${i}`, phase: "READY",
+      }).returning();
+      return submission!;
+    }));
+    expect((await effectiveBackingObservation(db!, network, tokenId))?.fresh).toBe(true);
+    expect((await backingObservationBase(db!, network, tokenId))?.revision).toBe(base.revision);
+    await Promise.all([
+      publishBackingObservation(db!, base, epoch, base.backing, new Date()),
+      db!.execute(sql`update cove_v3_submissions set accepted_at = clock_timestamp(), phase = 'BROADCAST'
+        where id = ${submissions[31]!.id}`),
+    ]);
+    expect((await effectiveBackingObservation(db!, network, tokenId))?.fresh).toBe(false);
+    expect(await publishBackingObservation(db!, base, epoch, base.backing, new Date())).toBe(false);
+  });
+
+  it.each([
+    ["pending_revision_changed", "update cove_pending_backing set observed_revision = null"],
+    ["backing_observation_expired", "update cove_pending_backing set observed_at = clock_timestamp() - interval '16 seconds'"],
+    ["chain_generation_changed", "update cove_pending_backing set chain_generation = chain_generation - 1"],
+    ["canonical_backing_changed", "update cove_pending_backing set base_txid = 'older'"],
+    ["backing_proof_unavailable", "update cove_pending_backing set payload = null"],
+    ["core_unreachable", "update cove_v3_runtime set core_reachable = false"],
+    ["chain_observation_expired", "update cove_v3_runtime set chain_observed_at = clock_timestamp() - interval '31 seconds'"],
+    ["indexer_tip_changed", "update cove_v3_runtime set core_tip = 'other'"],
+    ["indexer_rebuilding", "update cove_v3_cursor set rebuilding = true"],
+  ])("diagnoses unavailable quotes: %s", async (reason, update) => {
+    await fixture();
+    await db!.execute(sql`${sql.raw(update)} where network = ${network}`);
+    const observation = await effectiveBackingObservation(db!, network, tokenId);
+    expect(observation?.fresh).toBe(false);
+    expect(observation?.unavailableReason).toBe(reason);
   });
   it("advances two accepted buys immediately and cannot overwrite a newer broadcast or generation", async () => {
     const { epoch } = await fixture();

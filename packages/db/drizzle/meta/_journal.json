@@ -169,6 +169,13 @@
       "when": 1790667713759,
       "tag": "0023_accepted_signature_lookup",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790681523693,
+      "tag": "0024_accepted_pending_invalidation",
+      "breakpoints": true
     }
   ]
 }

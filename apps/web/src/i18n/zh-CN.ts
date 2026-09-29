@@ -475,7 +475,7 @@ export const zhCN: Record<MessageKey, string> = {
   "err.WALLET_REQUIRED": "请先连接钱包。",
   "err.WALLET_UNSUPPORTED": "你的钱包不支持这个操作。",
   "err.WRONG_NETWORK": "钱包连错网络了。",
-  "err.CORE_UNAVAILABLE": "连不上 Bitcoin Core，交易暂停中。",
+  "err.CORE_UNAVAILABLE": "交易数据暂时不可用，请稍后重试。",
   "err.INDEXER_UNHEALTHY": "covs 索引器正在同步，交易暂停中。",
   "err.INDEXER_REBUILDING": "covs 正在重建链上状态，交易暂停中。",
   "err.INDEXER_DIVERGED": "索引器和节点数据不一致，交易暂停，处理完再恢复。",
