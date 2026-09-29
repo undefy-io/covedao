@@ -363,6 +363,7 @@ export interface RedeemResult {
   grossSats: Sats;
   redeemFeeSats: Sats;
   netSats: Sats;
+  payoutSats: Sats;
   changeAtoms: bigint;
   wire: Buffer;
   /** The fee actually paid, including any change too small to be an output. */
@@ -372,7 +373,7 @@ export interface RedeemResult {
 /**
  * Build a real REDEEM PSBT (§11). Script-path REDEEM execution leaf (analogous
  * to MINT). Canonical outputs: [0] OP_RETURN (wire v2 REDEEM), [1] successor
- * backing vault, [2] seller BTC payout (net = gross - fee), [3] Cove redeem fee,
+ * backing vault, [2] seller BTC payout, [3] Cove redeem fee,
  * [4] token change carrier (only if partial redeem), [5] seller BTC change.
  */
 export function buildRedeemPsbtV3(params: {
@@ -407,6 +408,8 @@ export function buildRedeemPsbtV3(params: {
   redeemFeeBps?: bigint;
   /** Flat sats deducted on top of the percentage. */
   redeemFeeFlatSats?: bigint;
+  /** Merge payout and BTC change, funding fees from the seller wallet. Legacy standalone settlement is retained by default. */
+  walletFundedFees?: boolean;
 }): RedeemResult {
   const { nextState, grossSats } = applyRedeemV2(params.prevState, params.redeemAmountAtoms);
   const prevVault = buildBackingVaultV3({
@@ -464,31 +467,27 @@ export function buildRedeemPsbtV3(params: {
     script: nextVault.scriptPubKey,
     value: Number(RESERVE_ANCHOR_SATS + nextState.backingSats),
   });
-  psbt.addOutput({ script: params.sellerPayoutScript, value: Number(netSats) });
-  psbt.addOutput({ script: params.feeScript, value: Number(redeemFeeSats) });
-  if (changeAtoms > 0n) {
-    psbt.addOutput({ script: params.sellerChangeScript, value: Number(TOKEN_CARRIER_SATS) });
-  }
-
   const funderTotal = (params.funderInputs ?? []).reduce((s, i) => s + i.valueSats, 0n);
-  const totalIn =
-    params.prevBacking.valueSats +
-    params.tokenInputs.reduce((s, i) => s + i.valueSats, 0n) +
-    funderTotal;
+  const totalIn = params.prevBacking.valueSats + params.tokenInputs.reduce((s, i) => s + i.valueSats, 0n) + funderTotal;
   const successorValue = RESERVE_ANCHOR_SATS + nextState.backingSats;
   const changeCarrierValue = changeAtoms > 0n ? TOKEN_CARRIER_SATS : 0n;
-  const change = totalIn - successorValue - netSats - redeemFeeSats - changeCarrierValue - params.minerFeeSats;
-  if (change < 0n) {
-    throw new Error(
-      `insufficient redeem funds: need ${-change} more sats; ` +
-        `add a BTC funding input (carriers alone cover only ${params.tokenInputs.length * 1000} sats)`,
-    );
-  }
-  const settled = addChangeOrAbsorb(
-    psbt,
-    params.funderChangeScript ?? params.sellerChangeScript,
-    change,
-    params.minerFeeSats,
+  const payoutSats = params.walletFundedFees
+    ? totalIn - successorValue - redeemFeeSats - changeCarrierValue - params.minerFeeSats
+    : netSats;
+  if (params.walletFundedFees &&
+      (payoutSats < grossSats || payoutSats < dustThreshold(params.sellerPayoutScript)))
+    throw new Error("insufficient redeem funds; add a BTC funding input to pay fees and return standard BTC change");
+  if (params.walletFundedFees && params.funderChangeScript && !params.funderChangeScript.equals(params.sellerPayoutScript))
+    throw new Error("wallet-funded redeem must return BTC change to the payout address");
+  psbt.addOutput({ script: params.sellerPayoutScript, value: Number(payoutSats) });
+  psbt.addOutput({ script: params.feeScript, value: Number(redeemFeeSats) });
+  if (changeAtoms > 0n)
+    psbt.addOutput({ script: params.sellerChangeScript, value: Number(TOKEN_CARRIER_SATS) });
+  const change = totalIn - successorValue - payoutSats - redeemFeeSats - changeCarrierValue - params.minerFeeSats;
+  if (change < 0n)
+    throw new Error(`insufficient redeem funds: need ${-change} more sats; add a BTC funding input`);
+  const settled = params.walletFundedFees ? {minerFeeSats:params.minerFeeSats} : addChangeOrAbsorb(
+    psbt, params.funderChangeScript ?? params.sellerChangeScript, change, params.minerFeeSats,
   );
 
   return {
@@ -498,6 +497,7 @@ export function buildRedeemPsbtV3(params: {
     nextVault,
     grossSats,
     redeemFeeSats,
+    payoutSats,
     netSats,
     changeAtoms,
     wire,

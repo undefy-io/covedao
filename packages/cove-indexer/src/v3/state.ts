@@ -18,7 +18,7 @@ import {
   computeTokenId,
   type ParsedEnvelopeV2,
 } from "@crclaunch/cove-wire";
-import { COVE_FEE_CONFIG, CREATOR_RECORD_SATS, LAUNCH_FEE_SATS, creatorFeeSats, isCreatorScript, mintFeeSats, redeemFeeSats, isP2TR, isP2WPKH } from "@crclaunch/cove-economics";
+import { isValidRedeemPayout, COVE_FEE_CONFIG, CREATOR_RECORD_SATS, LAUNCH_FEE_SATS, creatorFeeSats, isCreatorScript, mintFeeSats, redeemFeeSats, isP2TR, isP2WPKH } from "@crclaunch/cove-economics";
 import { RESERVE_ANCHOR_SATS } from "./constants.js";
 import { parseCoveTx, txidOf } from "./parser.js";
 import { computeStateRoot } from "./root.js";
@@ -583,7 +583,6 @@ export class V3IndexerState {
       return { op: "REDEEM", valid: false, reason: `REFERENCE_REJECTED: ${(e as Error).message}`, tokenId: tokenIdHex, undo: null };
     }
     const feeSats = redeemFeeSats(grossSats, this.config.redeemFeeBps ?? COVE_FEE_CONFIG.redeemFeeBps, this.config.redeemFeeFlatSats ?? COVE_FEE_CONFIG.redeemFeeFlatSats);
-    const netPayoutSats = grossSats - feeSats;
     const nextVault = buildBackingVaultV3({
       state: nextState,
       guardianXOnly: this.config.guardianXOnly,
@@ -599,7 +598,7 @@ export class V3IndexerState {
       return { op: "REDEEM", valid: false, reason: "SUCCESSOR_VALUE_MISMATCH", tokenId: tokenIdHex, undo: null };
     }
     const payout = tx.outs[2];
-    if (!payout || BigInt(payout.value) !== netPayoutSats) {
+    if (!payout || !isValidRedeemPayout(grossSats, feeSats, BigInt(payout.value), payout.script)) {
       return { op: "REDEEM", valid: false, reason: "PAYOUT_MISMATCH", tokenId: tokenIdHex, undo: null };
     }
     const feeOut = tx.outs[3];

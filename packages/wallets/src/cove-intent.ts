@@ -44,6 +44,7 @@ export interface ClientIntent {
   creatorScript?: string | null;
   minerFeeSats: string;
   netSats: string | null;
+  payoutSats?: string | null;
   /** The payments scriptPubKey: where BTC comes from and change returns. */
   walletScript: string;
   /**
@@ -254,7 +255,8 @@ export function verifyClientIntent(
       mismatch(`splitting costs ${-walletDeltaSats} sats, not the ${expectedMinerFee}-sat network fee`);
     }
   } else if (intent.operation === "REDEEM") {
-    if (net === null) mismatch("redeem intent is missing its payout");
+    if (net === null || gross === null || protocolFee === null) mismatch("redeem intent is missing its payout");
+    if (net !== gross - protocolFee) mismatch("redeem proceeds do not match the price and protocol fee");
     const expected = net - expectedMinerFee;
     if (walletDeltaSats !== expected) {
       mismatch(
@@ -267,7 +269,12 @@ export function verifyClientIntent(
   // A stated payout must land on the wallet's own script, at exactly that
   // value, whatever the operation. This is what a peer-to-peer seller relies
   // on: the price they agreed to, paid to them and not to anyone else.
-  if (net !== null) {
+  if (intent.operation === "REDEEM" && intent.payoutSats !== undefined) {
+    const payout = bigintOr(intent.payoutSats);
+    if (payout === null || gross === null || payout < gross ||
+        outputs[2]?.scriptHex !== intent.walletScript || outputs[2]?.value !== payout)
+      mismatch("redeem payout and BTC change do not return to your wallet");
+  } else if (net !== null) {
     // A payout is plain Bitcoin, so it belongs on the payments address.
     if (!outputs.some((o) => o.scriptHex === intent.walletScript && o.value === net)) {
       mismatch(`no ${net}-sat payout to your wallet`);

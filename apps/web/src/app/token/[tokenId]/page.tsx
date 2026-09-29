@@ -948,7 +948,7 @@ function TradeReview({
         <Line k={t("tok.networkFee")} v={`${isBuy ? "+" : "−"}\u2248${fmtBtc(minerFee)}`} />
         <div className="border-t border-rule-bright pt-2">
           <Line
-            k={isBuy ? t("tok.youPay") : t("tok.youReceive")}
+            k={isBuy || total < 0n ? t("tok.youPay") : t("tok.youReceive")}
             v={`\u2248${fmtBtc(total < 0n ? -total : total)}`}
             strong
           />
@@ -962,6 +962,7 @@ function TradeReview({
         vsizeHint={rates?.typicalVsize[isBuy ? "BACKING_BUY" : "REDEEM"]}
       />
 
+      {!isBuy && total < 0n ? <p className="text-xs leading-relaxed text-bone-dim">{t("tok.redeemFeeShortfall")}</p> : null}
       <p className="text-xs leading-relaxed text-bone-dim">{t("tok.lockedNote")}</p>
 
       <div className="grid grid-cols-2 gap-px bg-rule">

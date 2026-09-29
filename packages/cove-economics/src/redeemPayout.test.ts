@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { checkRedeemPayout } from "./redeemPayout.js";
+import {
+  checkRedeemPayout,
+  isValidRedeemPayout,
+  redeemWalletFundingTarget,
+} from "./redeemPayout.js";
 import { grossRedeem } from "./backing.js";
 import { deterministicFee, COVE_FEE_CONFIG, redeemFeeSats } from "./fee.js";
 
 const P2WPKH = Buffer.from("0014" + "cc".repeat(20), "hex");
 const P2TR = Buffer.from("5120" + "cc".repeat(32), "hex");
 
-describe("checkRedeemPayout", () => {
+describe("legacy standalone redeem payout", () => {
   it("refuses a sale worth less than the flat exit fee", () => {
     const c = checkRedeemPayout(500n, 2_500n, P2WPKH);
     expect(c.netSats).toBe(-2_000n);
@@ -31,7 +35,7 @@ describe("checkRedeemPayout", () => {
     expect(checkRedeemPayout(2_830n, 2_500n, P2TR).isPayable).toBe(true);
   });
 
-  it("on the live curve a single lot at stair 1 is too small to sell back", () => {
+  it("a single lot at stair 1 cannot fund a standalone net payout", () => {
     // One lot (1,000 tokens) at the opening stair is worth 27 sats, under the
     // 1,000-sat floor on the exit fee.
     const gross = grossRedeem(100_000n, 1_000n);
@@ -50,9 +54,32 @@ describe("checkRedeemPayout", () => {
 
   it("accepts a sale large enough to clear the fee", () => {
     const gross = grossRedeem(100_000n, 50_000n);
-    const fee = deterministicFee(gross, COVE_FEE_CONFIG.redeemFeeBps, COVE_FEE_CONFIG.redeemFeeFlatSats);
+    const fee = deterministicFee(
+      gross,
+      COVE_FEE_CONFIG.redeemFeeBps,
+      COVE_FEE_CONFIG.redeemFeeFlatSats,
+    );
     const c = checkRedeemPayout(gross, fee, P2WPKH);
     expect(c.isPayable).toBe(true);
     expect(c.netSats).toBe(gross - fee);
+  });
+});
+
+describe("wallet-funded small-lot redemptions", () => {
+  it("accepts standard combined payouts while rejecting underpayment and dust", () => {
+    expect(isValidRedeemPayout(27n, 1000n, 294n, P2WPKH)).toBe(true);
+    expect(isValidRedeemPayout(27n, 1000n, 293n, P2WPKH)).toBe(false);
+    expect(isValidRedeemPayout(27n, 1000n, 26n, P2WPKH)).toBe(false);
+    expect(isValidRedeemPayout(27n, 1000n, -973n, P2WPKH)).toBe(false);
+    expect(isValidRedeemPayout(27n, 1000n, 330n, P2TR)).toBe(true);
+    expect(isValidRedeemPayout(27n, 1000n, 329n, P2TR)).toBe(false);
+    expect(isValidRedeemPayout(27n, 1000n, 1000n, Buffer.from("6a", "hex"))).toBe(false);
+    expect(isValidRedeemPayout(2700n, 1000n, 1700n, P2WPKH)).toBe(true);
+  });
+  it("funds protocol fees and dust top-up without using additional backing", () => {
+    expect(redeemWalletFundingTarget(27n, 1000n, P2WPKH, 1000n, 0n)).toBe(267n);
+    expect(redeemWalletFundingTarget(27n, 1000n, P2WPKH, 1000n, 1000n)).toBe(1267n);
+    expect(redeemWalletFundingTarget(27n, 1000n, P2TR, 1000n, 1000n)).toBe(1303n);
+    expect(redeemWalletFundingTarget(2700n, 1000n, P2WPKH, 1000n, 0n)).toBe(0n);
   });
 });

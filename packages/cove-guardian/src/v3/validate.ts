@@ -2,7 +2,7 @@ import * as bitcoin from "bitcoinjs-lib";
 import { TOKEN_CARRIER_SATS } from "@crclaunch/cove-covenant";
 import { buildBackingVaultV3, type VaultRecoveryProfile } from "@crclaunch/cove-vault";
 import { executeMintV3, executeRedeemV3 } from "@crclaunch/cove-simplicity";
-import { COVE_FEE_CONFIG, checkFeeSettlement } from "@crclaunch/cove-economics";
+import { COVE_FEE_CONFIG, checkFeeSettlement, isValidRedeemPayout } from "@crclaunch/cove-economics";
 import { RESERVE_ANCHOR_SATS } from "./builder.js";
 import { analyzeMintTransitionV3, analyzeRedeemTransitionV3, CoveAnalyzeError } from "./analyze.js";
 import { buildCanonicalMintWitness, buildCanonicalRedeemWitness } from "./witness.js";
@@ -397,8 +397,8 @@ export async function validateRedeemTransitionV3(
   // ── seller payout (vout 2) ──
   const payout = outputs[REDEEM_PAYOUT_VOUT];
   if (!payout) return reject("PAYOUT_MISMATCH", "no payout output at vout 2");
-  if (payout.value !== analysis.netPayoutSats) {
-    return reject("PAYOUT_MISMATCH", `payout ${payout.value} != net ${analysis.netPayoutSats}`);
+  if (!isValidRedeemPayout(analysis.grossSats, analysis.protocolFeeSats, payout.value, payout.script)) {
+    return reject("PAYOUT_MISMATCH", `payout ${payout.value} is neither the legacy net nor a standard wallet-funded payout`);
   }
 
   // ── protocol fee (vout 3) ──
@@ -473,12 +473,11 @@ export async function validateRedeemTransitionV3(
   const backingOut =
     RESERVE_ANCHOR_SATS +
     analysis.nextState.backingSats +
-    analysis.netPayoutSats +
-    analysis.protocolFeeSats;
+    analysis.grossSats;
   if (backingIn !== backingOut) {
     return reject(
       "BACKING_DECREASE_MISMATCH",
-      `backing input ${backingIn} != successor+payout+fee ${backingOut}`,
+      `backing input ${backingIn} != successor+gross ${backingOut}`,
     );
   }
 

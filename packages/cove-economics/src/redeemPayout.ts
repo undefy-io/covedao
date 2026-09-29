@@ -1,20 +1,8 @@
 import type { Sats } from "@crclaunch/curve";
+import { isCreatorScript } from "./fee.js";
 import { dustThreshold } from "./dust.js";
 
-/**
- * Is a redemption worth making?
- *
- * The exit fee has a FLAT component, so a small enough redemption is worth
- * less than the fee: the payout falls to zero and then goes negative. That
- * cannot be built — a Bitcoin output is never negative, and one below the
- * relay dust threshold will not propagate — so it must be refused where the
- * user asks the price, not deep inside a PSBT builder.
- *
- * At the development schedule (flat 2,500 sats, 0 bps) and a P2WPKH payout,
- * the floor is 2,794 sats: roughly 5.6 million tokens at the first curve
- * stage. Selling less than that is not possible, and saying so plainly beats
- * an arithmetic failure three layers down.
- */
+/** Legacy standalone payout checks; application redemptions combine backing proceeds with wallet BTC change. */
 export interface RedeemPayoutCheck {
   grossSats: Sats;
   feeSats: Sats;
@@ -45,4 +33,31 @@ export function checkRedeemPayout(
     isPayable: netSats >= dust,
     minimumGrossSats: feeSats + dust,
   };
+}
+
+export function isValidRedeemPayout(
+  grossSats: Sats,
+  feeSats: Sats,
+  payoutSats: Sats,
+  payoutScript: Uint8Array,
+): boolean {
+  if (payoutSats < 0n) return false;
+  if (payoutSats === grossSats - feeSats) return true;
+  return (
+    isCreatorScript(payoutScript) &&
+    payoutSats >= grossSats &&
+    payoutSats >= dustThreshold(payoutScript)
+  );
+}
+
+export function redeemWalletFundingTarget(
+  grossSats: Sats,
+  feeSats: Sats,
+  payoutScript: Uint8Array,
+  carrierSatsIn: Sats,
+  changeCarrierSats: Sats,
+): Sats {
+  const dust = dustThreshold(payoutScript);
+  const topUp = grossSats < dust ? dust - grossSats : 0n;
+  return feeSats + changeCarrierSats - carrierSatsIn + topUp;
 }

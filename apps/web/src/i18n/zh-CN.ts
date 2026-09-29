@@ -287,6 +287,7 @@ export const zhCN: Record<MessageKey, string> = {
   "tok.protocolFee": "协议手续费",
   "tok.networkFee": "矿工费",
   "tok.youPay": "你需支付",
+  "tok.redeemFeeShortfall": "此次赎回返还的 BTC 少于手续费。差额由你的 BTC 钱包支付；赎回款和 BTC 找零将合并返还。",
   "tok.youReceive": "你将收到",
   "tok.lockedNote": "曲线价格和协议手续费已锁定在上面报价时的储备状态。如果有人抢先成交，这笔会被拒绝并重新报价，不会按别的价格成交。签名前钱包会显示最终金额。",
   "tok.back": "返回",

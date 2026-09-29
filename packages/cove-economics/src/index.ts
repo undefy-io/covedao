@@ -32,7 +32,7 @@ export {
   type CoveFeeConfig,
 } from "./fee.js";
 export { checkFeeSettlement, type FeeSettlementCheck } from "./feeSettlement.js";
-export { checkRedeemPayout, type RedeemPayoutCheck } from "./redeemPayout.js";
+export { checkRedeemPayout, isValidRedeemPayout, redeemWalletFundingTarget, type RedeemPayoutCheck } from "./redeemPayout.js";
 export {
   DUST_RELAY_FEE_SAT_PER_KVB,
   isWitnessProgram,

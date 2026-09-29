@@ -285,6 +285,7 @@ export const en = {
   "tok.protocolFee": "Protocol fee",
   "tok.networkFee": "Network fee",
   "tok.youPay": "You pay",
+  "tok.redeemFeeShortfall": "This redemption returns less BTC than its fees. Your BTC wallet pays the difference; the payout and BTC change return together.",
   "tok.youReceive": "You receive",
   "tok.lockedNote": "The curve price and the protocol fee are locked to the backing state quoted above. If someone else trades first, this is refused and re-quoted rather than filled at a different price. Your wallet will show the final amounts before you sign.",
   "tok.back": "Back",
