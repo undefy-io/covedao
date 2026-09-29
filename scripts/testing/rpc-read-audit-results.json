@@ -1,0 +1,172 @@
+{
+  "auditedAtUtc": "2026-09-29T08:08:43Z",
+  "scope": "One sequential localhost sample per endpoint; timings do not prove call counts or production capacity. Only wallet UTXOs use an external chain source in this probe. No builds, signing or broadcasts.",
+  "results": [
+    {
+      "method": "GET",
+      "path": "/api/v3/status",
+      "status": 200,
+      "durationMs": 20,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v3/fees",
+      "status": 200,
+      "durationMs": 3,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v3/tokens?limit=1",
+      "status": 200,
+      "durationMs": 7,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v3/activity",
+      "status": 200,
+      "durationMs": 6,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v3/market/listings",
+      "status": 200,
+      "durationMs": 4,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v3/market/fills/00000000-0000-0000-0000-000000000000",
+      "status": 200,
+      "durationMs": 5,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v3/tx/0000000000000000000000000000000000000000000000000000000000000000",
+      "status": 200,
+      "durationMs": 7,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v3/wallet/tb1qg358gsla30dtx228u3za8253zncpzdwkrl6eem/portfolio",
+      "status": 200,
+      "durationMs": 5,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v3/tokens/sparklines?tokenIds=69c961677b51a92d76d473597edab27b53fe1f1a7d9f8cb59449de0362eaf417",
+      "status": 200,
+      "durationMs": 7,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v3/tokens/69c961677b51a92d76d473597edab27b53fe1f1a7d9f8cb59449de0362eaf417",
+      "status": 200,
+      "durationMs": 4,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v3/tokens/69c961677b51a92d76d473597edab27b53fe1f1a7d9f8cb59449de0362eaf417/activity",
+      "status": 200,
+      "durationMs": 3,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v3/tokens/69c961677b51a92d76d473597edab27b53fe1f1a7d9f8cb59449de0362eaf417/candles?interval=1h",
+      "status": 200,
+      "durationMs": 4,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v3/tokens/69c961677b51a92d76d473597edab27b53fe1f1a7d9f8cb59449de0362eaf417/holders",
+      "status": 200,
+      "durationMs": 4,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v3/tokens/69c961677b51a92d76d473597edab27b53fe1f1a7d9f8cb59449de0362eaf417/market",
+      "status": 200,
+      "durationMs": 4,
+      "ok": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v3/backing/buy/quote",
+      "status": 503,
+      "durationMs": 3,
+      "ok": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v3/backing/redeem/quote",
+      "status": 503,
+      "durationMs": 4,
+      "ok": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v3/backing/buy/quote-sats",
+      "status": 503,
+      "durationMs": 3,
+      "ok": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v3/tokens/69c961677b51a92d76d473597edab27b53fe1f1a7d9f8cb59449de0362eaf417/buy/routes",
+      "status": 200,
+      "durationMs": 4,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v3/wallet/utxos?address=tb1qg358gsla30dtx228u3za8253zncpzdwkrl6eem",
+      "status": 200,
+      "durationMs": 1899,
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/dev/wallet",
+      "status": 403,
+      "durationMs": 4,
+      "ok": false
+    }
+  ],
+  "quoteRechecks": [
+    {
+      "path": "/api/v3/backing/buy/quote",
+      "status": 200,
+      "durationMs": 20,
+      "ok": true
+    },
+    {
+      "path": "/api/v3/backing/redeem/quote",
+      "status": 400,
+      "durationMs": 4,
+      "ok": false
+    },
+    {
+      "path": "/api/v3/backing/buy/quote-sats",
+      "status": 200,
+      "durationMs": 3,
+      "ok": true
+    }
+  ],
+  "quoteRecheckNote": "Initial quote probes returned retryable 503 because a fresh validated backing observation was unavailable. The indexed generation changed during the audit; later read-only DB inspection found fresh payloads on generation 5 / height 324151. Subsequent buy quotes returned 200; rechecks are recorded separately. These observations are consistent with the freshness gate; timings alone do not establish the exact cause of the initial refresh delay.",
+  "gatewayCapabilityProbe": {
+    "method": "gettxspendingprevout",
+    "supported": false,
+    "scope": "One read-only probe through the deployed worker image provider with a shared public-lane budget, retry disabled and a 10-second deadline."
+  }
+}
