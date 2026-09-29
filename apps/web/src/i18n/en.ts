@@ -344,6 +344,8 @@ export const en = {
   "fee.eco": "Eco",
   "fee.standard": "Standard",
   "fee.priority": "Priority",
+  "fee.noAffordable": "No fee speed fits the transaction fee limit.",
+  "fee.aboveCap": "Above fee limit",
   "fee.blocks": "~{n} blocks",
   "pick.couldNot": "Could not connect.",
   "pick.aria": "Connect a wallet",

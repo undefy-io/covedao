@@ -346,6 +346,8 @@ export const zhCN: Record<MessageKey, string> = {
   "fee.eco": "经济",
   "fee.standard": "标准",
   "fee.priority": "优先",
+  "fee.noAffordable": "没有符合交易手续费上限的费率。",
+  "fee.aboveCap": "超过手续费上限",
   "fee.blocks": "约 {n} 个区块",
   "pick.couldNot": "连接失败。",
   "pick.aria": "连接钱包",

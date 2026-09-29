@@ -23,12 +23,24 @@ export interface FeeTier {
 }
 
 export interface FeeRatesResponse {
+  maxMinerFeeSats: string;
   floorSatPerVb: string;
   ceilingSatPerVb: string;
   estimated: boolean;
   tiers: FeeTier[];
   /** Typical vbyte size per operation, for previewing a fee before building. */
   typicalVsize: Record<"DEPLOY" | "BACKING_BUY" | "REDEEM" | "TRANSFER", number>;
+}
+
+export function affordableFeeTier(
+  rates: FeeRatesResponse,
+  selected: FeeTier["key"],
+): FeeTier | null {
+  const maxVsize = BigInt(Math.max(...Object.values(rates.typicalVsize)));
+  const affordable = rates.tiers.filter(
+    (tier) => BigInt(tier.satPerVb) * maxVsize <= BigInt(rates.maxMinerFeeSats),
+  );
+  return affordable.find((tier) => tier.key === selected) ?? affordable[0] ?? null;
 }
 
 export function useFeeRates() {
@@ -57,7 +69,7 @@ export function useFeeRates() {
     };
   }, [feeRevision]);
 
-  const tier = rates?.tiers.find((t) => t.key === selected) ?? null;
+  const tier = rates ? affordableFeeTier(rates, selected) : null;
 
   /**
    * A preview of the miner fee, never the real one. The server sizes the fee
@@ -69,7 +81,13 @@ export function useFeeRates() {
     return BigInt(tier.satPerVb) * BigInt(rates.typicalVsize[op] ?? 0);
   };
 
-  return { rates, selected, setSelected, satPerVb: tier?.satPerVb ?? null, previewFeeSats };
+  return {
+    rates,
+    selected: tier?.key ?? selected,
+    setSelected,
+    satPerVb: tier?.satPerVb ?? null,
+    previewFeeSats,
+  };
 }
 
 export function FeePicker({
@@ -111,14 +129,20 @@ export function FeePicker({
         {rates.tiers.map((tier) => {
           const active = tier.key === selected;
           const preview = vsizeHint ? BigInt(tier.satPerVb) * BigInt(Math.ceil(vsizeHint)) : null;
+          const unaffordable = preview !== null && preview > BigInt(rates.maxMinerFeeSats);
           return (
             <button
               key={tier.key}
               type="button"
               onClick={() => onSelect(tier.key)}
+              disabled={unaffordable}
               aria-pressed={active}
               className={`px-3 py-2.5 text-left transition-colors ${
-                active ? "bg-signal/10 text-bone" : "bg-ink-3 text-bone-dim hover:bg-ink-2"
+                active
+                  ? "bg-signal/10 text-bone"
+                  : unaffordable
+                    ? "bg-ink-3 text-bone-dim opacity-50 cursor-not-allowed"
+                    : "bg-ink-3 text-bone-dim hover:bg-ink-2"
               }`}
             >
               <div className={`text-sm ${active ? "text-signal" : ""}`}>
@@ -128,9 +152,11 @@ export function FeePicker({
                 {tier.satPerVb} sat/vB
               </div>
               <div className="mt-0.5 text-label tabular-nums text-bone-dim">
-                {preview !== null
-                  ? `≈${preview.toLocaleString()} sats`
-                  : t("fee.blocks", { n: tier.blocks })}
+                {unaffordable
+                  ? t("fee.aboveCap")
+                  : preview !== null
+                    ? `≈${preview.toLocaleString()} sats`
+                    : t("fee.blocks", { n: tier.blocks })}
               </div>
             </button>
           );

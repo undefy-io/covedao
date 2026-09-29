@@ -628,6 +628,7 @@ function TokenContent() {
                 onFeeTier={setFeeTier}
                 previewFeeSats={previewFeeSats}
                 busy={busy}
+                feeAvailable={satPerVb !== null}
                 onConfirm={() => void confirmTrade()}
                 onCancel={() => setReview(null)}
               />
@@ -906,6 +907,7 @@ function TradeReview({
   onFeeTier,
   previewFeeSats,
   busy,
+  feeAvailable,
   onConfirm,
   onCancel,
 }: {
@@ -916,6 +918,7 @@ function TradeReview({
   onFeeTier: (k: FeeTier["key"]) => void;
   previewFeeSats: (op: "DEPLOY" | "BACKING_BUY" | "REDEEM" | "TRANSFER") => bigint | null;
   busy: boolean;
+  feeAvailable: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -962,14 +965,19 @@ function TradeReview({
         vsizeHint={rates?.typicalVsize[isBuy ? "BACKING_BUY" : "REDEEM"]}
       />
 
-      {!isBuy && total < 0n ? <p className="text-xs leading-relaxed text-bone-dim">{t("tok.redeemFeeShortfall")}</p> : null}
+      {rates && !feeAvailable ? (
+        <p className="text-xs text-pending">{t("fee.noAffordable")}</p>
+      ) : null}
+      {!isBuy && total < 0n ? (
+        <p className="text-xs leading-relaxed text-bone-dim">{t("tok.redeemFeeShortfall")}</p>
+      ) : null}
       <p className="text-xs leading-relaxed text-bone-dim">{t("tok.lockedNote")}</p>
 
       <div className="grid grid-cols-2 gap-px bg-rule">
         <button onClick={onCancel} disabled={busy} className="btn-ghost w-full border-0">
           {t("tok.back")}
         </button>
-        <button onClick={onConfirm} disabled={busy} className="btn w-full">
+        <button onClick={onConfirm} disabled={busy || !feeAvailable} className="btn w-full">
           {busy ? t("tok.working") : t("tok.confirmSign")}
         </button>
       </div>

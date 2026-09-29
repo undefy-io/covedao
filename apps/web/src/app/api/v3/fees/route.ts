@@ -37,6 +37,7 @@ export async function GET(req: Request) {
       };
       return ok({
         typicalVsize,
+        maxMinerFeeSats: config.maxMinerFeeSats,
         floorSatPerVb: rates.floorSatPerVb,
         ceilingSatPerVb: rates.ceilingSatPerVb,
         estimated: rates.estimated,
