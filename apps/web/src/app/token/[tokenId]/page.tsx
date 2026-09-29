@@ -184,6 +184,7 @@ function TokenContent() {
   // Quote the exact token amount. A changed input or indexed block invalidates
   // the old quote, including while a newer request is still in flight.
   useEffect(() => {
+    if (busy || review) return;
     setMintQuote(null);
     setMintQuoteError("");
     if (demo || tab !== "mint" || !amount) return;
@@ -207,7 +208,7 @@ function TokenContent() {
       controller.abort();
       clearTimeout(timer);
     };
-  }, [amount, tokenId, demo, tab, pendingRevision, t]);
+  }, [amount, tokenId, demo, tab, pendingRevision, t, busy, review]);
 
   // What the connected wallet holds of this token, and what it can spend.
   const refreshWallet = useCallback(async () => {
