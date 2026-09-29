@@ -51,7 +51,7 @@ it.each([
           coreHeight: 100n,
           coreTip: "tip",
           coreReachable: reachable,
-          chainObservedAt: new Date(Date.now() - age),
+          chainObservedAt: new Date(Date.now() - age).toISOString(),
         },
       ],
       [{ height: indexed, blockHash: "tip", stateRoot: "root", rebuilding }],
@@ -157,3 +157,15 @@ it.each(["HTTP 429", "timeout", "node down"])(
     await expect(readFeeObservation(db, "signet")).rejects.toThrow("CORE_UNAVAILABLE");
   },
 );
+
+it("rejects malformed database timestamps", async () => {
+  const status = await getV3Status({
+    db: dbWithResults([
+      [{ coreHeight: 100n, coreTip: "tip", coreReachable: true, chainObservedAt: "invalid" }],
+      [{ height: 100n, blockHash: "tip", stateRoot: "root", rebuilding: false }],
+      [],
+    ]),
+    config: loadV3AppConfig({ COVE_NETWORK: "regtest" }),
+  });
+  expect(status.indexer.health).toBe("STALE");
+});

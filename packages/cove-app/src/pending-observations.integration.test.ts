@@ -1,8 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import { sql } from "drizzle-orm";
-import { createDb, schema, claimObservationWorker } from "@crclaunch/db";
+import {
+  createDb,
+  schema,
+  claimObservationWorker,
+  effectiveBackingObservation,
+} from "@crclaunch/db";
 import type { CoreRpcProvider } from "@crclaunch/bitcoin";
+import { getV3Status } from "./health.js";
 import { PendingObservationWorker } from "./pending-observations.js";
 import { loadV3AppConfig, type V3Network } from "./config.js";
 const url = process.env.SUBMISSION_TEST_DATABASE_URL;
@@ -97,5 +103,14 @@ describe.skipIf(!isolated)("bounded pending producer on isolated PostgreSQL", ()
       sql`select count(*)::int as count from cove_transaction_observations where network=${network}`,
     );
     expect(statuses.rows[0]?.count).toBe(1005);
+    const status = await getV3Status({
+      db,
+      config: { ...loadV3AppConfig({ COVE_NETWORK: "regtest" }), network: network as V3Network },
+    });
+    expect(status.indexer.health).toBe("HEALTHY");
+    expect(status.observations.pendingObservedAt).not.toBeNull();
+    const observation = await effectiveBackingObservation(db, network, "00".repeat(32));
+    expect(observation?.observedAt).toBeInstanceOf(Date);
+    expect(observation?.fresh).toBe(true);
   });
 });

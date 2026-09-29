@@ -80,7 +80,7 @@ services:
         - CMD
         - node
         - -e
-        - "fetch('http://127.0.0.1:3000/api/v3/status').then(r=>r.json()).then(j=>process.exit(j.ok?0:1)).catch(()=>process.exit(1))"
+        - "fetch('http://127.0.0.1:3000/api/v3/status').then(r=>r.json()).then(j=>process.exit(j.ok&&j.data?.core?.reachable&&j.data?.indexer?.health==='HEALTHY'?0:1)).catch(()=>process.exit(1))"
       interval: 20s
       timeout: 10s
       retries: 12

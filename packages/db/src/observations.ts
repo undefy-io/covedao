@@ -2,6 +2,12 @@ import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import type { Database, DbTransaction } from "./client.js";
 
+export function databaseDate(value: unknown): Date | null {
+  if (!(value instanceof Date) && typeof value !== "string") return null;
+  const parsed = value instanceof Date ? value : new Date(value);
+  return Number.isFinite(parsed.getTime()) ? parsed : null;
+}
+
 export class WorkerOwnershipLost extends Error {
   constructor() {
     super("Observation worker ownership changed");
@@ -157,7 +163,7 @@ export async function effectiveBackingObservation(db: Database, network: string,
   return {
     payload: row.payload as BackingObservationPayload | null,
     fresh: row.fresh === true,
-    observedAt: row.observed_at instanceof Date ? row.observed_at : null,
+    observedAt: databaseDate(row.observed_at),
     revision: String(row.revision ?? "0"),
     indexedHeight: BigInt(String(row.height)),
     indexedHash: String(row.block_hash),

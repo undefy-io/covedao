@@ -119,7 +119,14 @@ if (mode === "seed") {
       : {};
     const warm = await fetch(base + path, options);
     if (!warm.ok) throw new Error(`Warmup ${path}: ${warm.status} ${await warm.text()}`);
-    await warm.arrayBuffer();
+    if (path === "/api/v3/status") {
+      const health = await warm.json();
+      if (
+        health.data?.indexer?.health !== "HEALTHY" ||
+        !health.data?.observations?.pendingObservedAt
+      )
+        throw new Error("Production status dropped fresh database timestamps");
+    } else await warm.arrayBuffer();
     const times = [],
       statuses = {};
     await Promise.all(

@@ -1,4 +1,4 @@
-import { type Database } from "@crclaunch/db";
+import { databaseDate, type Database } from "@crclaunch/db";
 import { sql } from "drizzle-orm";
 import type { V3AppConfig } from "./config.js";
 
@@ -61,7 +61,7 @@ export async function getV3Status(params: {
         coreHeight: BigInt(String(row.core_height ?? "0")),
         coreTip: String(row.core_tip ?? ""),
         coreReachable: row.core_reachable === true,
-        chainObservedAt: row.chain_observed_at instanceof Date ? row.chain_observed_at : null,
+        chainObservedAt: databaseDate(row.chain_observed_at),
       }
     : undefined;
   const cursor =
@@ -126,10 +126,8 @@ export async function getV3Status(params: {
       pendingRevision: String(row?.pending_revision ?? "0"),
       marketRevision: String(row?.market_revision ?? "0"),
       metadataRevision: String(row?.metadata_revision ?? "0"),
-      pendingObservedAt:
-        row?.pending_observed_at instanceof Date ? row.pending_observed_at.toISOString() : null,
-      feesObservedAt:
-        row?.fees_observed_at instanceof Date ? row.fees_observed_at.toISOString() : null,
+      pendingObservedAt: databaseDate(row?.pending_observed_at)?.toISOString() ?? null,
+      feesObservedAt: databaseDate(row?.fees_observed_at)?.toISOString() ?? null,
     },
   };
 }

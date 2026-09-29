@@ -1,0 +1,294 @@
+{
+  "date": "2026-09-29",
+  "scope": "Direct localhost production-image requests, excluding Cloudflare tunnel latency. Synthetic read fixtures; separate real-Core tests verify transaction correctness.",
+  "targets": {
+    "concurrentReaders": 50,
+    "p95Ms": 250,
+    "p99Ms": 500,
+    "publicQuoteStatusRpcAttempts": 0,
+    "sharedProviderStartsPerSecond": 3,
+    "maxPendingAgeSeconds": 15,
+    "maxIndexerLagBlocks": 2
+  },
+  "images": {
+    "covedao-release:signet": "sha256:2b54d8758fe6d3ba849fc0ccda1c8d3c3691e84b4c229a27af8c11fcad8143b3",
+    "covedao-release:regtest": "sha256:6dfccb084b39f4be1d2a0b534c5994d3cc88a739c6fae56fd59c8060115cc29b",
+    "covedao-guardian-release:test": "sha256:cd261bdbc9865ba413b51438a2a7a1c4545c22d317229ecd9d77640e2c17da51",
+    "covedao-signet-rollback:pre-indexed-read": "sha256:194ffa112f241bb82ecea85ae4dfe5a4bc91403471c87fa40e7941926666bfd5"
+  },
+  "seed": {
+    "tokens": 101,
+    "trades": 100000,
+    "syntheticHolderRows": 10000
+  },
+  "oldLiveBaseline": [
+    {
+      "kind": "old live image baseline",
+      "path": "/api/v3/status",
+      "concurrency": 50,
+      "requests": 250,
+      "failures": 131,
+      "p95": 103.03081300000001,
+      "p99": 111.219032
+    },
+    {
+      "kind": "old live image baseline",
+      "path": "/api/v3/tokens",
+      "concurrency": 50,
+      "requests": 250,
+      "failures": 131,
+      "p95": 98.13254,
+      "p99": 102.20528999999999
+    }
+  ],
+  "isolatedProductionImage": [
+    {
+      "path": "/api/v3/status",
+      "concurrency": 50,
+      "requests": 500,
+      "statuses": {
+        "200": 500
+      },
+      "p95Ms": 162.982,
+      "p99Ms": 184.206
+    },
+    {
+      "path": "/api/v3/tokens",
+      "concurrency": 50,
+      "requests": 500,
+      "statuses": {
+        "200": 500
+      },
+      "p95Ms": 62.964,
+      "p99Ms": 77.485
+    },
+    {
+      "path": "/api/v3/tokens/c20eee269833c1832fd5965ab1d961e9f7215f8a742076a3ca629564337a390f",
+      "concurrency": 50,
+      "requests": 500,
+      "statuses": {
+        "200": 500
+      },
+      "p95Ms": 50.853,
+      "p99Ms": 65.489
+    },
+    {
+      "path": "/api/v3/tokens/c20eee269833c1832fd5965ab1d961e9f7215f8a742076a3ca629564337a390f/market",
+      "concurrency": 50,
+      "requests": 500,
+      "statuses": {
+        "200": 500
+      },
+      "p95Ms": 50.841,
+      "p99Ms": 64.796
+    },
+    {
+      "path": "/api/v3/tokens/c20eee269833c1832fd5965ab1d961e9f7215f8a742076a3ca629564337a390f/holders",
+      "concurrency": 50,
+      "requests": 500,
+      "statuses": {
+        "200": 500
+      },
+      "p95Ms": 49.156,
+      "p99Ms": 63.251
+    },
+    {
+      "path": "/api/v3/tokens/c20eee269833c1832fd5965ab1d961e9f7215f8a742076a3ca629564337a390f/candles?timeframe=1h",
+      "concurrency": 50,
+      "requests": 500,
+      "statuses": {
+        "200": 500
+      },
+      "p95Ms": 49.627,
+      "p99Ms": 67.242
+    },
+    {
+      "path": "/api/v3/tx/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "concurrency": 50,
+      "requests": 500,
+      "statuses": {
+        "200": 500
+      },
+      "p95Ms": 59.074,
+      "p99Ms": 74.586
+    },
+    {
+      "path": "/api/v3/backing/buy/quote",
+      "concurrency": 50,
+      "requests": 500,
+      "statuses": {
+        "200": 500
+      },
+      "p95Ms": 57.53,
+      "p99Ms": 72.153
+    },
+    {
+      "path": "/api/v3/backing/buy/quote-sats",
+      "concurrency": 50,
+      "requests": 500,
+      "statuses": {
+        "200": 500
+      },
+      "p95Ms": 55.63,
+      "p99Ms": 64.319
+    },
+    {
+      "path": "/api/v3/backing/redeem/quote",
+      "concurrency": 50,
+      "requests": 500,
+      "statuses": {
+        "200": 500
+      },
+      "p95Ms": 50.307,
+      "p99Ms": 62.941
+    },
+    {
+      "publicRpcAttempts": 0
+    }
+  ],
+  "isolatedFaults": [
+    {
+      "fault": "expired pending observation",
+      "status": 503,
+      "retryable": true
+    },
+    {
+      "fault": "obsolete chain generation",
+      "status": 503,
+      "retryable": true
+    },
+    {
+      "fault": "missing positive proof",
+      "status": 503,
+      "retryable": true
+    },
+    {
+      "fault": "invalidated pending revision",
+      "status": 503,
+      "retryable": true
+    },
+    {
+      "fault": "expired chain observation",
+      "status": 503
+    },
+    {
+      "recovered": 200,
+      "publicRpcAttempts": 0
+    }
+  ],
+  "liveSignetAfterRollout": [
+    {
+      "path": "/api/v3/status",
+      "concurrency": 50,
+      "requests": 500,
+      "statuses": {
+        "200": 500
+      },
+      "p95Ms": 88.978,
+      "p99Ms": 107.338
+    },
+    {
+      "path": "/api/v3/tokens",
+      "concurrency": 50,
+      "requests": 500,
+      "statuses": {
+        "200": 500
+      },
+      "p95Ms": 55.284,
+      "p99Ms": 66.189
+    },
+    {
+      "path": "/api/v3/tokens/69c961677b51a92d76d473597edab27b53fe1f1a7d9f8cb59449de0362eaf417/market",
+      "concurrency": 50,
+      "requests": 500,
+      "statuses": {
+        "200": 500
+      },
+      "p95Ms": 56.749,
+      "p99Ms": 69.545
+    },
+    {
+      "path": "/api/v3/tx/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "concurrency": 50,
+      "requests": 500,
+      "statuses": {
+        "200": 500
+      },
+      "p95Ms": 67.002,
+      "p99Ms": 79.947
+    },
+    {
+      "path": "/api/v3/backing/buy/quote",
+      "concurrency": 50,
+      "requests": 500,
+      "statuses": {
+        "200": 500
+      },
+      "p95Ms": 56.61,
+      "p99Ms": 72.749
+    },
+    {
+      "path": "/api/v3/backing/buy/quote-sats",
+      "concurrency": 50,
+      "requests": 500,
+      "statuses": {
+        "200": 500
+      },
+      "p95Ms": 61.493,
+      "p99Ms": 69.498
+    },
+    {
+      "healthAfter": {
+        "network": "signet",
+        "appEnabled": true,
+        "core": {
+          "reachable": true,
+          "height": "324147",
+          "tip": "00000005156667ca37c8dcc56059f4f43db6f228c0d18c558d69889f9abdd155",
+          "observedAt": "2026-09-29T07:36:05.038Z",
+          "stale": false
+        },
+        "indexer": {
+          "health": "HEALTHY",
+          "indexedHeight": "324147",
+          "indexedBlockHash": "00000005156667ca37c8dcc56059f4f43db6f228c0d18c558d69889f9abdd155",
+          "stateRoot": "a57cea89e85ac60f952f563855c01d9db8ec5c6fa8c8c63403971045261b23f8",
+          "lag": "0",
+          "rebuilding": false
+        },
+        "guardian": {
+          "configured": true
+        },
+        "market": {
+          "enabled": true
+        },
+        "observations": {
+          "marketWindow": "29844456",
+          "tradeRevision": "0",
+          "chainGeneration": "1",
+          "pendingRevision": "1",
+          "marketRevision": "0",
+          "metadataRevision": "0",
+          "pendingObservedAt": "2026-09-29T07:36:08.185Z",
+          "feesObservedAt": "2026-09-29T07:35:42.289Z"
+        }
+      }
+    }
+  ],
+  "liveWorkerFreshness": {
+    "durationSeconds": 30,
+    "concurrentReaders": 10,
+    "maxPendingAgeSeconds": 4.381,
+    "maxIndexerLagBlocks": 0,
+    "failedReads": 0
+  },
+  "rollback": "Old image rebuilt its original source and served status and token list from a restored signet DB after all 23 migrations. No DB rollback/drop required.",
+  "otherChecks": [
+    "14 actual Guardian production-image HTTP cases",
+    "Real Core30 competing spends, pending child before a block, funding replacement, canonical winner and reorg reversal",
+    "Shared 3rps provider test across replicas and lanes, retries included; supported 64 funding inputs retained",
+    "Five PostgreSQL projection fences; fair producer observes 1005 tracked transactions and warms cold tokens within bounded RPC work",
+    "Five market PostgreSQL recovery cases including funding conflict zero-RPC suspension and exact-byte reorg resume",
+    "Live legacy-vs-new quote state and pricing match; new reader provider forbidden"
+  ]
+}

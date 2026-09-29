@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import { eq, and, sql, isNull } from "drizzle-orm";
 import {
   schema,
+  databaseDate,
   effectiveBackingObservation,
   acceptedObservationCandidate,
   publishAcceptedObservation,
@@ -2146,7 +2147,7 @@ export class V3AppService {
         mempool: false,
         confirmedHeight,
         confirmedBlockHash: String(row!.confirmed_hash),
-        observedAt: row!.confirmed_at instanceof Date ? row!.confirmed_at.toISOString() : null,
+        observedAt: databaseDate(row!.confirmed_at)?.toISOString() ?? null,
         stale: false,
       };
     if (row?.conflict === true)
@@ -2162,7 +2163,7 @@ export class V3AppService {
       ...unknown,
       state: row.observed_state === "pending" ? "pending" : "unknown",
       mempool: row.observed_state === "pending" ? true : null,
-      observedAt: row.observed_at instanceof Date ? row.observed_at.toISOString() : null,
+      observedAt: databaseDate(row.observed_at)?.toISOString() ?? null,
       stale: false,
     };
   }

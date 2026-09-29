@@ -165,7 +165,10 @@ migrations automatically:
 
 ```bash
 docker compose --profile guardian --profile app stop
-docker compose --env-file .env.signet.local -f docker-compose.signet.yml up -d --build --wait
+docker compose --env-file .env.signet.local -f docker-compose.signet.yml build
+# Drain the previous application before migrating; Postgres stays running.
+docker compose --env-file .env.signet.local -f docker-compose.signet.yml stop web worker
+docker compose --env-file .env.signet.local -f docker-compose.signet.yml up -d --no-build --wait
 # App: http://127.0.0.1:3000
 curl http://127.0.0.1:3000/api/v3/status
 ```
@@ -490,3 +493,11 @@ then run `seed`, `serve`, `run` and `faults` with `RELEASE_TEST_DATABASE_URL` se
 The fixture clocks support synthetic read-load measurements; they must never run
 against an application database. Real Core competing-spend tests and separate
 Guardian HTTP integration tests independently verify branch selection and signing.
+
+Measured results from the 2026-09-29 release are saved in
+`scripts/testing/release-read-load-results.json`, including the old baseline,
+production-image measurements, stale-observation checks, live worker freshness
+and rollback verification. The signet rollback tag from this release is
+`covedao-signet-rollback:pre-indexed-read`; that older development image needs
+its original `pnpm build` before `next start`. New `Dockerfile.prod` images have
+the web build included.
