@@ -40,7 +40,7 @@ describe.skipIf(!isolated)("1000-token redemptions on isolated Core", () => {
     ["nested", true, 1000n],
     ["native", false, 100000n],
   ] as const)(
-    "redeems a %s lot (partial=%s)",
+    "buys and redeems with verified recipient balances (%s, partial=%s, tokens=%s)",
     async (fundingType, partial, redeemTokens) => {
       const db = createDb(databaseUrl!);
       await db.execute(
@@ -107,6 +107,9 @@ describe.skipIf(!isolated)("1000-token redemptions on isolated Core", () => {
       const feeScript = bitcoin.payments.p2wpkh({
         pubkey: Buffer.from(ecc.pointFromScalar(Buffer.alloc(32, 0x44), true)!),
       }).output!;
+      const creatorScript = bitcoin.payments.p2wpkh({
+        pubkey: Buffer.from(ecc.pointFromScalar(Buffer.alloc(32, 0x45), true)!),
+      }).output!;
       const deploy = buildDeployPsbtV3({
         network: bitcoin.networks.regtest,
         feeScript,
@@ -118,7 +121,7 @@ describe.skipIf(!isolated)("1000-token redemptions on isolated Core", () => {
         },
         guardianXOnly,
         recoveryKeyXOnly,
-        creatorScript: walletWitness.output!,
+        creatorScript,
         deployerInputs: [funding[0]!],
         deployerChangeScript: payment.output!,
         minerFeeSats: 1000n,
@@ -157,6 +160,53 @@ describe.skipIf(!isolated)("1000-token redemptions on isolated Core", () => {
         return input;
       }
       await index(deployBlocks[0]!);
+      async function confirmedTransaction(txid: string) {
+        const transaction = bitcoin.Transaction.fromHex(
+          await rpc<string>("getrawtransaction", [txid]),
+        );
+        const previousOutputs = await Promise.all(
+          transaction.ins.map(async (input) => {
+            const previousTxid = Buffer.from(input.hash).reverse().toString("hex");
+            const previous = bitcoin.Transaction.fromHex(
+              await rpc<string>("getrawtransaction", [previousTxid]),
+            );
+            return previous.outs[input.index]!;
+          }),
+        );
+        const sum = (outputs: typeof transaction.outs) =>
+          outputs.reduce((value, output) => value + BigInt(output.value), 0n);
+        const owned = (output: (typeof transaction.outs)[number]) =>
+          output.script.equals(payment.output!) || output.script.equals(walletWitness.output!);
+        expect(sum(previousOutputs) - sum(transaction.outs)).toBe(1000n);
+        return {
+          transaction,
+          walletDelta: sum(transaction.outs.filter(owned)) - sum(previousOutputs.filter(owned)),
+          paidTo: (script: Buffer) =>
+            sum(transaction.outs.filter((output) => output.script.equals(script))),
+        };
+      }
+      async function unspentPaidTo(txid: string, script: Buffer) {
+        const transaction = bitcoin.Transaction.fromHex(
+          await rpc<string>("getrawtransaction", [txid]),
+        );
+        let balance = 0n;
+        for (const [vout, output] of transaction.outs.entries()) {
+          if (!output.script.equals(script)) continue;
+          const coin = await rpc<{
+            confirmations: number;
+            value: number;
+            scriptPubKey: { hex: string };
+          } | null>("gettxout", [txid, vout]);
+          expect(coin).not.toBeNull();
+          expect(coin!.confirmations).toBeGreaterThan(0);
+          expect(coin!.scriptPubKey.hex).toBe(script.toString("hex"));
+          const value = BigInt(Math.round(coin!.value * 100_000_000));
+          expect(value).toBe(BigInt(output.value));
+          balance += value;
+        }
+        return balance;
+      }
+
       const journal = new PostgresSigningJournal(db),
         audit = new PostgresGuardianAudit(db, "COVE_V3_VAULT_PROFILE_DEV1");
       const signer = new LocalGuardianTransitionSigner(
@@ -233,6 +283,20 @@ describe.skipIf(!isolated)("1000-token redemptions on isolated Core", () => {
       });
       await index((await rpc<string[]>("generatetoaddress", [1, minerAddress]))[0]!);
       expect(state.events.find((e) => e.txid === bought.txid)?.valid).toBe(true);
+      const grossBuy = (mintAmount / 100000000000n) * 27n;
+      const platformBuyFee =
+        5000n + (mintAmount / 100000000000n) * 10n + (grossBuy * 750n + 9999n) / 10000n;
+      const creatorBuyFee = (grossBuy + 1n) / 2n > 546n ? (grossBuy + 1n) / 2n : 546n;
+      const boughtTransaction = await confirmedTransaction(bought.txid);
+      expect(boughtTransaction.paidTo(feeScript)).toBe(platformBuyFee);
+      expect(boughtTransaction.paidTo(creatorScript)).toBe(creatorBuyFee);
+      expect(boughtTransaction.walletDelta).toBe(
+        -grossBuy - platformBuyFee - creatorBuyFee - 1000n,
+      );
+      expect(await unspentPaidTo(bought.txid, feeScript)).toBe(platformBuyFee);
+      expect(await unspentPaidTo(bought.txid, creatorScript)).toBe(creatorBuyFee);
+      expect(state.backing.get(deploy.tokenId.toString("hex"))!.state.backingSats).toBe(grossBuy);
+
       await saveChainObservation(db, "regtest", await provider.getBlockchainInfo());
       const sellQuote = await app.quoteRedeem(deploy.tokenId.toString("hex"), redeemAmount);
       expect(sellQuote.grossSats).toBe((redeemTokens * 27n) / 1000n);
@@ -267,6 +331,19 @@ describe.skipIf(!isolated)("1000-token redemptions on isolated Core", () => {
         valid: true,
         operation: "REDEEM",
       });
+      const soldTransaction = await confirmedTransaction(sold.txid);
+      expect(soldTransaction.paidTo(feeScript)).toBe(1000n);
+      expect(soldTransaction.paidTo(creatorScript)).toBe(0n);
+      expect(soldTransaction.walletDelta).toBe(sellQuote.grossSats - 1000n - 1000n);
+      expect(
+        (await unspentPaidTo(bought.txid, feeScript)) + (await unspentPaidTo(sold.txid, feeScript)),
+      ).toBe(platformBuyFee + 1000n);
+      expect(await unspentPaidTo(bought.txid, creatorScript)).toBe(creatorBuyFee);
+      if (!partial) {
+        expect(boughtTransaction.walletDelta + soldTransaction.walletDelta).toBe(
+          -platformBuyFee - creatorBuyFee - 1000n - 2000n,
+        );
+      }
       const remaining = state.backing.get(deploy.tokenId.toString("hex"))!;
       expect(remaining.state.issuedPublicSupplyAtoms).toBe(partial ? 100000000000n : 0n);
       expect(remaining.state.backingSats).toBe(partial ? 27n : 0n);
