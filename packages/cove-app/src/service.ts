@@ -25,6 +25,7 @@ import {
   isRpcNotFound,
   broadcastRecordedTransaction,
   type CoreRpcProvider,
+  type BlockchainInfo,
 } from "@crclaunch/bitcoin";
 import { buildBackingVaultV3 } from "@crclaunch/cove-vault";
 import {
@@ -107,7 +108,7 @@ import {
   validateInputSignature,
   walletDeltaSats,
 } from "./psbt.js";
-import { resolveFundingUtxos, validateFundingCandidates, type FundingCandidate, type ResolvedFunding } from "./funding.js";
+import { resolveFundingUtxos, resolveCachedFundingUtxos, cachedBuildFundingChecker, validateFundingCandidates, type FundingCandidate, type ResolvedFunding } from "./funding.js";
 import {
   resolveWalletIdentity,
   walletIdentityFrom,
@@ -229,6 +230,7 @@ interface BackingRow {
   state: CoveStateV2;
   stateHash: string;
   input: ResolvedInput;
+  chainObservation?: BlockchainInfo;
 }
 
 /**
@@ -298,17 +300,7 @@ export class V3AppService {
     this.assets = config.ordUrl ? ordAssetLookup(config.ordUrl, {
       budget: new PostgresRpcBudget(db, `ord:${providerAccount({ url: config.ordUrl })}`, "public", 3),
     }) : null;
-    this.fundingChecker = chainFundingChecker({
-      chain: provider,
-      expectedChain:
-        config.network === "mainnet"
-          ? "main"
-          : config.network === "testnet"
-            ? "test"
-            : config.network,
-      isCoveCarrier: async (o) => (await getLiveTokenUtxosAtDb(db, config.network, [o])).length > 0,
-      assets: this.assets ?? undefined,
-    });
+    this.fundingChecker = this.createFundingChecker();
     this.market = new MarketService(
       db,
       provider,
@@ -330,6 +322,21 @@ export class V3AppService {
     if (this.config.network === "mainnet" && this.config.mainnetMutationsArmed !== true) {
       throw new AppError("MAINNET_DISABLED", "mainnet mutations are not armed");
     }
+  }
+
+  private createFundingChecker(observation?: BlockchainInfo): FundingInputChecker {
+    return chainFundingChecker({
+      chain: this.provider,
+      observation,
+      expectedChain:
+        this.config.network === "mainnet"
+          ? "main"
+          : this.config.network === "testnet"
+            ? "test"
+            : this.config.network,
+      isCoveCarrier: async (o) => (await getLiveTokenUtxosAtDb(this.db, this.config.network, [o])).length > 0,
+      assets: this.assets ?? undefined,
+    });
   }
 
   private assertNetwork(): V3Network {
@@ -577,6 +584,7 @@ export class V3AppService {
         !current || current.rebuilding || current.height !== captured.height ||
         current.block_hash !== captured.block_hash || current.generation !== captured.generation)
         throw new AppError("STATE_CHANGED", "the chain changed during pending verification");
+      tip = { ...tip, chainObservation: currentChain };
     };
 
     for (let depth = 0; depth < MAX_PENDING_BACKING_CHAIN; depth++) {
@@ -832,8 +840,9 @@ export class V3AppService {
     discovery?: boolean;
     feeRateSatPerVb?: bigint;
     explicitMinerFeeSats?: bigint;
+    cachedFunding?: ResolvedFunding[];
   }): Promise<{ inputs: ResolvedInput[]; minerFeeSats: bigint; vsize: number; satPerVb: bigint }> {
-    const resolved = await resolveFundingUtxos(this.provider, params.candidates);
+    const resolved = params.cachedFunding ?? await resolveFundingUtxos(this.provider, params.candidates);
     for (const f of resolved) {
       if (f.script.toString("hex") !== params.wallet.payments.script) {
         throw new AppError("FUNDING_INPUT_INVALID", "funding input script does not match wallet");
@@ -943,7 +952,7 @@ export class V3AppService {
         const priced = priceAt(chosen.length);
         if (sum >= params.targetSats + priced.minerFeeSats) {
           for (const f of chosen) {
-            const held = await this.assetsAt(f);
+            const held = params.cachedFunding ? null : await this.assetsAt(f);
             if (held) {
               skippedAssets.push(`${f.txid}:${f.vout} (${held})`);
               sorted = sorted.filter((u) => u !== f);
@@ -1405,9 +1414,8 @@ export class V3AppService {
       (binding.expiresAtHeight !== null &&
         (typeof binding.expiresAtHeight !== "bigint" || binding.expiresAtHeight < 0n)))
       throw new AppError("QUOTE_STALE", "invalid quote binding");
-    await this.loadConfirmedBacking(params.tokenId);
-    await this.requireHealthy();
-    const backing = await this.loadBacking(params.tokenId);
+    const backing = await this.loadQuoteBacking(params.tokenId);
+    const cachedFunding = await resolveCachedFundingUtxos(this.db, this.config.network, wallet.payments.script, params.funding);
     if (
       backing.stateHash !== params.quoteBinding.stateHash ||
       backing.input.txid !== params.quoteBinding.backingOutpoint.txid ||
@@ -1435,6 +1443,7 @@ export class V3AppService {
     const quotedCreatorFeeSats = creatorFeeSats(quotedGrossSats);
     const { inputs: buyerInputs, minerFeeSats } = await this.resolveFundingAndFee({
       op: "BACKING_BUY",
+      cachedFunding,
       wallet,
       candidates: params.funding,
       targetSats: quotedGrossSats + quotedBuyFeeSats + quotedCreatorFeeSats + TOKEN_CARRIER_SATS,
@@ -1480,13 +1489,8 @@ export class V3AppService {
       buyFeeBps: this.config.buyFeeBps,
       buyFeeFlatSats: this.config.buyFeeFlatSats,
       discoveryTicker,
-      fundingChecker: this.fundingChecker,
+      fundingChecker: cachedBuildFundingChecker(cachedFunding),
     };
-    // Validate now so a bad build fails before the wallet is asked, but do NOT
-    // sign: a Guardian signature reserves the vault outpoint, and reserving it
-    // for a build that is never submitted let anyone freeze a token's trading
-    // by building and walking away. The Guardian signs at submit, once the
-    // buyer's own inputs are signed.
     const checked = await validateMintTransitionV3({
       ...req,
       guardianXOnly: this.config.guardianXOnly,
@@ -1558,13 +1562,8 @@ export class V3AppService {
         validateInputSignature(psbt, i);
         psbt.finalizeInput(i);
       }
-      const view = this.overlayPendingBacking(
-        await this.loadView(session.tokenId!),
-        session.tokenId!,
-        await this.loadBackingAt(session.tokenId!, session.backingTxid, session.backingVout),
-      );
-      // Only now, with the buyer committed, does the Guardian sign (and reserve)
-      // the vault input.
+      const backing = await this.loadBackingAt(session.tokenId!, session.backingTxid, session.backingVout);
+      const view = this.overlayPendingBacking(await this.loadView(session.tokenId!), session.tokenId!, backing);
       const discoveryTicker = this.config.discoveryEnvelope
         ? (await getV3TokenDetail(this.db, this.config.network, session.tokenId!))?.ticker
         : undefined;
@@ -1579,7 +1578,7 @@ export class V3AppService {
         buyFeeBps: this.config.buyFeeBps,
         buyFeeFlatSats: this.config.buyFeeFlatSats,
         discoveryTicker,
-        fundingChecker: this.fundingChecker,
+        fundingChecker: this.createFundingChecker(backing.chainObservation),
       });
       if (!signed.ok) {
         const transient = [
@@ -2592,11 +2591,12 @@ export class V3AppService {
       .limit(1);
     try {
       if (!confirmed.length) {
-        await this.requireHealthy();
+        const health = await this.requireHealthy();
         await broadcastRecordedTransaction(
           this.provider,
           { rawTxHex: job.rawTxHex, txid: job.txid },
           this.config.network,
+          healthChainObservation(health, this.provider),
         );
       }
       await publishSubmission(this.db, job);

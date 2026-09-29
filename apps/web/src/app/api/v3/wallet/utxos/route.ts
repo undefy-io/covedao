@@ -1,4 +1,4 @@
-import { PostgresRpcBudget, providerAccount } from "@crclaunch/db";
+import { PostgresRpcBudget, providerAccount, saveWalletFundingSnapshot } from "@crclaunch/db";
 import { serverEnv } from "@/lib/server-env";
 import { sql } from "drizzle-orm";
 import { addressToScript } from "@/lib/address";
@@ -17,9 +17,8 @@ export const dynamic = "force-dynamic";
  * Cove resolves these itself rather than asking the wallet. A wallet's idea of
  * your unspent outputs comes from whatever indexer it happens to use, and
  * disagreeing with the node that will actually validate the transaction is how
- * a build fails for reasons the user cannot see. The server re-resolves every
- * outpoint against Core at build time regardless, so this list is a
- * convenience, never an authority.
+ * a build fails for reasons the user cannot see. Unsigned buy builds use this server-observed snapshot.
+ * The Guardian rechecks each funding prevout live before signing.
  *
  * Token carriers are excluded: they are exactly 1,000 sats and hold someone's
  * tokens. Spending one as fee change would destroy the tokens riding on it.
@@ -45,7 +44,7 @@ export async function GET(req: Request) {
     if (!address) return fail("BAD_REQUEST", "address is required", 400);
     // Checksum and network first, so a typo or a wrong-network address reads
     // as exactly that instead of an internal error from the index.
-    addressToScript(address, getV3Services().config.network);
+    const walletScript = addressToScript(address, getV3Services().config.network);
 
     const { provider, config, db } = getV3Services();
 
@@ -61,6 +60,7 @@ export async function GET(req: Request) {
           valueSats: String(Math.round(u.amount * 1e8)),
           confirmations: 1,
         }));
+      await saveWalletFundingSnapshot(db, config.network, walletScript, utxos);
       return ok({ address, utxos, source: "core" });
     }
 
@@ -111,6 +111,7 @@ export async function GET(req: Request) {
         valueSats: u.valueSats.toString(),
         confirmations: u.confirmations,
       }));
+    await saveWalletFundingSnapshot(db, config.network, walletScript, utxos);
     return ok({ address, utxos, source: "esplora" });
   } catch (e) {
     return handleError(e);

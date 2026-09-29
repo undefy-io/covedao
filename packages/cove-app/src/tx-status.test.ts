@@ -183,7 +183,7 @@ it("a positively absent pending candidate leaves its verified unspent parent tra
   const follow = app as unknown as {
     followPendingBacking(id: string, backing: unknown): Promise<unknown>;
   };
-  expect(await follow.followPendingBacking("cd".repeat(32), backing)).toBe(backing);
+  expect(await follow.followPendingBacking("cd".repeat(32), backing)).toMatchObject(backing);
   expect(provider.getRawTransaction).not.toHaveBeenCalled();
 });
 

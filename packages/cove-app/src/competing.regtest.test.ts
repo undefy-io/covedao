@@ -12,6 +12,7 @@ import {
   claimSubmission,
   saveSignedSubmission,
   dueSubmissions,
+  saveWalletFundingSnapshot,
 } from "@crclaunch/db";
 import { V3IndexerState, V3Store, loadCanonicalViewSnapshot } from "@crclaunch/cove-indexer/v3";
 import { CHAIN_BITCOIN_REGTEST } from "@crclaunch/cove-wire";
@@ -28,7 +29,7 @@ import { PostgresGuardianAudit } from "./audit.js";
 import { DEV_RISK_POLICY } from "./transition-signer.js";
 import { indexedBackingConflict } from "./backing-conflict.js";
 import { PendingObservationWorker } from "./pending-observations.js";
-import { saveChainObservation } from "./runtime-snapshot.js";
+import { saveChainObservation, saveFeeObservation } from "./runtime-snapshot.js";
 import { V3AppService } from "./service.js";
 import { loadV3AppConfig } from "./config.js";
 
@@ -295,6 +296,7 @@ describe.skipIf(!isolated)("competing vault spends on isolated Bitcoin Core and 
           idempotencyKey: randomUUID(),
         })),
       );
+      let cachedSubmitChecked = false;
       const compare = async (expectedTxid: string) => {
         for (let current = expectedTxid; current !== deployTxid;) {
           const accepted = bitcoin.Transaction.fromHex(await provider.getRawTransaction(current));
@@ -374,14 +376,79 @@ describe.skipIf(!isolated)("competing vault spends on isolated Bitcoin Core and 
           (await noRpc.quoteBackingBuy(deploy.tokenId.toString("hex"), 1_000_000n * 100_000_000n))
             .stateHash,
         ).toBe(observed.stateHash);
+        await saveWalletFundingSnapshot(
+          db,
+          "regtest",
+          payment.output!.toString("hex"),
+          funding.map((coin) => ({
+            txid: coin.txid,
+            vout: coin.vout,
+            valueSats: coin.valueSats.toString(),
+            confirmations: 1,
+          })),
+        );
+        await saveFeeObservation(
+          db,
+          "regtest",
+          {
+            floorSatPerVb: 1n,
+            ceilingSatPerVb: 100n,
+            estimated: false,
+            tiers: [{ key: "standard", label: "Standard", blocks: 6, satPerVb: 1n }],
+          },
+          new Date(),
+        );
+        const built = await noRpc.buildBackingBuy({
+          tokenId: deploy.tokenId.toString("hex"),
+          amountAtoms: observed.amountAtoms,
+          quoteBinding: {
+            stateHash: observed.stateHash,
+            backingOutpoint: observed.backingOutpoint,
+            expiresAtHeight: null,
+          },
+          walletScript: payment.output!.toString("hex"),
+          walletPublicKey: publicKey.toString("hex"),
+          ordinalsScript: walletWitness.output!.toString("hex"),
+          ordinalsPublicKey: publicKey.toString("hex"),
+          walletAddress: null,
+          funding: [{ txid: funding[0]!.txid, vout: funding[0]!.vout }],
+          minerFeeSats: 1000n,
+          idempotencyKey: randomUUID(),
+        });
+        const builtPsbt = bitcoin.Psbt.fromBase64(built.psbtBase64);
+        expect(
+          builtPsbt.data.inputs.every(
+            (input) => !input.tapScriptSig?.length && !input.partialSig?.length,
+          ),
+        ).toBe(true);
+        expect(built.sessionId).toBeTruthy();
+        if (!cachedSubmitChecked) {
+          builtPsbt.signInput(1, wallet);
+          await expect(
+            app.submitBackingBuy({
+              sessionId: built.sessionId,
+              signedPsbtBase64: builtPsbt.toBase64(),
+            }),
+          ).rejects.toThrow(/FUNDING_UNCONFIRMED/);
+          expect(await provider.getTxout(funding[0]!.txid, funding[0]!.vout)).toBeNull();
+          cachedSubmitChecked = true;
+        }
+
         await db.execute(sql`update cove_pending_backing set observed_at = clock_timestamp() - interval '1 hour',
           observed_revision = null where network = ${config.network}`);
         await db.execute(sql`update cove_v3_runtime set core_reachable = false,
           chain_observed_at = clock_timestamp() - interval '1 hour' where network = ${config.network}`);
-        const routeQuote = await noRpc.quoteBackingBuy(deploy.tokenId.toString("hex"), 1_000_000n * 100_000_000n);
-        const routes = await noRpc.getBuyRoutes(deploy.tokenId.toString("hex"), routeQuote.amountAtoms);
-        expect(routes.find((route) => route.kind === "backing")?.totalCostSats)
-          .toBe(routeQuote.grossSats + routeQuote.feeSats + routeQuote.creatorFeeSats);
+        const routeQuote = await noRpc.quoteBackingBuy(
+          deploy.tokenId.toString("hex"),
+          1_000_000n * 100_000_000n,
+        );
+        const routes = await noRpc.getBuyRoutes(
+          deploy.tokenId.toString("hex"),
+          routeQuote.amountAtoms,
+        );
+        expect(routes.find((route) => route.kind === "backing")?.totalCostSats).toBe(
+          routeQuote.grossSats + routeQuote.feeSats + routeQuote.creatorFeeSats,
+        );
         await noRpc.quoteBuyForSats(deploy.tokenId.toString("hex"), 100_000n);
         if (legacy.state.issuedPublicSupplyAtoms > 0n)
           await noRpc.quoteRedeem(deploy.tokenId.toString("hex"), 1_000_000n * 100_000_000n);

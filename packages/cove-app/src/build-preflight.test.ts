@@ -19,7 +19,7 @@ type Build = "buildLaunch" | "buildBackingBuy" | "buildRedeem" | "buildTransfer"
 function fixture() {
   const external = vi.fn(async () => { throw new Error("unexpected external work"); });
   vi.stubGlobal("fetch", external);
-  const db = { execute: async () => ({ rows: [{ generation: "1" }] }), select: () => ({ from: (table: unknown) => ({ where: async () =>
+  const db = { execute: async () => ({ rows: [] }), select: () => ({ from: (table: unknown) => ({ where: async () =>
     table === schema.coveV3Cursor ? [{ height: 10n, blockHash: "77".repeat(32), stateRoot: "88".repeat(32), rebuilding: false }] : [],
   }) }) } as unknown as Database;
   const provider = new Proxy({}, { get: () => external }) as CoreRpcProvider;

@@ -1,4 +1,6 @@
 import type { CoreRpcProvider } from "@crclaunch/bitcoin";
+import { walletFundingSnapshot, type Database } from "@crclaunch/db";
+import type { FundingInputChecker } from "@crclaunch/cove-guardian/v3";
 import { AppError } from "./errors.js";
 
 /**
@@ -129,4 +131,59 @@ export function selectFunding(utxos: ResolvedFunding[], requiredSats: bigint): R
     if (sum >= requiredSats) return selected;
   }
   throw new AppError("INSUFFICIENT_BTC", `wallet has ${sum} sats but ${requiredSats} required`);
+}
+
+export async function resolveCachedFundingUtxos(
+  db: Database,
+  network: string,
+  walletScript: string,
+  candidates: FundingCandidate[],
+): Promise<ResolvedFunding[]> {
+  validateFundingCandidates(candidates);
+  if (!candidates.length) return [];
+  const coins = await walletFundingSnapshot(db, network, walletScript);
+  const byOutpoint = new Map(
+    coins?.map((coin) => [`${coin.txid.toLowerCase()}:${coin.vout}`, coin]),
+  );
+  return candidates.map((candidate) => {
+    const coin = byOutpoint.get(`${candidate.txid.toLowerCase()}:${candidate.vout}`);
+    if (!coin)
+      throw new AppError(
+        "FUNDING_INPUT_INVALID",
+        "wallet funding data is missing; refresh your wallet and retry",
+      );
+    return {
+      txid: coin.txid,
+      vout: coin.vout,
+      script: Buffer.from(walletScript, "hex"),
+      valueSats: BigInt(coin.valueSats),
+      confirmations: coin.confirmations,
+    };
+  });
+}
+
+export function cachedBuildFundingChecker(inputs: ResolvedFunding[]): FundingInputChecker {
+  const coins = new Map(inputs.map((coin) => [`${coin.txid}:${coin.vout}`, coin]));
+  return {
+    async check(point, _height, expected) {
+      const coin = coins.get(`${point.txid}:${point.vout}`);
+      if (!coin || coin.confirmations < 1)
+        return {
+          ok: false,
+          code: "FUNDING_UNCONFIRMED",
+          detail: "funding is not confirmed in the wallet cache",
+        };
+      if (
+        !expected ||
+        !coin.script.equals(expected.script) ||
+        coin.valueSats !== expected.valueSats
+      )
+        return {
+          ok: false,
+          code: "FUNDING_PREVOUT_MISMATCH",
+          detail: "funding does not match the wallet cache",
+        };
+      return { ok: true };
+    },
+  };
 }

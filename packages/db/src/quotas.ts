@@ -116,6 +116,9 @@ export class PostgresRpcBudget {
 }
 
 export async function pruneQuotaWindows(db: Database): Promise<void> {
+  await db.execute(sql`delete from cove_wallet_funding where (network, wallet_script) in
+    (select network, wallet_script from cove_wallet_funding where observed_at < clock_timestamp() - interval '7 days'
+      order by observed_at limit 1000)`);
   await db.execute(sql`delete from cove_api_quotas where key in
     (select key from cove_api_quotas where window_start < floor(extract(epoch from clock_timestamp()) * 1000 / 60000)::bigint - 2 limit 1000)`);
 }

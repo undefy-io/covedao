@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  services: vi.fn(() => ({ config: { network: "regtest" }, provider: {} })),
+  services: vi.fn(() => ({ config: { network: "regtest" }, provider: {}, db: {execute: vi.fn().mockResolvedValue({rows:[]})} })),
   scan: vi.fn().mockResolvedValue([]),
 }));
 vi.mock("@/lib/v3-server", () => ({ getV3Services: mocks.services }));

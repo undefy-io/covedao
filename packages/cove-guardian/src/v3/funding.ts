@@ -77,15 +77,16 @@ export function chainFundingChecker(params: {
   assets?: AssetLookup;
   minConfirmations?: number;
   expectedChain?: string;
+  observation?: { blocks: number; bestBlockHash?: string; chain?: string };
 }): FundingInputChecker {
   const minConf = params.minConfirmations ?? 1;
   const scoped = (): FundingInputChecker => {
     let observation: Promise<{ height: bigint; hash: string }> | null = null;
     const getObservation = () => {
       observation ??= (async () => {
-        if (!params.chain.getBlockchainInfo)
+        if (!params.observation && !params.chain.getBlockchainInfo)
           throw new Error("cannot compare funding confirmation with indexer cursor");
-        const info = await params.chain.getBlockchainInfo();
+        const info = params.observation ?? await params.chain.getBlockchainInfo!();
         if (
           !Number.isSafeInteger(info.blocks) ||
           info.blocks < 0 ||

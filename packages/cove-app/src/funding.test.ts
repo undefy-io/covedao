@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
+import type { Database } from "@crclaunch/db";
 import type { CoreRpcProvider } from "@crclaunch/bitcoin";
-import { MAX_FUNDING_INPUTS, resolveFundingUtxos } from "./funding.js";
+import {
+  MAX_FUNDING_INPUTS,
+  resolveFundingUtxos,
+  resolveCachedFundingUtxos,
+  cachedBuildFundingChecker,
+} from "./funding.js";
 
 const txid = (n: number) => n.toString(16).padStart(64, "0");
 
@@ -67,5 +73,37 @@ describe("funding RPC bounds", () => {
       ),
     );
     expect(maximum).toBeLessThanOrEqual(16);
+  });
+});
+
+describe("cached build funding", () => {
+  const script = "0014" + "ab".repeat(20);
+  const coin = { txid: txid(1), vout: 0, valueSats: "10000", confirmations: 2 };
+  const database = (payload: unknown) =>
+    ({ execute: async () => ({ rows: payload ? [{ payload }] : [] }) }) as unknown as Database;
+  it("takes amounts and scripts only from the server cache", async () => {
+    const inputs = await resolveCachedFundingUtxos(database([coin]), "signet", script, [
+      { txid: coin.txid, vout: 0, valueSats: "9999999", script: "51" } as never,
+    ]);
+    expect(inputs[0]?.valueSats).toBe(10000n);
+    expect(inputs[0]?.script.toString("hex")).toBe(script);
+    const check = cachedBuildFundingChecker(inputs);
+    expect(
+      await check.check(coin, undefined, { script: Buffer.from(script, "hex"), valueSats: 10000n }),
+    ).toEqual({ ok: true });
+    expect(
+      await check.check(coin, undefined, { script: Buffer.from(script, "hex"), valueSats: 10001n }),
+    ).toMatchObject({ ok: false, code: "FUNDING_PREVOUT_MISMATCH" });
+    expect(
+      await cachedBuildFundingChecker([{ ...inputs[0]!, confirmations: 0 }]).check(coin),
+    ).toMatchObject({ ok: false, code: "FUNDING_UNCONFIRMED" });
+  });
+  it("requires a cached outpoint instead of accepting browser metadata", async () => {
+    await expect(
+      resolveCachedFundingUtxos(database(undefined), "signet", script, [coin]),
+    ).rejects.toThrow(/refresh your wallet/);
+    await expect(
+      resolveCachedFundingUtxos(database([coin]), "signet", script, [{ txid: txid(2), vout: 0 }]),
+    ).rejects.toThrow(/refresh your wallet/);
   });
 });

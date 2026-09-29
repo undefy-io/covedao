@@ -1,3 +1,4 @@
+import { saveWalletFundingSnapshot } from "@crclaunch/db";
 import { ok, fail, handleError, readJson, strField } from "@/lib/api";
 import { getV3Services } from "@/lib/v3-server";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -135,6 +136,8 @@ export async function POST(req: Request) {
     }
     if (action === "getUtxos") {
       const utxos = (await spendableUtxos([id], req.signal)).map((u) => ({ txid: u.txid, vout: u.vout, valueSats: String(u.sats), confirmations: 1 }));
+      const { db, config } = getV3Services();
+      await saveWalletFundingSnapshot(db, config.network, id.script, utxos);
       return ok({ utxos });
     }
     return fail("UNKNOWN_ACTION", `unknown action "${action}"`, 400);

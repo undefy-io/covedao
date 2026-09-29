@@ -131,6 +131,40 @@ describe("funding validation observation scope", () => {
     };
   }
 
+  it("reuses a live backing fence but still checks spent inputs, prevouts and tip changes", async () => {
+    const rpc = reader();
+    const observation = { blocks: 100, bestBlockHash: "aa".repeat(32), chain: "regtest" };
+    const checker = chainFundingChecker({
+      chain: rpc,
+      observation,
+      expectedChain: "regtest",
+      isCoveCarrier: noCarrier,
+    }).forValidation!();
+    expect(await checker.check(O, 100n)).toEqual({ ok: true });
+    expect(rpc.getBlockchainInfo).not.toHaveBeenCalled();
+    expect(
+      await checker.check(O, 100n, { script: Buffer.from("51", "hex"), valueSats: 1000n }),
+    ).toMatchObject({ ok: false, code: "FUNDING_PREVOUT_MISMATCH" });
+    rpc.getTxout.mockResolvedValueOnce(null as never);
+    expect(await checker.check(O, 100n)).toMatchObject({ ok: false, code: "FUNDING_UNCONFIRMED" });
+    rpc.getTxout.mockResolvedValueOnce({
+      ...(await rpc.getTxout()),
+      bestBlockHash: "bb".repeat(32),
+    } as never);
+    expect(await checker.check(O, 100n)).toMatchObject({
+      ok: false,
+      code: "FUNDING_CHECK_UNAVAILABLE",
+    });
+    expect(
+      await chainFundingChecker({
+        chain: rpc,
+        observation,
+        expectedChain: "signet",
+        isCoveCarrier: noCarrier,
+      }).check(O, 100n),
+    ).toMatchObject({ ok: false, code: "FUNDING_CHECK_UNAVAILABLE" });
+  });
+
   it("shares one height/hash per validation while rechecking every live prevout", async () => {
     const rpc = reader();
     const checker = chainFundingChecker({ chain: rpc, isCoveCarrier: noCarrier });

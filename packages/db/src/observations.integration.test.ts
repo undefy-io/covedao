@@ -5,6 +5,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { fileURLToPath } from "node:url";
 import { sql } from "drizzle-orm";
+import { saveWalletFundingSnapshot, walletFundingSnapshot } from "./wallet-funding.js";
 import { schema } from "./client.js";
 import {
   backingObservationBase,
@@ -203,6 +204,24 @@ describe.skipIf(!isolated)("fenced worker observations on isolated PostgreSQL", 
     await publishBackingObservation(db!, base, epoch, { ...base.backing, txid: "pending" }, new Date());
     await db!.execute(sql`${sql.raw(update)} where network = ${network}`);
     expect((await effectiveBackingObservation(db!, network, tokenId))?.payload).toEqual(base.backing);
+  });
+
+  it("scopes funding by network/script, bounds snapshots and replaces emptied wallets", async () => {
+    const coins = Array.from({ length: 300 }, (_, n) => ({
+      txid: n.toString(16).padStart(64, "0"),
+      vout: 0,
+      valueSats: String(1000 + n),
+      confirmations: n % 2,
+    }));
+    await saveWalletFundingSnapshot(db!, network, "0014aa", coins);
+    const snapshot = (await walletFundingSnapshot(db!, network, "0014aa"))!;
+    expect(snapshot).toHaveLength(256);
+    expect(snapshot.slice(0, 150).every((coin) => coin.confirmations === 1)).toBe(true);
+    expect(snapshot[0]?.valueSats).toBe("1299");
+    expect(await walletFundingSnapshot(db!, network + "other", "0014aa")).toBeUndefined();
+    expect(await walletFundingSnapshot(db!, network, "0014bb")).toBeUndefined();
+    await saveWalletFundingSnapshot(db!, network, "0014aa", []);
+    expect(await walletFundingSnapshot(db!, network, "0014aa")).toEqual([]);
   });
 
   it("returns no backing for a missing token", async () => {

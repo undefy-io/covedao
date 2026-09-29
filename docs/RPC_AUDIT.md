@@ -43,7 +43,7 @@ mean the enclosed operation calls RPC.
 | GET | `/wallet/utxos` | Signet/mainnet: cached, budgeted Esplora address UTXOs and tip height. Regtest: Core `scantxoutset` |
 | POST | `/launch/build` | Core health/quorum/network and funding `gettxout`; optional ord asset checks |
 | POST | `/launch/submit` | Core network/acceptance/broadcast and uncertain-result observation |
-| POST | `/backing/buy/build` | Core health, pending backing, funding and independent transition validation; optional ord |
+| POST | `/backing/buy/build` | DB cached backing, server-observed wallet funding and local transition validation; zero external RPC |
 | POST | `/backing/buy/submit` | Core pending backing, funding and broadcast; mainnet also remote Guardian HTTP with its own Core checks |
 | POST | `/backing/redeem/build` | Core health, pending backing and funding/transition validation; optional ord |
 | POST | `/backing/redeem/submit` | Core pending backing, funding and broadcast; mainnet also remote Guardian HTTP |
@@ -256,3 +256,12 @@ per trusted IP, and at most 10,000 IP entries cleared each window. These limits
 apply separately to each web process. Other API quotas and shared RPC budgets
 retain database enforcement. Clients still poll once every five seconds while
 visible; the 1,000-reader test performs one status load without per-reader SQL.
+
+
+## Cached buy construction
+
+Buy builds read backing, fees and wallet funding from the DB. The wallet UTXO endpoint saves its existing address lookup as a network and payment-script scoped snapshot (largest 256 coins, confirmed first). Builds accept outpoints only; amounts and scripts come from that server snapshot. Missing funding asks the caller to refresh the wallet. Stale cached coins can produce unsigned builds; they cannot bypass live signing checks.
+
+Guardian signing still verifies current backing, live funding prevouts, confirmations, asset ownership and transaction policy. Within one submission the live backing fence supplies the funding checker tip; every selected funding prevout is still read live and must match that tip. Broadcast reuses only the existing private health proof (maximum 500 milliseconds); otherwise it reads the network again. No provider budget increase or backing reservation was introduced.
+
+Signet verification after migration 0026 and web/worker restart: three unsigned builds for the reported token/wallet returned 200 in 17–41 ms locally and 160–447 ms through the public tunnel. No live signing or broadcast was performed. These are individual request timings, not a load test; the address UTXO lookup and final signing/submission still use external services.
