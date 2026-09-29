@@ -235,12 +235,6 @@ interface BackingRow {
   chainObservation?: BlockchainInfo;
 }
 
-/**
- * Token carriers a single REDEEM may consume. Bounds transaction size; a holder
- * whose balance is spread wider consolidates first with a self-transfer.
- */
-const MAX_REDEEM_TOKEN_INPUTS = 4;
-
 /** Wire-v2 TRANSFER allows at most four allocations, so at most four carriers. */
 const MAX_TRANSFER_TOKEN_INPUTS = 4;
 
@@ -1663,14 +1657,7 @@ export class V3AppService {
     const total = mine.reduce((s, u) => s + u.amountAtoms, 0n);
     if (total < params.amountAtoms)
       throw new AppError("TOKEN_AMOUNT_INVALID", "insufficient token balance");
-    // Deterministic token input selection: LARGEST first, taking only as many
-    // as the amount needs.
-    //
-    // This previously sorted ascending and then took the first four
-    // unconditionally, so the balance check above (which sums EVERY utxo)
-    // could pass while the four smallest carriers held less than the amount —
-    // the build then failed with "redeem exceeds token input". Largest-first
-    // reaches any redeemable amount in the fewest inputs.
+    // Select the fewest token carriers needed, including the full balance.
     const sorted = [...mine].sort((a, b) =>
       a.amountAtoms !== b.amountAtoms
         ? a.amountAtoms > b.amountAtoms
@@ -1684,17 +1671,8 @@ export class V3AppService {
     let running = 0n;
     for (const u of sorted) {
       if (running >= params.amountAtoms) break;
-      if (selected.length >= MAX_REDEEM_TOKEN_INPUTS) break;
       selected.push(u);
       running += u.amountAtoms;
-    }
-    if (running < params.amountAtoms) {
-      throw new AppError(
-        "TOKEN_AMOUNT_INVALID",
-        `balance is spread across too many outputs: the ${MAX_REDEEM_TOKEN_INPUTS} largest hold ` +
-          `${running} atoms, short of ${params.amountAtoms}. Consolidate with a transfer to yourself, ` +
-          `or redeem a smaller amount.`,
-      );
     }
     await this.requireHealthy();
     const backing = await this.loadBacking(params.tokenId);
