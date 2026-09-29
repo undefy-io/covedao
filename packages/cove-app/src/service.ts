@@ -8,8 +8,6 @@ import {
   providerAccount,
   databaseDate,
   effectiveBackingObservation,
-  acceptedObservationCandidate,
-  publishAcceptedObservation,
   getSubmission,
   prepareSubmission,
   claimSubmission,
@@ -462,17 +460,6 @@ export class V3AppService {
   private async loadQuoteBacking(tokenId: string) {
     const observation = await effectiveBackingObservation(this.db, this.config.network, tokenId);
     if (!observation) throw new AppError("TOKEN_NOT_FOUND", "token not found");
-    if (!observation.fresh || !observation.payload) {
-      console.warn("[quote-unavailable]", JSON.stringify({
-        tokenId, reason: observation.unavailableReason,
-        observedAt: observation.observedAt?.toISOString(),
-        revision: observation.revision, generation: observation.generation,
-      }));
-      throw new AppError(
-        "CORE_UNAVAILABLE",
-        "a fresh validated backing observation is not available; retry shortly",
-      );
-    }
     const p = observation.payload;
     return {
       state: {
@@ -2603,65 +2590,6 @@ export class V3AppService {
         ),
       )
       .limit(1);
-    const advance =
-      job.tokenId && job.backingVout === 1
-        ? await acceptedObservationCandidate(this.db, job.network, job.tokenId)
-        : null;
-    let acceptedPayload = null;
-    if (
-      advance &&
-      advance.payload.txid === job.backingTxid &&
-      advance.payload.vout === job.backingVout
-    ) {
-      try {
-        const raw = bitcoin.Transaction.fromHex(job.rawTxHex),
-          wire = decodeCoveOpReturnTx(raw),
-          p = advance.payload;
-        const state: CoveStateV2 = {
-          stateVersion: p.stateVersion as 2,
-          policyVersion: p.policyVersion,
-          tokenId: p.tokenId,
-          issuedPublicSupplyAtoms: BigInt(p.issuedSupplyAtoms),
-          backingSats: BigInt(p.backingSats),
-          curveStage: p.curveStage,
-        };
-        if (
-          (wire.op !== OP_MINT && wire.op !== OP_REDEEM) ||
-          wire.tokenId.toString("hex") !== p.tokenId ||
-          raw.getId() !== job.txid
-        )
-          throw new Error("Wrong accepted operation");
-        const next =
-          wire.op === OP_MINT
-            ? applyMintV2(state, wire.amount).nextState
-            : applyRedeemV2(state, wire.redeemAmount).nextState;
-        const vault = buildBackingVaultV3({
-          state: next,
-          guardianXOnly: this.config.guardianXOnly,
-          recoveryKeyXOnly: this.config.recoveryKeyXOnly,
-          recoveryProfile: this.config.recoveryProfile,
-          network: btcNetwork(this.config.network),
-        });
-        if (
-          !raw.outs[1]?.script.equals(vault.scriptPubKey) ||
-          BigInt(raw.outs[1]!.value) !== RESERVE_ANCHOR_SATS + next.backingSats
-        )
-          throw new Error("Wrong accepted vault");
-        acceptedPayload = {
-          ...p,
-          txid: raw.getId(),
-          vout: 1,
-          issuedSupplyAtoms: next.issuedPublicSupplyAtoms.toString(),
-          backingSats: next.backingSats.toString(),
-          curveStage: next.curveStage,
-          stateHash: stateHashV2(next),
-          script: vault.scriptPubKey.toString("hex"),
-          valueSats: String(raw.outs[1]!.value),
-        };
-      } catch {
-        acceptedPayload = null;
-      }
-    }
     try {
       if (!confirmed.length) {
         await this.requireHealthy();
@@ -2672,14 +2600,6 @@ export class V3AppService {
         );
       }
       await publishSubmission(this.db, job);
-      if (advance && acceptedPayload)
-        await publishAcceptedObservation(
-          this.db,
-          advance.base,
-          job.id,
-          { txid: job.backingTxid!, vout: job.backingVout! },
-          acceptedPayload,
-        ).catch(() => false);
       return { txid: job.txid, submissionState: "broadcast" };
     } catch {
       return { txid: job.txid, submissionState: "saved" };

@@ -176,6 +176,13 @@
       "when": 1790681523693,
       "tag": "0024_accepted_pending_invalidation",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790682538861,
+      "tag": "0025_cached_backing_quotes",
+      "breakpoints": true
     }
   ]
 }

@@ -124,6 +124,6 @@ describe.skipIf(!isolated)("bounded pending producer on isolated PostgreSQL", ()
     expect(status.observations.pendingObservedAt).not.toBeNull();
     const observation = await effectiveBackingObservation(db, network, "00".repeat(32));
     expect(observation?.observedAt).toBeInstanceOf(Date);
-    expect(observation?.fresh).toBe(true);
+    expect(observation?.payload.tokenId).toBe("00".repeat(32));
   });
 });

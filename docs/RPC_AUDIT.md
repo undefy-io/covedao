@@ -32,9 +32,9 @@ mean the enclosed operation calls RPC.
 | GET | `/tx/[txid]` | DB snapshot; unknown IDs do not enroll RPC polling |
 | GET | `/market/listings` | DB |
 | GET | `/market/fills/[fillId]` | DB allowlisted public fill status |
-| POST | `/backing/buy/quote` | DB validated pending backing observation |
-| POST | `/backing/buy/quote-sats` | DB validated pending backing observation |
-| POST | `/backing/redeem/quote` | DB validated pending backing observation |
+| POST | `/backing/buy/quote` | DB cached pending backing, with indexed backing fallback |
+| POST | `/backing/buy/quote-sats` | DB cached pending backing, with indexed backing fallback |
+| POST | `/backing/redeem/quote` | DB cached pending backing, with indexed backing fallback |
 | POST | `/tokens/[tokenId]/buy/routes` | DB validated effective pending backing and listings; unavailable observations fail closed |
 | POST | `/launch/prepare` | Local token identity / launch terms |
 | POST | `/market/listings/[listingId]/cancel/prepare` | Local signed-message payload |
@@ -126,9 +126,9 @@ interval would make accepted competing transactions and evictions invisible.
 The worker remembers an unsupported spender method and filters fallback
 candidates using the current mempool snapshot. Proof work is bounded to two
 new `gettxout` reads per refresh. Positive canonical proofs can be reused until
-indexed spending/reorg evidence invalidates them. Failure/unavailable proof
-does not become tradable state. This bounds load but does not mean every token
-is immediately warm after startup.
+indexed spending/reorg evidence invalidates them. Failed observations preserve the last good cached quote. Cold quotes can use
+indexed backing before the pending cache is warm. Signing and broadcasting
+validate the live backing output.
 
 ## Guardian, address index and other HTTP
 
@@ -229,3 +229,14 @@ The implementation evidence is recorded in
 Current deployment scope is signet with the local signer. Remote Guardian and
 ord are exercised in isolated tests; these checks do not constitute a live
 mainnet canary or mainnet deployment.
+
+## Quote cache behavior (2026-09-29)
+
+Buy, budget, redeem and buy-route quotes read stored backing data with no age,
+provider-health or submission-revision rejection. If the pending cache is absent
+or belongs to a different indexed backing output, they use indexed backing.
+Failed worker observations retain the last good cached payload. Submissions and
+signatures do not invalidate the cache, including after broadcast; the worker
+updates it from chain observations. Live funding, signing and broadcast checks
+still validate the actual backing output. Competing transactions can receive
+the same quote; chain acceptance resolves the winning spend.

@@ -67,8 +67,6 @@ export async function getBuyRoutes(
   if (amountAtoms > 0n && amountAtoms % (LOT_TOKENS * ATOMS_PER_TOKEN) === 0n) {
     const backing = await effectiveBackingObservation(db, network, tokenId);
     if (!backing) throw new MarketError("TOKEN_NOT_FOUND", "token not found");
-    if (!backing.fresh || !backing.payload)
-      throw new MarketError("CORE_UNAVAILABLE", "a fresh validated backing observation is not available; retry shortly");
     const supplyAtoms = BigInt(backing.payload.issuedSupplyAtoms);
     if (supplyAtoms + amountAtoms <= PUBLIC_SUPPLY_ATOMS) {
       const grossSats = grossBuy(supplyAtoms / ATOMS_PER_TOKEN, amountAtoms / ATOMS_PER_TOKEN);

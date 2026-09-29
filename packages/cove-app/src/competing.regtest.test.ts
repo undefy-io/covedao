@@ -374,6 +374,10 @@ describe.skipIf(!isolated)("competing vault spends on isolated Bitcoin Core and 
           (await noRpc.quoteBackingBuy(deploy.tokenId.toString("hex"), 1_000_000n * 100_000_000n))
             .stateHash,
         ).toBe(observed.stateHash);
+        await db.execute(sql`update cove_pending_backing set observed_at = clock_timestamp() - interval '1 hour',
+          observed_revision = null where network = ${config.network}`);
+        await db.execute(sql`update cove_v3_runtime set core_reachable = false,
+          chain_observed_at = clock_timestamp() - interval '1 hour' where network = ${config.network}`);
         const routeQuote = await noRpc.quoteBackingBuy(deploy.tokenId.toString("hex"), 1_000_000n * 100_000_000n);
         const routes = await noRpc.getBuyRoutes(deploy.tokenId.toString("hex"), routeQuote.amountAtoms);
         expect(routes.find((route) => route.kind === "backing")?.totalCostSats)

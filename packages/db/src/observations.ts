@@ -115,13 +115,19 @@ export async function publishBackingObservation(
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
     await assertObservationWorker(tx, base.network, epoch);
+    if (payload === null) {
+      const checked = await tx.execute(sql`update cove_pending_backing set last_checked_at = clock_timestamp()
+        where network = ${base.network} and token_id = ${base.tokenId} returning token_id`);
+      return checked.rows.length > 0;
+    }
     const before = await tx.execute(
-      sql`select payload, observed_revision from cove_pending_backing where network = ${base.network} and token_id = ${base.tokenId} for update`,
+      sql`select payload from cove_pending_backing where network = ${base.network} and token_id = ${base.tokenId} for update`,
     );
     const result = await tx.execute(sql`update cove_pending_backing p set
-      observed_revision = case when ${payload !== null} then p.requested_revision else null end,
+      observed_revision = p.requested_revision,
       chain_generation = ${base.generation}::bigint, base_txid = ${base.backing.txid}, base_vout = ${base.backing.vout},
-      payload = ${payload ? JSON.stringify(payload) : null}::jsonb, observed_at = ${observedAt}, last_checked_at = clock_timestamp()
+      payload = ${JSON.stringify(payload)}::jsonb, observed_at = ${observedAt},
+      last_checked_at = clock_timestamp()
       where p.network = ${base.network} and p.token_id = ${base.tokenId} and p.requested_revision = ${base.revision}::bigint
       and exists (select 1 from cove_observation_epochs e join cove_v3_cursor c on c.network = e.network
         where e.network = p.network and e.chain_generation = ${base.generation}::bigint and not c.rebuilding
@@ -132,9 +138,7 @@ export async function publishBackingObservation(
     if (!result.rows.length) return false;
     const previous = before.rows[0]?.payload as BackingObservationPayload | null;
     if (
-      previous?.stateHash !== payload?.stateHash ||
-      previous?.txid !== payload?.txid ||
-      (before.rows[0]?.observed_revision == null) !== (payload == null)
+      previous?.stateHash !== payload.stateHash || previous?.txid !== payload.txid
     ) {
       await tx.execute(
         sql`update cove_observation_epochs set pending_revision = pending_revision + 1 where network = ${base.network}`,
@@ -145,79 +149,23 @@ export async function publishBackingObservation(
 }
 
 export async function effectiveBackingObservation(db: Database, network: string, tokenId: string) {
-  const result =
-    await db.execute(sql`select p.payload, p.observed_at, p.requested_revision::text as revision,
-    c.height::text as height, c.block_hash, e.chain_generation::text as generation,
-    (not c.rebuilding and r.core_reachable and r.core_height = c.height and r.core_tip = c.block_hash
-      and r.chain_observed_at >= clock_timestamp() - interval '30 seconds'
-      and p.chain_generation = e.chain_generation and p.observed_revision = p.requested_revision
-      and p.base_txid = b.txid and p.base_vout = b.vout
-      and p.observed_at >= clock_timestamp() - interval '15 seconds' and p.payload is not null) as fresh,
-    case
-      when c.rebuilding then 'indexer_rebuilding'
-      when r.core_reachable is not true then 'core_unreachable'
-      when r.core_height is distinct from c.height or r.core_tip is distinct from c.block_hash then 'indexer_tip_changed'
-      when r.chain_observed_at is null or r.chain_observed_at < clock_timestamp() - interval '30 seconds' then 'chain_observation_expired'
-      when p.token_id is null then 'backing_observation_missing'
-      when p.chain_generation is distinct from e.chain_generation then 'chain_generation_changed'
-      when p.observed_revision is distinct from p.requested_revision then 'pending_revision_changed'
-      when p.base_txid is distinct from b.txid or p.base_vout is distinct from b.vout then 'canonical_backing_changed'
-      when p.payload is null then 'backing_proof_unavailable'
-      when p.observed_at is null or p.observed_at < clock_timestamp() - interval '15 seconds' then 'backing_observation_expired'
-      else null
-    end as unavailable_reason
+  const result = await db.execute(sql`select
+    coalesce(case when p.base_txid = b.txid and p.base_vout = b.vout then p.payload end,
+      jsonb_build_object('tokenId', b.token_id, 'stateVersion', b.state_version,
+        'policyVersion', b.policy_version, 'issuedSupplyAtoms', b.issued_supply_atoms::text,
+        'backingSats', b.backing_sats::text, 'curveStage', b.curve_stage,
+        'stateHash', b.state_hash, 'txid', b.txid, 'vout', b.vout,
+        'script', b.script_pub_key, 'valueSats', b.btc_value::text)) as payload,
+    p.observed_at, c.height::text as height, c.block_hash
     from cove_v3_backing_states b join cove_v3_cursor c on c.network = b.network
-    join cove_observation_epochs e on e.network = b.network
-    left join cove_v3_runtime r on r.network = b.network
     left join cove_pending_backing p on p.network = b.network and p.token_id = b.token_id
     where b.network = ${network} and b.token_id = ${tokenId} and b.canonical`);
   const row = result.rows[0];
   if (!row) return null;
   return {
-    payload: row.payload as BackingObservationPayload | null,
-    fresh: row.fresh === true,
-    unavailableReason: row.unavailable_reason == null ? null : String(row.unavailable_reason),
+    payload: row.payload as BackingObservationPayload,
     observedAt: databaseDate(row.observed_at),
-    revision: String(row.revision ?? "0"),
     indexedHeight: BigInt(String(row.height)),
     indexedHash: String(row.block_hash),
-    generation: String(row.generation),
   };
-}
-
-export async function acceptedObservationCandidate(db: Database, network: string, tokenId: string) {
-  const base = await backingObservationBase(db, network, tokenId);
-  if (!base) return null;
-  const rows = await db.execute(sql`select payload, observed_at from cove_pending_backing
-    where network = ${network} and token_id = ${tokenId} and chain_generation = ${base.generation}::bigint
-      and base_txid = ${base.backing.txid} and base_vout = ${base.backing.vout}
-      and requested_revision = ${base.revision}::bigint and payload is not null and observed_at >= clock_timestamp() - interval '15 seconds'`);
-  return rows.rows[0] ? { base, payload: rows.rows[0].payload as BackingObservationPayload } : null;
-}
-
-export async function publishAcceptedObservation(
-  db: Database,
-  base: BackingObservationBase,
-  submissionId: string,
-  parent: { txid: string; vout: number },
-  payload: BackingObservationPayload,
-): Promise<boolean> {
-  return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`select network from cove_observation_epochs where network = ${base.network} for update`,
-    );
-    const result =
-      await tx.execute(sql`update cove_pending_backing p set payload = ${JSON.stringify(payload)}::jsonb,
-      observed_revision = p.requested_revision, observed_at = clock_timestamp(), last_checked_at = clock_timestamp()
-      where p.network = ${base.network} and p.token_id = ${base.tokenId}
-        and p.requested_revision = ${base.revision}::bigint + 1 and p.chain_generation = ${base.generation}::bigint
-        and p.base_txid = ${base.backing.txid} and p.base_vout = ${base.backing.vout}
-        and p.payload->>'txid' = ${parent.txid} and (p.payload->>'vout')::integer = ${parent.vout}
-        and exists (select 1 from cove_observation_epochs e join cove_v3_cursor c on c.network = e.network
-          where e.network = p.network and e.chain_generation = ${base.generation}::bigint and not c.rebuilding)
-        and exists (select 1 from cove_v3_submissions s where s.id = ${submissionId}::uuid and s.network = p.network
-          and s.token_id = p.token_id and s.backing_txid = ${parent.txid} and s.backing_vout = ${parent.vout}
-          and s.phase = 'BROADCAST' and s.accepted_at is not null and s.txid = ${payload.txid}) returning token_id`);
-    return result.rows.length > 0;
-  });
 }

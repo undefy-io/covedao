@@ -51,9 +51,10 @@ describe("best execution uses the validated pending price", () => {
       gross + mintFeeSats(gross, amount, COVE_FEE_CONFIG.buyFeeBps, COVE_FEE_CONFIG.buyFeeFlatSats) + creatorFeeSats(gross) });
     expect(execute).toHaveBeenCalledTimes(1);
   });
-  it("fails closed on invalidated or stale observations", async () => {
+  it("serves the cached price despite expired freshness metadata", async () => {
     const { db } = observed(10_000n * 100_000_000n, false);
-    await expect(getBuyRoutes(db, "regtest", tokenId, amount)).rejects.toThrow("CORE_UNAVAILABLE");
+    const routes = await getBuyRoutes(db, "regtest", tokenId, amount);
+    expect(routes[0]?.kind).toBe("backing");
   });
   it("does not invent a route for a missing token", async () => {
     const { db, execute } = observed(0n);
