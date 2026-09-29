@@ -76,6 +76,19 @@ describe.skipIf(!isolated)("bounded pending producer on isolated PostgreSQL", ()
         idempotencyKey: randomUUID(),
       })),
     );
+    await db
+      .insert(schema.coveV3SigningJournal)
+      .values(
+        Array.from({ length: 1005 }, (_, i) => ({
+          network,
+          backingTxid: parent,
+          backingVout: 0,
+          unsignedTxDigest: i.toString(16).padStart(64, "0"),
+          expiresAt: new Date(0),
+          signedAt: new Date(),
+          signingResult: { psbtBase64: "abandoned", resultJson: "{}", auditHash: "fixture" },
+        })),
+      );
     const provider = {
       getMempoolSnapshot: vi.fn().mockResolvedValue(new Set<string>()),
       getMempoolSpenders: vi.fn().mockResolvedValue(undefined),

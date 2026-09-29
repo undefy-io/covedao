@@ -162,6 +162,13 @@
       "when": 1790630600000,
       "tag": "0022_trade_revision",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790667713759,
+      "tag": "0023_accepted_signature_lookup",
+      "breakpoints": true
     }
   ]
 }

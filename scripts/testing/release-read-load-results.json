@@ -11,9 +11,9 @@
     "maxIndexerLagBlocks": 2
   },
   "images": {
-    "covedao-release:signet": "sha256:2b54d8758fe6d3ba849fc0ccda1c8d3c3691e84b4c229a27af8c11fcad8143b3",
-    "covedao-release:regtest": "sha256:6dfccb084b39f4be1d2a0b534c5994d3cc88a739c6fae56fd59c8060115cc29b",
-    "covedao-guardian-release:test": "sha256:cd261bdbc9865ba413b51438a2a7a1c4545c22d317229ecd9d77640e2c17da51",
+    "covedao-release:signet": "sha256:db1674a42395cc928e146b4cfca4f0771e730f64bf5cf351e274a09af183ba08",
+    "covedao-release:regtest": "sha256:fb0ae9b16eef52df390d97b007f7ec60238390a9b68b4bebdad53dc8763f5927",
+    "covedao-guardian-release:test": "sha256:10904daa5d9542e2664c5f363ef727dccb7d6f2f01b10ccc7d956247aab6ac11",
     "covedao-signet-rollback:pre-indexed-read": "sha256:194ffa112f241bb82ecea85ae4dfe5a4bc91403471c87fa40e7941926666bfd5"
   },
   "seed": {
@@ -49,8 +49,8 @@
       "statuses": {
         "200": 500
       },
-      "p95Ms": 162.982,
-      "p99Ms": 184.206
+      "p95Ms": 159.205,
+      "p99Ms": 184.69
     },
     {
       "path": "/api/v3/tokens",
@@ -59,8 +59,8 @@
       "statuses": {
         "200": 500
       },
-      "p95Ms": 62.964,
-      "p99Ms": 77.485
+      "p95Ms": 74.492,
+      "p99Ms": 93.041
     },
     {
       "path": "/api/v3/tokens/c20eee269833c1832fd5965ab1d961e9f7215f8a742076a3ca629564337a390f",
@@ -69,8 +69,8 @@
       "statuses": {
         "200": 500
       },
-      "p95Ms": 50.853,
-      "p99Ms": 65.489
+      "p95Ms": 57.595,
+      "p99Ms": 72.085
     },
     {
       "path": "/api/v3/tokens/c20eee269833c1832fd5965ab1d961e9f7215f8a742076a3ca629564337a390f/market",
@@ -79,8 +79,8 @@
       "statuses": {
         "200": 500
       },
-      "p95Ms": 50.841,
-      "p99Ms": 64.796
+      "p95Ms": 49.384,
+      "p99Ms": 65.197
     },
     {
       "path": "/api/v3/tokens/c20eee269833c1832fd5965ab1d961e9f7215f8a742076a3ca629564337a390f/holders",
@@ -89,8 +89,8 @@
       "statuses": {
         "200": 500
       },
-      "p95Ms": 49.156,
-      "p99Ms": 63.251
+      "p95Ms": 49.12,
+      "p99Ms": 62.635
     },
     {
       "path": "/api/v3/tokens/c20eee269833c1832fd5965ab1d961e9f7215f8a742076a3ca629564337a390f/candles?timeframe=1h",
@@ -99,8 +99,8 @@
       "statuses": {
         "200": 500
       },
-      "p95Ms": 49.627,
-      "p99Ms": 67.242
+      "p95Ms": 52.414,
+      "p99Ms": 66.125
     },
     {
       "path": "/api/v3/tx/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -109,8 +109,8 @@
       "statuses": {
         "200": 500
       },
-      "p95Ms": 59.074,
-      "p99Ms": 74.586
+      "p95Ms": 66.341,
+      "p99Ms": 75.345
     },
     {
       "path": "/api/v3/backing/buy/quote",
@@ -119,8 +119,8 @@
       "statuses": {
         "200": 500
       },
-      "p95Ms": 57.53,
-      "p99Ms": 72.153
+      "p95Ms": 64.311,
+      "p99Ms": 81.558
     },
     {
       "path": "/api/v3/backing/buy/quote-sats",
@@ -129,8 +129,8 @@
       "statuses": {
         "200": 500
       },
-      "p95Ms": 55.63,
-      "p99Ms": 64.319
+      "p95Ms": 48.584,
+      "p99Ms": 61.877
     },
     {
       "path": "/api/v3/backing/redeem/quote",
@@ -139,8 +139,8 @@
       "statuses": {
         "200": 500
       },
-      "p95Ms": 50.307,
-      "p99Ms": 62.941
+      "p95Ms": 46.083,
+      "p99Ms": 58.775
     },
     {
       "publicRpcAttempts": 0
@@ -184,8 +184,8 @@
       "statuses": {
         "200": 500
       },
-      "p95Ms": 88.978,
-      "p99Ms": 107.338
+      "p95Ms": 111.492,
+      "p99Ms": 130.885
     },
     {
       "path": "/api/v3/tokens",
@@ -194,8 +194,8 @@
       "statuses": {
         "200": 500
       },
-      "p95Ms": 55.284,
-      "p99Ms": 66.189
+      "p95Ms": 56.212,
+      "p99Ms": 66.415
     },
     {
       "path": "/api/v3/tokens/69c961677b51a92d76d473597edab27b53fe1f1a7d9f8cb59449de0362eaf417/market",
@@ -204,8 +204,8 @@
       "statuses": {
         "200": 500
       },
-      "p95Ms": 56.749,
-      "p99Ms": 69.545
+      "p95Ms": 54.976,
+      "p99Ms": 70.585
     },
     {
       "path": "/api/v3/tx/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -214,8 +214,8 @@
       "statuses": {
         "200": 500
       },
-      "p95Ms": 67.002,
-      "p99Ms": 79.947
+      "p95Ms": 70.437,
+      "p99Ms": 86.835
     },
     {
       "path": "/api/v3/backing/buy/quote",
@@ -224,8 +224,8 @@
       "statuses": {
         "200": 500
       },
-      "p95Ms": 56.61,
-      "p99Ms": 72.749
+      "p95Ms": 54.603,
+      "p99Ms": 68.354
     },
     {
       "path": "/api/v3/backing/buy/quote-sats",
@@ -234,8 +234,8 @@
       "statuses": {
         "200": 500
       },
-      "p95Ms": 61.493,
-      "p99Ms": 69.498
+      "p95Ms": 52.575,
+      "p99Ms": 70.006
     },
     {
       "healthAfter": {
@@ -243,15 +243,15 @@
         "appEnabled": true,
         "core": {
           "reachable": true,
-          "height": "324147",
-          "tip": "00000005156667ca37c8dcc56059f4f43db6f228c0d18c558d69889f9abdd155",
-          "observedAt": "2026-09-29T07:36:05.038Z",
+          "height": "324148",
+          "tip": "00000011be6c3ea30fde3aada230262ae9931143f4fe724cc65dbec5a7252872",
+          "observedAt": "2026-09-29T07:46:17.846Z",
           "stale": false
         },
         "indexer": {
           "health": "HEALTHY",
-          "indexedHeight": "324147",
-          "indexedBlockHash": "00000005156667ca37c8dcc56059f4f43db6f228c0d18c558d69889f9abdd155",
+          "indexedHeight": "324148",
+          "indexedBlockHash": "00000011be6c3ea30fde3aada230262ae9931143f4fe724cc65dbec5a7252872",
           "stateRoot": "a57cea89e85ac60f952f563855c01d9db8ec5c6fa8c8c63403971045261b23f8",
           "lag": "0",
           "rebuilding": false
@@ -263,14 +263,14 @@
           "enabled": true
         },
         "observations": {
-          "marketWindow": "29844456",
+          "marketWindow": "29844466",
           "tradeRevision": "0",
-          "chainGeneration": "1",
+          "chainGeneration": "2",
           "pendingRevision": "1",
           "marketRevision": "0",
           "metadataRevision": "0",
-          "pendingObservedAt": "2026-09-29T07:36:08.185Z",
-          "feesObservedAt": "2026-09-29T07:35:42.289Z"
+          "pendingObservedAt": "2026-09-29T07:46:19.887Z",
+          "feesObservedAt": "2026-09-29T07:45:48.685Z"
         }
       }
     }
@@ -282,13 +282,14 @@
     "maxIndexerLagBlocks": 0,
     "failedReads": 0
   },
-  "rollback": "Old image rebuilt its original source and served status and token list from a restored signet DB after all 23 migrations. No DB rollback/drop required.",
+  "rollback": "Old image rebuilt its original source and served status and token list from a restored signet DB after all 24 migrations. No DB rollback/drop required.",
   "otherChecks": [
     "14 actual Guardian production-image HTTP cases",
     "Real Core30 competing spends, pending child before a block, funding replacement, canonical winner and reorg reversal",
     "Shared 3rps provider test across replicas and lanes, retries included; supported 64 funding inputs retained",
     "Five PostgreSQL projection fences; fair producer observes 1005 tracked transactions and warms cold tokens within bounded RPC work",
     "Five market PostgreSQL recovery cases including funding conflict zero-RPC suspension and exact-byte reorg resume",
-    "Live legacy-vs-new quote state and pricing match; new reader provider forbidden"
+    "Live legacy-vs-new quote state and pricing match; new reader provider forbidden",
+    "1005 abandoned signature records do not fill the accepted-candidate cap; persisted final signed transaction ID handles wrapped SegWit funding"
   ]
 }

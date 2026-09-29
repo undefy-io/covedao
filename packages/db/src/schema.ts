@@ -1072,6 +1072,9 @@ export const coveV3SigningJournal = pgTable(
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   },
   (t) => [
+    index("cove_v3_signing_journal_accepted_idx")
+      .on(t.network, sql`coalesce(${t.signingResult}->>'txid',${t.unsignedTxDigest})`)
+      .where(sql`${t.signedAt} is not null`),
     uniqueIndex("cove_v3_signing_journal_candidate_uq").on(
       t.network,
       t.backingTxid,

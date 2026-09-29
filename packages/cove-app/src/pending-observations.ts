@@ -209,12 +209,17 @@ export class PendingObservationWorker {
     if (!spenders) {
       for (const point of points.values()) acceptedSpenders.set(outpointKey(point), null);
       const candidates = await this.db
-        .execute(sql`select raw_tx_hex, null::jsonb as signing_result from cove_v3_submissions s
-        where network = ${network} and raw_tx_hex is not null and not exists
-          (select 1 from cove_v3_events e where e.network = s.network and e.txid = s.txid and e.canonical and e.valid)
-        union all select null::text, signing_result from cove_v3_signing_journal j where j.network = ${network}
-          and j.signed_at is not null and j.signing_result is not null and not exists
-          (select 1 from cove_v3_events e where e.network = j.network and e.txid = j.unsigned_tx_digest and e.canonical and e.valid)
+        .execute(sql`with accepted as (select jsonb_array_elements_text(${JSON.stringify([...membership])}::jsonb) as txid),
+        digests as (select txid as digest from accepted union
+          select s.unsigned_tx_digest from cove_v3_app_transactions s join accepted a on a.txid=s.txid where s.network=${network} and s.unsigned_tx_digest is not null union
+          select s.unsigned_tx_digest from cove_v3_submissions s join accepted a on a.txid=s.txid where s.network=${network} and s.raw_tx_hex is not null)
+        select s.raw_tx_hex, null::jsonb as signing_result from cove_v3_submissions s
+        join accepted a on a.txid=s.txid where s.network=${network} and s.raw_tx_hex is not null
+        union all select null::text, j.signing_result from cove_v3_signing_journal j
+        join digests d on d.digest=coalesce(j.signing_result->>'txid',j.unsigned_tx_digest)
+        where j.network=${network} and j.signed_at is not null and j.signing_result is not null
+          and not exists (select 1 from cove_v3_submissions s join accepted a on a.txid=s.txid
+            where s.network=j.network and s.unsigned_tx_digest=j.unsigned_tx_digest and s.raw_tx_hex is not null)
         limit 1001`);
       if (candidates.rows.length > 1000) throw new Error("Pending candidate capacity reached");
       for (const candidate of candidates.rows) {

@@ -62,7 +62,10 @@ export function canonicalAuditRecordBytes(f: GuardianAuditDigestFields): Buffer 
 }
 
 /** H(domain || previousAuditHash || canonicalBytes). */
-export function computeGuardianAuditHash(previousAuditHash: string, fields: GuardianAuditDigestFields): string {
+export function computeGuardianAuditHash(
+  previousAuditHash: string,
+  fields: GuardianAuditDigestFields,
+): string {
   const domain = Buffer.from(GUARDIAN_AUDIT_DOMAIN, "utf8");
   return createHash("sha256")
     .update(domain)
@@ -77,7 +80,9 @@ export function computeGuardianAuditHash(previousAuditHash: string, fields: Guar
  * auditHash AND each link's previousAuditHash equals the prior link's auditHash
  * (first link must chain from the zero hash). §C10.
  */
-export function verifyGuardianAuditChain(head: { previousAuditHash: string; auditHash: string; fields: GuardianAuditDigestFields }[]): boolean {
+export function verifyGuardianAuditChain(
+  head: { previousAuditHash: string; auditHash: string; fields: GuardianAuditDigestFields }[],
+): boolean {
   for (let i = 0; i < head.length; i++) {
     const link = head[i]!;
     const expected = computeGuardianAuditHash(link.previousAuditHash, link.fields);
@@ -92,51 +97,115 @@ export function verifyGuardianAuditChain(head: { previousAuditHash: string; audi
 }
 
 export type SigningReservation = "RESERVED" | "IDEMPOTENT";
-export interface StoredSigningResult { psbtBase64: string; resultJson: string; auditHash: string }
+export interface StoredSigningResult {
+  psbtBase64: string;
+  resultJson: string;
+  auditHash: string;
+  txid?: string;
+}
 
 /** An unsigned signing lease expires; a produced signature never does. */
 export const SIGNING_JOURNAL_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 export interface SigningJournalStore {
-  reserve(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<SigningReservation>;
-  markSigned(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string; signingResult?: StoredSigningResult }): Promise<void>;
-  readSigned?(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<StoredSigningResult | null>;
-  committedDigest(network: string, backingTxid: string, backingVout: number, unsignedTxDigest: string): Promise<string | null>;
-  release(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<void>;
+  reserve(params: {
+    network: string;
+    backingTxid: string;
+    backingVout: number;
+    unsignedTxDigest: string;
+  }): Promise<SigningReservation>;
+  markSigned(params: {
+    network: string;
+    backingTxid: string;
+    backingVout: number;
+    unsignedTxDigest: string;
+    signingResult?: StoredSigningResult;
+  }): Promise<void>;
+  readSigned?(params: {
+    network: string;
+    backingTxid: string;
+    backingVout: number;
+    unsignedTxDigest: string;
+  }): Promise<StoredSigningResult | null>;
+  committedDigest(
+    network: string,
+    backingTxid: string,
+    backingVout: number,
+    unsignedTxDigest: string,
+  ): Promise<string | null>;
+  release(params: {
+    network: string;
+    backingTxid: string;
+    backingVout: number;
+    unsignedTxDigest: string;
+  }): Promise<void>;
 }
 
 export class InMemorySigningJournal implements SigningJournalStore {
-  private map = new Map<string, { digest: string; expiresAt: number; signed: boolean; signingResult?: StoredSigningResult }>();
+  private map = new Map<
+    string,
+    { digest: string; expiresAt: number; signed: boolean; signingResult?: StoredSigningResult }
+  >();
   constructor(private readonly clock: () => number = () => Date.now()) {}
 
   private now(): number {
     return this.clock();
   }
 
-  async reserve(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<SigningReservation> {
+  async reserve(params: {
+    network: string;
+    backingTxid: string;
+    backingVout: number;
+    unsignedTxDigest: string;
+  }): Promise<SigningReservation> {
     const key = `${params.network}:${params.backingTxid}:${params.backingVout}:${params.unsignedTxDigest}`;
     const existing = this.map.get(key);
     if (existing !== undefined && (existing.signed || existing.expiresAt > this.now())) {
       return "IDEMPOTENT";
     }
-    this.map.set(key, { digest: params.unsignedTxDigest, expiresAt: this.now() + SIGNING_JOURNAL_TTL_MS, signed: false });
+    this.map.set(key, {
+      digest: params.unsignedTxDigest,
+      expiresAt: this.now() + SIGNING_JOURNAL_TTL_MS,
+      signed: false,
+    });
     return "RESERVED";
   }
 
-  async markSigned(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string; signingResult?: StoredSigningResult }): Promise<void> {
+  async markSigned(params: {
+    network: string;
+    backingTxid: string;
+    backingVout: number;
+    unsignedTxDigest: string;
+    signingResult?: StoredSigningResult;
+  }): Promise<void> {
     const key = `${params.network}:${params.backingTxid}:${params.backingVout}:${params.unsignedTxDigest}`;
     const held = this.map.get(key);
-    if (!held || held.digest !== params.unsignedTxDigest) throw new Error("signing reservation lost");
+    if (!held || held.digest !== params.unsignedTxDigest)
+      throw new Error("signing reservation lost");
     held.signed = true;
     held.signingResult ??= params.signingResult;
   }
 
-  async readSigned(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<StoredSigningResult | null> {
-    const held = this.map.get(`${params.network}:${params.backingTxid}:${params.backingVout}:${params.unsignedTxDigest}`);
-    return held?.signed && held.digest === params.unsignedTxDigest ? held.signingResult ?? null : null;
+  async readSigned(params: {
+    network: string;
+    backingTxid: string;
+    backingVout: number;
+    unsignedTxDigest: string;
+  }): Promise<StoredSigningResult | null> {
+    const held = this.map.get(
+      `${params.network}:${params.backingTxid}:${params.backingVout}:${params.unsignedTxDigest}`,
+    );
+    return held?.signed && held.digest === params.unsignedTxDigest
+      ? (held.signingResult ?? null)
+      : null;
   }
 
-  async committedDigest(network: string, backingTxid: string, backingVout: number, unsignedTxDigest: string): Promise<string | null> {
+  async committedDigest(
+    network: string,
+    backingTxid: string,
+    backingVout: number,
+    unsignedTxDigest: string,
+  ): Promise<string | null> {
     const key = `${network}:${backingTxid}:${backingVout}:${unsignedTxDigest}`;
     const existing = this.map.get(key);
     if (existing !== undefined && !existing.signed && existing.expiresAt <= this.now()) {
@@ -146,7 +215,12 @@ export class InMemorySigningJournal implements SigningJournalStore {
     return existing?.digest ?? null;
   }
 
-  async release(params: { network: string; backingTxid: string; backingVout: number; unsignedTxDigest: string }): Promise<void> {
+  async release(params: {
+    network: string;
+    backingTxid: string;
+    backingVout: number;
+    unsignedTxDigest: string;
+  }): Promise<void> {
     const key = `${params.network}:${params.backingTxid}:${params.backingVout}:${params.unsignedTxDigest}`;
     const existing = this.map.get(key);
     if (existing?.digest === params.unsignedTxDigest && !existing.signed) this.map.delete(key);

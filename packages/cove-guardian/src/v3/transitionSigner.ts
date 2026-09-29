@@ -64,8 +64,7 @@ export interface TransitionSignRequest {
 }
 
 export type TransitionSignOutcome =
-  | SignedTransitionResult
-  | { ok: false; reason: string; detail: string; audit: AuditRecord | null };
+  SignedTransitionResult | { ok: false; reason: string; detail: string; audit: AuditRecord | null };
 
 /**
  * Phase 8 operational risk policy (§25/§26). Enforced INSIDE the signer so a
@@ -98,13 +97,18 @@ export interface GuardianRiskPolicy {
   enforceTokenAllowlist: boolean;
 }
 
-export function checkRiskPolicy(policy: GuardianRiskPolicy, analysis: MintAnalysis | RedeemAnalysis, operation: "MINT" | "REDEEM"): string | null {
+export function checkRiskPolicy(
+  policy: GuardianRiskPolicy,
+  analysis: MintAnalysis | RedeemAnalysis,
+  operation: "MINT" | "REDEEM",
+): string | null {
   const tokenId = analysis.tokenId.toString("hex");
   // Fail closed: an empty allowlist (or a token not in it) means NOBODY.
   if (policy.enforceTokenAllowlist && !policy.allowedTokenIds.includes(tokenId)) {
     return `token ${tokenId} is not in the canary allowlist`;
   }
-  if (analysis.grossSats > policy.maxGrossSats) return `gross ${analysis.grossSats} exceeds cap ${policy.maxGrossSats}`;
+  if (analysis.grossSats > policy.maxGrossSats)
+    return `gross ${analysis.grossSats} exceeds cap ${policy.maxGrossSats}`;
   if (operation === "MINT") {
     const amount = (analysis as MintAnalysis).amountAtoms;
     if (amount > policy.maxMintAtoms) {
@@ -114,9 +118,14 @@ export function checkRiskPolicy(policy: GuardianRiskPolicy, analysis: MintAnalys
       return `mint of ${analysis.grossSats} sats is below the minimum of ${policy.minMintGrossSats}`;
     }
   }
-  if (analysis.nextState.backingSats > policy.maxBackingSats) return `next backing ${analysis.nextState.backingSats} exceeds cap ${policy.maxBackingSats}`;
-  if (analysis.minerFeeSats > policy.maxMinerFeeSats) return `miner fee ${analysis.minerFeeSats} exceeds cap ${policy.maxMinerFeeSats}`;
-  if (operation === "REDEEM" && (analysis as RedeemAnalysis).netPayoutSats > policy.maxRedeemPayoutSats) {
+  if (analysis.nextState.backingSats > policy.maxBackingSats)
+    return `next backing ${analysis.nextState.backingSats} exceeds cap ${policy.maxBackingSats}`;
+  if (analysis.minerFeeSats > policy.maxMinerFeeSats)
+    return `miner fee ${analysis.minerFeeSats} exceeds cap ${policy.maxMinerFeeSats}`;
+  if (
+    operation === "REDEEM" &&
+    (analysis as RedeemAnalysis).netPayoutSats > policy.maxRedeemPayoutSats
+  ) {
     return `redeem payout exceeds cap ${policy.maxRedeemPayoutSats}`;
   }
   return null;
@@ -149,8 +158,12 @@ function buildAuditRecord(params: {
     prevStateHash: stateHashV2(prev),
     nextStateHash: stateHashV2(a.nextState),
     backingOutpoint: a.backingOutpoint,
-    tokenInputOutpoints: params.operation === "REDEEM" ? (a as RedeemAnalysis).tokenInputOutpoints : [],
-    amountAtoms: params.operation === "MINT" ? (a as MintAnalysis).amountAtoms : (a as RedeemAnalysis).redeemAmountAtoms,
+    tokenInputOutpoints:
+      params.operation === "REDEEM" ? (a as RedeemAnalysis).tokenInputOutpoints : [],
+    amountAtoms:
+      params.operation === "MINT"
+        ? (a as MintAnalysis).amountAtoms
+        : (a as RedeemAnalysis).redeemAmountAtoms,
     grossSats: a.grossSats,
     protocolFeeSats: a.protocolFeeSats,
     minerFeeSats: a.minerFeeSats,
@@ -186,7 +199,10 @@ export class LocalGuardianTransitionSigner implements GuardianTransitionSigner {
     return { reachable: true };
   }
 
-  private async sign(req: TransitionSignRequest, op: "MINT" | "REDEEM"): Promise<TransitionSignOutcome> {
+  private async sign(
+    req: TransitionSignRequest,
+    op: "MINT" | "REDEEM",
+  ): Promise<TransitionSignOutcome> {
     const guardianXOnly = await this.signer.xOnlyPubkey();
     const cached = await this.recoverSigned(req, op);
     if (cached) return cached;
@@ -221,7 +237,12 @@ export class LocalGuardianTransitionSigner implements GuardianTransitionSigner {
     try {
       receipt = await this.audit.writeBeforeSign(record);
     } catch (e) {
-      return { ok: false, reason: "AUDIT_PERSISTENCE_FAILED", detail: (e as Error).message, audit: record };
+      return {
+        ok: false,
+        reason: "AUDIT_PERSISTENCE_FAILED",
+        detail: (e as Error).message,
+        audit: record,
+      };
     }
 
     // 2. Persist this candidate without excluding other valid successors.
@@ -232,14 +253,18 @@ export class LocalGuardianTransitionSigner implements GuardianTransitionSigner {
       unsignedTxDigest: record.unsignedTxDigest,
     });
 
-
     // 3. Sign (script-path execution leaf).
     const prevVault = buildBackingVaultV3({
       state: analysis.currentState,
       guardianXOnly,
       recoveryKeyXOnly: req.recoveryKeyXOnly,
       recoveryProfile: req.recoveryProfile,
-      network: req.network === "regtest" ? bitcoin.networks.regtest : req.network === "mainnet" ? bitcoin.networks.bitcoin : bitcoin.networks.testnet,
+      network:
+        req.network === "regtest"
+          ? bitcoin.networks.regtest
+          : req.network === "mainnet"
+            ? bitcoin.networks.bitcoin
+            : bitcoin.networks.testnet,
     });
     const leaf = op === "MINT" ? prevVault.mintLeaf : prevVault.redeemLeaf;
     const control = op === "MINT" ? prevVault.mintControlBlock : prevVault.redeemControlBlock;
@@ -252,10 +277,19 @@ export class LocalGuardianTransitionSigner implements GuardianTransitionSigner {
         backingTxid: record.backingOutpoint.txid,
         backingVout: record.backingOutpoint.vout,
         unsignedTxDigest: record.unsignedTxDigest,
-        signingResult: { psbtBase64: req.psbt.toBase64(), auditHash: receipt.auditHash, resultJson: stringifyBigint(this.signedOutcome(record)) },
+        signingResult: {
+          psbtBase64: req.psbt.toBase64(),
+          auditHash: receipt.auditHash,
+          resultJson: stringifyBigint(this.signedOutcome(record)),
+          txid: signedTransactionId(req.psbt),
+        },
       });
-      const stored = await this.journal.readSigned?.({ network: req.network, backingTxid: record.backingOutpoint.txid,
-        backingVout: record.backingOutpoint.vout, unsignedTxDigest: record.unsignedTxDigest });
+      const stored = await this.journal.readSigned?.({
+        network: req.network,
+        backingTxid: record.backingOutpoint.txid,
+        backingVout: record.backingOutpoint.vout,
+        unsignedTxDigest: record.unsignedTxDigest,
+      });
       if (stored) return this.restoreSigningResult(req, op, guardianXOnly, stored);
     } catch (e) {
       // §C6: release the reservation we just committed so a throwable signing
@@ -281,7 +315,9 @@ export class LocalGuardianTransitionSigner implements GuardianTransitionSigner {
       await this.audit.writeAfterSign(record, receipt.auditHash);
     } catch (e) {
       auditFinalizationError = (e as Error).message;
-      console.error(`SIGNED_BUT_AUDIT_FINALIZATION_FAILED: ${op} ${record.backingOutpoint.txid}:${record.backingOutpoint.vout} — ${auditFinalizationError}`);
+      console.error(
+        `SIGNED_BUT_AUDIT_FINALIZATION_FAILED: ${op} ${record.backingOutpoint.txid}:${record.backingOutpoint.vout} — ${auditFinalizationError}`,
+      );
     }
 
     return {
@@ -300,43 +336,88 @@ export class LocalGuardianTransitionSigner implements GuardianTransitionSigner {
       auditFinalizationError,
     };
   }
-  async recoverSigned(req: Pick<TransitionSignRequest, "psbt" | "network">, op: "MINT" | "REDEEM"): Promise<TransitionSignOutcome | null> {
+  async recoverSigned(
+    req: Pick<TransitionSignRequest, "psbt" | "network">,
+    op: "MINT" | "REDEEM",
+  ): Promise<TransitionSignOutcome | null> {
     const input = req.psbt.txInputs[0];
     if (!input || !this.journal.readSigned) return null;
-    const cached = await this.journal.readSigned({ network: req.network, backingTxid: Buffer.from(input.hash).reverse().toString("hex"),
-      backingVout: input.index, unsignedTxDigest: unsignedTxDigest(req.psbt) });
-    return cached ? this.restoreSigningResult(req, op, await this.signer.xOnlyPubkey(), cached) : null;
+    const cached = await this.journal.readSigned({
+      network: req.network,
+      backingTxid: Buffer.from(input.hash).reverse().toString("hex"),
+      backingVout: input.index,
+      unsignedTxDigest: unsignedTxDigest(req.psbt),
+    });
+    return cached
+      ? this.restoreSigningResult(req, op, await this.signer.xOnlyPubkey(), cached)
+      : null;
   }
 
   private signedOutcome(record: AuditRecord): SignedTransitionResult {
-    return { ok: true, operation: record.operation, tokenId: record.tokenId,
-      prevStateHash: record.prevStateHash, nextStateHash: record.nextStateHash,
-      expectedCmr: record.expectedCmr, actualCmr: record.actualCmr,
-      simplicityResult: record.simplicityResult, referencePolicyResult: "PASS",
-      backingOutpoint: record.backingOutpoint, signedInputIndex: 0, audit: record, auditFinalizationError: null };
+    return {
+      ok: true,
+      operation: record.operation,
+      tokenId: record.tokenId,
+      prevStateHash: record.prevStateHash,
+      nextStateHash: record.nextStateHash,
+      expectedCmr: record.expectedCmr,
+      actualCmr: record.actualCmr,
+      simplicityResult: record.simplicityResult,
+      referencePolicyResult: "PASS",
+      backingOutpoint: record.backingOutpoint,
+      signedInputIndex: 0,
+      audit: record,
+      auditFinalizationError: null,
+    };
   }
 
-  private async restoreSigningResult(req: Pick<TransitionSignRequest, "psbt" | "network">, op: "MINT" | "REDEEM", guardianXOnly: Buffer,
-    cached: { psbtBase64: string; resultJson: string; auditHash: string }): Promise<TransitionSignOutcome> {
+  private async restoreSigningResult(
+    req: Pick<TransitionSignRequest, "psbt" | "network">,
+    op: "MINT" | "REDEEM",
+    guardianXOnly: Buffer,
+    cached: { psbtBase64: string; resultJson: string; auditHash: string },
+  ): Promise<TransitionSignOutcome> {
     const outcome = parseBigint<SignedTransitionResult>(cached.resultJson);
     const signed = bitcoin.Psbt.fromBase64(cached.psbtBase64);
     const witness = signed.data.inputs[0]?.finalScriptWitness;
     const leaf = req.psbt.data.inputs[0]?.tapLeafScript?.[0];
-    if (outcome.operation !== op || unsignedTxDigest(signed) !== unsignedTxDigest(req.psbt) || !witness || !leaf) {
-      return { ok: false, reason: "SIGNATURE_VERIFICATION_FAILED", detail: "saved signing commitment mismatch", audit: null };
+    if (
+      outcome.operation !== op ||
+      unsignedTxDigest(signed) !== unsignedTxDigest(req.psbt) ||
+      !witness ||
+      !leaf
+    ) {
+      return {
+        ok: false,
+        reason: "SIGNATURE_VERIFICATION_FAILED",
+        detail: "saved signing commitment mismatch",
+        audit: null,
+      };
     }
     try {
-      verifyVaultExecutionSignature(req.psbt, 0, { script: leaf.script, tapleafHash: tapleafHash(leaf.script, leaf.leafVersion) },
-        extractWitnessSig(witness), guardianXOnly);
-      if (req.psbt.data.inputs[0]!.finalScriptWitness) req.psbt.data.inputs[0]!.finalScriptWitness = Buffer.from(witness);
+      verifyVaultExecutionSignature(
+        req.psbt,
+        0,
+        { script: leaf.script, tapleafHash: tapleafHash(leaf.script, leaf.leafVersion) },
+        extractWitnessSig(witness),
+        guardianXOnly,
+      );
+      if (req.psbt.data.inputs[0]!.finalScriptWitness)
+        req.psbt.data.inputs[0]!.finalScriptWitness = Buffer.from(witness);
       else req.psbt.updateInput(0, { finalScriptWitness: witness });
     } catch {
-      return { ok: false, reason: "SIGNATURE_VERIFICATION_FAILED", detail: "saved signature could not be verified", audit: null };
+      return {
+        ok: false,
+        reason: "SIGNATURE_VERIFICATION_FAILED",
+        detail: "saved signature could not be verified",
+        audit: null,
+      };
     }
     try {
       await this.audit.writeAfterSign(outcome.audit, cached.auditHash);
     } catch (error) {
-      outcome.auditFinalizationError = error instanceof Error ? error.message : "audit finalization unavailable";
+      outcome.auditFinalizationError =
+        error instanceof Error ? error.message : "audit finalization unavailable";
       console.error("SIGNED_BUT_AUDIT_FINALIZATION_FAILED:", op, outcome.backingOutpoint.txid);
     }
     return outcome;
@@ -368,18 +449,31 @@ export class RemoteGuardianTransitionSigner implements GuardianTransitionSigner 
     try {
       const h = await this.transport.health();
       if (!h.reachable) return { reachable: false, reason: "guardian unreachable" };
-      if (h.profileHash !== this.expectedProfileHash) return { reachable: false, reason: `GUARDIAN_PROFILE_MISMATCH: ${h.profileHash.slice(0, 8)}…` };
-      if (h.guardianXOnly.toLowerCase() !== this.expectedGuardianXOnly.toLowerCase()) return { reachable: false, reason: "GUARDIAN_KEY_MISMATCH" };
+      if (h.profileHash !== this.expectedProfileHash)
+        return {
+          reachable: false,
+          reason: `GUARDIAN_PROFILE_MISMATCH: ${h.profileHash.slice(0, 8)}…`,
+        };
+      if (h.guardianXOnly.toLowerCase() !== this.expectedGuardianXOnly.toLowerCase())
+        return { reachable: false, reason: "GUARDIAN_KEY_MISMATCH" };
       return { reachable: true };
     } catch (e) {
       return { reachable: false, reason: (e as Error).message };
     }
   }
 
-  private async sign(req: TransitionSignRequest, op: "MINT" | "REDEEM"): Promise<TransitionSignOutcome> {
+  private async sign(
+    req: TransitionSignRequest,
+    op: "MINT" | "REDEEM",
+  ): Promise<TransitionSignOutcome> {
     const envelope = decodeCoveOpReturn(req.psbt);
     if (!("tokenId" in envelope)) {
-      return { ok: false, reason: "BAD_PSBT", detail: "PSBT envelope is not a MINT/REDEEM", audit: null };
+      return {
+        ok: false,
+        reason: "BAD_PSBT",
+        detail: "PSBT envelope is not a MINT/REDEEM",
+        audit: null,
+      };
     }
     const tokenId = Buffer.from(envelope.tokenId).toString("hex");
     const wire: GuardianSignRequestWire = {
@@ -394,9 +488,10 @@ export class RemoteGuardianTransitionSigner implements GuardianTransitionSigner 
     try {
       response = await this.withTimeout(this.transport.sign(wire), this.timeoutMs);
     } catch (e) {
-      const code = (e as Error).name === "TimeoutError" || (e as Error).message.includes("timeout")
-        ? "GUARDIAN_TIMEOUT"
-        : "REMOTE_GUARDIAN_UNAVAILABLE";
+      const code =
+        (e as Error).name === "TimeoutError" || (e as Error).message.includes("timeout")
+          ? "GUARDIAN_TIMEOUT"
+          : "REMOTE_GUARDIAN_UNAVAILABLE";
       return { ok: false, reason: code, detail: (e as Error).message, audit: null };
     }
 
@@ -406,23 +501,44 @@ export class RemoteGuardianTransitionSigner implements GuardianTransitionSigner 
 
     // Verify the service identity + profile, then independently verify the signature.
     if (response.profileHash !== this.expectedProfileHash) {
-      return { ok: false, reason: "GUARDIAN_PROFILE_MISMATCH", detail: "service profile hash differs from the committed profile", audit: null };
+      return {
+        ok: false,
+        reason: "GUARDIAN_PROFILE_MISMATCH",
+        detail: "service profile hash differs from the committed profile",
+        audit: null,
+      };
     }
     if (response.guardianXOnly.toLowerCase() !== this.expectedGuardianXOnly.toLowerCase()) {
-      return { ok: false, reason: "GUARDIAN_KEY_MISMATCH", detail: "service Guardian key differs from the committed profile", audit: null };
+      return {
+        ok: false,
+        reason: "GUARDIAN_KEY_MISMATCH",
+        detail: "service Guardian key differs from the committed profile",
+        audit: null,
+      };
     }
 
     const sig = Buffer.from(response.sigHex, "hex");
     try {
       this.independentlyVerifySignature(req.psbt, sig);
     } catch (e) {
-      return { ok: false, reason: "SIGNATURE_VERIFICATION_FAILED", detail: (e as Error).message, audit: null };
+      return {
+        ok: false,
+        reason: "SIGNATURE_VERIFICATION_FAILED",
+        detail: (e as Error).message,
+        audit: null,
+      };
     }
 
     // Apply the committed witness to the client's own PSBT (input 0).
     const signedPsbt = bitcoin.Psbt.fromBase64(response.signedPsbtBase64);
     const witness = signedPsbt.data.inputs[0]!.finalScriptWitness;
-    if (!witness) return { ok: false, reason: "SIGNATURE_VERIFICATION_FAILED", detail: "service returned no final witness", audit: null };
+    if (!witness)
+      return {
+        ok: false,
+        reason: "SIGNATURE_VERIFICATION_FAILED",
+        detail: "service returned no final witness",
+        audit: null,
+      };
     req.psbt.updateInput(0, { finalScriptWitness: witness });
 
     return parseBigint<SignedTransitionResult>(response.resultJson);
@@ -432,8 +548,17 @@ export class RemoteGuardianTransitionSigner implements GuardianTransitionSigner 
   private independentlyVerifySignature(psbt: bitcoin.Psbt, sig: Buffer): void {
     const tapLeaf = psbt.data.inputs[0]!.tapLeafScript?.[0];
     if (!tapLeaf) throw new Error("SIGNATURE_VERIFICATION_FAILED: no tap leaf script on input 0");
-    const leaf = { script: tapLeaf.script, tapleafHash: tapleafHash(tapLeaf.script, tapLeaf.leafVersion) };
-    verifyVaultExecutionSignature(psbt, 0, leaf, sig, Buffer.from(this.expectedGuardianXOnly, "hex"));
+    const leaf = {
+      script: tapLeaf.script,
+      tapleafHash: tapleafHash(tapLeaf.script, tapLeaf.leafVersion),
+    };
+    verifyVaultExecutionSignature(
+      psbt,
+      0,
+      leaf,
+      sig,
+      Buffer.from(this.expectedGuardianXOnly, "hex"),
+    );
   }
 
   private async withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
@@ -446,5 +571,18 @@ export class RemoteGuardianTransitionSigner implements GuardianTransitionSigner 
     } finally {
       if (timer) clearTimeout(timer);
     }
+  }
+}
+
+function signedTransactionId(psbt: bitcoin.Psbt): string | undefined {
+  try {
+    const final = bitcoin.Psbt.fromBase64(psbt.toBase64());
+    for (let i = 1; i < final.data.inputs.length; i++) {
+      const input = final.data.inputs[i]!;
+      if (!input.finalScriptSig && !input.finalScriptWitness) final.finalizeInput(i);
+    }
+    return final.extractTransaction().getId();
+  } catch {
+    return undefined;
   }
 }
