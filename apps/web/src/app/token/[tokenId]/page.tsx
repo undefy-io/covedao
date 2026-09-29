@@ -35,6 +35,7 @@ import {
   notifyLocalBroadcast,
 } from "@/lib/use-indexed-block";
 import { createListing, buyListing, errorText } from "@/lib/trade";
+import { fetchBuyQuote } from "@/lib/buy-quote";
 
 /**
  * What a token page lets you do depends on where the token is.
@@ -190,25 +191,20 @@ function TokenContent() {
       setMintQuoteError(t("tok.errLots"));
       return;
     }
-    let cancelled = false;
+    const controller = new AbortController();
     const timer = setTimeout(() => {
-      void fetch("/api/v3/backing/buy/quote", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ tokenId, amountAtoms: displayTokensToAtoms(amount) }),
-      })
-        .then((r) => r.json())
+      void fetchBuyQuote<Quote>(tokenId, displayTokensToAtoms(amount), controller.signal)
         .then((j) => {
-          if (cancelled) return;
+          if (controller.signal.aborted) return;
           if (j.ok) setMintQuote({ forAmount: amount, forBlock: pendingRevision, quote: j.data });
           else setMintQuoteError(errorText(j));
         })
         .catch(() => {
-          if (!cancelled) setMintQuoteError(t("tok.quoteUnavailable"));
+          if (!controller.signal.aborted) setMintQuoteError(t("tok.quoteUnavailable"));
         });
     }, 250);
     return () => {
-      cancelled = true;
+      controller.abort();
       clearTimeout(timer);
     };
   }, [amount, tokenId, demo, tab, pendingRevision, t]);
