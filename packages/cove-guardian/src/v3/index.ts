@@ -7,10 +7,7 @@
  * validation → CMR verification → full transaction validation → script-path
  * signing → finalized-tx revalidation.
  */
-export {
-  GuardianV3Signer,
-  type VaultLeafRef,
-} from "./signer.js";
+export { GuardianV3Signer, type VaultLeafRef } from "./signer.js";
 export {
   signVaultExecutionLeafWithCustody,
   localSigningBackend,
@@ -63,15 +60,8 @@ export {
   buildCanonicalRedeemWitness,
   type WitnessResult,
 } from "./witness.js";
-export {
-  consoleAuditSink,
-  noopAuditSink,
-  type AuditSink,
-} from "./audit.js";
-export {
-  broadcastValidatedCoveTransaction,
-  type BroadcastResult,
-} from "./broadcast.js";
+export { consoleAuditSink, noopAuditSink, type AuditSink } from "./audit.js";
+export { broadcastValidatedCoveTransaction, type BroadcastResult } from "./broadcast.js";
 export type {
   CoveCanonicalView,
   GuardianV3Network,
@@ -144,4 +134,9 @@ export {
   decodeCoveOpReturnTx,
 } from "./resolve.js";
 
-export { verifyPendingBackingView, MAX_PENDING_ANCESTORS, type PendingBackingParams } from "./pending-backing.js";
+export {
+  verifyPendingBackingView,
+  replayPendingBackingAncestry,
+  MAX_PENDING_ANCESTORS,
+  type PendingBackingParams,
+} from "./pending-backing.js";

@@ -1,4 +1,4 @@
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, inArray, sql } from "drizzle-orm";
 import { schema, type Database } from "@crclaunch/db";
 import type { CoveCanonicalView, CoveStateV2, OutPoint, TokenUtxo } from "@crclaunch/cove-covenant";
 
@@ -28,29 +28,54 @@ export async function loadCanonicalViewSnapshotFromDb(params: {
 }): Promise<DbCanonicalViewSnapshot> {
   const { db, network, tokenId: snapshotTokenId, relevantOutpoints = [] } = params;
 
-  const rows = await db.transaction(async (tx) => {
-    const cursor = await tx.select().from(schema.coveV3Cursor).where(eq(schema.coveV3Cursor.network, network));
-    const backing = await tx
-      .select()
-      .from(schema.coveV3BackingStates)
-      .where(and(eq(schema.coveV3BackingStates.network, network), eq(schema.coveV3BackingStates.tokenId, snapshotTokenId), eq(schema.coveV3BackingStates.canonical, true)));
-    const utxos = await tx
-      .select()
-      .from(schema.coveV3TokenUtxos)
-      .where(
-        and(
-          eq(schema.coveV3TokenUtxos.network, network),
-          eq(schema.coveV3TokenUtxos.tokenId, snapshotTokenId),
-          eq(schema.coveV3TokenUtxos.canonical, true),
-          isNull(schema.coveV3TokenUtxos.spentByTxid),
-        ),
-      );
-    const token = await tx
-      .select({ creatorScript: schema.coveV3Tokens.creatorScript })
-      .from(schema.coveV3Tokens)
-      .where(and(eq(schema.coveV3Tokens.network, network), eq(schema.coveV3Tokens.tokenId, snapshotTokenId), eq(schema.coveV3Tokens.canonical, true)));
-    return { cursor, backing, utxos, token };
-  }, { isolationLevel: "repeatable read" });
+  const rows = await db.transaction(
+    async (tx) => {
+      const cursor = await tx
+        .select()
+        .from(schema.coveV3Cursor)
+        .where(eq(schema.coveV3Cursor.network, network));
+      const backing = await tx
+        .select()
+        .from(schema.coveV3BackingStates)
+        .where(
+          and(
+            eq(schema.coveV3BackingStates.network, network),
+            eq(schema.coveV3BackingStates.tokenId, snapshotTokenId),
+            eq(schema.coveV3BackingStates.canonical, true),
+          ),
+        );
+      const utxos = await tx
+        .select()
+        .from(schema.coveV3TokenUtxos)
+        .where(
+          and(
+            eq(schema.coveV3TokenUtxos.network, network),
+            eq(schema.coveV3TokenUtxos.tokenId, snapshotTokenId),
+            eq(schema.coveV3TokenUtxos.canonical, true),
+            isNull(schema.coveV3TokenUtxos.spentByTxid),
+            params.relevantOutpoints === undefined
+              ? undefined
+              : relevantOutpoints.length
+                ? inArray(schema.coveV3TokenUtxos.txid, [
+                    ...new Set(relevantOutpoints.map((o) => o.txid)),
+                  ])
+                : sql`false`,
+          ),
+        );
+      const token = await tx
+        .select({ creatorScript: schema.coveV3Tokens.creatorScript })
+        .from(schema.coveV3Tokens)
+        .where(
+          and(
+            eq(schema.coveV3Tokens.network, network),
+            eq(schema.coveV3Tokens.tokenId, snapshotTokenId),
+            eq(schema.coveV3Tokens.canonical, true),
+          ),
+        );
+      return { cursor, backing, utxos, token };
+    },
+    { isolationLevel: "repeatable read" },
+  );
 
   const cur = rows.cursor[0];
   const cursorHeight = cur?.height ?? 0n;
@@ -117,4 +142,3 @@ export async function loadCanonicalViewSnapshotFromDb(params: {
     },
   });
 }
-

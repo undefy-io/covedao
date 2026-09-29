@@ -1,5 +1,6 @@
 "use client";
 
+import { notifyLocalBroadcast } from "./use-indexed-block";
 import { fetchPortfolio } from "./portfolio";
 
 import { tr, translateError } from "@/i18n";
@@ -27,14 +28,25 @@ export interface WalletOps {
  * The server's own words when it has them; the short copy otherwise. In
  * Chinese, a known error code shows its translation instead.
  */
-export function errorText(j: { error?: { code?: string; message?: string; detail?: string } }): string {
-  return translateError(j.error?.code, j.error?.detail || j.error?.message || tr("common.somethingWrong"));
+export function errorText(j: {
+  error?: { code?: string; message?: string; detail?: string };
+}): string {
+  return translateError(
+    j.error?.code,
+    j.error?.detail || j.error?.message || tr("common.somethingWrong"),
+  );
 }
 
 async function post(url: string, body: unknown) {
-  const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
   const j = await r.json();
   if (!j.ok) throw new Error(errorText(j));
+  if (/\/(submit|buyer-signature|reserve|cancel)$/.test(url) || url.endsWith("/market/listings"))
+    notifyLocalBroadcast();
   return j.data;
 }
 
@@ -51,7 +63,9 @@ export async function buyListing(
   const funding = await w.getUtxos();
   const tokenScript = w.ordinalsScript || w.script;
   // A signed nonce, so nobody can lock every listing for free.
-  const prep = await post(`/api/v3/market/listings/${listing.listingId}/reserve/prepare`, { buyerTokenScript: tokenScript });
+  const prep = await post(`/api/v3/market/listings/${listing.listingId}/reserve/prepare`, {
+    buyerTokenScript: tokenScript,
+  });
   const signatureB64 = await w.signBip322(prep.message);
   const { fillId } = await post(`/api/v3/market/listings/${listing.listingId}/reserve`, {
     // Bought tokens go to the ordinals address; BTC change returns to the one that paid.
@@ -62,7 +76,9 @@ export async function buyListing(
     nonceHex: prep.reserveNonce,
     signatureB64,
   });
-  const built = await post(`/api/v3/market/fills/${fillId}/build`, { feeRateSatPerVb: satPerVb ?? undefined });
+  const built = await post(`/api/v3/market/fills/${fillId}/build`, {
+    feeRateSatPerVb: satPerVb ?? undefined,
+  });
   // The wallet's own scripts and the price on the listing are the user's
   // facts; the server's copy of them is not trusted.
   if (!built.intent) throw new Error(tr("trade.noIntent"));
@@ -74,7 +90,9 @@ export async function buyListing(
     tokenAmountAtoms: listing.amountAtoms,
   });
   const signed = await w.signPsbt(built.psbtBase64, "P2P_BUY");
-  const done = await post(`/api/v3/market/fills/${fillId}/buyer-signature`, { signedPsbtBase64: signed });
+  const done = await post(`/api/v3/market/fills/${fillId}/buyer-signature`, {
+    signedPsbtBase64: signed,
+  });
   return { fillId, txid: done.txid as string };
 }
 
@@ -111,7 +129,10 @@ export async function sendTokens(params: {
   });
   verifyClientIntent(built.psbtBase64, built.intent);
   const signed = await params.signPsbt(built.psbtBase64, "TRANSFER");
-  const sent = await post("/api/v3/transfer/submit", { sessionId: built.sessionId, signedPsbtBase64: signed });
+  const sent = await post("/api/v3/transfer/submit", {
+    sessionId: built.sessionId,
+    signedPsbtBase64: signed,
+  });
   return sent.txid;
 }
 
@@ -140,7 +161,8 @@ export async function createListing(params: {
   satPerVb: bigint | string | null;
 }): Promise<{ listingId: string; pending: boolean }> {
   if (params.amountAtoms <= 0n) throw new Error(tr("trade.enterAmount"));
-  if (!/^\d+$/.test(params.totalPriceSats) || BigInt(params.totalPriceSats) <= 0n) throw new Error(tr("trade.enterPrice"));
+  if (!/^\d+$/.test(params.totalPriceSats) || BigInt(params.totalPriceSats) <= 0n)
+    throw new Error(tr("trade.enterPrice"));
   const tokenScript = params.walletFields.ordinalsScript || params.walletFields.walletScript!;
   const payoutScript = params.walletFields.walletScript!;
   const pf = await fetchPortfolio(params.tokenAddress, { onlyTokenUtxos: true });
@@ -168,7 +190,10 @@ export async function createListing(params: {
     // The split keeps every token in the wallet and makes an exact coin.
     verifyClientIntent(built.psbtBase64, { ...built.intent, operation: "SPLIT" });
     const signed = await params.signPsbt(built.psbtBase64, "TRANSFER");
-    const sent = await post("/api/v3/transfer/submit", { sessionId: built.sessionId, signedPsbtBase64: signed });
+    const sent = await post("/api/v3/transfer/submit", {
+      sessionId: built.sessionId,
+      signedPsbtBase64: signed,
+    });
     // The transfer builder puts the recipient's (exact) coin at output 1.
     source = { txid: sent.txid as string, vout: 1 };
     split = true;
@@ -184,13 +209,17 @@ export async function createListing(params: {
     ...params.walletFields,
   });
   // Never blind-sign a standing offer: one coin of mine, one payment to me.
-  verifyListingIntent(prep.listingPsbtBase64, {
-    sourceTxid: source.txid,
-    sourceVout: source.vout,
-    carrierScript: tokenScript,
-    payoutScript,
-    priceSats: params.totalPriceSats,
-  }, networkOf(params.network));
+  verifyListingIntent(
+    prep.listingPsbtBase64,
+    {
+      sourceTxid: source.txid,
+      sourceVout: source.vout,
+      carrierScript: tokenScript,
+      payoutScript,
+      priceSats: params.totalPriceSats,
+    },
+    networkOf(params.network),
+  );
   const presigned = await params.signPsbt(prep.listingPsbtBase64, "P2P_LIST");
   const created = await post("/api/v3/market/listings", {
     listing: prep.listing,

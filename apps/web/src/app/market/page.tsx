@@ -5,7 +5,7 @@ import { useT } from "@/i18n/LanguageProvider";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { useIndexedBlock } from "@/lib/use-indexed-block";
+import { useMarketRevision } from "@/lib/use-indexed-block";
 import Link from "next/link";
 import { DEMO_LISTINGS, DEMO_TOKENS } from "@/lib/demo-tokens";
 import { useWallet } from "@/components/WalletProvider";
@@ -51,11 +51,12 @@ function MarketContent() {
   const t = useT();
   const [tokens, setTokens] = useState<MarketToken[]>([]);
   const [query, setQuery] = useState("");
-  const { connected, script, publicKey, ordinalsScript, connect, signPsbt, signBip322, getUtxos } = useWallet();
+  const { connected, script, publicKey, ordinalsScript, connect, signPsbt, signBip322, getUtxos } =
+    useWallet();
   const [listings, setListings] = useState<Listing[]>([]);
   const [loaded, setLoaded] = useState(false);
   // Refetch when a new block is indexed.
-  const block = useIndexedBlock();
+  const block = useMarketRevision();
   const [buying, setBuying] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
@@ -141,7 +142,10 @@ function MarketContent() {
       if (l.status !== "ACTIVE") continue;
       const u = unitPriceSats(l.amountAtoms, l.totalPriceSats);
       const cur = m.get(l.tokenId) ?? { asks: 0, floor: null };
-      m.set(l.tokenId, { asks: cur.asks + 1, floor: cur.floor === null ? u : Math.min(cur.floor, u) });
+      m.set(l.tokenId, {
+        asks: cur.asks + 1,
+        floor: cur.floor === null ? u : Math.min(cur.floor, u),
+      });
     }
     return m;
   }, [listings]);
@@ -150,8 +154,17 @@ function MarketContent() {
   const cards = useMemo(() => {
     const q = query.trim().toLowerCase();
     return tokens
-      .filter((t) => !q || t.ticker.toLowerCase().includes(q) || (t.displayName ?? "").toLowerCase().includes(q))
-      .sort((a, b) => (bookByToken.get(b.tokenId)?.asks ?? 0) - (bookByToken.get(a.tokenId)?.asks ?? 0) || a.ticker.localeCompare(b.ticker));
+      .filter(
+        (t) =>
+          !q ||
+          t.ticker.toLowerCase().includes(q) ||
+          (t.displayName ?? "").toLowerCase().includes(q),
+      )
+      .sort(
+        (a, b) =>
+          (bookByToken.get(b.tokenId)?.asks ?? 0) - (bookByToken.get(a.tokenId)?.asks ?? 0) ||
+          a.ticker.localeCompare(b.ticker),
+      );
   }, [tokens, query, bookByToken]);
   const selectedToken = tokens.find((t) => t.tokenId === selected) ?? null;
 
@@ -172,8 +185,7 @@ function MarketContent() {
     listings.map((l) => ({
       tokenId: l.tokenId,
       ticker: l.ticker ?? l.tokenId.slice(0, 6),
-      curveStage:
-        DEMO_TOKENS.find((t) => t.tokenId === l.tokenId)?.curveStage ?? 10,
+      curveStage: DEMO_TOKENS.find((t) => t.tokenId === l.tokenId)?.curveStage ?? 10,
     })),
     demo,
   );
@@ -196,7 +208,10 @@ function MarketContent() {
         <div className="mt-8 grid grid-cols-2 gap-px bg-rule sm:grid-cols-3">
           <Tile value={fmtInt(visible.length)} label={t("market.openAsks")} />
           <Tile value={fmtInt(totalTokens)} label={t("market.tokensOffered")} />
-          <Tile value={totalSats > 0n ? fmtBtc(totalSats) : "\u2014"} label={t("market.bookValue")} />
+          <Tile
+            value={totalSats > 0n ? fmtBtc(totalSats) : "\u2014"}
+            label={t("market.bookValue")}
+          />
         </div>
       </section>
 
@@ -204,7 +219,9 @@ function MarketContent() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="eyebrow">{t("market.markets")}</p>
-            <h2 className="mt-2 text-xl text-bone">{selectedToken ? `$${selectedToken.ticker}` : t("market.allTokens")}</h2>
+            <h2 className="mt-2 text-xl text-bone">
+              {selectedToken ? `$${selectedToken.ticker}` : t("market.allTokens")}
+            </h2>
           </div>
           <input
             aria-label={t("market.search")}
@@ -221,11 +238,18 @@ function MarketContent() {
             className={`bg-ink-2 p-4 text-left transition-colors hover:bg-ink-3 ${!selected ? "outline outline-1 outline-signal" : ""}`}
           >
             <div className="text-bone">{t("market.allTokens")}</div>
-            <div className="mt-1 text-xs text-bone-dim">{t("market.nOpenAsks", { n: fmtInt(listings.filter((l) => l.status === "ACTIVE").length) })}</div>
+            <div className="mt-1 text-xs text-bone-dim">
+              {t("market.nOpenAsks", {
+                n: fmtInt(listings.filter((l) => l.status === "ACTIVE").length),
+              })}
+            </div>
           </button>
           {cards.map((tk) => {
             const book = bookByToken.get(tk.tokenId);
-            const minted = BigInt(tk.publicCapAtoms) > 0n ? Number((BigInt(tk.issuedSupplyAtoms) * 1000n) / BigInt(tk.publicCapAtoms)) / 10 : 0;
+            const minted =
+              BigInt(tk.publicCapAtoms) > 0n
+                ? Number((BigInt(tk.issuedSupplyAtoms) * 1000n) / BigInt(tk.publicCapAtoms)) / 10
+                : 0;
             const out = tk.graduated ?? BigInt(tk.issuedSupplyAtoms) >= BigInt(tk.publicCapAtoms);
             const on = selected === tk.tokenId;
             return (
@@ -238,12 +262,17 @@ function MarketContent() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate text-bone">${tk.ticker}</span>
-                  <span className={out ? "chip chip-signal" : "chip chip-verified"}>{out ? t("market.mintedOut") : `${minted}%`}</span>
+                  <span className={out ? "chip chip-signal" : "chip chip-verified"}>
+                    {out ? t("market.mintedOut") : `${minted}%`}
+                  </span>
                 </div>
                 <div className="mt-1 truncate text-xs text-bone-dim">{tk.displayName}</div>
                 <div className="mt-3 text-xs text-bone-2">
                   {book
-                    ? t(book.asks === 1 ? "market.askFloor" : "market.asksFloor", { n: fmtInt(book.asks), floor: fmtInt(Math.ceil(book.floor ?? 0)) })
+                    ? t(book.asks === 1 ? "market.askFloor" : "market.asksFloor", {
+                        n: fmtInt(book.asks),
+                        floor: fmtInt(Math.ceil(book.floor ?? 0)),
+                      })
                     : out
                       ? t("market.noAsksYet")
                       : t("market.minting")}
@@ -252,11 +281,15 @@ function MarketContent() {
             );
           })}
         </div>
-        {tokens.length > 0 && cards.length === 0 ? <p className="mt-4 text-sm text-bone-dim">{t("market.noMatch", { q: query })}</p> : null}
+        {tokens.length > 0 && cards.length === 0 ? (
+          <p className="mt-4 text-sm text-bone-dim">{t("market.noMatch", { q: query })}</p>
+        ) : null}
         {selectedToken ? (
           <p className="mt-4 text-xs text-bone-dim">
             {t("market.showingOnly", { ticker: selectedToken.ticker })}{" "}
-            <Link href={`/token/${selectedToken.tokenId}`} className="text-signal hover:underline">{t("market.openPage")}</Link>
+            <Link href={`/token/${selectedToken.tokenId}`} className="text-signal hover:underline">
+              {t("market.openPage")}
+            </Link>
             {t("market.toMint")}
           </p>
         ) : null}
@@ -266,7 +299,13 @@ function MarketContent() {
         {!loaded ? (
           <Empty message={t("market.loadingListings")} />
         ) : rows.length === 0 ? (
-          <Empty message={selectedToken ? t("market.noAsksFor", { ticker: selectedToken.ticker }) : t("market.noListings")} />
+          <Empty
+            message={
+              selectedToken
+                ? t("market.noAsksFor", { ticker: selectedToken.ticker })
+                : t("market.noListings")
+            }
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="ledger-table min-w-[64rem]">
@@ -293,7 +332,10 @@ function MarketContent() {
                     <tr key={l.listingId} className="transition-colors hover:bg-ink-3">
                       <td>
                         {firstOfToken ? (
-                          <Link href={`/token/${l.tokenId}`} className="text-bone hover:text-signal">
+                          <Link
+                            href={`/token/${l.tokenId}`}
+                            className="text-bone hover:text-signal"
+                          >
                             {l.ticker ?? `${l.tokenId.slice(0, 10)}\u2026`}
                           </Link>
                         ) : (
@@ -314,7 +356,11 @@ function MarketContent() {
                       <td className="text-bone-2">{fmtTokens(BigInt(l.amountAtoms))}</td>
                       <td className="text-bone-2">{fmtBtc(BigInt(l.totalPriceSats))}</td>
                       <td>
-                        <span className={statusChip(l.status)}>{isMessageKey(`lst.${l.status}`) ? t(`lst.${l.status}` as MessageKey) : l.status}</span>
+                        <span className={statusChip(l.status)}>
+                          {isMessageKey(`lst.${l.status}`)
+                            ? t(`lst.${l.status}` as MessageKey)
+                            : l.status}
+                        </span>
                       </td>
                       <td className="hex">{l.sellerTokenScript.slice(0, 10)}&hellip;</td>
                       <td>
@@ -359,7 +405,6 @@ function MarketContent() {
   );
 }
 
-
 /** Status is protocol state, so it gets the semantic chips, not grey text. */
 function statusChip(status: string): string {
   if (status === "ACTIVE") return "chip chip-verified";
@@ -377,7 +422,9 @@ function Empty({ message }: { message: string }) {
 
 function SuspenseLoading() {
   const t = useT();
-  return <div className="panel px-6 py-16 text-center text-sm text-bone-dim">{t("common.loading")}</div>;
+  return (
+    <div className="panel px-6 py-16 text-center text-sm text-bone-dim">{t("common.loading")}</div>
+  );
 }
 
 /**

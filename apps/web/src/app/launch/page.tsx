@@ -7,6 +7,7 @@ import { verifyClientIntent } from "@crclaunch/wallets";
 import { FeePicker, useFeeRates } from "@/components/FeePicker";
 import { fmtInt } from "@/lib/format";
 import { errorText } from "@/lib/trade";
+import { notifyLocalBroadcast } from "@/lib/use-indexed-block";
 import { useT } from "@/i18n/LanguageProvider";
 
 interface Prepared {
@@ -45,7 +46,14 @@ export default function LaunchPage() {
       const r = await fetch("/api/v3/launch/prepare", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ticker, displayName: name, description, websiteUrl: website, xUrl, imageUrl }),
+        body: JSON.stringify({
+          ticker,
+          displayName: name,
+          description,
+          websiteUrl: website,
+          xUrl,
+          imageUrl,
+        }),
       });
       const j = await r.json();
       if (!j.ok) throw new Error(errorText(j));
@@ -95,6 +103,7 @@ export default function LaunchPage() {
       const sj = await submit.json();
       if (!sj.ok) throw new Error(errorText(sj));
       setTokenId(bj.data.tokenId);
+      notifyLocalBroadcast();
       setStatus(t("launch.broadcast", { txid: sj.data.txid.slice(0, 16) }));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -113,8 +122,18 @@ export default function LaunchPage() {
 
       <div className="space-y-3">
         <Field label={t("launch.name")} value={name} onChange={setName} placeholder="Frog Coin" />
-        <Field label={t("launch.ticker")} value={ticker} onChange={(v) => setTicker(v.toUpperCase())} placeholder="FROG" />
-        <Field label={t("launch.description")} value={description} onChange={setDescription} placeholder={t("launch.descriptionPh")} />
+        <Field
+          label={t("launch.ticker")}
+          value={ticker}
+          onChange={(v) => setTicker(v.toUpperCase())}
+          placeholder="FROG"
+        />
+        <Field
+          label={t("launch.description")}
+          value={description}
+          onChange={setDescription}
+          placeholder={t("launch.descriptionPh")}
+        />
         <Field label={t("launch.website")} value={website} onChange={setWebsite} />
         <Field label={t("launch.x")} value={xUrl} onChange={setXUrl} />
         <Field label={t("launch.image")} value={imageUrl} onChange={setImageUrl} />
@@ -128,31 +147,59 @@ export default function LaunchPage() {
                 e.currentTarget.style.display = "none";
               }}
             />
-            <span className="text-xs text-bone-dim">
-              {t("launch.imageNote")}
-            </span>
+            <span className="text-xs text-bone-dim">{t("launch.imageNote")}</span>
           </div>
         ) : null}
       </div>
 
       {!prepared ? (
-        <button onClick={prepare} disabled={busy || !name.trim() || !ticker.trim()} className="w-full bg-signal px-6 py-3 text-bone hover:bg-[#F0A253] disabled:opacity-50">
+        <button
+          onClick={prepare}
+          disabled={busy || !name.trim() || !ticker.trim()}
+          className="w-full bg-signal px-6 py-3 text-bone hover:bg-[#F0A253] disabled:opacity-50"
+        >
           {busy ? t("launch.preparing") : t("launch.review")}
         </button>
       ) : (
         <div className="border border-rule bg-ink-2 p-5 text-sm">
           <h2 className="text-bone">{t("launch.reviewTitle")}</h2>
-          <Row k="tokenId" v={<span className="break-all font-mono text-xs">{prepared.tokenId ?? t("launch.tokenIdPending")}</span>} />
+          <Row
+            k="tokenId"
+            v={
+              <span className="break-all font-mono text-xs">
+                {prepared.tokenId ?? t("launch.tokenIdPending")}
+              </span>
+            }
+          />
           <Row k={t("launch.rowTicker")} v={`$${prepared.ticker}`} />
           <Row k={t("launch.rowPolicy")} v={`V${prepared.policyVersion}`} />
-          <Row k={t("launch.rowSupply")} v={t("launch.tokensN", { n: fmtInt(BigInt(prepared.publicCapAtoms) / 100_000_000n) })} />
+          <Row
+            k={t("launch.rowSupply")}
+            v={t("launch.tokensN", { n: fmtInt(BigInt(prepared.publicCapAtoms) / 100_000_000n) })}
+          />
           <Row k={t("launch.rowTeam")} v={t("launch.zeroTokens")} />
-          <Row k={t("launch.rowCurve")} v={t("launch.tokensN", { n: fmtInt(BigInt(prepared.publicSupplyAtoms) / 100_000_000n) })} />
+          <Row
+            k={t("launch.rowCurve")}
+            v={t("launch.tokensN", {
+              n: fmtInt(BigInt(prepared.publicSupplyAtoms) / 100_000_000n),
+            })}
+          />
           <Row k={t("launch.rowPrice")} v={t("launch.priceValue")} />
           <Row k={t("launch.rowEarn")} v={t("launch.earnValue")} />
-          <Row k={t("launch.rowFee")} v={t("launch.feeValue", { n: fmtInt(prepared.launchFeeSats) })} />
-          <Row k={t("launch.rowSeed")} v={t("launch.seedValue", { n: fmtInt(prepared.vaultAnchorSats) })} />
-          <Row k={t("launch.rowPay")} v={t("launch.payValue", { n: fmtInt(BigInt(prepared.launchFeeSats) + BigInt(prepared.vaultAnchorSats)) })} />
+          <Row
+            k={t("launch.rowFee")}
+            v={t("launch.feeValue", { n: fmtInt(prepared.launchFeeSats) })}
+          />
+          <Row
+            k={t("launch.rowSeed")}
+            v={t("launch.seedValue", { n: fmtInt(prepared.vaultAnchorSats) })}
+          />
+          <Row
+            k={t("launch.rowPay")}
+            v={t("launch.payValue", {
+              n: fmtInt(BigInt(prepared.launchFeeSats) + BigInt(prepared.vaultAnchorSats)),
+            })}
+          />
           <div className="mt-5">
             <FeePicker
               rates={rates}
@@ -163,11 +210,18 @@ export default function LaunchPage() {
           </div>
           <div className="mt-4">
             {!connected ? (
-              <button onClick={() => void connect()} className="w-full bg-signal px-6 py-3 text-bone hover:bg-[#F0A253]">
+              <button
+                onClick={() => void connect()}
+                className="w-full bg-signal px-6 py-3 text-bone hover:bg-[#F0A253]"
+              >
                 {t("launch.connectToBuild")}
               </button>
             ) : (
-              <button onClick={buildAndSign} disabled={busy} className="w-full bg-signal px-6 py-3 text-bone hover:bg-[#F0A253] disabled:opacity-50">
+              <button
+                onClick={buildAndSign}
+                disabled={busy}
+                className="w-full bg-signal px-6 py-3 text-bone hover:bg-[#F0A253] disabled:opacity-50"
+              >
                 {busy ? status || t("launch.working") : t("launch.buildSign")}
               </button>
             )}
@@ -178,7 +232,10 @@ export default function LaunchPage() {
       {status && <p className="text-sm text-success">{status}</p>}
       {error && <p className="text-sm text-danger">{error}</p>}
       {tokenId && (
-        <Link href={`/token/${tokenId}`} className="block text-center text-sm text-signal hover:underline">
+        <Link
+          href={`/token/${tokenId}`}
+          className="block text-center text-sm text-signal hover:underline"
+        >
           {t("launch.openToken")}
         </Link>
       )}
@@ -186,11 +243,26 @@ export default function LaunchPage() {
   );
 }
 
-function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
   return (
     <label className="block">
       <span className="text-xs text-bone-dim">{label}</span>
-      <input value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full border border-rule bg-ink-2 px-4 py-2 text-sm text-bone outline-none placeholder:text-bone-dim/50 focus:border-brand" />
+      <input
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 w-full border border-rule bg-ink-2 px-4 py-2 text-sm text-bone outline-none placeholder:text-bone-dim/50 focus:border-brand"
+      />
     </label>
   );
 }

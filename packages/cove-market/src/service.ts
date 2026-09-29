@@ -1,7 +1,20 @@
 import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import { eq, and, isNull, inArray, lte, desc, asc, sql } from "drizzle-orm";
-import { schema, prepareSubmission, claimSubmission, saveSignedSubmission, getSubmission, publishSubmission, deferSubmission, SubmissionError, type Submission, type Database, type DbTransaction } from "@crclaunch/db";
+import {
+  schema,
+  observeSubmissionFundingConflict,
+  prepareSubmission,
+  claimSubmission,
+  saveSignedSubmission,
+  getSubmission,
+  publishSubmission,
+  deferSubmission,
+  SubmissionError,
+  type Submission,
+  type Database,
+  type DbTransaction,
+} from "@crclaunch/db";
 import {
   broadcastRecordedTransaction,
   estimateVsize,
@@ -19,9 +32,17 @@ import { MarketError } from "./errors.js";
 import type { MarketConfig } from "./config.js";
 import type { ListingV1, CancellationV1 } from "./types.js";
 import { listingIdOf, cancellationHashOf } from "./order/hash.js";
-import { verifyCancellationAuthorization, verifyReservationAuthorization } from "./order/signature.js";
+import {
+  verifyCancellationAuthorization,
+  verifyReservationAuthorization,
+} from "./order/signature.js";
 import { validateListingShape } from "./order/validate.js";
-import { unsignedTxDigest, parsePsbt, validateP2wpkhPartialSig, partialSigOfInput } from "./psbt.js";
+import {
+  unsignedTxDigest,
+  parsePsbt,
+  validateP2wpkhPartialSig,
+  partialSigOfInput,
+} from "./psbt.js";
 import {
   buildListingPsbt,
   verifyListingPsbt,
@@ -71,7 +92,9 @@ export const PENDING_LISTING_MAX_BLOCKS = 6n;
 export const LISTING_SECRET_COLUMNS = ["sellerPresignedPsbt"] as const;
 
 /** A listing row without the columns that must never leave the server. */
-export function publicListing<T extends { sellerPresignedPsbt?: string | null }>(row: T): Omit<T, "sellerPresignedPsbt"> {
+export function publicListing<T extends { sellerPresignedPsbt?: string | null }>(
+  row: T,
+): Omit<T, "sellerPresignedPsbt"> {
   const { sellerPresignedPsbt: _secret, ...rest } = row;
   void _secret;
   return rest;
@@ -142,13 +165,22 @@ const P2P_OP_RETURN_SCRIPT_BYTES = 57;
  * the script needs it. A native-segwit script carries its own key hash; any
  * other kind cannot be put in a signable PSBT without the key.
  */
-function assertKeyControls(scriptHex: string, publicKeyHex: string | undefined, network: bitcoin.networks.Network, who: string): void {
+function assertKeyControls(
+  scriptHex: string,
+  publicKeyHex: string | undefined,
+  network: bitcoin.networks.Network,
+  who: string,
+): void {
   const script = Buffer.from(scriptHex, "hex");
   const kind = spendKindOf(script);
-  if (kind === null) throw new MarketError("UNSUPPORTED_ADDRESS", `${who} address type is not supported`);
+  if (kind === null)
+    throw new MarketError("UNSUPPORTED_ADDRESS", `${who} address type is not supported`);
   if (!publicKeyHex) {
     if (kind === "p2wpkh") return;
-    throw new MarketError("PUBLIC_KEY_REQUIRED", `${who} public key is required for a ${kind} address`);
+    throw new MarketError(
+      "PUBLIC_KEY_REQUIRED",
+      `${who} public key is required for a ${kind} address`,
+    );
   }
   let derived: Buffer;
   try {
@@ -156,12 +188,23 @@ function assertKeyControls(scriptHex: string, publicKeyHex: string | undefined, 
   } catch {
     throw new MarketError("PUBLIC_KEY_REQUIRED", `${who} public key is invalid`);
   }
-  if (!derived.equals(script)) throw new MarketError("PUBLIC_KEY_REQUIRED", `${who} public key does not control that address`);
+  if (!derived.equals(script))
+    throw new MarketError("PUBLIC_KEY_REQUIRED", `${who} public key does not control that address`);
 }
 
 function fillFundInputs(fill: FillSelect): BuyerFundInput[] {
-  const raw = fill.buyerFundInputs as unknown as { txid: string; vout: number; script: string; valueSats: string }[];
-  return raw.map((f) => ({ txid: f.txid, vout: f.vout, script: f.script, valueSats: BigInt(f.valueSats) }));
+  const raw = fill.buyerFundInputs as unknown as {
+    txid: string;
+    vout: number;
+    script: string;
+    valueSats: string;
+  }[];
+  return raw.map((f) => ({
+    txid: f.txid,
+    vout: f.vout,
+    script: f.script,
+    valueSats: BigInt(f.valueSats),
+  }));
 }
 
 /**
@@ -197,7 +240,8 @@ export class MarketService {
           isNull(schema.coveV3TokenUtxos.spentByTxid),
         ),
       );
-    if (rows.length !== 1) throw new MarketError("LISTING_BAD_SOURCE", "source token UTXO not canonical/unspent");
+    if (rows.length !== 1)
+      throw new MarketError("LISTING_BAD_SOURCE", "source token UTXO not canonical/unspent");
     const row = rows[0]!;
     if (row.amountAtoms !== listing.sourceAmountAtoms) {
       throw new MarketError("LISTING_SOURCE_MISMATCH", "source amount mismatch vs indexer");
@@ -209,7 +253,11 @@ export class MarketService {
     if (txout.scriptPubKeyHex !== listing.sellerTokenScript) {
       throw new MarketError("LISTING_SOURCE_MISMATCH", "source script mismatch vs Core");
     }
-    return { scriptPubKey: asBuffer(listing.sellerTokenScript), amountAtoms: row.amountAtoms, valueSats: txout.valueSats };
+    return {
+      scriptPubKey: asBuffer(listing.sellerTokenScript),
+      amountAtoms: row.amountAtoms,
+      valueSats: txout.valueSats,
+    };
   }
 
   /**
@@ -221,16 +269,25 @@ export class MarketService {
    */
   private async resolvePendingSource(listing: ListingV1): Promise<SourceResolution> {
     const txout = await this.provider.getTxout(listing.sourceTxid, listing.sourceVout);
-    if (!txout) throw new MarketError("LISTING_BAD_SOURCE", "source outpoint is not an unspent output");
-    if (txout.scriptPubKeyHex !== listing.sellerTokenScript || txout.valueSats !== TOKEN_CARRIER_SATS) {
-      throw new MarketError("LISTING_SOURCE_MISMATCH", "source output is not a token carrier at the seller's address");
+    if (!txout)
+      throw new MarketError("LISTING_BAD_SOURCE", "source outpoint is not an unspent output");
+    if (
+      txout.scriptPubKeyHex !== listing.sellerTokenScript ||
+      txout.valueSats !== TOKEN_CARRIER_SATS
+    ) {
+      throw new MarketError(
+        "LISTING_SOURCE_MISMATCH",
+        "source output is not a token carrier at the seller's address",
+      );
     }
     let raw: string;
     try {
       raw = await this.provider.getRawTransaction(listing.sourceTxid);
     } catch (error) {
-      throw new MarketError(isRpcNotFound(error, "getrawtransaction") ? "LISTING_BAD_SOURCE" : "CORE_UNAVAILABLE",
-        "source transaction cannot currently be verified");
+      throw new MarketError(
+        isRpcNotFound(error, "getrawtransaction") ? "LISTING_BAD_SOURCE" : "CORE_UNAVAILABLE",
+        "source transaction cannot currently be verified",
+      );
     }
     const parsed = parseCoveTx(raw);
     if (parsed.kind !== "TRANSFER" || parsed.envelope.op !== OP_TRANSFER_CODE) {
@@ -241,36 +298,69 @@ export class MarketService {
     }
     const alloc = parsed.envelope.allocations.find((a) => a.vout === listing.sourceVout);
     if (!alloc || alloc.amount !== listing.sourceAmountAtoms) {
-      throw new MarketError("LISTING_SOURCE_MISMATCH", "source transfer does not put the listed amount on that output");
+      throw new MarketError(
+        "LISTING_SOURCE_MISMATCH",
+        "source transfer does not put the listed amount on that output",
+      );
     }
-    return { scriptPubKey: asBuffer(listing.sellerTokenScript), amountAtoms: alloc.amount, valueSats: txout.valueSats };
+    return {
+      scriptPubKey: asBuffer(listing.sellerTokenScript),
+      amountAtoms: alloc.amount,
+      valueSats: txout.valueSats,
+    };
   }
 
   private async loadListing(listingId: string): Promise<ListingSelect | null> {
-    const rows = await this.db.select().from(schema.coveV3MarketListings).where(eq(schema.coveV3MarketListings.listingId, listingId));
+    const rows = await this.db
+      .select()
+      .from(schema.coveV3MarketListings)
+      .where(eq(schema.coveV3MarketListings.listingId, listingId));
     return rows[0] ?? null;
   }
 
   private async loadFill(fillId: string): Promise<FillSelect | null> {
-    const rows = await this.db.select().from(schema.coveV3MarketFills).where(eq(schema.coveV3MarketFills.id, fillId));
+    const rows = await this.db
+      .select()
+      .from(schema.coveV3MarketFills)
+      .where(eq(schema.coveV3MarketFills.id, fillId));
     return rows[0] ?? null;
   }
 
   /** Reject invalid reserve requests before their funding outpoints reach Core. */
-  async preflightReserveListing(input: Pick<ReserveListingInput, "listingId" | "reserveNonce" | "buyerTokenScript" | "signatureB64">): Promise<void> {
-    if (!verifyReservationAuthorization({ version: 1, listingId: input.listingId, reserveNonce: input.reserveNonce, buyerTokenScript: input.buyerTokenScript }, input.signatureB64)) {
+  async preflightReserveListing(
+    input: Pick<
+      ReserveListingInput,
+      "listingId" | "reserveNonce" | "buyerTokenScript" | "signatureB64"
+    >,
+  ): Promise<void> {
+    if (
+      !verifyReservationAuthorization(
+        {
+          version: 1,
+          listingId: input.listingId,
+          reserveNonce: input.reserveNonce,
+          buyerTokenScript: input.buyerTokenScript,
+        },
+        input.signatureB64,
+      )
+    ) {
       throw new MarketError("LISTING_BAD_SIGNATURE", "reservation BIP-322 signature invalid");
     }
     const listing = await this.loadListing(input.listingId);
-    if (!listing || listing.network !== this.config.network) throw new MarketError("STATE_CHANGED", "listing not found");
-    if (listing.status !== "ACTIVE") throw new MarketError("LISTING_RESERVED", `listing is ${listing.status}`);
+    if (!listing || listing.network !== this.config.network)
+      throw new MarketError("STATE_CHANGED", "listing not found");
+    if (listing.status !== "ACTIVE")
+      throw new MarketError("LISTING_RESERVED", `listing is ${listing.status}`);
   }
 
   async createListing(input: CreateListingInput): Promise<string> {
     // §M5: a listing must commit to THIS market's chain identity, not another
     // network's (which would let a foreign-chain signature/state pass through).
     if (input.chainIdentity !== this.config.chainIdentity) {
-      throw new MarketError("CHAIN_IDENTITY_MISMATCH", `listing chainIdentity ${input.chainIdentity} != server ${this.config.chainIdentity}`);
+      throw new MarketError(
+        "CHAIN_IDENTITY_MISMATCH",
+        `listing chainIdentity ${input.chainIdentity} != server ${this.config.chainIdentity}`,
+      );
     }
     await assertMarketReady({ db: this.db, config: this.config, provider: this.provider });
     validateListingShape(input);
@@ -289,11 +379,19 @@ export class MarketService {
       );
     }
 
-    assertKeyControls(input.sellerTokenScript, input.sellerTokenPublicKey, btcNetwork(this.config.network), "seller token");
+    assertKeyControls(
+      input.sellerTokenScript,
+      input.sellerTokenPublicKey,
+      btcNetwork(this.config.network),
+      "seller token",
+    );
     // A presigned listing sells its whole carrier: a SIGHASH_SINGLE signature
     // cannot protect token change, so there is none.
     if (input.amountAtoms !== input.sourceAmountAtoms) {
-      throw new MarketError("LISTING_AMOUNT_INVALID", "a listing sells a whole token carrier; split off the amount first");
+      throw new MarketError(
+        "LISTING_AMOUNT_INVALID",
+        "a listing sells a whole token carrier; split off the amount first",
+      );
     }
     // Live if the carrier is indexed; PENDING if it is a fresh split still in
     // the mempool (checked against the transaction itself).
@@ -371,7 +469,11 @@ export class MarketService {
         network: this.config.network,
         listingId,
         eventType: "LISTING_CREATED",
-        payloadJson: { amountAtoms: input.amountAtoms.toString(), totalPriceSats: input.totalPriceSats.toString(), pending },
+        payloadJson: {
+          amountAtoms: input.amountAtoms.toString(),
+          totalPriceSats: input.totalPriceSats.toString(),
+          pending,
+        },
       });
     });
     return listingId;
@@ -385,9 +487,17 @@ export class MarketService {
   async buildListingPsbtFor(listing: ListingV1, sellerTokenPublicKey?: string): Promise<string> {
     validateListingShape(listing);
     if (listing.amountAtoms !== listing.sourceAmountAtoms) {
-      throw new MarketError("LISTING_AMOUNT_INVALID", "a listing sells a whole token carrier; split off the amount first");
+      throw new MarketError(
+        "LISTING_AMOUNT_INVALID",
+        "a listing sells a whole token carrier; split off the amount first",
+      );
     }
-    assertKeyControls(listing.sellerTokenScript, sellerTokenPublicKey, btcNetwork(this.config.network), "seller token");
+    assertKeyControls(
+      listing.sellerTokenScript,
+      sellerTokenPublicKey,
+      btcNetwork(this.config.network),
+      "seller token",
+    );
     let source: SourceResolution;
     try {
       source = await this.resolveSource(listing);
@@ -430,10 +540,21 @@ export class MarketService {
       if (row.status === "FILLED" || row.status === "CANCELLED" || row.status === "BROADCAST") {
         throw new MarketError("LISTING_CANCELLED", `cannot cancel ${row.status} listing`);
       }
-      const submitting = await tx.select({ id: schema.coveV3MarketFills.id }).from(schema.coveV3MarketFills)
-        .where(and(eq(schema.coveV3MarketFills.listingId, listingId), eq(schema.coveV3MarketFills.status, "SUBMITTING"))).limit(1);
-      if (submitting.length) throw new MarketError("STATE_CHANGED", "a signed fill is being submitted");
-      await tx.insert(schema.coveV3MarketCancellations).values({ listingId, cancelHash, cancelNonce, signatureB64 });
+      const submitting = await tx
+        .select({ id: schema.coveV3MarketFills.id })
+        .from(schema.coveV3MarketFills)
+        .where(
+          and(
+            eq(schema.coveV3MarketFills.listingId, listingId),
+            eq(schema.coveV3MarketFills.status, "SUBMITTING"),
+          ),
+        )
+        .limit(1);
+      if (submitting.length)
+        throw new MarketError("STATE_CHANGED", "a signed fill is being submitted");
+      await tx
+        .insert(schema.coveV3MarketCancellations)
+        .values({ listingId, cancelHash, cancelNonce, signatureB64 });
       await tx
         .update(schema.coveV3MarketListings)
         .set({ status: "CANCELLED", updatedAt: new Date() })
@@ -464,28 +585,51 @@ export class MarketService {
   async reserveListing(input: ReserveListingInput): Promise<string> {
     // §M4: require a signed nonce — an unsigned reserve lets anyone lock every
     // listing for free (denial-of-service).
-    if (!verifyReservationAuthorization({ version: 1, listingId: input.listingId, reserveNonce: input.reserveNonce, buyerTokenScript: input.buyerTokenScript }, input.signatureB64)) {
+    if (
+      !verifyReservationAuthorization(
+        {
+          version: 1,
+          listingId: input.listingId,
+          reserveNonce: input.reserveNonce,
+          buyerTokenScript: input.buyerTokenScript,
+        },
+        input.signatureB64,
+      )
+    ) {
       throw new MarketError("LISTING_BAD_SIGNATURE", "reservation BIP-322 signature invalid");
     }
     await assertMarketReady({ db: this.db, config: this.config, provider: this.provider });
     for (const f of input.buyerFundInputs) {
       if (f.script !== input.buyerChangeScript) {
-        throw new MarketError("BUYER_FUNDS_INSUFFICIENT", "every funding coin must belong to the buyer's payment address");
+        throw new MarketError(
+          "BUYER_FUNDS_INSUFFICIENT",
+          "every funding coin must belong to the buyer's payment address",
+        );
       }
     }
-    assertKeyControls(input.buyerChangeScript, input.buyerFundPublicKey, btcNetwork(this.config.network), "buyer payment");
+    assertKeyControls(
+      input.buyerChangeScript,
+      input.buyerFundPublicKey,
+      btcNetwork(this.config.network),
+      "buyer payment",
+    );
     // A token carrier spent as BTC burns its tokens.
     const carriers = await this.db
       .select({ txid: schema.coveV3TokenUtxos.txid, vout: schema.coveV3TokenUtxos.vout })
       .from(schema.coveV3TokenUtxos)
-      .where(and(
-        eq(schema.coveV3TokenUtxos.network, this.config.network),
-        isNull(schema.coveV3TokenUtxos.spentByTxid),
-        eq(schema.coveV3TokenUtxos.scriptPubKey, input.buyerChangeScript),
-      ));
+      .where(
+        and(
+          eq(schema.coveV3TokenUtxos.network, this.config.network),
+          isNull(schema.coveV3TokenUtxos.spentByTxid),
+          eq(schema.coveV3TokenUtxos.scriptPubKey, input.buyerChangeScript),
+        ),
+      );
     const carrierKeys = new Set(carriers.map((c) => `${c.txid}:${c.vout}`));
     if (input.buyerFundInputs.some((f) => carrierKeys.has(`${f.txid}:${f.vout}`))) {
-      throw new MarketError("BUYER_FUNDS_INSUFFICIENT", "a funding coin holds tokens and cannot pay for a purchase");
+      throw new MarketError(
+        "BUYER_FUNDS_INSUFFICIENT",
+        "a funding coin holds tokens and cannot pay for a purchase",
+      );
     }
     const listing = await this.loadListing(input.listingId);
     if (!listing) throw new MarketError("STATE_CHANGED", "listing not found");
@@ -500,12 +644,15 @@ export class MarketService {
         .for("update");
       const row = rows[0];
       if (!row) throw new MarketError("STATE_CHANGED", "listing not found");
-      if (row.status !== "ACTIVE") throw new MarketError("LISTING_RESERVED", `listing is ${row.status}`);
+      if (row.status !== "ACTIVE")
+        throw new MarketError("LISTING_RESERVED", `listing is ${row.status}`);
       if (row.expiryHeight <= tip) {
-        await tx.update(schema.coveV3MarketListings).set({ status: "EXPIRED", updatedAt: new Date() }).where(eq(schema.coveV3MarketListings.listingId, input.listingId));
+        await tx
+          .update(schema.coveV3MarketListings)
+          .set({ status: "EXPIRED", updatedAt: new Date() })
+          .where(eq(schema.coveV3MarketListings.listingId, input.listingId));
         throw new MarketError("LISTING_EXPIRED", "listing expired");
       }
-
 
       const marketFee = this.marketFeeFor(row.totalPriceSats);
       const [inserted] = await tx
@@ -516,7 +663,12 @@ export class MarketService {
           tokenId: row.tokenId,
           buyerTokenScript: input.buyerTokenScript,
           buyerChangeScript: input.buyerChangeScript,
-          buyerFundInputs: input.buyerFundInputs.map((f) => ({ txid: f.txid, vout: f.vout, script: f.script, valueSats: f.valueSats.toString() })),
+          buyerFundInputs: input.buyerFundInputs.map((f) => ({
+            txid: f.txid,
+            vout: f.vout,
+            script: f.script,
+            valueSats: f.valueSats.toString(),
+          })),
           buyerFundPublicKey: input.buyerFundPublicKey ?? null,
           amountAtoms: row.amountAtoms,
           totalPriceSats: row.totalPriceSats,
@@ -554,7 +706,8 @@ export class MarketService {
 
     const fill = await this.loadFill(fillId);
     if (!fill) throw new MarketError("STATE_CHANGED", "fill not found");
-    if (fill.status !== "RESERVED" && fill.status !== "PSBT_BUILT") throw new MarketError("STATE_CHANGED", `fill is ${fill.status}`);
+    if (fill.status !== "RESERVED" && fill.status !== "PSBT_BUILT")
+      throw new MarketError("STATE_CHANGED", `fill is ${fill.status}`);
     const listing = await this.loadListing(fill.listingId);
     if (!listing) throw new MarketError("STATE_CHANGED", "listing not found");
 
@@ -609,7 +762,9 @@ export class MarketService {
         vout: listing.sourceVout,
         script: source.scriptPubKey,
         valueSats: source.valueSats,
-        publicKey: listing.sellerTokenPublicKey ? asBuffer(listing.sellerTokenPublicKey) : undefined,
+        publicKey: listing.sellerTokenPublicKey
+          ? asBuffer(listing.sellerTokenPublicKey)
+          : undefined,
         amountAtoms: listing.sourceAmountAtoms,
       },
       payoutScript: asBuffer(listing.sellerPayoutScript),
@@ -631,10 +786,24 @@ export class MarketService {
     const digest = unsignedTxDigest(result.psbt);
     const changed = await this.db
       .update(schema.coveV3MarketFills)
-      .set({ psbtBase64: psbtB64, unsignedTxDigest: digest, minerFeeSats: settledMinerFeeSats, extraCarrierSats, marketFeeSats: marketFee, status: "PSBT_BUILT", updatedAt: new Date() })
-      .where(and(eq(schema.coveV3MarketFills.id, fillId), inArray(schema.coveV3MarketFills.status, ["RESERVED", "PSBT_BUILT"])))
+      .set({
+        psbtBase64: psbtB64,
+        unsignedTxDigest: digest,
+        minerFeeSats: settledMinerFeeSats,
+        extraCarrierSats,
+        marketFeeSats: marketFee,
+        status: "PSBT_BUILT",
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(schema.coveV3MarketFills.id, fillId),
+          inArray(schema.coveV3MarketFills.status, ["RESERVED", "PSBT_BUILT"]),
+        ),
+      )
       .returning({ id: schema.coveV3MarketFills.id });
-    if (!changed.length) throw new MarketError("STATE_CHANGED", "fill advanced while its PSBT was being built");
+    if (!changed.length)
+      throw new MarketError("STATE_CHANGED", "fill advanced while its PSBT was being built");
     return psbtB64;
   }
 
@@ -646,7 +815,10 @@ export class MarketService {
   async submitBuyerSignedPsbt(fillId: string, psbtB64: string): Promise<void> {
     const fill = await this.loadFill(fillId);
     if (!fill) throw new MarketError("STATE_CHANGED", "fill not found");
-    if (!["PSBT_BUILT", "BUYER_SIGNED", "SUBMITTING", "BROADCAST", "CONFIRMED"].includes(fill.status)) throw new MarketError("STATE_CHANGED", `fill is ${fill.status}`);
+    if (
+      !["PSBT_BUILT", "BUYER_SIGNED", "SUBMITTING", "BROADCAST", "CONFIRMED"].includes(fill.status)
+    )
+      throw new MarketError("STATE_CHANGED", `fill is ${fill.status}`);
 
     const psbt = parsePsbt(psbtB64, btcNetwork(this.config.network));
     if (fill.unsignedTxDigest && unsignedTxDigest(psbt) !== fill.unsignedTxDigest) {
@@ -656,13 +828,21 @@ export class MarketService {
     if (partialSigOfInput(psbt, FILL_SELLER_INPUT) !== null) {
       throw new MarketError("PSBT_MUTATED", "the seller's carrier must not be signed by the buyer");
     }
-    const expectedFunding = new Map(fillFundInputs(fill).map((input) => [`${input.txid.toLowerCase()}:${input.vout}`, input]));
+    const expectedFunding = new Map(
+      fillFundInputs(fill).map((input) => [`${input.txid.toLowerCase()}:${input.vout}`, input]),
+    );
     psbt.data.inputs.forEach((input, i) => {
       if (i === FILL_SELLER_INPUT) return;
       const point = psbt.txInputs[i]!;
-      const expected = expectedFunding.get(`${Buffer.from(point.hash).reverse().toString("hex")}:${point.index}`);
-      if (!expected || !input.witnessUtxo || BigInt(input.witnessUtxo.value) !== expected.valueSats ||
-        input.witnessUtxo.script.toString("hex") !== expected.script.toLowerCase()) {
+      const expected = expectedFunding.get(
+        `${Buffer.from(point.hash).reverse().toString("hex")}:${point.index}`,
+      );
+      if (
+        !expected ||
+        !input.witnessUtxo ||
+        BigInt(input.witnessUtxo.value) !== expected.valueSats ||
+        input.witnessUtxo.script.toString("hex") !== expected.script.toLowerCase()
+      ) {
         throw new MarketError("PSBT_MUTATED", "buyer funding prevout changed");
       }
       validateP2wpkhPartialSig(psbt, i);
@@ -671,13 +851,21 @@ export class MarketService {
     const changed = await this.db
       .update(schema.coveV3MarketFills)
       .set({ psbtBase64: psbtB64, status: "BUYER_SIGNED", updatedAt: new Date() })
-      .where(and(eq(schema.coveV3MarketFills.id, fillId), eq(schema.coveV3MarketFills.status, "PSBT_BUILT"),
-        eq(schema.coveV3MarketFills.unsignedTxDigest, fill.unsignedTxDigest!)))
+      .where(
+        and(
+          eq(schema.coveV3MarketFills.id, fillId),
+          eq(schema.coveV3MarketFills.status, "PSBT_BUILT"),
+          eq(schema.coveV3MarketFills.unsignedTxDigest, fill.unsignedTxDigest!),
+        ),
+      )
       .returning({ id: schema.coveV3MarketFills.id });
     if (!changed.length) {
       const current = await this.loadFill(fillId);
-      if (!current || current.unsignedTxDigest !== fill.unsignedTxDigest ||
-        !["BUYER_SIGNED", "SUBMITTING", "BROADCAST", "CONFIRMED"].includes(current.status)) {
+      if (
+        !current ||
+        current.unsignedTxDigest !== fill.unsignedTxDigest ||
+        !["BUYER_SIGNED", "SUBMITTING", "BROADCAST", "CONFIRMED"].includes(current.status)
+      ) {
         throw new MarketError("STATE_CHANGED", "fill changed while the buyer was signing");
       }
     }
@@ -687,7 +875,9 @@ export class MarketService {
    * Complete a buyer-signed fill: attach the seller's presignature, finalize,
    * validate every market rule and broadcast. No seller step.
    */
-  async completeFill(fillId: string): Promise<{ txid: string; submissionState: "saved" | "broadcast" }> {
+  async completeFill(
+    fillId: string,
+  ): Promise<{ txid: string; submissionState: "saved" | "broadcast" }> {
     const existing = await getSubmission(this.db, this.config.network, "FILL", fillId);
     if (existing) return this.recoverSubmission(existing);
     const validated = await this.finalizeP2PFill(fillId);
@@ -698,11 +888,17 @@ export class MarketService {
     await assertMarketReady({ db: this.db, config: this.config, provider: this.provider });
     const fill = await this.loadFill(fillId);
     if (!fill) throw new MarketError("STATE_CHANGED", "fill not found");
-    if (fill.status !== "BUYER_SIGNED" && fill.status !== "SUBMITTING" && fill.status !== "BROADCAST") throw new MarketError("STATE_CHANGED", `fill is ${fill.status}`);
+    if (
+      fill.status !== "BUYER_SIGNED" &&
+      fill.status !== "SUBMITTING" &&
+      fill.status !== "BROADCAST"
+    )
+      throw new MarketError("STATE_CHANGED", `fill is ${fill.status}`);
     if (!fill.psbtBase64) throw new MarketError("STATE_CHANGED", "fill has no PSBT");
     const listing = await this.loadListing(fill.listingId);
     if (!listing) throw new MarketError("STATE_CHANGED", "listing not found");
-    if (!listing.sellerPresignedPsbt) throw new MarketError("LISTING_CANCELLED", "the listing's signature is gone (cancelled)");
+    if (!listing.sellerPresignedPsbt)
+      throw new MarketError("LISTING_CANCELLED", "the listing's signature is gone (cancelled)");
     // Re-check the canary cap at fill time (§P0-6), not just at listing creation.
     assertSettlementCap(listing.totalPriceSats, this.config.maxP2pSettlementSats);
 
@@ -714,29 +910,60 @@ export class MarketService {
 
     const terms = this.buildTerms(listing, fill);
     const view = await this.loadView(listing.tokenId, listing.sourceTxid, listing.sourceVout);
-    const validated = validateFinalizedP2PFill({ rawTxHex, terms, view, network: this.config.network });
+    const validated = validateFinalizedP2PFill({
+      rawTxHex,
+      terms,
+      view,
+      network: this.config.network,
+    });
 
     return validated;
   }
 
-  async broadcastP2PFill(validated: ValidatedP2PFill): Promise<{ txid: string; submissionState: "saved" | "broadcast" }> {
+  async broadcastP2PFill(
+    validated: ValidatedP2PFill,
+  ): Promise<{ txid: string; submissionState: "saved" | "broadcast" }> {
     const fill = await this.loadFill(validated.fillId);
-    if (!fill?.psbtBase64 || !fill.unsignedTxDigest || fill.tokenId !== validated.tokenId || fill.listingId !== validated.listingId) {
+    if (
+      !fill?.psbtBase64 ||
+      !fill.unsignedTxDigest ||
+      fill.tokenId !== validated.tokenId ||
+      fill.listingId !== validated.listingId
+    ) {
       throw new MarketError("STATE_CHANGED", "fill commitment is unavailable");
     }
     try {
-      const prepared = await prepareSubmission(this.db, { network: this.config.network, sourceKind: "FILL", sourceId: fill.id,
-        operation: "P2P", tokenId: fill.tokenId, backingTxid: null, backingVout: null,
-        unsignedTxDigest: fill.unsignedTxDigest, walletPsbtBase64: fill.psbtBase64 });
+      const prepared = await prepareSubmission(this.db, {
+        network: this.config.network,
+        sourceKind: "FILL",
+        sourceId: fill.id,
+        operation: "P2P",
+        tokenId: fill.tokenId,
+        backingTxid: null,
+        backingVout: null,
+        unsignedTxDigest: fill.unsignedTxDigest,
+        walletPsbtBase64: fill.psbtBase64,
+      });
       return await this.runSubmission(prepared, validated);
     } catch (error) {
-      if (error instanceof SubmissionError) throw new MarketError("CORE_UNAVAILABLE", error.message);
+      if (error instanceof SubmissionError)
+        throw new MarketError("CORE_UNAVAILABLE", error.message);
       throw error;
     }
   }
 
-  async recoverSubmission(saved: Submission): Promise<{ txid: string; submissionState: "saved" | "broadcast" }> {
-    if (saved.network !== this.config.network || saved.sourceKind !== "FILL") throw new MarketError("STATE_CHANGED", "wrong saved fill");
+  async recoverSubmission(
+    saved: Submission,
+  ): Promise<{ txid: string; submissionState: "saved" | "broadcast" }> {
+    if (saved.network !== this.config.network || saved.sourceKind !== "FILL")
+      throw new MarketError("STATE_CHANGED", "wrong saved fill");
+    if (
+      saved.phase === "READY" &&
+      saved.txid &&
+      (await observeSubmissionFundingConflict(this.db, saved))
+    ) {
+      return { txid: saved.txid, submissionState: "saved" };
+    }
     if (saved.phase !== "BROADCAST") {
       await assertMarketReady({ db: this.db, config: this.config, provider: this.provider });
       const fill = await this.loadFill(saved.sourceId);
@@ -747,22 +974,37 @@ export class MarketService {
     return this.runSubmission(saved);
   }
 
-  private async runSubmission(saved: Submission, validated?: ValidatedP2PFill): Promise<{ txid: string; submissionState: "saved" | "broadcast" }> {
+  private async runSubmission(
+    saved: Submission,
+    validated?: ValidatedP2PFill,
+  ): Promise<{ txid: string; submissionState: "saved" | "broadcast" }> {
     if (saved.phase === "BROADCAST") return { txid: saved.txid!, submissionState: "broadcast" };
     let job: Submission | undefined;
     try {
       job = await claimSubmission(this.db, saved.id);
       if (job.phase === "SIGNING") {
         validated ??= await this.finalizeP2PFill(saved.sourceId);
-        job = await saveSignedSubmission(this.db, job, { rawTxHex: validated.validatedTransfer.rawTxHex, txid: validated.txid });
+        job = await saveSignedSubmission(this.db, job, {
+          rawTxHex: validated.validatedTransfer.rawTxHex,
+          txid: validated.txid,
+        });
       }
-      if (!job.rawTxHex || !job.txid) throw new MarketError("STATE_CHANGED", "fill has no saved transaction");
+      if (!job.rawTxHex || !job.txid)
+        throw new MarketError("STATE_CHANGED", "fill has no saved transaction");
+      if (await observeSubmissionFundingConflict(this.db, job))
+        return { txid: job.txid, submissionState: "saved" };
       try {
         const fill = await this.loadFill(job.sourceId);
         const listing = fill ? await this.loadListing(fill.listingId) : null;
-        const source = listing ? await this.sourceUtxoRow(listing.sourceTxid, listing.sourceVout) : null;
+        const source = listing
+          ? await this.sourceUtxoRow(listing.sourceTxid, listing.sourceVout)
+          : null;
         if (!source?.canonical || source.spentByTxid !== job.txid) {
-          await broadcastRecordedTransaction(this.provider, { rawTxHex: job.rawTxHex, txid: job.txid }, this.config.network);
+          await broadcastRecordedTransaction(
+            this.provider,
+            { rawTxHex: job.rawTxHex, txid: job.txid },
+            this.config.network,
+          );
         }
         await publishSubmission(this.db, job);
         return { txid: job.txid, submissionState: "broadcast" };
@@ -770,7 +1012,8 @@ export class MarketService {
         return { txid: job.txid, submissionState: "saved" };
       }
     } catch (error) {
-      if (error instanceof SubmissionError) throw new MarketError("CORE_UNAVAILABLE", error.message);
+      if (error instanceof SubmissionError)
+        throw new MarketError("CORE_UNAVAILABLE", error.message);
       throw error;
     } finally {
       if (job) await deferSubmission(this.db, job).catch(() => {});
@@ -783,7 +1026,10 @@ export class MarketService {
    */
   private reconciledGeneration = "";
 
-  async reconcileMarket(observedTip?: bigint, indexedGeneration?: string): Promise<{ expired: number; invalidated: number; confirmed: number; reorged: number }> {
+  async reconcileMarket(
+    observedTip?: bigint,
+    indexedGeneration?: string,
+  ): Promise<{ expired: number; invalidated: number; confirmed: number; reorged: number }> {
     const tip = observedTip ?? BigInt(await this.provider.getBestHeight());
     let expired = 0;
     let invalidated = 0;
@@ -796,10 +1042,19 @@ export class MarketService {
     const pendingListings = await this.db
       .select()
       .from(schema.coveV3MarketListings)
-      .where(and(eq(schema.coveV3MarketListings.network, this.config.network), eq(schema.coveV3MarketListings.status, "PENDING")))
-      .orderBy(asc(schema.coveV3MarketListings.lastObservedAt)).limit(2);
+      .where(
+        and(
+          eq(schema.coveV3MarketListings.network, this.config.network),
+          eq(schema.coveV3MarketListings.status, "PENDING"),
+        ),
+      )
+      .orderBy(asc(schema.coveV3MarketListings.lastObservedAt))
+      .limit(2);
     for (const listing of pendingListings) {
-      await this.db.update(schema.coveV3MarketListings).set({ lastObservedAt: new Date() }).where(eq(schema.coveV3MarketListings.listingId, listing.listingId));
+      await this.db
+        .update(schema.coveV3MarketListings)
+        .set({ lastObservedAt: new Date() })
+        .where(eq(schema.coveV3MarketListings.listingId, listing.listingId));
       const utxo = await this.sourceUtxoRow(listing.sourceTxid, listing.sourceVout);
       if (utxo && utxo.canonical && !utxo.spentByTxid) {
         const matches =
@@ -807,17 +1062,35 @@ export class MarketService {
           utxo.amountAtoms === listing.sourceAmountAtoms &&
           utxo.scriptPubKey === listing.sellerTokenScript;
         if (matches) {
-          await this.db.update(schema.coveV3MarketListings).set({ status: "ACTIVE", updatedAt: new Date() }).where(eq(schema.coveV3MarketListings.listingId, listing.listingId));
-          await this.db.insert(schema.coveV3MarketEvents).values({ network: this.config.network, listingId: listing.listingId, eventType: "LISTING_ACTIVE", payloadJson: {} });
+          await this.db
+            .update(schema.coveV3MarketListings)
+            .set({ status: "ACTIVE", updatedAt: new Date() })
+            .where(eq(schema.coveV3MarketListings.listingId, listing.listingId));
+          await this.db
+            .insert(schema.coveV3MarketEvents)
+            .values({
+              network: this.config.network,
+              listingId: listing.listingId,
+              eventType: "LISTING_ACTIVE",
+              payloadJson: {},
+            });
         } else {
-          await this.invalidateListing(listing.listingId, "indexed carrier differs from the listing");
+          await this.invalidateListing(
+            listing.listingId,
+            "indexed carrier differs from the listing",
+          );
           invalidated++;
         }
         continue;
       }
-      const gone = utxo?.spentByTxid ? true : !(await this.provider.getTxout(listing.sourceTxid, listing.sourceVout));
+      const gone = utxo?.spentByTxid
+        ? true
+        : !(await this.provider.getTxout(listing.sourceTxid, listing.sourceVout));
       if (gone || tip > listing.creationHeight + PENDING_LISTING_MAX_BLOCKS) {
-        await this.invalidateListing(listing.listingId, gone ? "carrier spent before it confirmed" : "carrier never confirmed");
+        await this.invalidateListing(
+          listing.listingId,
+          gone ? "carrier spent before it confirmed" : "carrier never confirmed",
+        );
         invalidated++;
       }
     }
@@ -826,46 +1099,105 @@ export class MarketService {
     const broadcastFills = await this.db
       .select()
       .from(schema.coveV3MarketFills)
-      .where(and(eq(schema.coveV3MarketFills.network, this.config.network), eq(schema.coveV3MarketFills.status, "BROADCAST"), sql`exists (
+      .where(
+        and(
+          eq(schema.coveV3MarketFills.network, this.config.network),
+          eq(schema.coveV3MarketFills.status, "BROADCAST"),
+          sql`exists (
         select 1 from cove_v3_market_listings l join cove_v3_token_utxos u on u.network = l.network and u.txid = l.source_txid and u.vout = l.source_vout
-        where l.network = ${this.config.network} and l.listing_id = ${schema.coveV3MarketFills.listingId} and u.canonical and u.spent_by_txid = ${schema.coveV3MarketFills.txid})`)).limit(200);
+        where l.network = ${this.config.network} and l.listing_id = ${schema.coveV3MarketFills.listingId} and u.canonical and u.spent_by_txid = ${schema.coveV3MarketFills.txid})`,
+        ),
+      )
+      .limit(200);
     for (const fill of broadcastFills) {
       const listing = await this.loadListing(fill.listingId);
       if (!listing) continue;
       const utxo = await this.sourceUtxoRow(listing.sourceTxid, listing.sourceVout);
       if (utxo && utxo.spentByTxid === fill.txid && utxo.canonical) {
         await this.db.transaction(async (tx) => {
-          await tx.update(schema.coveV3MarketFills).set({ status: "CONFIRMED", blockHeight: utxo.spentHeight ?? tip, blockHash: utxo.spentBlockHash, updatedAt: new Date() }).where(eq(schema.coveV3MarketFills.id, fill.id));
-          await tx.update(schema.coveV3MarketListings).set({ status: "FILLED", updatedAt: new Date() }).where(eq(schema.coveV3MarketListings.listingId, listing.listingId));
+          await tx
+            .update(schema.coveV3MarketFills)
+            .set({
+              status: "CONFIRMED",
+              blockHeight: utxo.spentHeight ?? tip,
+              blockHash: utxo.spentBlockHash,
+              updatedAt: new Date(),
+            })
+            .where(eq(schema.coveV3MarketFills.id, fill.id));
+          await tx
+            .update(schema.coveV3MarketListings)
+            .set({ status: "FILLED", updatedAt: new Date() })
+            .where(eq(schema.coveV3MarketListings.listingId, listing.listingId));
           await this.ensureTrade(tx, fill, listing, utxo.spentHeight ?? tip, utxo.spentBlockHash);
-          await tx.insert(schema.coveV3MarketEvents).values({ network: this.config.network, listingId: listing.listingId, fillId: fill.id, eventType: "FILL_CONFIRMED", payloadJson: { txid: fill.txid } });
+          await tx
+            .insert(schema.coveV3MarketEvents)
+            .values({
+              network: this.config.network,
+              listingId: listing.listingId,
+              fillId: fill.id,
+              eventType: "FILL_CONFIRMED",
+              payloadJson: { txid: fill.txid },
+            });
         });
         confirmed++;
       }
     }
 
     // (B) Reorg: CONFIRMED fills whose source is no longer spent by their tx.
-    const confirmedFills = indexedGeneration !== undefined && indexedGeneration === this.reconciledGeneration ? [] : await this.db
-      .select()
-      .from(schema.coveV3MarketFills)
-      .where(and(eq(schema.coveV3MarketFills.network, this.config.network), eq(schema.coveV3MarketFills.status, "CONFIRMED"), sql`not exists (
+    const confirmedFills =
+      indexedGeneration !== undefined && indexedGeneration === this.reconciledGeneration
+        ? []
+        : await this.db
+            .select()
+            .from(schema.coveV3MarketFills)
+            .where(
+              and(
+                eq(schema.coveV3MarketFills.network, this.config.network),
+                eq(schema.coveV3MarketFills.status, "CONFIRMED"),
+                sql`not exists (
         select 1 from cove_v3_market_listings l join cove_v3_token_utxos u on u.network = l.network and u.txid = l.source_txid and u.vout = l.source_vout
-        where l.network = ${this.config.network} and l.listing_id = ${schema.coveV3MarketFills.listingId} and u.canonical and u.spent_by_txid = ${schema.coveV3MarketFills.txid})`)).limit(200);
+        where l.network = ${this.config.network} and l.listing_id = ${schema.coveV3MarketFills.listingId} and u.canonical and u.spent_by_txid = ${schema.coveV3MarketFills.txid})`,
+              ),
+            )
+            .limit(200);
     for (const fill of confirmedFills) {
       const listing = await this.loadListing(fill.listingId);
       if (!listing) continue;
       const utxo = await this.sourceUtxoRow(listing.sourceTxid, listing.sourceVout);
       if (utxo && utxo.spentByTxid === fill.txid && utxo.canonical) continue; // still confirmed
       await this.db.transaction(async (tx) => {
-        await tx.update(schema.coveV3MarketTrades).set({ canonical: false }).where(and(eq(schema.coveV3MarketTrades.network, this.config.network), eq(schema.coveV3MarketTrades.txid, fill.txid!)));
-        await tx.update(schema.coveV3MarketFills).set({ status: "REORGED", canonical: false, updatedAt: new Date() }).where(eq(schema.coveV3MarketFills.id, fill.id));
-        await tx.update(schema.coveV3MarketListings).set({ status: "REORGED", updatedAt: new Date() }).where(eq(schema.coveV3MarketListings.listingId, listing.listingId));
-        await tx.insert(schema.coveV3MarketEvents).values({ network: this.config.network, listingId: listing.listingId, fillId: fill.id, eventType: "FILL_REORGED", payloadJson: { txid: fill.txid } });
+        await tx
+          .update(schema.coveV3MarketTrades)
+          .set({ canonical: false })
+          .where(
+            and(
+              eq(schema.coveV3MarketTrades.network, this.config.network),
+              eq(schema.coveV3MarketTrades.txid, fill.txid!),
+            ),
+          );
+        await tx
+          .update(schema.coveV3MarketFills)
+          .set({ status: "REORGED", canonical: false, updatedAt: new Date() })
+          .where(eq(schema.coveV3MarketFills.id, fill.id));
+        await tx
+          .update(schema.coveV3MarketListings)
+          .set({ status: "REORGED", updatedAt: new Date() })
+          .where(eq(schema.coveV3MarketListings.listingId, listing.listingId));
+        await tx
+          .insert(schema.coveV3MarketEvents)
+          .values({
+            network: this.config.network,
+            listingId: listing.listingId,
+            fillId: fill.id,
+            eventType: "FILL_REORGED",
+            payloadJson: { txid: fill.txid },
+          });
       });
       reorged++;
     }
 
-    if (indexedGeneration !== undefined && confirmedFills.length < 200) this.reconciledGeneration = indexedGeneration;
+    if (indexedGeneration !== undefined && confirmedFills.length < 200)
+      this.reconciledGeneration = indexedGeneration;
 
     // (C) Reconcile open listings (ACTIVE/RESERVED/BROADCAST) and reorged
     // listings (REORGED): detect external spends and restore post-reorg state.
@@ -875,14 +1207,24 @@ export class MarketService {
       .where(
         and(
           eq(schema.coveV3MarketListings.network, this.config.network),
-          inArray(schema.coveV3MarketListings.status, ["ACTIVE", "RESERVED", "BROADCAST", "REORGED"]),
+          inArray(schema.coveV3MarketListings.status, [
+            "ACTIVE",
+            "RESERVED",
+            "BROADCAST",
+            "REORGED",
+          ]),
           sql`(${schema.coveV3MarketListings.status} in ('BROADCAST','REORGED') or exists (
             select 1 from cove_v3_token_utxos u where u.network = ${this.config.network} and u.txid = ${schema.coveV3MarketListings.sourceTxid}
               and u.vout = ${schema.coveV3MarketListings.sourceVout} and u.canonical and u.spent_by_txid is not null))`,
         ),
-      ).orderBy(asc(schema.coveV3MarketListings.lastObservedAt)).limit(2);
+      )
+      .orderBy(asc(schema.coveV3MarketListings.lastObservedAt))
+      .limit(2);
     for (const listing of openListings) {
-      await this.db.update(schema.coveV3MarketListings).set({ lastObservedAt: new Date() }).where(eq(schema.coveV3MarketListings.listingId, listing.listingId));
+      await this.db
+        .update(schema.coveV3MarketListings)
+        .set({ lastObservedAt: new Date() })
+        .where(eq(schema.coveV3MarketListings.listingId, listing.listingId));
       const utxo = await this.sourceUtxoRow(listing.sourceTxid, listing.sourceVout);
       if (utxo && utxo.spentByTxid) {
         // Indexer says the source is confirmed-spent by some tx.
@@ -898,7 +1240,10 @@ export class MarketService {
       if (txout) {
         // Source is unspent. A reorged listing whose fill tx is gone → ACTIVE.
         if (listing.status === "REORGED") {
-          await this.db.update(schema.coveV3MarketListings).set({ status: "ACTIVE", updatedAt: new Date() }).where(eq(schema.coveV3MarketListings.listingId, listing.listingId));
+          await this.db
+            .update(schema.coveV3MarketListings)
+            .set({ status: "ACTIVE", updatedAt: new Date() })
+            .where(eq(schema.coveV3MarketListings.listingId, listing.listingId));
         }
         continue;
       }
@@ -913,9 +1258,24 @@ export class MarketService {
             await tx
               .update(schema.coveV3MarketFills)
               .set({ status: "BROADCAST", canonical: true, updatedAt: new Date() })
-              .where(and(eq(schema.coveV3MarketFills.listingId, listing.listingId), eq(schema.coveV3MarketFills.txid, ourTxid)));
-            await tx.update(schema.coveV3MarketListings).set({ status: "BROADCAST", updatedAt: new Date() }).where(eq(schema.coveV3MarketListings.listingId, listing.listingId));
-            await tx.insert(schema.coveV3MarketEvents).values({ network: this.config.network, listingId: listing.listingId, eventType: "FILL_REPENDING", payloadJson: { txid: ourTxid } });
+              .where(
+                and(
+                  eq(schema.coveV3MarketFills.listingId, listing.listingId),
+                  eq(schema.coveV3MarketFills.txid, ourTxid),
+                ),
+              );
+            await tx
+              .update(schema.coveV3MarketListings)
+              .set({ status: "BROADCAST", updatedAt: new Date() })
+              .where(eq(schema.coveV3MarketListings.listingId, listing.listingId));
+            await tx
+              .insert(schema.coveV3MarketEvents)
+              .values({
+                network: this.config.network,
+                listingId: listing.listingId,
+                eventType: "FILL_REPENDING",
+                payloadJson: { txid: ourTxid },
+              });
           });
         }
         continue;
@@ -936,10 +1296,24 @@ export class MarketService {
     const expListings = await this.db
       .select()
       .from(schema.coveV3MarketListings)
-      .where(and(eq(schema.coveV3MarketListings.network, this.config.network), eq(schema.coveV3MarketListings.status, "ACTIVE"), lte(schema.coveV3MarketListings.expiryHeight, tip))).limit(200);
+      .where(
+        and(
+          eq(schema.coveV3MarketListings.network, this.config.network),
+          eq(schema.coveV3MarketListings.status, "ACTIVE"),
+          lte(schema.coveV3MarketListings.expiryHeight, tip),
+        ),
+      )
+      .limit(200);
     for (const listing of expListings) {
-      const changed = await this.db.update(schema.coveV3MarketListings).set({ status: "EXPIRED", updatedAt: new Date() })
-        .where(and(eq(schema.coveV3MarketListings.listingId, listing.listingId), eq(schema.coveV3MarketListings.status, "ACTIVE")))
+      const changed = await this.db
+        .update(schema.coveV3MarketListings)
+        .set({ status: "EXPIRED", updatedAt: new Date() })
+        .where(
+          and(
+            eq(schema.coveV3MarketListings.listingId, listing.listingId),
+            eq(schema.coveV3MarketListings.status, "ACTIVE"),
+          ),
+        )
         .returning({ id: schema.coveV3MarketListings.id });
       if (changed.length) expired++;
     }
@@ -954,20 +1328,37 @@ export class MarketService {
           inArray(schema.coveV3MarketFills.status, ["RESERVED", "PSBT_BUILT", "BUYER_SIGNED"]),
           lte(schema.coveV3MarketFills.reservationExpiresAt, now),
         ),
-      ).limit(200);
+      )
+      .limit(200);
     for (const fill of expFills) {
       const changed = await this.db.transaction(async (tx) => {
-        await tx.select({ id: schema.coveV3MarketListings.id }).from(schema.coveV3MarketListings)
-          .where(eq(schema.coveV3MarketListings.listingId, fill.listingId)).for("update");
-        const expiredFill = await tx.update(schema.coveV3MarketFills).set({ status: "EXPIRED", updatedAt: new Date() })
-          .where(and(eq(schema.coveV3MarketFills.id, fill.id), inArray(schema.coveV3MarketFills.status, ["RESERVED", "PSBT_BUILT", "BUYER_SIGNED"]),
-            lte(schema.coveV3MarketFills.reservationExpiresAt, now))).returning({ id: schema.coveV3MarketFills.id });
+        await tx
+          .select({ id: schema.coveV3MarketListings.id })
+          .from(schema.coveV3MarketListings)
+          .where(eq(schema.coveV3MarketListings.listingId, fill.listingId))
+          .for("update");
+        const expiredFill = await tx
+          .update(schema.coveV3MarketFills)
+          .set({ status: "EXPIRED", updatedAt: new Date() })
+          .where(
+            and(
+              eq(schema.coveV3MarketFills.id, fill.id),
+              inArray(schema.coveV3MarketFills.status, ["RESERVED", "PSBT_BUILT", "BUYER_SIGNED"]),
+              lte(schema.coveV3MarketFills.reservationExpiresAt, now),
+            ),
+          )
+          .returning({ id: schema.coveV3MarketFills.id });
         if (!expiredFill.length) return false;
         // Release the listing back to ACTIVE if it is still RESERVED for this fill.
         await tx
           .update(schema.coveV3MarketListings)
           .set({ status: "ACTIVE", updatedAt: new Date() })
-          .where(and(eq(schema.coveV3MarketListings.listingId, fill.listingId), eq(schema.coveV3MarketListings.status, "RESERVED")));
+          .where(
+            and(
+              eq(schema.coveV3MarketListings.listingId, fill.listingId),
+              eq(schema.coveV3MarketListings.status, "RESERVED"),
+            ),
+          );
         return true;
       });
       if (changed) expired++;
@@ -982,7 +1373,13 @@ export class MarketService {
     const rows = await this.db
       .select()
       .from(schema.coveV3TokenUtxos)
-      .where(and(eq(schema.coveV3TokenUtxos.network, this.config.network), eq(schema.coveV3TokenUtxos.txid, txid), eq(schema.coveV3TokenUtxos.vout, vout)));
+      .where(
+        and(
+          eq(schema.coveV3TokenUtxos.network, this.config.network),
+          eq(schema.coveV3TokenUtxos.txid, txid),
+          eq(schema.coveV3TokenUtxos.vout, vout),
+        ),
+      );
     return rows[0] ?? null;
   }
 
@@ -990,7 +1387,12 @@ export class MarketService {
     const rows = await this.db
       .select()
       .from(schema.coveV3MarketFills)
-      .where(and(eq(schema.coveV3MarketFills.listingId, listingId), eq(schema.coveV3MarketFills.txid, spentByTxid)));
+      .where(
+        and(
+          eq(schema.coveV3MarketFills.listingId, listingId),
+          eq(schema.coveV3MarketFills.txid, spentByTxid),
+        ),
+      );
     return rows.length > 0;
   }
 
@@ -1006,7 +1408,10 @@ export class MarketService {
 
   private async inMempool(txid: string): Promise<boolean | null> {
     try {
-      const observation = await this.provider.observeTransaction(txid, { signal: AbortSignal.timeout(5_000), retry: false });
+      const observation = await this.provider.observeTransaction(txid, {
+        signal: AbortSignal.timeout(5_000),
+        retry: false,
+      });
       return observation.state === "mempool" ? true : null;
     } catch {
       return null;
@@ -1015,36 +1420,78 @@ export class MarketService {
 
   private async invalidateListing(listingId: string, reason: string): Promise<void> {
     await this.db.transaction(async (tx) => {
-      await tx.select({ id: schema.coveV3MarketListings.id }).from(schema.coveV3MarketListings)
-        .where(eq(schema.coveV3MarketListings.listingId, listingId)).for("update");
-      const submitting = await tx.select({ id: schema.coveV3MarketFills.id }).from(schema.coveV3MarketFills)
-        .where(and(eq(schema.coveV3MarketFills.listingId, listingId), eq(schema.coveV3MarketFills.status, "SUBMITTING"))).limit(1);
+      await tx
+        .select({ id: schema.coveV3MarketListings.id })
+        .from(schema.coveV3MarketListings)
+        .where(eq(schema.coveV3MarketListings.listingId, listingId))
+        .for("update");
+      const submitting = await tx
+        .select({ id: schema.coveV3MarketFills.id })
+        .from(schema.coveV3MarketFills)
+        .where(
+          and(
+            eq(schema.coveV3MarketFills.listingId, listingId),
+            eq(schema.coveV3MarketFills.status, "SUBMITTING"),
+          ),
+        )
+        .limit(1);
       if (submitting.length) return;
-      await tx.update(schema.coveV3MarketListings).set({ status: "INVALIDATED", sellerPresignedPsbt: null, updatedAt: new Date() }).where(eq(schema.coveV3MarketListings.listingId, listingId));
+      await tx
+        .update(schema.coveV3MarketListings)
+        .set({ status: "INVALIDATED", sellerPresignedPsbt: null, updatedAt: new Date() })
+        .where(eq(schema.coveV3MarketListings.listingId, listingId));
       await tx
         .update(schema.coveV3MarketFills)
         .set({ status: "FAILED", failureReason: reason, updatedAt: new Date() })
         .where(
           and(
             eq(schema.coveV3MarketFills.listingId, listingId),
-            inArray(schema.coveV3MarketFills.status, ["RESERVED", "PSBT_BUILT", "BUYER_SIGNED", "BROADCAST"]),
+            inArray(schema.coveV3MarketFills.status, [
+              "RESERVED",
+              "PSBT_BUILT",
+              "BUYER_SIGNED",
+              "BROADCAST",
+            ]),
           ),
         );
-      await tx.insert(schema.coveV3MarketEvents).values({ network: this.config.network, listingId, eventType: "LISTING_INVALIDATED", payloadJson: { reason } });
+      await tx
+        .insert(schema.coveV3MarketEvents)
+        .values({
+          network: this.config.network,
+          listingId,
+          eventType: "LISTING_INVALIDATED",
+          payloadJson: { reason },
+        });
     });
   }
 
-  private async ensureTrade(tx: DbTransaction, fill: FillSelect, listing: ListingSelect, blockHeight: bigint, blockHash: string | null): Promise<void> {
+  private async ensureTrade(
+    tx: DbTransaction,
+    fill: FillSelect,
+    listing: ListingSelect,
+    blockHeight: bigint,
+    blockHash: string | null,
+  ): Promise<void> {
     const existing = await tx
       .select()
       .from(schema.coveV3MarketTrades)
-      .where(and(eq(schema.coveV3MarketTrades.network, this.config.network), eq(schema.coveV3MarketTrades.txid, fill.txid!)));
+      .where(
+        and(
+          eq(schema.coveV3MarketTrades.network, this.config.network),
+          eq(schema.coveV3MarketTrades.txid, fill.txid!),
+        ),
+      );
     if (existing.length > 0) {
       // Re-confirmation after a reorg: restore canonicity + new height.
       await tx
         .update(schema.coveV3MarketTrades)
         .set({ canonical: true, blockHeight, blockHash, createdAt: new Date() })
-        .where(and(eq(schema.coveV3MarketTrades.network, this.config.network), eq(schema.coveV3MarketTrades.txid, fill.txid!)));
+        .where(
+          and(
+            eq(schema.coveV3MarketTrades.network, this.config.network),
+            eq(schema.coveV3MarketTrades.txid, fill.txid!),
+          ),
+        );
       return;
     }
     await tx.insert(schema.coveV3MarketTrades).values({
@@ -1085,11 +1532,20 @@ export class MarketService {
       buyerTokenScript: asBuffer(fill.buyerTokenScript),
       buyerChangeScript: asBuffer(fill.buyerChangeScript),
       feeScript: this.config.feeScript,
-      buyerFundInputs: fillFundInputs(fill).map((f) => ({ txid: f.txid, vout: f.vout, script: asBuffer(f.script), valueSats: f.valueSats })),
+      buyerFundInputs: fillFundInputs(fill).map((f) => ({
+        txid: f.txid,
+        vout: f.vout,
+        script: asBuffer(f.script),
+        valueSats: f.valueSats,
+      })),
     };
   }
 
-  private async loadView(tokenId: string, sourceTxid: string, sourceVout: number): Promise<CoveCanonicalView> {
+  private async loadView(
+    tokenId: string,
+    sourceTxid: string,
+    sourceVout: number,
+  ): Promise<CoveCanonicalView> {
     return loadCanonicalViewSnapshotFromDb({
       db: this.db,
       network: this.config.network,

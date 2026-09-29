@@ -1,5 +1,6 @@
 "use client";
 
+import { useStatusSnapshot } from "@/lib/use-indexed-block";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n";
 import { useEffect, useState } from "react";
@@ -31,6 +32,8 @@ export interface FeeRatesResponse {
 }
 
 export function useFeeRates() {
+  const snapshot = useStatusSnapshot();
+  const feeRevision = `${snapshot.status?.observations?.feesObservedAt}:${snapshot.available}:${snapshot.feesAvailable}:${snapshot.resumeRevision}`;
   const [rates, setRates] = useState<FeeRatesResponse | null>(null);
   const [selected, setSelected] = useState<FeeTier["key"]>("standard");
 
@@ -40,19 +43,19 @@ export function useFeeRates() {
       void fetch("/api/v3/fees")
         .then((r) => r.json())
         .then((j) => {
-          if (live && j.ok) setRates(j.data as FeeRatesResponse);
+          if (live) setRates(j.ok ? (j.data as FeeRatesResponse) : null);
         })
-        .catch(() => {});
+        .catch(() => {
+          if (live) setRates(null);
+        });
     };
     load();
     // The relay floor climbs as the mempool fills; a stale rate is the exact
     // thing that strands a transaction.
-    const timer = setInterval(load, 60_000);
     return () => {
       live = false;
-      clearInterval(timer);
     };
-  }, []);
+  }, [feeRevision]);
 
   const tier = rates?.tiers.find((t) => t.key === selected) ?? null;
 
@@ -118,12 +121,16 @@ export function FeePicker({
                 active ? "bg-signal/10 text-bone" : "bg-ink-3 text-bone-dim hover:bg-ink-2"
               }`}
             >
-              <div className={`text-sm ${active ? "text-signal" : ""}`}>{t(`fee.${tier.key}` as MessageKey)}</div>
+              <div className={`text-sm ${active ? "text-signal" : ""}`}>
+                {t(`fee.${tier.key}` as MessageKey)}
+              </div>
               <div className="mt-1 text-label uppercase tracking-label tabular-nums">
                 {tier.satPerVb} sat/vB
               </div>
               <div className="mt-0.5 text-label tabular-nums text-bone-dim">
-                {preview !== null ? `≈${preview.toLocaleString()} sats` : t("fee.blocks", { n: tier.blocks })}
+                {preview !== null
+                  ? `≈${preview.toLocaleString()} sats`
+                  : t("fee.blocks", { n: tier.blocks })}
               </div>
             </button>
           );

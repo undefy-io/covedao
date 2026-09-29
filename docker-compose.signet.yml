@@ -21,7 +21,11 @@ services:
     image: covedao-signet-app
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.prod
+      args:
+        COVE_NETWORK: signet
+        SENTRY_DSN: ${SENTRY_DSN:-}
+        SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-dev}
     working_dir: /app/packages/db
     command: ["pnpm", "db:migrate"]
     env_file: .env.signet.local
@@ -33,7 +37,11 @@ services:
     image: covedao-signet-app
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.prod
+      args:
+        COVE_NETWORK: signet
+        SENTRY_DSN: ${SENTRY_DSN:-}
+        SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-dev}
     working_dir: /app/apps/worker
     command: ["pnpm", "start"]
     env_file: .env.signet.local
@@ -41,18 +49,29 @@ services:
       migrate: { condition: service_completed_successfully }
     restart: unless-stopped
 
+    healthcheck:
+      test: ["CMD", "node", "src/health.mjs"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 30s
+
   web:
     image: covedao-signet-app
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.prod
+      args:
+        COVE_NETWORK: signet
+        SENTRY_DSN: ${SENTRY_DSN:-}
+        SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-dev}
     working_dir: /app/apps/web
-    command: ["sh", "-c", "pnpm build && exec pnpm exec next start --hostname 0.0.0.0"]
+    command: ["pnpm", "exec", "next", "start", "--hostname", "0.0.0.0"]
     environment:
       NODE_ENV: production
     env_file: .env.signet.local
     depends_on:
-      worker: { condition: service_started }
+      worker: { condition: service_healthy }
     restart: unless-stopped
     ports:
       - "127.0.0.1:3000:3000"

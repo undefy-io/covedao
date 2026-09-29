@@ -1,71 +1,79 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import {
+  ChainStatusStore,
+  indexedRefreshKey,
+  pendingRefreshKey,
+  type ChainStatus,
+  type StatusSnapshot,
+} from "./chain-status-store";
+export type { ChainStatus } from "./chain-status-store";
 
-/**
- * The indexer's latest block, polled once for the whole page.
- *
- * Everything Cove shows changes only when a block is indexed, so pages refetch
- * when this value changes (put it in an effect's dependencies) instead of
- * polling each endpoint on a timer. It is the block HASH, not the height: a
- * reorg replaces a block at the same height, and the page must refetch then too. One shared poll serves every subscriber,
- * and it runs only while something is subscribed.
- */
-
-export interface ChainStatus {
-  network: string;
-  appEnabled: boolean;
-  core: { reachable: boolean; height: string; tip: string };
-  indexer: {
-    health: string;
-    indexedHeight: string;
-    indexedBlockHash: string;
-    stateRoot: string;
-    lag: string;
-    rebuilding: boolean;
-  };
-  guardian: { configured: boolean };
-  market: { enabled: boolean };
-}
-
-const POLL_MS = 5_000;
-
-let status: ChainStatus | null = null;
-const listeners = new Set<() => void>();
-let timer: ReturnType<typeof setInterval> | undefined;
-
-function poll() {
-  void fetch("/api/v3/status")
-    .then((r) => r.json())
-    .then((j) => {
-      if (!j.ok) return;
-      status = j.data as ChainStatus;
-      listeners.forEach((l) => l());
-    })
-    .catch(() => {});
-}
-
+const empty: StatusSnapshot = {
+  status: null,
+  available: false,
+  pendingAvailable: false,
+  localRevision: 0,
+  resumeRevision: 0,
+};
+const store = new ChainStatusStore(
+  async (signal) => {
+    const response = await fetch("/api/v3/status", { signal, cache: "no-store" });
+    const body = await response.json();
+    if (!response.ok || !body.ok) throw new Error("Status unavailable");
+    return body.data as ChainStatus;
+  },
+  () => typeof document !== "undefined" && document.visibilityState !== "hidden",
+);
+let subscriptions = 0;
+const resume = () => {
+  if (document.visibilityState !== "hidden") store.resume();
+  else store.pause();
+};
 function subscribe(listener: () => void) {
-  listeners.add(listener);
-  if (listeners.size === 1) {
-    poll();
-    timer = setInterval(poll, POLL_MS);
+  const unsubscribe = store.subscribe(listener);
+  if (++subscriptions === 1) {
+    document.addEventListener("visibilitychange", resume);
+    window.addEventListener("focus", resume);
+    window.addEventListener("online", resume);
   }
   return () => {
-    listeners.delete(listener);
-    if (listeners.size === 0) {
-      clearInterval(timer);
-      timer = undefined;
+    unsubscribe();
+    if (--subscriptions === 0) {
+      document.removeEventListener("visibilitychange", resume);
+      window.removeEventListener("focus", resume);
+      window.removeEventListener("online", resume);
     }
   };
 }
-
-/** The latest /api/v3/status, or null before the first answer. */
+export function useStatusSnapshot(): StatusSnapshot {
+  return useSyncExternalStore(subscribe, store.getSnapshot, () => empty);
+}
 export function useChainStatus(): ChainStatus | null {
-  return useSyncExternalStore(subscribe, () => status, () => null);
+  const snapshot = useStatusSnapshot();
+  if (!snapshot.status || snapshot.available) return snapshot.status;
+  return {
+    ...snapshot.status,
+    core: { ...snapshot.status.core, reachable: false, stale: true },
+    indexer: { ...snapshot.status.indexer, health: "STALE" },
+  };
+}
+export function useIndexedBlock(): string {
+  return indexedRefreshKey(useStatusSnapshot());
+}
+export function usePendingRevision(): string {
+  return pendingRefreshKey(useStatusSnapshot());
+}
+export function useMarketRevision(): string {
+  const snapshot = useStatusSnapshot();
+  return `${indexedRefreshKey(snapshot)}:${snapshot.status?.observations?.marketRevision ?? "0"}:${snapshot.resumeRevision}:${snapshot.localRevision}`;
+}
+export function notifyLocalBroadcast(): void {
+  store.broadcast();
 }
 
-/** The indexed block's hash ("" until known). Changes on every new block and on a reorg. */
-export function useIndexedBlock(): string {
-  return useChainStatus()?.indexer.indexedBlockHash ?? "";
+export function useTradeRevision(): string {
+  const snapshot = useStatusSnapshot();
+  return `${indexedRefreshKey(snapshot)}:${snapshot.status?.observations?.tradeRevision ?? "0"}`;
 }

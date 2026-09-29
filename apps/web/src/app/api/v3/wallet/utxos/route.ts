@@ -27,9 +27,10 @@ const TOKEN_CARRIER_SATS = 1_000;
 const addressCache = new AddressUtxoCache();
 async function addressGeneration(): Promise<string> {
   const { db, config } = getV3Services();
-  const result = await db.execute(sql`select c.block_hash, c.height, c.rebuilding,
+  const result =
+    await db.execute(sql`select c.block_hash, c.height, c.rebuilding, e.chain_generation::text, e.pending_revision::text,
     (select max(accepted_at) from cove_v3_submissions where network = ${config.network}) as broadcast_at
-    from cove_v3_cursor c where c.network = ${config.network}`);
+    from cove_v3_cursor c join cove_observation_epochs e on e.network = c.network where c.network = ${config.network}`);
   return JSON.stringify(result.rows[0] ?? {});
 }
 
@@ -50,7 +51,10 @@ function scanAddress(rpc: RpcCaller, address: string): Promise<Unspent[]> {
   const run = async (): Promise<Unspent[]> => {
     for (let attempt = 0; ; attempt++) {
       try {
-        const res = await rpc.call<{ unspents?: Unspent[] }>("scantxoutset", ["start", [{ desc: `addr(${address})` }]]);
+        const res = await rpc.call<{ unspents?: Unspent[] }>("scantxoutset", [
+          "start",
+          [{ desc: `addr(${address})` }],
+        ]);
         return res.unspents ?? [];
       } catch (e) {
         if (attempt >= 40 || !/scan already in progress/i.test((e as Error).message)) throw e;
@@ -58,7 +62,9 @@ function scanAddress(rpc: RpcCaller, address: string): Promise<Unspent[]> {
       }
     }
   };
-  const next = scanQueue.then(run, run).finally(() => { queuedScans--; });
+  const next = scanQueue.then(run, run).finally(() => {
+    queuedScans--;
+  });
   scanQueue = next.catch(() => undefined);
   return next;
 }
@@ -82,7 +88,12 @@ export async function GET(req: Request) {
       const unspents = await scanAddress(provider as unknown as RpcCaller, address);
       const utxos = unspents
         .filter((u) => Math.round(u.amount * 1e8) > TOKEN_CARRIER_SATS)
-        .map((u) => ({ txid: u.txid, vout: u.vout, valueSats: String(Math.round(u.amount * 1e8)), confirmations: 1 }));
+        .map((u) => ({
+          txid: u.txid,
+          vout: u.vout,
+          valueSats: String(Math.round(u.amount * 1e8)),
+          confirmations: 1,
+        }));
       return ok({ address, utxos, source: "core" });
     }
 
@@ -97,16 +108,42 @@ export async function GET(req: Request) {
     }
     let found: ChainUtxo[];
     try {
-      found = await addressCache.read(esplora, config.network, address, await addressGeneration(), addressGeneration, new PostgresRpcBudget(db, providerAccount({ url: esplora }), "public", serverEnv.COVE_RPC_REQUESTS_PER_SECOND));
+      found = await addressCache.read(
+        esplora,
+        config.network,
+        address,
+        await addressGeneration(),
+        addressGeneration,
+        new PostgresRpcBudget(
+          db,
+          providerAccount({ url: esplora }),
+          "public",
+          serverEnv.COVE_RPC_REQUESTS_PER_SECOND,
+        ),
+      );
     } catch (e) {
-      if (e instanceof AddressLookupBusy || (e instanceof Error && e.name === "CapacityUnavailable")) return fail("ADDRESS_INDEX_BUSY", "Please retry shortly.", 503, true);
+      if (
+        e instanceof AddressLookupBusy ||
+        (e instanceof Error && e.name === "CapacityUnavailable")
+      )
+        return fail("ADDRESS_INDEX_BUSY", "Please retry shortly.", 503, true);
       console.error("[wallet/utxos] address index unavailable:", e);
       Sentry.captureException(e);
-      return fail("ADDRESS_INDEX_UNAVAILABLE", "The wallet address index is unavailable. Please try again shortly.", 503, true);
+      return fail(
+        "ADDRESS_INDEX_UNAVAILABLE",
+        "The wallet address index is unavailable. Please try again shortly.",
+        503,
+        true,
+      );
     }
     const utxos = found
       .filter((u) => u.valueSats > BigInt(TOKEN_CARRIER_SATS))
-      .map((u) => ({ txid: u.txid, vout: u.vout, valueSats: u.valueSats.toString(), confirmations: u.confirmations }));
+      .map((u) => ({
+        txid: u.txid,
+        vout: u.vout,
+        valueSats: u.valueSats.toString(),
+        confirmations: u.confirmations,
+      }));
     return ok({ address, utxos, source: "esplora" });
   } catch (e) {
     return handleError(e);

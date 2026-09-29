@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { useIndexedBlock } from "@/lib/use-indexed-block";
+import { useMarketRevision } from "@/lib/use-indexed-block";
 import { useSearchParams } from "next/navigation";
 import type { V3TokenCardData } from "@/components/TokenCard";
 import { DEMO_TOKENS } from "@/lib/demo-tokens";
@@ -47,7 +47,7 @@ function ExploreContent() {
   const [filter, setFilter] = useState<Filter>("all");
 
   // Refetch when a new block is indexed; only a new search shows the loading state.
-  const block = useIndexedBlock();
+  const block = useMarketRevision();
   const shownSearch = useRef<string | null>(null);
   useEffect(() => {
     if (demo) {
@@ -238,7 +238,9 @@ function ExploreContent() {
               </Link>
             ))}
           </div>
-          <p className="mt-5 max-w-xl text-xs leading-relaxed text-bone-dim">{t("explore.graduatedNote")}</p>
+          <p className="mt-5 max-w-xl text-xs leading-relaxed text-bone-dim">
+            {t("explore.graduatedNote")}
+          </p>
         </section>
       ) : null}
 
@@ -247,11 +249,7 @@ function ExploreContent() {
         {!loaded ? (
           <Skeleton />
         ) : failed ? (
-          <Notice
-            kind="rejected"
-            title={t("explore.errTitle")}
-            body={t("explore.errBody")}
-          />
+          <Notice kind="rejected" title={t("explore.errTitle")} body={t("explore.errBody")} />
         ) : rows.length === 0 ? (
           <Notice
             kind="pending"
@@ -340,16 +338,18 @@ function TokenTable({
                   </div>
                 </td>
                 <td>
-                  {t.graduated ?? pct >= 100 ? (
+                  {(t.graduated ?? pct >= 100) ? (
                     <span className="chip chip-signal">{tt("common.graduated")}</span>
                   ) : (
                     <span className="chip chip-verified">{tt("common.open")}</span>
                   )}
                 </td>
                 <td className="text-bone">
-                  {(series[t.tokenId]?.length ?? 0) > 0
-                    ? fmtInt(Math.round(series[t.tokenId]![series[t.tokenId]!.length - 1]!))
-                    : <span className="text-bone-dim">&mdash;</span>}
+                  {(series[t.tokenId]?.length ?? 0) > 0 ? (
+                    fmtInt(Math.round(series[t.tokenId]![series[t.tokenId]!.length - 1]!))
+                  ) : (
+                    <span className="text-bone-dim">&mdash;</span>
+                  )}
                 </td>
                 <td>
                   <Sparkline values={series[t.tokenId] ?? []} width={88} height={24} />

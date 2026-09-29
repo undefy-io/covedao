@@ -127,6 +127,41 @@
       "when": 1790630100000,
       "tag": "0017_shared_capacity",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790630200000,
+      "tag": "0018_pending_observations",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790630300000,
+      "tag": "0019_watched_spends",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790630400000,
+      "tag": "0020_read_revisions",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790630500000,
+      "tag": "0021_pending_runtime",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1790630600000,
+      "tag": "0022_trade_revision",
+      "breakpoints": true
     }
   ]
 }

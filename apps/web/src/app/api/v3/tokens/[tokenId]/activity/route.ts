@@ -1,3 +1,4 @@
+import { cachePublic } from "@/lib/public-read";
 import { ok, handleError } from "@/lib/api";
 import { getV3Services } from "@/lib/v3-server";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -8,9 +9,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ tokenId:
   try {
     const limited = await checkRateLimit(req, "read-token-activity");
     if (limited) return limited;
-    const { app } = getV3Services();
-    const { tokenId } = await params;
-    return ok(await app.tokenActivity(tokenId, 100));
+    return await cachePublic(req, "confirmed", 5000, async () => {
+      const { app } = getV3Services();
+      const { tokenId } = await params;
+      return ok(await app.tokenActivity(tokenId, 100));
+    });
   } catch (e) {
     return handleError(e);
   }

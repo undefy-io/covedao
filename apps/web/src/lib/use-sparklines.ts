@@ -1,5 +1,6 @@
 "use client";
 
+import { useTradeRevision } from "./use-indexed-block";
 import { useEffect, useState } from "react";
 import { demoCandles } from "./demo-candles";
 
@@ -31,6 +32,7 @@ export interface SparklineData {
 const POINTS = 32;
 
 export function useSparklines(subjects: SparklineSubject[], demo: boolean): SparklineData {
+  const revision = useTradeRevision();
   const [series, setSeries] = useState<Record<string, number[]>>({});
   const [lastPrice, setLastPrice] = useState<Record<string, number | null>>({});
   const [loading, setLoading] = useState(true);
@@ -81,7 +83,7 @@ export function useSparklines(subjects: SparklineSubject[], demo: boolean): Spar
       cancelled = true;
     };
     // `key` stands in for the token set; `subjects` is rebuilt every render.
-  }, [key, demo]);
+  }, [key, demo, revision]);
 
   return { series, lastPrice, loading };
 }

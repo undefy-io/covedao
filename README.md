@@ -165,13 +165,14 @@ migrations automatically:
 
 ```bash
 docker compose --profile guardian --profile app stop
-docker compose -f docker-compose.signet.yml up -d --build --wait
+docker compose --env-file .env.signet.local -f docker-compose.signet.yml up -d --build --wait
 # App: http://127.0.0.1:3000
 curl http://127.0.0.1:3000/api/v3/status
 ```
 
-The signet web container builds the application before starting `next start`.
-Allow about a minute for startup. This gives stable request timings without
+The production image builds the application once, then the web starts with
+`next start`. The worker warms database observations before the web starts.
+Allow about a minute for the image build. This gives stable request timings without
 development-time route compilation. Rebuild the image to apply source changes;
 the build uses the network and public Sentry settings from `.env.signet.local`.
 
@@ -267,8 +268,7 @@ updated merely by pulling this code.
 The wallet UI follows portfolio pages before selecting token inputs, with a
 10,000-record cap. Oversized portfolios return an error instead of a partial
 balance. Exact balance and holder aggregates still scale with matching live
-outputs. Pagination can change as new records arrive; revision-consistent reads
-are part of the remaining API scaling work.
+outputs. Pagination can change as new records arrive; public caches are fenced by indexed and off-chain revisions.
 
 Migration `0013_bounded_public_reads.sql` adds indexes for these queries. Apply
 it before deploying the updated readers. Index creation can block writes on
@@ -457,3 +457,36 @@ public issue.
 ## License
 
 MIT
+
+### Indexed-read release
+
+Use `Dockerfile.prod` for the web, worker and one-off migration service. Build
+with `COVE_NETWORK` and the public `SENTRY_DSN`/`SENTRY_ENVIRONMENT`; deploy each
+image with that same network. Keep the private service variables in runtime
+secrets. Run database migrations once, stop old workers, start the new worker,
+and wait for its health check before serving the new web image. Keep a database
+backup and the previous image tag. Additive migrations remain compatible with
+the previous readers; rolling back does not require deleting tables or data.
+
+Backing buy/redeem quotes and transaction status read durable database
+observations. Missing, invalidated or pending observations older than 15 seconds
+return retryable unavailability; there is no request-time RPC fallback. Unknown
+transaction IDs do not enroll worker jobs. The worker observes the accepted
+mempool branch, while confirmed spends and reorgs invalidate observations
+atomically with the indexer cursor. Saved signed transactions with proven
+canonical conflicts retain their bytes and pause retries until reconsidered
+following a chain-generation change.
+
+One browser status subscription coordinates indexed, pending, market and trade
+refreshes. Hidden tabs pause it; resuming or locally submitting refreshes pending
+data. Public success caches have bounded memory, short expiry and revision
+fences. Wallet and private session responses remain uncached. The worker health
+check reads database observations, so health probes spend no RPC quota.
+
+The reproducible load harness is `scripts/testing/release-read-load.mjs`.
+It only accepts the isolated database `127.0.0.1:5435/release_load` and web ports
+3003/3004. Copy a successful isolated competing-regtest fixture into that database,
+then run `seed`, `serve`, `run` and `faults` with `RELEASE_TEST_DATABASE_URL` set.
+The fixture clocks support synthetic read-load measurements; they must never run
+against an application database. Real Core competing-spend tests and separate
+Guardian HTTP integration tests independently verify branch selection and signing.

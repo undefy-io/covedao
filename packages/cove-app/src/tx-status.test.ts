@@ -12,57 +12,118 @@ function fixture(results: unknown[][], observeTransaction = vi.fn()) {
     return Object.assign(result, { limit: () => result });
   });
   const select = vi.fn((_fields?: Record<string, unknown>) => ({ from: () => ({ where }) }));
-  const db = { select, selectDistinct: select, update: vi.fn() } as unknown as Database;
-  const provider = { observeTransaction, getMempoolSpender: vi.fn().mockResolvedValue(undefined), isTransactionInMempool: vi.fn().mockResolvedValue(true), getTxout: vi.fn(), getRawTransaction: vi.fn() } as unknown as CoreRpcProvider;
-  const app = new V3AppService(db, provider, loadV3AppConfig({ COVE_NETWORK: "regtest" }), {} as GuardianTransitionSigner);
+  const db = {
+    execute: vi.fn().mockResolvedValue({ rows: [] }),
+    select,
+    selectDistinct: select,
+    update: vi.fn(),
+  } as unknown as Database;
+  const provider = {
+    observeTransaction,
+    getMempoolSpender: vi.fn().mockResolvedValue(undefined),
+    isTransactionInMempool: vi.fn().mockResolvedValue(true),
+    getTxout: vi.fn(),
+    getRawTransaction: vi.fn(),
+  } as unknown as CoreRpcProvider;
+  const app = new V3AppService(
+    db,
+    provider,
+    loadV3AppConfig({ COVE_NETWORK: "regtest" }),
+    {} as GuardianTransitionSigner,
+  );
   return { app, provider, db, select };
 }
 
 describe("public transaction status", () => {
-  it("uses canonical indexed confirmation without calling RPC or returning signing data", async () => {
-    const { app, provider } = fixture([[{ status: "CONFIRMED", psbtBase64: "secret", idempotencyKey: "secret", errorCode: "secret" }],
-      [{ blockHeight: 123n, blockHash: "cd".repeat(32), createdAt: new Date() }]]);
+  function statusFixture(row: Record<string, unknown>) {
+    const f = fixture([]);
+    Object.assign(f.db, { execute: vi.fn().mockResolvedValue({ rows: [row] }) });
+    return f;
+  }
+  it("uses one DB snapshot without RPC or signing data", async () => {
+    const { app, provider, db } = statusFixture({
+      session_status: "CONFIRMED",
+      confirmed_height: "123",
+      confirmed_hash: "cd".repeat(32),
+      confirmed_at: new Date(),
+      psbt_base64: "secret",
+      idempotency_key: "secret",
+      error_code: "secret",
+    });
     const status = await app.txStatus(txid);
-    expect(status.state).toBe("confirmed");
-    expect(status.confirmedHeight).toBe(123n);
-    expect(status.confirmedBlockHash).toBe("cd".repeat(32));
-    expect(status.session).toEqual({ status: "CONFIRMED" });
-    expect(JSON.stringify(status, (_key, value) => typeof value === "bigint" ? value.toString() : value)).not.toContain("secret");
+    expect(status).toMatchObject({
+      state: "confirmed",
+      confirmedHeight: 123n,
+      session: { status: "CONFIRMED" },
+    });
+    expect(
+      JSON.stringify(status, (_key, value) =>
+        typeof value === "bigint" ? value.toString() : value,
+      ),
+    ).not.toContain("secret");
+    expect(db.execute).toHaveBeenCalledTimes(1);
     expect(provider.observeTransaction).not.toHaveBeenCalled();
   });
-
-  it.each(["mempool", "mined"] as const)("reports a positive %s observation without claiming indexed confirmation", async (state) => {
-    const observe = vi.fn().mockResolvedValue({ state, blockHash: state === "mined" ? "cd".repeat(32) : null });
-    const { app } = fixture([[{ status: "BROADCAST" }], []], observe);
-    const status = await app.txStatus(txid);
-    expect(status.state).toBe(state === "mempool" ? "pending" : "mined");
-    expect(status.confirmedHeight).toBeNull();
-    expect(status.mempool).toBe(state === "mempool");
-    expect(status.stale).toBe(false);
-  });
-
-  it.each([new Error("timeout"), new RpcError("getmempoolentry", "http", "HTTP 429", 429)])("preserves unknown on RPC failures", async (error) => {
-    const { app } = fixture([[{ status: "BROADCAST" }], []], vi.fn().mockRejectedValue(error));
-    expect(await app.txStatus(txid)).toMatchObject({ state: "unknown", mempool: null, stale: true, session: { status: "BROADCAST" } });
-  });
-
-  it("does not let arbitrary public txids trigger RPC lookups", async () => {
-    const { app, provider } = fixture([[], [], []]);
-    expect(await app.txStatus(txid)).toMatchObject({ state: "unknown", mempool: null });
+  it.each(["pending", "unknown"])("uses the durable %s observation", async (state) => {
+    const { app, provider } = statusFixture({
+      session_status: "BROADCAST",
+      observed_state: state,
+      fresh: true,
+      observed_at: new Date(),
+    });
+    expect(await app.txStatus(txid)).toMatchObject({
+      state,
+      mempool: state === "pending" ? true : null,
+      stale: false,
+      confirmedHeight: null,
+    });
     expect(provider.observeTransaction).not.toHaveBeenCalled();
   });
-
-  it("admits a tracked market fill without exposing its private data", async () => {
-    const observe = vi.fn().mockResolvedValue({ state: "mempool", blockHash: null });
-    const { app } = fixture([[], [], [{ id: "fill" }]], observe);
-    expect(await app.txStatus(txid)).toMatchObject({ state: "pending", session: null });
-    expect(observe).toHaveBeenCalledTimes(1);
+  it.each([{}, { session_status: "BROADCAST", observed_state: "pending", fresh: false }])(
+    "does not query the chain for missing or stale observations",
+    async (row) => {
+      const { app, provider } = statusFixture(row);
+      expect(await app.txStatus(txid)).toMatchObject({
+        state: "unknown",
+        mempool: null,
+        stale: true,
+      });
+      expect(provider.observeTransaction).not.toHaveBeenCalled();
+    },
+  );
+  it("revisits canonical conflicts after reorg without RPC", async () => {
+    const { app, db, provider } = statusFixture({});
+    vi.mocked(db.execute)
+      .mockResolvedValueOnce({ rows: [{ session_status: "BROADCAST", conflict: true }] } as never)
+      .mockResolvedValueOnce({
+        rows: [
+          { session_status: "BROADCAST", conflict: false, observed_state: "pending", fresh: true },
+        ],
+      } as never);
+    expect(await app.txStatus(txid)).toMatchObject({
+      state: "conflicted",
+      mempool: false,
+      stale: false,
+    });
+    expect(await app.txStatus(txid)).toMatchObject({ state: "pending", mempool: true });
+    expect(provider.observeTransaction).not.toHaveBeenCalled();
+  });
+  it("a formerly confirmed session becomes reorged when its canonical event disappears", async () => {
+    const { app } = statusFixture({ session_status: "CONFIRMED" });
+    expect(await app.txStatus(txid)).toMatchObject({
+      state: "unknown",
+      session: { status: "REORGED" },
+      confirmedHeight: null,
+    });
   });
 });
 
 it("reconciliation never fails a broadcast session when indexing has not confirmed it", async () => {
   const { app, provider, db } = fixture([[{ id: "session", txid }], []]);
-  Object.assign(db, { transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn({ execute: async () => ({ rows: [] }) }) });
+  Object.assign(db, {
+    transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
+      fn({ execute: async () => ({ rows: [] }) }),
+  });
   expect(await app.reconcileAppSessions()).toEqual({ confirmed: 0 });
   expect(db.update).not.toHaveBeenCalled();
   expect(provider.getRawTransaction).not.toHaveBeenCalled();
@@ -73,7 +134,14 @@ it("public fill status selects only allowlisted columns", async () => {
   const { app, select } = fixture([[{ id: "fill", status: "BROADCAST", txid }]]);
   expect(await app.publicFillStatus("fill")).toMatchObject({ id: "fill", txid });
   expect(Object.keys(select.mock.calls[0]![0] as object).sort()).toEqual([
-    "blockHash", "blockHeight", "canonical", "id", "status", "tokenId", "txid", "updatedAt",
+    "blockHash",
+    "blockHeight",
+    "canonical",
+    "id",
+    "status",
+    "tokenId",
+    "txid",
+    "updatedAt",
   ]);
 });
 
@@ -84,46 +152,60 @@ it.each([
 ])("a pending backing read failure cannot expose the parent as tradable", async (error, code) => {
   const { app, provider } = fixture([[{ txid, operation: "BACKING_BUY" }]]);
   vi.mocked(provider.getRawTransaction).mockRejectedValue(error);
-  const follow = app as unknown as { followPendingBacking(tokenId: string, backing: unknown): Promise<unknown> };
-  await expect(follow.followPendingBacking("cd".repeat(32), { input: { txid: "ef".repeat(32), vout: 0 } })).rejects.toThrow(String(code));
+  const follow = app as unknown as {
+    followPendingBacking(tokenId: string, backing: unknown): Promise<unknown>;
+  };
+  await expect(
+    follow.followPendingBacking("cd".repeat(32), { input: { txid: "ef".repeat(32), vout: 0 } }),
+  ).rejects.toThrow(String(code));
 });
 
 it("a positively absent pending candidate leaves its verified unspent parent tradable", async () => {
   const { app, provider } = fixture([[{ txid, operation: "BACKING_BUY" }]]);
   vi.mocked(provider.isTransactionInMempool).mockResolvedValue(false);
   const script = Buffer.from("5120" + "aa".repeat(32), "hex");
-  vi.mocked(provider.getTxout).mockResolvedValue({ scriptPubKeyHex: script.toString("hex"), valueSats: 10_000n, confirmations: 1 });
+  vi.mocked(provider.getTxout).mockResolvedValue({
+    scriptPubKeyHex: script.toString("hex"),
+    valueSats: 10_000n,
+    confirmations: 1,
+  });
   const backing = { input: { txid: "ef".repeat(32), vout: 1, script, valueSats: 10_000n } };
-  const follow = app as unknown as { followPendingBacking(id: string, backing: unknown): Promise<unknown> };
+  const follow = app as unknown as {
+    followPendingBacking(id: string, backing: unknown): Promise<unknown>;
+  };
   expect(await follow.followPendingBacking("cd".repeat(32), backing)).toBe(backing);
   expect(provider.getRawTransaction).not.toHaveBeenCalled();
 });
 
 it("a failed membership lookup cannot expose the parent as tradable", async () => {
   const { app, provider } = fixture([[{ txid, operation: "BACKING_BUY" }]]);
-  vi.mocked(provider.isTransactionInMempool).mockRejectedValue(new RpcError("getmempoolentry", "http", "HTTP 429", 429));
-  const follow = app as unknown as { followPendingBacking(id: string, backing: unknown): Promise<unknown> };
-  await expect(follow.followPendingBacking("cd".repeat(32), { input: { txid, vout: 1 } })).rejects.toThrow("CORE_UNAVAILABLE");
+  vi.mocked(provider.isTransactionInMempool).mockRejectedValue(
+    new RpcError("getmempoolentry", "http", "HTTP 429", 429),
+  );
+  const follow = app as unknown as {
+    followPendingBacking(id: string, backing: unknown): Promise<unknown>;
+  };
+  await expect(
+    follow.followPendingBacking("cd".repeat(32), { input: { txid, vout: 1 } }),
+  ).rejects.toThrow("CORE_UNAVAILABLE");
   expect(provider.getTxout).not.toHaveBeenCalled();
 });
 
 it("an absent or changed pending ancestor requires a new quote when submitting its descendant", async () => {
   const { app, provider } = fixture([[]]);
-  const follow = app as unknown as { followPendingBacking(id: string, backing: unknown, stopAt: { txid: string; vout: number }): Promise<unknown> };
-  await expect(follow.followPendingBacking("cd".repeat(32), { input: { txid, vout: 1 } }, { txid: "ef".repeat(32), vout: 1 })).rejects.toThrow("STATE_CHANGED");
+  const follow = app as unknown as {
+    followPendingBacking(
+      id: string,
+      backing: unknown,
+      stopAt: { txid: string; vout: number },
+    ): Promise<unknown>;
+  };
+  await expect(
+    follow.followPendingBacking(
+      "cd".repeat(32),
+      { input: { txid, vout: 1 } },
+      { txid: "ef".repeat(32), vout: 1 },
+    ),
+  ).rejects.toThrow("STATE_CHANGED");
   expect(provider.getRawTransaction).not.toHaveBeenCalled();
-});
-
-it("reports a canonical conflict without RPC, and re-evaluates it after reorg", async () => {
-  const observe = vi.fn().mockResolvedValue({ state: "mempool", blockHash: null });
-  const { app, db, provider } = fixture([[{ status: "BROADCAST", backingVout: 1 }], [], [{ status: "BROADCAST", backingVout: 1 }], []], observe);
-  Object.assign(db, { execute: vi.fn().mockResolvedValueOnce({ rows: [{ conflict: true }] }).mockResolvedValueOnce({ rows: [{ conflict: false }] }) });
-  expect(await app.txStatus(txid)).toMatchObject({ state: "conflicted", mempool: false, stale: false });
-  expect(provider.observeTransaction).not.toHaveBeenCalled();
-  expect(await app.txStatus(txid)).toMatchObject({ state: "pending", mempool: true });
-});
-
-it("a formerly confirmed session does not claim confirmation after its canonical event disappears", async () => {
-  const { app } = fixture([[{ status: "CONFIRMED" }], []], vi.fn().mockResolvedValue({ state: "unknown", blockHash: null }));
-  expect(await app.txStatus(txid)).toMatchObject({ state: "unknown", session: { status: "REORGED" }, confirmedHeight: null });
 });

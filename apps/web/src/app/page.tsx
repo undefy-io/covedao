@@ -3,10 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useIndexedBlock } from "@/lib/use-indexed-block";
+import { useMarketRevision } from "@/lib/use-indexed-block";
 import { TokenCard, type V3TokenCardData } from "@/components/TokenCard";
 import { Tile } from "@/components/Tile";
-import { PUBLIC_SUPPLY_TOKENS, TEAM_ALLOCATION_TOKENS, CREATOR_PREMINE_TOKENS, getTheoreticalFullRaise } from "@crclaunch/curve";
+import {
+  PUBLIC_SUPPLY_TOKENS,
+  TEAM_ALLOCATION_TOKENS,
+  CREATOR_PREMINE_TOKENS,
+  getTheoreticalFullRaise,
+} from "@crclaunch/curve";
 
 /** 21000000n → "21M". Computed from the curve so the numbers cannot go stale. */
 function fmtCompact(n: bigint): string {
@@ -28,7 +33,7 @@ export default function HomePage() {
   const [loaded, setLoaded] = useState(false);
   const t = useT();
   // Refetch when a new block is indexed.
-  const block = useIndexedBlock();
+  const block = useMarketRevision();
 
   useEffect(() => {
     void fetch("/api/v3/tokens?limit=9")
@@ -48,7 +53,14 @@ export default function HomePage() {
   return (
     <div className="space-y-px">
       <section className="panel px-6 py-14 sm:px-10 sm:py-20">
-        <Image src="/logo.png" alt="covs" width={72} height={72} priority className="mb-6 h-16 w-16 sm:h-[72px] sm:w-[72px]" />
+        <Image
+          src="/logo.png"
+          alt="covs"
+          width={72}
+          height={72}
+          priority
+          className="mb-6 h-16 w-16 sm:h-[72px] sm:w-[72px]"
+        />
         <p className="eyebrow">{t("home.eyebrow")}</p>
         <h1 className="mt-5 max-w-3xl text-display text-bone">
           {t("home.title1")}
@@ -61,8 +73,12 @@ export default function HomePage() {
           {t("home.pitch2")}
         </p>
         <div className="mt-9 flex flex-wrap gap-3">
-          <Link href="/launch" className="btn">{t("home.ctaLaunch")}</Link>
-          <Link href="/explore" className="btn-ghost">{t("home.ctaExplore")}</Link>
+          <Link href="/launch" className="btn">
+            {t("home.ctaLaunch")}
+          </Link>
+          <Link href="/explore" className="btn-ghost">
+            {t("home.ctaExplore")}
+          </Link>
         </div>
       </section>
 
@@ -70,16 +86,25 @@ export default function HomePage() {
         <p className="eyebrow">{t("home.rules")}</p>
         <div className="mt-5 grid grid-cols-2 gap-px bg-rule sm:grid-cols-4">
           <Tile value={fmtCompact(PUBLIC_SUPPLY_TOKENS)} label={t("home.totalSupply")} />
-          <Tile value={fmtCompact(TEAM_ALLOCATION_TOKENS + CREATOR_PREMINE_TOKENS)} label={t("home.teamTokens")} />
+          <Tile
+            value={fmtCompact(TEAM_ALLOCATION_TOKENS + CREATOR_PREMINE_TOKENS)}
+            label={t("home.teamTokens")}
+          />
           <Tile value="50%" label={t("home.creatorShare")} />
-          <Tile value={`${(Number(getTheoreticalFullRaise()) / 1e8).toFixed(3)} BTC`} label={t("home.vaultAtMintOut")} />
+          <Tile
+            value={`${(Number(getTheoreticalFullRaise()) / 1e8).toFixed(3)} BTC`}
+            label={t("home.vaultAtMintOut")}
+          />
         </div>
       </section>
 
       <section className="panel px-6 py-8 sm:px-10">
         <div className="flex items-baseline justify-between">
           <p className="eyebrow">{t("home.recent")}</p>
-          <Link href="/explore" className="text-label uppercase tracking-label text-bone-dim hover:text-signal">
+          <Link
+            href="/explore"
+            className="text-label uppercase tracking-label text-bone-dim hover:text-signal"
+          >
             {t("home.viewAll")}
           </Link>
         </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useStatusSnapshot, useTradeRevision } from "@/lib/use-indexed-block";
 import { useT } from "@/i18n/LanguageProvider";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TokenChart } from "./TokenChart";
@@ -50,6 +51,8 @@ export function TokenMarketPanel({
   refreshKey?: string;
 }) {
   const t = useT();
+  const trades = useTradeRevision();
+  const marketWindow = useStatusSnapshot().status?.observations?.marketWindow ?? "0";
   const [interval, setInterval] = useState<Interval>("1h");
   const [candles, setCandles] = useState<OhlcCandle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,7 +80,7 @@ export function TokenMarketPanel({
     return () => {
       cancelled = true;
     };
-  }, [tokenId, demo, ticker, curveStage, refreshKey]);
+  }, [tokenId, demo, ticker, curveStage, refreshKey, marketWindow]);
 
   // Generated at the interval actually being shown, so a day candle covers a
   // real day instead of being rolled up from a four-day base.
@@ -114,7 +117,7 @@ export function TokenMarketPanel({
     return () => {
       cancelled = true;
     };
-  }, [tokenId, interval, demo, demoSeries, refreshKey]);
+  }, [tokenId, interval, demo, demoSeries, trades]);
 
   const ladder = market?.asks ?? asks;
   const stats = summarize(candles);
@@ -140,7 +143,9 @@ export function TokenMarketPanel({
       ) : null}
 
       {/* Fallback strip for demo mode, where there is no market payload. */}
-      <div className={`mt-5 grid grid-cols-2 gap-px bg-rule sm:grid-cols-5${market ? " hidden" : ""}`}>
+      <div
+        className={`mt-5 grid grid-cols-2 gap-px bg-rule sm:grid-cols-5${market ? " hidden" : ""}`}
+      >
         <Stat
           value={stats ? fmtInt(Math.round(stats.last)) : "—"}
           label={t("mkt.last1k")}
@@ -161,7 +166,9 @@ export function TokenMarketPanel({
           <div className="flex min-h-[420px] items-center justify-center border border-dashed border-rule bg-ink-3 px-6 text-center">
             <div>
               <p className="text-sm text-bone">{t("mkt.noTrades")}</p>
-              <p className="mt-2 max-w-xs text-xs leading-relaxed text-bone-dim">{t("mkt.noTradesBody")}</p>
+              <p className="mt-2 max-w-xs text-xs leading-relaxed text-bone-dim">
+                {t("mkt.noTradesBody")}
+              </p>
             </div>
           </div>
         ) : (

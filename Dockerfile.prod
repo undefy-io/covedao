@@ -1,0 +1,23 @@
+FROM rust:1.94-bookworm AS rust-builder
+WORKDIR /build
+COPY packages/cove-simplicity/rust packages/cove-simplicity/rust
+RUN cargo build --release --locked --manifest-path packages/cove-simplicity/rust/Cargo.toml
+
+FROM node:24-bookworm-slim AS app-builder
+WORKDIR /app
+RUN npm install --global pnpm@10.33.0
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
+COPY apps ./apps
+COPY packages ./packages
+RUN pnpm install --frozen-lockfile
+COPY --from=rust-builder /build/packages/cove-simplicity/rust/target/release/cove-simplicity /app/packages/cove-simplicity/rust/target/release/cove-simplicity
+ARG COVE_NETWORK=signet
+ARG SENTRY_DSN
+ARG SENTRY_ENVIRONMENT=dev
+RUN COVE_NETWORK="$COVE_NETWORK" SENTRY_DSN="$SENTRY_DSN" SENTRY_ENVIRONMENT="$SENTRY_ENVIRONMENT" pnpm --filter @crclaunch/web build
+
+FROM app-builder AS runtime
+ENV NODE_ENV=production
+WORKDIR /app
+EXPOSE 3000
+CMD ["pnpm", "--filter", "@crclaunch/web", "start"]

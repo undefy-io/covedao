@@ -1,3 +1,4 @@
+import { cachePublic } from "@/lib/public-read";
 import { ok, fail, handleError } from "@/lib/api";
 import { getV3Services } from "@/lib/v3-server";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -27,22 +28,23 @@ export async function GET(req: Request) {
   try {
     const limited = await checkRateLimit(req, "read-sparklines");
     if (limited) return limited;
+    return await cachePublic(req, "trades", 5000, async () => {
+      const url = new URL(req.url);
+      const ids = (url.searchParams.get("tokenIds") ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
 
-    const url = new URL(req.url);
-    const ids = (url.searchParams.get("tokenIds") ?? "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+      if (ids.length === 0) return ok({ series: {} });
+      if (ids.length > MAX_TOKENS) {
+        return fail("TOO_MANY_TOKENS", `at most ${MAX_TOKENS} token ids per request`, 400);
+      }
 
-    if (ids.length === 0) return ok({ series: {} });
-    if (ids.length > MAX_TOKENS) {
-      return fail("TOO_MANY_TOKENS", `at most ${MAX_TOKENS} token ids per request`, 400);
-    }
+      const { db, config } = getV3Services();
+      const { series, lastPrice } = await loadSparklines(db, config.network, [...new Set(ids)]);
 
-    const { db, config } = getV3Services();
-    const { series, lastPrice } = await loadSparklines(db, config.network, [...new Set(ids)]);
-
-    return ok({ unit: "sats-per-1m-tokens", interval: "1h", series, lastPrice });
+      return ok({ unit: "sats-per-1m-tokens", interval: "1h", series, lastPrice });
+    });
   } catch (e) {
     return handleError(e);
   }
