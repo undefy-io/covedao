@@ -1180,3 +1180,28 @@ export const coveBackingProofs = pgTable(
   },
   (t) => [primaryKey({ columns: [t.network, t.tokenId] })],
 );
+
+export const coveWalletFunding = pgTable(
+  "cove_wallet_funding",
+  {
+    network: text("network").notNull(),
+    walletScript: text("wallet_script").notNull(),
+    payload: jsonb("payload")
+      .$type<
+        {
+          txid: string;
+          vout: number;
+          valueSats: string;
+          confirmations: number;
+        }[]
+      >()
+      .notNull(),
+    observedAt: timestamp("observed_at", { withTimezone: true })
+      .notNull()
+      .default(sql`clock_timestamp()`),
+  },
+  (t) => [
+    primaryKey({ columns: [t.network, t.walletScript] }),
+    index("cove_wallet_funding_observed_idx").on(t.observedAt),
+  ],
+);
