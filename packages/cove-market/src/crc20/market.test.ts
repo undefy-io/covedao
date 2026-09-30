@@ -13,6 +13,7 @@ const protocol = key.fromPrivateKey(Buffer.alloc(32, 0x34));
 const sellerScript = bitcoin.payments.p2wpkh({ pubkey: seller.publicKey }).output!.toString("hex");
 const buyerScript = bitcoin.payments.p2wpkh({ pubkey: buyer.publicKey }).output!.toString("hex");
 const protocolScript = bitcoin.payments.p2wpkh({ pubkey: protocol.publicKey }).output!.toString("hex");
+const vaultScript = `5120${"f".repeat(64)}`;
 const deployTxid = "a".repeat(64);
 const listing = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -30,7 +31,8 @@ const listing = {
   expiresAtHeight: 200n,
 };
 const asset = { network: "regtest" as const, deployTxid, ticker: "COVE", protocolVersion: 2 as const,
-  tokenOutpoint: `${listing.sellerAnchorTxid}:0`, tokenScriptHex: sellerScript, tokenAtoms: listing.amountAtoms };
+  tokenOutpoint: `${listing.sellerAnchorTxid}:0`, tokenScriptHex: sellerScript, tokenAtoms: listing.amountAtoms,
+  protocolScriptHex: protocolScript, vaultScriptHex: vaultScript };
 const sellerFunding = { txid: listing.sellerAnchorTxid, vout: 0, valueSats: 10_000, scriptHex: sellerScript,
   tokenAtoms: listing.amountAtoms, tokenDeploymentTxid: deployTxid };
 const buyerFunding = { txid: "c".repeat(64), vout: 1, valueSats: 10_000, scriptHex: buyerScript, tokenAtoms: 0n };
@@ -54,6 +56,8 @@ describe("Cove CRC marketplace exact fill", () => {
     expect(() => validateCrcListing(listing, { ...asset, tokenAtoms: 0n }, 100n)).toThrow();
     expect(() => validateCrcListing(listing, { ...asset, tokenOutpoint: `${"f".repeat(64)}:0` }, 100n)).toThrow();
     expect(() => validateCrcListing(listing, { ...asset, tokenScriptHex: buyerScript }, 100n)).toThrow();
+    expect(() => validateCrcListing({ ...listing, sellerScriptHex: vaultScript,
+      sellerPayoutScriptHex: vaultScript }, { ...asset, tokenScriptHex: vaultScript }, 100n)).toThrow();
     expect(() => validateCrcListing(listing, asset, 200n)).toThrow();
   });
 
@@ -78,6 +82,8 @@ describe("Cove CRC marketplace exact fill", () => {
       { listing: { ...listing, sellerAnchorTxid: "f".repeat(64) } },
       { asset: { ...asset, tokenOutpoint: `${"f".repeat(64)}:0` } },
       { protocolScriptHex: buyerScript },
+      { asset: { ...asset, protocolScriptHex: buyerScript } },
+      { buyerScriptHex: vaultScript },
     ]) expect(() => verifyCrcFillTransaction(fill.psbt, { ...options, ...patch })).toThrow();
   });
 

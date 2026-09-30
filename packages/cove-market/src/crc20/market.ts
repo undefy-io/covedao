@@ -31,6 +31,8 @@ export type IndexedCrcAsset = Readonly<{
   tokenOutpoint: string | null;
   tokenScriptHex: string | null;
   tokenAtoms: bigint;
+  protocolScriptHex: string;
+  vaultScriptHex: string;
 }>;
 
 export function crcMarketFee(priceSats: number, feeBps: bigint, minFeeSats: bigint = 1_000n): number {
@@ -82,6 +84,10 @@ export function validateCrcListing(listing: CrcListing, asset: IndexedCrcAsset, 
   "invalid seller payout or fee");
   assert(validHexScript(listing.sellerScriptHex) && validHexScript(listing.sellerPayoutScriptHex),
     "invalid seller script");
+  assert(validHexScript(asset.protocolScriptHex) && validHexScript(asset.vaultScriptHex),
+    "registered Cove scripts are invalid");
+  assert(listing.sellerScriptHex.toLowerCase() !== asset.vaultScriptHex.toLowerCase(),
+    "vault token output cannot be listed as a peer sale");
   assert(listing.sellerScriptHex.toLowerCase() === listing.sellerPayoutScriptHex.toLowerCase(),
     "seller payout must use the token owner script");
 }
@@ -140,6 +146,10 @@ function expectedFill(options: CrcFillOptions): bitcoin.Psbt {
   "buyer funding must be token-free and belong to buyer script");
   assert(options.buyerScriptHex.toLowerCase() !== listing.sellerScriptHex.toLowerCase(),
     "self fills are not supported");
+  assert(options.buyerScriptHex.toLowerCase() !== asset.vaultScriptHex.toLowerCase(),
+    "vault script cannot receive a peer market fill");
+  assert(options.protocolScriptHex.toLowerCase() === asset.protocolScriptHex.toLowerCase(),
+    "market fee recipient differs from indexed deployment");
   assert(safePositiveSats(options.recipientSats) && Number.isSafeInteger(options.minerFeeSats) &&
     options.minerFeeSats >= 0, "invalid recipient value or miner fee");
   const inputSats = [sellerFunding, ...buyerFunding].reduce((sum, input) => sum + BigInt(input.valueSats), 0n);

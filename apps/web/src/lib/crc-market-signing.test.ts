@@ -7,6 +7,7 @@ const deploymentTxid = "a".repeat(64);
 const sellerScriptHex = `0014${"b".repeat(40)}`;
 const buyerScriptHex = `0014${"c".repeat(40)}`;
 const protocolScriptHex = `0014${"d".repeat(40)}`;
+const vaultScriptHex = `5120${"a".repeat(64)}`;
 const sellerFunding = { txid: "e".repeat(64), vout: 0, valueSats: 10_000,
   scriptHex: sellerScriptHex, tokenAtoms: 100n, tokenDeploymentTxid: deploymentTxid };
 const buyerFunding = { txid: "f".repeat(64), vout: 0, valueSats: 10_000,
@@ -16,7 +17,8 @@ const listing = { id: "11111111-1111-4111-8111-111111111111", network: "regtest"
   sellerAnchorTxid: sellerFunding.txid, sellerAnchorVout: 0, sellerAnchorSats: 10_000,
   amountAtoms: 100n, priceSats: 5_000, protocolFeeSats: 1_000, expiresAtHeight: 200n };
 const asset = { network: "regtest" as const, deployTxid: deploymentTxid, ticker: "COVE",
-  protocolVersion: 2, tokenOutpoint: `${sellerFunding.txid}:0`, tokenScriptHex: sellerScriptHex, tokenAtoms: 100n };
+  protocolVersion: 2, tokenOutpoint: `${sellerFunding.txid}:0`, tokenScriptHex: sellerScriptHex,
+  tokenAtoms: 100n, protocolScriptHex, vaultScriptHex };
 const terms = { listing, asset, sellerFunding, buyerFunding: [buyerFunding], buyerScriptHex,
   protocolScriptHex, recipientSats: 1_000, minerFeeSats: 400, currentHeight: 100n };
 
@@ -46,6 +48,10 @@ describe("CRC buyer signing boundary", () => {
       recipientSats: 1_001 }, buyerScriptHex, signer)).rejects.toThrow();
     await expect(signCrcMarketFillAfterReview(psbt(), { ...terms,
       minerFeeSats: 401 }, buyerScriptHex, signer)).rejects.toThrow();
+    await expect(signCrcMarketFillAfterReview(psbt(), { ...terms,
+      asset: { ...asset, protocolScriptHex: buyerScriptHex } }, buyerScriptHex, signer)).rejects.toThrow();
+    await expect(signCrcMarketFillAfterReview(psbt(), { ...terms,
+      asset: { ...asset, vaultScriptHex: buyerScriptHex } }, buyerScriptHex, signer)).rejects.toThrow();
     expect(signer).not.toHaveBeenCalled();
   });
 });

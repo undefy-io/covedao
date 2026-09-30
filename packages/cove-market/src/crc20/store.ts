@@ -41,17 +41,19 @@ function rowListing(row: ListingRow): CrcListing {
 
 async function indexedAsset(tx: DbTransaction, listing: CrcListing): Promise<{ asset: IndexedCrcAsset; height: bigint; protocolScriptHex: string }> {
   const result = await tx.execute(sql`
-    SELECT a.ticker, a.protocol_version, a.protocol_script_hex,
+    SELECT a.ticker, a.protocol_version, a.protocol_script_hex, v.script_hex AS vault_script_hex,
       u.txid AS token_txid, u.vout AS token_vout, u.script_hex AS token_script_hex,
       u.atoms AS token_atoms,
       COALESCE(c.height, a.deploy_height) AS height
     FROM cove_crc_assets a
+    JOIN cove_crc_vaults v ON v.network = a.network AND v.deploy_txid = a.deploy_txid
     LEFT JOIN cove_crc_token_utxos u ON u.network = a.network AND u.deploy_txid = a.deploy_txid
       AND u.txid = ${listing.sellerAnchorTxid} AND u.vout = ${listing.sellerAnchorVout}
     LEFT JOIN cove_crc_cursor c ON c.network = a.network
     WHERE a.network = ${listing.network} AND a.deploy_txid = ${listing.deployTxid}
   `);
   const row = result.rows[0] as { ticker: string; protocol_version: number; protocol_script_hex: string;
+    vault_script_hex: string;
     token_txid: string | null; token_vout: number | null; token_script_hex: string | null;
     token_atoms: string | null; height: string } | undefined;
   if (!row) throw new Error("deployment is not a registered Cove asset on this network");
@@ -59,7 +61,8 @@ async function indexedAsset(tx: DbTransaction, listing: CrcListing): Promise<{ a
     asset: { network: listing.network, deployTxid: listing.deployTxid, ticker: row.ticker,
       protocolVersion: row.protocol_version,
       tokenOutpoint: row.token_txid === null ? null : `${row.token_txid}:${row.token_vout}`,
-      tokenScriptHex: row.token_script_hex, tokenAtoms: BigInt(row.token_atoms ?? 0) },
+      tokenScriptHex: row.token_script_hex, tokenAtoms: BigInt(row.token_atoms ?? 0),
+      protocolScriptHex: row.protocol_script_hex, vaultScriptHex: row.vault_script_hex },
     height: BigInt(row.height), protocolScriptHex: row.protocol_script_hex,
   };
 }

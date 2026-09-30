@@ -19,6 +19,7 @@ const sellerKey = ECPairFactory(ecc).fromPrivateKey(Buffer.alloc(32, 0x51));
 const buyerKey = ECPairFactory(ecc).fromPrivateKey(Buffer.alloc(32, 0x52));
 const sellerScript = bitcoin.payments.p2wpkh({ pubkey: sellerKey.publicKey }).output!.toString("hex");
 const buyerScript = bitcoin.payments.p2wpkh({ pubkey: buyerKey.publicKey }).output!.toString("hex");
+const vaultScript = `5120${"7".repeat(64)}`;
 
 maybe("CRC market SQL concurrency", () => {
   const db = createDb(dbUrl!);
@@ -46,13 +47,22 @@ maybe("CRC market SQL concurrency", () => {
       await db.execute(sql`INSERT INTO cove_crc_assets (network, deploy_txid, ticker, deploy_height, deploy_block_hash, launch_salt_hex, creator_script_hex, protocol_script_hex, protocol_version, burned_atoms)
         VALUES ('regtest', ${deployTxid}, 'TSTX', 10, ${"a".repeat(64)}, ${"e".repeat(64)}, ${sellerScript}, ${buyerScript}, 2, 0)`);
       await db.execute(sql`INSERT INTO cove_crc_vaults (network, deploy_txid, txid, vout, script_hex, btc_sats, minted_atoms, inventory_atoms, availability)
-        VALUES ('regtest', ${deployTxid}, ${"c".repeat(64)}, 1, ${sellerScript}, 10000, 100000000000, 0, 'active')`);
+        VALUES ('regtest', ${deployTxid}, ${"c".repeat(64)}, 1, ${vaultScript}, 10000, 100000000000, 0, 'active')`);
       await db.execute(sql`INSERT INTO cove_crc_balances (network, deploy_txid, script_hex, atoms)
         VALUES ('regtest', ${deployTxid}, ${sellerScript}, 100000000000)`);
       await expect(createCrcListing(db, listing, auth, core, 750n)).rejects.toThrow("token outpoint");
       await db.execute(sql`INSERT INTO cove_crc_token_utxos (network, deploy_txid, txid, vout, script_hex, atoms, created_height, created_block_hash)
         VALUES ('regtest', ${deployTxid}, ${listing.sellerAnchorTxid}, 0, ${sellerScript}, ${listing.amountAtoms.toString()}, 10, ${"a".repeat(64)})`);
       await createCrcListing(db, listing, auth, core, 750n);
+      await expect(reserveCrcFill(db, {
+        listingId: listing.id, network: "regtest", fillId: randomUUID(),
+        buyerScriptHex: buyerScript, protocolScriptHex: sellerScript,
+        recipientSats: 1_000, minerFeeSats: 400,
+        sellerFunding: { txid: listing.sellerAnchorTxid, vout: 0, valueSats: 10_000,
+          scriptHex: sellerScript, tokenAtoms: listing.amountAtoms, tokenDeploymentTxid: deployTxid },
+        buyerFunding: [{ txid: "e".repeat(64), vout: 0, valueSats: 10_000,
+          scriptHex: buyerScript, tokenAtoms: 0n }],
+      }, core)).rejects.toThrow("fee recipient");
       const reserve = (id: string) => reserveCrcFill(db, {
         listingId: listing.id, network: "regtest", fillId: id,
         buyerScriptHex: buyerScript, protocolScriptHex: buyerScript,
