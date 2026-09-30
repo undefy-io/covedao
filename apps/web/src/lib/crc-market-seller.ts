@@ -2,7 +2,7 @@ import * as bitcoin from "bitcoinjs-lib";
 import {
   crcMarketFee, verifyCrcFillTransaction,
   type CrcFillOptions, type CrcListing, type CrcNetwork, type IndexedCrcAsset,
-} from "@crclaunch/cove-market";
+} from "@crclaunch/cove-market/crc20/browser";
 
 type TokenCoin = { txid: string; vout: number; atoms: string; scriptHex: string };
 type BitcoinCoin = { txid: string; vout: number; valueSats: string } | null;
@@ -22,6 +22,9 @@ export function makeCrcSellerListing(options: {
   asset: IndexedCrcAsset;
 }, feeBps: bigint, feeMinSats: bigint): CrcListing {
   const { tokenCoin, bitcoinCoin } = options;
+  if (!/^(0014[0-9a-f]{40}|5120[0-9a-f]{64})$/i.test(options.sellerScriptHex)) {
+    throw new Error("Marketplace seller output must be native SegWit or Taproot");
+  }
   if (!bitcoinCoin || bitcoinCoin.txid !== tokenCoin.txid || bitcoinCoin.vout !== tokenCoin.vout) {
     throw new Error("Selected token output has no matching Bitcoin output");
   }
@@ -84,13 +87,21 @@ export function sellerFillTermsFromPsbt(
   const funding = transaction.ins.map((input, index) => {
     const witness = psbt.data.inputs[index]?.witnessUtxo;
     if (!witness) throw new Error("Market fill is missing trusted Bitcoin input amounts");
+    const scriptHex = witness.script.toString("hex");
+    const p2sh = /^a914[0-9a-f]{40}87$/.test(scriptHex);
+    const partialKey = psbt.data.inputs[index]?.partialSig?.find((signature) =>
+      /^(02|03)[0-9a-f]{64}$/.test(signature.pubkey.toString("hex")))?.pubkey;
+    const tapKey = psbt.data.inputs[index]?.tapInternalKey;
+    if (p2sh && !partialKey) throw new Error("Nested SegWit fill input is missing its signer public key");
     return {
       txid: Buffer.from(input.hash).reverse().toString("hex"),
       vout: input.index,
       valueSats: witness.value,
-      scriptHex: witness.script.toString("hex"),
+      scriptHex,
       tokenAtoms: index === 0 ? listing.amountAtoms : 0n,
       ...(index === 0 ? { tokenDeploymentTxid: listing.deployTxid } : {}),
+      ...(partialKey ? { publicKeyHex: partialKey.toString("hex") } :
+        tapKey ? { publicKeyHex: tapKey.toString("hex") } : {}),
     };
   });
   const recipient = transaction.outs[1]!;
@@ -120,11 +131,22 @@ export async function signCrcSellerFillAfterReview(
   terms: CrcFillOptions,
   walletScriptHex: string,
   signPsbt: (psbtBase64: string, operation: string) => Promise<string>,
+  sellerPublicKeyHex?: string,
 ): Promise<string> {
   if (terms.listing.sellerScriptHex.toLowerCase() !== walletScriptHex.toLowerCase()) {
     throw new Error("Market fill seller does not match the connected wallet");
   }
   const psbt = bitcoin.Psbt.fromBase64(psbtBase64, { network: networkParams(terms.listing.network) });
   verifyCrcFillTransaction(psbt, terms);
-  return signPsbt(psbtBase64, "CRC_MARKET_SELL");
+  if (/^5120[0-9a-f]{64}$/i.test(walletScriptHex) && sellerPublicKeyHex) {
+    if (!/^[0-9a-f]{64}$/i.test(sellerPublicKeyHex)) {
+      throw new Error("Seller Taproot public key is invalid");
+    }
+    const existing = psbt.data.inputs[0]?.tapInternalKey?.toString("hex");
+    if (existing && existing.toLowerCase() !== sellerPublicKeyHex.toLowerCase()) {
+      throw new Error("Seller Taproot key differs from reviewed transaction");
+    }
+    psbt.updateInput(0, { tapInternalKey: Buffer.from(sellerPublicKeyHex, "hex") });
+  }
+  return signPsbt(psbt.toBase64(), "CRC_MARKET_SELL");
 }

@@ -53,6 +53,8 @@ describe("CRC seller authorization", () => {
       bitcoinCoin: { txid: sellerFunding.txid, vout: 0, valueSats: "10000" },
       priceSats: 5_000, expiresAtHeight: 200n, currentHeight: 100n, asset };
     expect(() => makeCrcSellerListing({ ...options, sellerScriptHex: buyerScriptHex }, 750n, 1_000n)).toThrow();
+    expect(() => makeCrcSellerListing({ ...options, sellerScriptHex: `a914${"1".repeat(40)}87` },
+      750n, 1_000n)).toThrow(/native SegWit or Taproot/);
     expect(() => makeCrcSellerListing({ ...options, bitcoinCoin: null }, 750n, 1_000n)).toThrow();
     expect(() => makeCrcSellerListing({ ...options, expiresAtHeight: 100n }, 750n, 1_000n)).toThrow();
     expect(() => makeCrcSellerListing({ ...options, asset: { ...asset, protocolVersion: 1 } }, 750n, 1_000n)).toThrow();
@@ -90,5 +92,45 @@ describe("CRC seller authorization", () => {
     expect(terms.buyerScriptHex).toBe(buyerScriptHex);
     expect(terms.buyerFundingScriptHex).toBe(buyerPaymentScriptHex);
     expect(terms.buyerFunding[0]?.scriptHex).toBe(buyerPaymentScriptHex);
+  });
+
+  it("reconstructs nested SegWit buyer funding from its signed public key", () => {
+    const publicKeyHex = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
+    const nested = bitcoin.payments.p2sh({ redeem: bitcoin.payments.p2wpkh({
+      pubkey: Buffer.from(publicKeyHex, "hex"), network: bitcoin.networks.regtest,
+    }), network: bitcoin.networks.regtest });
+    const funding = { ...buyerFunding, scriptHex: nested.output!.toString("hex"), publicKeyHex };
+    const unsigned = psbt(5_000, bitcoin.Transaction.SIGHASH_ALL, funding);
+    expect(() => sellerFillTermsFromPsbt(unsigned, listing, asset, 100n)).toThrow(/public key/);
+    const signed = bitcoin.Psbt.fromBase64(unsigned, { network: bitcoin.networks.regtest });
+    signed.data.inputs[1]!.partialSig = [{ pubkey: Buffer.from(publicKeyHex, "hex"),
+      signature: Buffer.from("300602010102010101", "hex") }];
+    const terms = sellerFillTermsFromPsbt(signed.toBase64(), listing, asset, 100n);
+    expect(terms.buyerFunding[0]?.publicKeyHex).toBe(publicKeyHex);
+    expect(terms.buyerFundingScriptHex).toBe(funding.scriptHex);
+  });
+
+  it("adds the connected Taproot seller key only after checking the reviewed transaction", async () => {
+    const tapScript = `5120${"b".repeat(64)}`;
+    const tapFunding = { ...sellerFunding, scriptHex: tapScript };
+    const tapListing = { ...listing, sellerScriptHex: tapScript, sellerPayoutScriptHex: tapScript };
+    const tapAsset = { ...asset, tokenScriptHex: tapScript };
+    const template = buildCoveV2MarketFill({ ticker: "COVE", deploymentTxid: deployTxid,
+      listedInput: tapFunding, buyerScriptHex, recipientSats: 1_000,
+      sellerNetPriceSats: 5_000, protocolScriptHex, protocolFeeSats: 1_000,
+      buyerChangeSats: 2_600 });
+    const built = buildUnsignedPsbt(template, [tapFunding, buyerFunding], 400, bitcoin.networks.regtest);
+    const terms = { listing: tapListing, asset: tapAsset, sellerFunding: tapFunding,
+      buyerFunding: [buyerFunding], buyerScriptHex, protocolScriptHex,
+      recipientSats: 1_000, minerFeeSats: 400, currentHeight: 100n };
+    const sellerKey = "c".repeat(64);
+    const signer = vi.fn(async (base64: string) => base64);
+    const signed = await signCrcSellerFillAfterReview(built.toBase64(), terms, tapScript, signer, sellerKey);
+    expect(bitcoin.Psbt.fromBase64(signed).data.inputs[0]?.tapInternalKey?.toString("hex")).toBe(sellerKey);
+    expect(signer).toHaveBeenCalledOnce();
+    signer.mockClear();
+    await expect(signCrcSellerFillAfterReview(built.toBase64(), { ...terms,
+      listing: { ...tapListing, priceSats: 5_001 } }, tapScript, signer, sellerKey)).rejects.toThrow();
+    expect(signer).not.toHaveBeenCalled();
   });
 });

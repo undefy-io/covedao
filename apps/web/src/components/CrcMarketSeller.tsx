@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { COVE_FEE_CONFIG } from "@crclaunch/cove-economics";
-import { crcCancelMessage, crcListingMessage, type CrcFillOptions, type CrcListing, type IndexedCrcAsset } from "@crclaunch/cove-market";
+import { crcCancelMessage, crcListingMessage, type CrcFillOptions, type CrcListing, type IndexedCrcAsset } from "@crclaunch/cove-market/crc20/browser";
 import { fetchAllCrcWalletBalances, type CrcWalletBalance } from "@/lib/crc-client";
 import { makeCrcSellerListing, sellerFillTermsFromPsbt, signCrcSellerFillAfterReview } from "@/lib/crc-market-seller";
 import { formatAtoms } from "./CrcHome";
@@ -53,7 +53,7 @@ function sellerAsset(token: Token, coin: TokenCoin | undefined): IndexedCrcAsset
 
 export function CrcMarketSeller() {
   const wallet = useWallet();
-  const { connected, ordinalsAddress, ordinalsScript, network, connect, signPsbt, signBip322 } = wallet;
+  const { connected, ordinalsAddress, ordinalsScript, ordinalsPublicKey, network, connect, signPsbt, signBip322 } = wallet;
   const [active, setActive] = useState(false);
   const [balances, setBalances] = useState<CrcWalletBalance[]>([]);
   const [assetId, setAssetId] = useState("");
@@ -73,20 +73,19 @@ export function CrcMarketSeller() {
   const [success, setSuccess] = useState("");
 
   const refreshSeller = useCallback(async () => {
-    if (!connected || !ordinalsAddress || !ordinalsScript) return;
-    const [held, market] = await Promise.all([
-      fetchAllCrcWalletBalances(ordinalsAddress),
-      api<{ active: boolean; listings: ListingRow[] }>("/api/crc/v1/market/listings"),
-    ]);
+    const market = await api<{ active: boolean; listings: ListingRow[] }>("/api/crc/v1/market/listings");
+    setActive(market.active);
+    if (!market.active || !connected || !ordinalsAddress || !ordinalsScript) {
+      setBalances([]); setListings([]); return;
+    }
+    const held = await fetchAllCrcWalletBalances(ordinalsAddress);
     setBalances(held);
     setListings(market.listings.filter((listing) => listing.sellerScriptHex.toLowerCase() === ordinalsScript.toLowerCase()));
-    setActive(market.active);
     setAssetId((previous) => previous || held[0]?.assetId || "");
   }, [connected, ordinalsAddress, ordinalsScript]);
 
   useEffect(() => {
     let alive = true;
-    if (!connected) { setBalances([]); setListings([]); return; }
     void refreshSeller().catch((cause) => { if (alive) setError(cause instanceof Error ? cause.message : "Could not load seller balance"); });
     return () => { alive = false; };
   }, [connected, refreshSeller]);
@@ -98,7 +97,7 @@ export function CrcMarketSeller() {
     setCoins([]);
     setBtcCoins([]);
     setSelected("");
-    if (!assetId || !connected || !ordinalsAddress) return;
+    if (!active || !assetId || !connected || !ordinalsAddress) return;
     void Promise.all([
       api<{ indexedTip: { height: string }; token: Token }>(`/api/crc/v1/tokens/${encodeURIComponent(assetId)}`),
       api<{ utxos: TokenCoin[]; truncated: boolean }>(`/api/crc/v1/tokens/${encodeURIComponent(assetId)}/utxos?address=${encodeURIComponent(ordinalsAddress)}`),
@@ -114,7 +113,7 @@ export function CrcMarketSeller() {
       setSelected(tokenOutputs.utxos[0] ? `${tokenOutputs.utxos[0].txid}:${tokenOutputs.utxos[0].vout}` : "");
     }).catch((cause) => { if (alive) setError(cause instanceof Error ? cause.message : "Could not load token outputs"); });
     return () => { alive = false; };
-  }, [assetId, connected, ordinalsAddress, network]);
+  }, [active, assetId, connected, ordinalsAddress, network]);
 
   const loadRequests = useCallback(async () => {
     if (!active || !connected || !ordinalsScript) return;
@@ -215,7 +214,7 @@ export function CrcMarketSeller() {
     try {
       const { request, terms } = reviewedFill;
       const signedPsbtBase64 = await signCrcSellerFillAfterReview(request.buyerSignedPsbtBase64,
-        terms, ordinalsScript, signPsbt);
+        terms, ordinalsScript, signPsbt, ordinalsPublicKey);
       const signed = await api<{ txid: string }>("/api/crc/v1/market/seller-sign", {
         fillId: request.fillId, signedPsbtBase64,
       });
@@ -232,8 +231,8 @@ export function CrcMarketSeller() {
   return <section className="space-y-4 border border-rule bg-ink-2 p-6">
     <div><h2 className="text-lg text-bone">Sell a token output</h2>
       <p className="mt-1 text-sm text-bone-dim">Each listing sells one whole confirmed token output. You approve the complete sale transaction when a buyer is ready.</p></div>
-    {!connected && <button type="button" className="btn" onClick={() => void connect()}>Connect wallet</button>}
-    {connected && <>
+    {!connected && active && <button type="button" className="btn" onClick={() => void connect()}>Connect wallet</button>}
+    {connected && active && <>
       <label className="block text-sm text-bone-dim">Token
         <select className="mt-2 block w-full border border-rule bg-ink px-3 py-2 text-bone" value={assetId}
           onChange={(event) => setAssetId(event.target.value)}>
