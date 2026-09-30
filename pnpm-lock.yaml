@@ -726,6 +726,22 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.20.4)(terser@5.51.2)
 
+  packages/crc20-curve:
+    dependencies:
+      '@crclaunch/cove-economics':
+        specifier: workspace:*
+        version: link:../cove-economics
+      '@crclaunch/curve':
+        specifier: workspace:*
+        version: link:../curve
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.4)(terser@5.51.2)
+
   packages/crc20-ledger:
     dependencies:
       '@crclaunch/crc20-base':
