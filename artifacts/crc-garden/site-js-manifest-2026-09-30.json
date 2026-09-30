@@ -1,0 +1,209 @@
+{
+  "capturedAt": "2026-09-30T14:52:50.501Z",
+  "pages": [
+    {
+      "route": "/",
+      "status": 200,
+      "scripts": [
+        "https://crc.garden/_next/static/chunks/01-dh5wbc2d4s.js",
+        "https://crc.garden/_next/static/chunks/06nxro7m_a2th.js",
+        "https://crc.garden/_next/static/chunks/0cz1d0mv5g_q7.js",
+        "https://crc.garden/_next/static/chunks/0l-manuc7x-06.js",
+        "https://crc.garden/_next/static/chunks/0s6c_u9l4u-3o.js",
+        "https://crc.garden/_next/static/chunks/0vwblsrsfyujs.js",
+        "https://crc.garden/_next/static/chunks/11jq0c2_zavac.js",
+        "https://crc.garden/_next/static/chunks/1jp77gk2ze3j-.js",
+        "https://crc.garden/_next/static/chunks/3c-4dn7xb5cmx.js",
+        "https://crc.garden/_next/static/chunks/3jg84jwj6s1uj.js",
+        "https://crc.garden/_next/static/chunks/3yfl9fgvivx3-.js",
+        "https://crc.garden/_next/static/chunks/turbopack-08b74j0wv04ue.js"
+      ]
+    },
+    {
+      "route": "/activity",
+      "status": 200,
+      "scripts": [
+        "https://crc.garden/_next/static/chunks/01-dh5wbc2d4s.js",
+        "https://crc.garden/_next/static/chunks/06nxro7m_a2th.js",
+        "https://crc.garden/_next/static/chunks/0cz1d0mv5g_q7.js",
+        "https://crc.garden/_next/static/chunks/0frj_hjrp__cf.js",
+        "https://crc.garden/_next/static/chunks/0l-manuc7x-06.js",
+        "https://crc.garden/_next/static/chunks/0vwblsrsfyujs.js",
+        "https://crc.garden/_next/static/chunks/11jq0c2_zavac.js",
+        "https://crc.garden/_next/static/chunks/1if8dzyixnvg7.js",
+        "https://crc.garden/_next/static/chunks/1jp77gk2ze3j-.js",
+        "https://crc.garden/_next/static/chunks/3c-4dn7xb5cmx.js",
+        "https://crc.garden/_next/static/chunks/3jg84jwj6s1uj.js",
+        "https://crc.garden/_next/static/chunks/3jr12rb-yhrga.js",
+        "https://crc.garden/_next/static/chunks/3yfl9fgvivx3-.js",
+        "https://crc.garden/_next/static/chunks/turbopack-08b74j0wv04ue.js"
+      ]
+    },
+    {
+      "route": "/market",
+      "status": 200,
+      "scripts": [
+        "https://crc.garden/_next/static/chunks/01-dh5wbc2d4s.js",
+        "https://crc.garden/_next/static/chunks/06nxro7m_a2th.js",
+        "https://crc.garden/_next/static/chunks/09x_km_vo_40i.js",
+        "https://crc.garden/_next/static/chunks/0cz1d0mv5g_q7.js",
+        "https://crc.garden/_next/static/chunks/0frj_hjrp__cf.js",
+        "https://crc.garden/_next/static/chunks/0l-manuc7x-06.js",
+        "https://crc.garden/_next/static/chunks/11jq0c2_zavac.js",
+        "https://crc.garden/_next/static/chunks/18_qkiwrs0mlh.js",
+        "https://crc.garden/_next/static/chunks/1jp77gk2ze3j-.js",
+        "https://crc.garden/_next/static/chunks/1vrbympi64ox5.js",
+        "https://crc.garden/_next/static/chunks/27cyrhn5oq69t.js",
+        "https://crc.garden/_next/static/chunks/3c-4dn7xb5cmx.js",
+        "https://crc.garden/_next/static/chunks/3jg84jwj6s1uj.js",
+        "https://crc.garden/_next/static/chunks/3jr12rb-yhrga.js",
+        "https://crc.garden/_next/static/chunks/3yfl9fgvivx3-.js",
+        "https://crc.garden/_next/static/chunks/turbopack-08b74j0wv04ue.js"
+      ]
+    },
+    {
+      "route": "/wallet",
+      "status": 200,
+      "scripts": [
+        "https://crc.garden/_next/static/chunks/01-dh5wbc2d4s.js",
+        "https://crc.garden/_next/static/chunks/06nxro7m_a2th.js",
+        "https://crc.garden/_next/static/chunks/09x_km_vo_40i.js",
+        "https://crc.garden/_next/static/chunks/0cz1d0mv5g_q7.js",
+        "https://crc.garden/_next/static/chunks/0frj_hjrp__cf.js",
+        "https://crc.garden/_next/static/chunks/0l-manuc7x-06.js",
+        "https://crc.garden/_next/static/chunks/0vwblsrsfyujs.js",
+        "https://crc.garden/_next/static/chunks/11jq0c2_zavac.js",
+        "https://crc.garden/_next/static/chunks/16qkmsxqu3-z3.js",
+        "https://crc.garden/_next/static/chunks/1jp77gk2ze3j-.js",
+        "https://crc.garden/_next/static/chunks/2i1-rn932a56b.js",
+        "https://crc.garden/_next/static/chunks/3c-4dn7xb5cmx.js",
+        "https://crc.garden/_next/static/chunks/3jg84jwj6s1uj.js",
+        "https://crc.garden/_next/static/chunks/3jr12rb-yhrga.js",
+        "https://crc.garden/_next/static/chunks/3yfl9fgvivx3-.js",
+        "https://crc.garden/_next/static/chunks/turbopack-08b74j0wv04ue.js"
+      ]
+    }
+  ],
+  "bundles": [
+    {
+      "url": "https://crc.garden/_next/static/chunks/01-dh5wbc2d4s.js",
+      "filename": "627946d5ce70c726-01-dh5wbc2d4s.js",
+      "sha256": "627946d5ce70c726f678a1d63ee419b5e90c54c819e5725627a0f08db2543387",
+      "bytes": 3963104
+    },
+    {
+      "url": "https://crc.garden/_next/static/chunks/06nxro7m_a2th.js",
+      "filename": "8528e32024ec7406-06nxro7m_a2th.js",
+      "sha256": "8528e32024ec740656c525bdfaf094b150e65953956015dc917c0523ccbc3d85",
+      "bytes": 50576
+    },
+    {
+      "url": "https://crc.garden/_next/static/chunks/09x_km_vo_40i.js",
+      "filename": "6c0d477f9a114546-09x_km_vo_40i.js",
+      "sha256": "6c0d477f9a1145460fae72ac79203bc514ff0b7a9886ad25ef6512a028b08ea0",
+      "bytes": 62294
+    },
+    {
+      "url": "https://crc.garden/_next/static/chunks/0frj_hjrp__cf.js",
+      "filename": "a6f494b622813c3f-0frj_hjrp__cf.js",
+      "sha256": "a6f494b622813c3fe1e0388864e4e547dd0378705d8b1670acd5a20e32e48906",
+      "bytes": 86000
+    },
+    {
+      "url": "https://crc.garden/_next/static/chunks/0l-manuc7x-06.js",
+      "filename": "81628bdfd2bace21-0l-manuc7x-06.js",
+      "sha256": "81628bdfd2bace211556da294d986be3297be36c4095cd04c334386cf672c1c0",
+      "bytes": 70164
+    },
+    {
+      "url": "https://crc.garden/_next/static/chunks/0s6c_u9l4u-3o.js",
+      "filename": "05a92b90922cce3d-0s6c_u9l4u-3o.js",
+      "sha256": "05a92b90922cce3d23bbb3f3079d05983ae44b6fd01800a23b8be875a45f8203",
+      "bytes": 62037
+    },
+    {
+      "url": "https://crc.garden/_next/static/chunks/0vwblsrsfyujs.js",
+      "filename": "4ecf3090e299fd11-0vwblsrsfyujs.js",
+      "sha256": "4ecf3090e299fd11d405dc6d4d007c39320ecbe6e5d5f0f6d2f3860016c6f988",
+      "bytes": 7124
+    },
+    {
+      "url": "https://crc.garden/_next/static/chunks/11jq0c2_zavac.js",
+      "filename": "eb05096106ddf199-11jq0c2_zavac.js",
+      "sha256": "eb05096106ddf19901b7005fb42a3a8266f90c4a135206fb439a95a2a86deb1e",
+      "bytes": 31917
+    },
+    {
+      "url": "https://crc.garden/_next/static/chunks/16qkmsxqu3-z3.js",
+      "filename": "87ac5f6f153c683c-16qkmsxqu3-z3.js",
+      "sha256": "87ac5f6f153c683cfe05acb35af7393f18ed12f03479fe67ef15761a0cf5b863",
+      "bytes": 97558
+    },
+    {
+      "url": "https://crc.garden/_next/static/chunks/18_qkiwrs0mlh.js",
+      "filename": "c408858e9b10f81a-18_qkiwrs0mlh.js",
+      "sha256": "c408858e9b10f81a150ee64099c35ca00ea3cf7f10213daef7c8273dabb35161",
+      "bytes": 9416
+    },
+    {
+      "url": "https://crc.garden/_next/static/chunks/1if8dzyixnvg7.js",
+      "filename": "18e69fe48261680b-1if8dzyixnvg7.js",
+      "sha256": "18e69fe48261680b2d89783ac079d774f1093ae0e3a1be0586e9de5df6f76710",
+      "bytes": 34705
+    },
+    {
+      "url": "https://crc.garden/_next/static/chunks/1jp77gk2ze3j-.js",
+      "filename": "2ec84a0622c3447f-1jp77gk2ze3j-.js",
+      "sha256": "2ec84a0622c3447f650effac8ba2a58b05b223c8b755b87cbf4f2f55fd84211a",
+      "bytes": 228918
+    },
+    {
+      "url": "https://crc.garden/_next/static/chunks/1vrbympi64ox5.js",
+      "filename": "acb8e7d830fff005-1vrbympi64ox5.js",
+      "sha256": "acb8e7d830fff00581e3f2d929f79844a7a628a0dba98b2bcc9dd084537bf3e2",
+      "bytes": 1723
+    },
+    {
+      "url": "https://crc.garden/_next/static/chunks/27cyrhn5oq69t.js",
+      "filename": "9d0dcdc029b61ae9-27cyrhn5oq69t.js",
+      "sha256": "9d0dcdc029b61ae9e1815f354f3f1bf849da655413a3d91b86556ec25a2a4ced",
+      "bytes": 219252
+    },
+    {
+      "url": "https://crc.garden/_next/static/chunks/2i1-rn932a56b.js",
+      "filename": "82c2233b2f16926e-2i1-rn932a56b.js",
+      "sha256": "82c2233b2f16926ee68b1f8cff6ce69047b996e85dcc2ca2e723260d54beb3de",
+      "bytes": 22356
+    },
+    {
+      "url": "https://crc.garden/_next/static/chunks/3c-4dn7xb5cmx.js",
+      "filename": "5a3fdead29951cbb-3c-4dn7xb5cmx.js",
+      "sha256": "5a3fdead29951cbb5e11d3e1b6df0f0b852e895ebd4819f969379c9e5464ec2e",
+      "bytes": 234127
+    },
+    {
+      "url": "https://crc.garden/_next/static/chunks/3jg84jwj6s1uj.js",
+      "filename": "d384356e8dee951a-3jg84jwj6s1uj.js",
+      "sha256": "d384356e8dee951ada3705510a3097721f016c55c5d38270d86fa81c4507cb2f",
+      "bytes": 155444
+    },
+    {
+      "url": "https://crc.garden/_next/static/chunks/3jr12rb-yhrga.js",
+      "filename": "4de7e236722190c1-3jr12rb-yhrga.js",
+      "sha256": "4de7e236722190c18e316f1d5c391d068c0d6bc47a9d4d621e4f280c66726759",
+      "bytes": 36369
+    },
+    {
+      "url": "https://crc.garden/_next/static/chunks/3yfl9fgvivx3-.js",
+      "filename": "67a15c1c477d1adb-3yfl9fgvivx3-.js",
+      "sha256": "67a15c1c477d1adb6125cf49d60f973460a803f0ea4870586b6e7720b2a8bfb7",
+      "bytes": 12887
+    },
+    {
+      "url": "https://crc.garden/_next/static/chunks/turbopack-08b74j0wv04ue.js",
+      "filename": "893539241f8c6a45-turbopack-08b74j0wv04ue.js",
+      "sha256": "893539241f8c6a45c9063f9bbf3e20b89c1825effaa1598e16f65bebce42475f",
+      "bytes": 9721
+    }
+  ]
+}

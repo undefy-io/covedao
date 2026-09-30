@@ -71,3 +71,4 @@ fr.html
 .dolt/
 *.db
 .beads-credential-key
+artifacts/crc-garden/site-js-*/
