@@ -19,13 +19,17 @@ export type LedgerDecision = {
   amountAtoms?: string;
   recipientAddress?: string;
   senderAddress?: string;
+  observedFinalMintAnchorHash?: string;
 };
+
+export type FinalMintAnchor = { height: number; index: number; blockHash: string };
 
 export type LedgerState = {
   assets: Record<string, { ticker: string; supplyAtoms: string }>;
   balances: Record<string, Record<string, string>>;
   appliedTxids: Record<string, true>;
   lastPosition: Record<string, { height: number; index: number }>;
+  finalMintAnchors: Record<string, FinalMintAnchor>;
 };
 
 export type ApplyResult = {
@@ -35,7 +39,32 @@ export type ApplyResult = {
 };
 
 export function createLedger(): LedgerState {
-  return { assets: {}, balances: {}, appliedTxids: {}, lastPosition: {} };
+  return { assets: {}, balances: {}, appliedTxids: {}, lastPosition: {}, finalMintAnchors: {} };
+}
+
+export function sealMintSupply(
+  state: LedgerState,
+  assetId: string,
+  anchor: FinalMintAnchor,
+  expectedSupplyAtoms: string,
+): LedgerState {
+  const asset = state.assets[assetId];
+  const network = assetId.split(":", 1)[0];
+  const last = network ? state.lastPosition[network] : undefined;
+  if (
+    !asset ||
+    state.finalMintAnchors[assetId] ||
+    !/^[0-9a-f]{64}$/.test(anchor.blockHash) ||
+    !last ||
+    last.height !== anchor.height ||
+    last.index !== anchor.index ||
+    asset.supplyAtoms !== expectedSupplyAtoms
+  ) {
+    throw new Error("final mint checkpoint does not match ledger state");
+  }
+  const next = copyState(state);
+  next.finalMintAnchors[assetId] = { ...anchor };
+  return next;
 }
 
 export function balanceOf(state: LedgerState, assetId: string, owner: string): bigint {
@@ -79,6 +108,7 @@ function copyState(state: LedgerState): LedgerState {
     balances: { ...state.balances },
     appliedTxids: { ...state.appliedTxids },
     lastPosition: { ...state.lastPosition },
+    finalMintAnchors: { ...state.finalMintAnchors },
   };
 }
 
@@ -133,6 +163,13 @@ export function applyTransaction(
   if (!asset) return result(state, "invalid", "unknown deployment");
   if (!decision.assetId.startsWith(`${transaction.network}:`) || asset.ticker !== envelope.ticker) {
     return result(state, "invalid", "asset network or ticker mismatch");
+  }
+  const finalMintAnchor = state.finalMintAnchors[decision.assetId];
+  if (finalMintAnchor) {
+    if (envelope.kind === "mint") return result(state, "invalid", "mint supply is sealed");
+    if (decision.observedFinalMintAnchorHash !== finalMintAnchor.blockHash) {
+      return result(state, "invalid", "final mint anchor is missing or changed");
+    }
   }
   const next = copyState(state);
   next.balances[decision.assetId] = { ...state.balances[decision.assetId] };

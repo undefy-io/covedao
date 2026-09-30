@@ -761,6 +761,31 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.20.4)(terser@5.51.2)
 
+  packages/crc20-transactions:
+    dependencies:
+      '@crclaunch/crc20-base':
+        specifier: workspace:*
+        version: link:../crc20-base
+      '@crclaunch/crc20-curve':
+        specifier: workspace:*
+        version: link:../crc20-curve
+      bitcoinjs-lib:
+        specifier: 6.1.8
+        version: 6.1.8
+    devDependencies:
+      ecpair:
+        specifier: ^2.1.0
+        version: 2.1.0
+      tiny-secp256k1:
+        specifier: ^2.2.3
+        version: 2.2.4
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.4)(terser@5.51.2)
+
   packages/curve:
     devDependencies:
       '@vitest/coverage-v8':

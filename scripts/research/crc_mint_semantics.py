@@ -231,16 +231,126 @@ def replay_mint_observations(db: sqlite3.Connection) -> dict:
             "Same-block identical payment/tier can differ by one atom; block order and cumulative supply may affect rounding, but the rule is not specified on-chain.",
             "A rate-only model trained on the first 75% of each asset/CSV tier fails exact held-out allocations; do not use it as a ledger rule.",
             "The published P=m*S^1.618 integral does not fit when S is read as cumulative observed minted supply and m is fixed per asset/CSV tier; normalization, initial state, multipliers and rounding are unspecified.",
+            "The observation-only holdouts use API event order; use --with-proofs for confirmed block transaction order.",
         ],
     }
 
 
+def replay_mint_with_proofs(
+    activity_db: sqlite3.Connection,
+    order_db: sqlite3.Connection,
+    prevout_db: sqlite3.Connection,
+) -> dict:
+    """Probe candidate issuance math with proven block order and funding prevouts."""
+    activity_db.row_factory = sqlite3.Row
+    rows = activity_db.execute("""
+        SELECT e.*, t.raw_json AS transaction_json
+        FROM events e JOIN transactions t USING (txid) WHERE e.kind='mint'
+    """).fetchall()
+    positioned = []
+    missing_positions = missing_input_prevouts = input_count = 0
+    api_block_order = {}
+    mint_amounts_encoded = 0
+    for row in rows:
+        outputs = [dict(script_hex=output["script_hex"], sats=output["value_sats"],
+                        core_address=output["address"])
+                   for output in activity_db.execute(
+                       "SELECT * FROM outputs WHERE txid=? ORDER BY vout", (row["txid"],))]
+        observation = inspect_mint(outputs)
+        mint_amounts_encoded += int(observation.minted_atoms is not None)
+        pos = order_db.execute(
+            "SELECT block_height, tx_index FROM event_positions WHERE txid=?", (row["txid"],)
+        ).fetchone()
+        if pos is None:
+            missing_positions += 1
+            continue
+        if pos[0] != row["block_height"]:
+            raise ValueError(f"block height mismatch for {row['txid']}")
+        api_block_order.setdefault(row["block_height"], []).append((row["event_index"], pos[1]))
+        core = json.loads(row["transaction_json"])
+        for source in core["vin"]:
+            input_count += 1
+            prevout = prevout_db.execute(
+                "SELECT value_sats, script_hex FROM prevouts WHERE txid=? AND vout=?",
+                (source["txid"], source["vout"]),
+            ).fetchone()
+            if prevout is None:
+                missing_input_prevouts += 1
+        positioned.append((row["block_height"], pos[1], row))
+    positioned.sort(key=lambda item: item[:2])
+    api_order_disagrees = sum(
+        [index for _, index in sorted(entries, reverse=True)]
+        != sorted(index for _, index in entries)
+        for entries in api_block_order.values()
+    )
+    supply = 0
+    by_tier = {}
+    for height, index, row in positioned:
+        asset, csv = row["mint_payment_asset"], row["mint_csv_blocks"]
+        by_tier.setdefault((asset, csv), []).append((
+            int(row["mint_payment_amount_atoms"]), int(row["amount_atoms"]), supply,
+        ))
+        supply += int(row["amount_atoms"])
+    # Test the public integral under a clearly stated, falsifiable assumption.
+    # It does not implement Garden's undisclosed allocation rules.
+    exact = total = 0
+    spread = {}
+    for (asset, csv), samples in by_tier.items():
+        if asset not in ("BTC", "ORDI") or len(samples) < 3:
+            continue
+        split = max(1, len(samples) * 3 // 4)
+        coefficients = []
+        for payment, minted, prior in samples[:split]:
+            points = payment / (100_000_000 if asset == "BTC" else 1_000_000_000_000_000_000)
+            if asset == "BTC":
+                points *= 7000
+            s = prior / ATOMS_PER_DISPLAY_UNIT
+            delta = minted / ATOMS_PER_DISPLAY_UNIT
+            coefficients.append(points * 2.618 / ((s + delta) ** 2.618 - s ** 2.618))
+        coefficient = median(coefficients)
+        spread[f"{asset}:{csv}"] = max(coefficients) / min(coefficients)
+        for payment, minted, prior in samples[split:]:
+            points = payment / (100_000_000 if asset == "BTC" else 1_000_000_000_000_000_000)
+            if asset == "BTC":
+                points *= 7000
+            s = prior / ATOMS_PER_DISPLAY_UNIT
+            predicted = ((s ** 2.618 + points * 2.618 / coefficient) ** (1 / 2.618) - s) * ATOMS_PER_DISPLAY_UNIT
+            exact += int(round(predicted) == minted)
+            total += 1
+    return {
+        "ordered_mints": len(positioned),
+        "missing_positions": missing_positions,
+        "input_count": input_count,
+        "missing_input_prevouts": missing_input_prevouts,
+        "api_order_disagrees_with_chain_blocks": api_order_disagrees,
+        "site_label_supply_atoms": supply,
+        "mint_amounts_encoded": mint_amounts_encoded,
+        "independent_final_balance_reconciliation_available": False,
+        "independent_balance_reason": "No mint amount is encoded in the Bitcoin transactions; parent prevouts and block order contain BTC data only, so non-site CRC balances cannot be reconstructed without issuance rules.",
+        "naive_integral_holdout_exact": exact,
+        "naive_integral_holdout_total": total,
+        "naive_integral_coefficient_spread": spread,
+        "interpretation": "S=cumulative site-labelled issued tokens, fixed m per asset/CSV tier; this hypothesis fails holdout and is not a Garden ledger rule",
+    }
+
+
 def main() -> None:
+    import argparse
     from pathlib import Path
     root = Path(__file__).resolve().parents[2]
     database = root / "artifacts/crc-garden/activity-2026-09-30.sqlite"
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--with-proofs", action="store_true")
+    args = parser.parse_args()
     with sqlite3.connect(f"file:{database}?mode=ro", uri=True) as db:
-        print(json.dumps(replay_mint_observations(db), sort_keys=True, indent=2))
+        report = {"observations": replay_mint_observations(db)}
+        if args.with_proofs:
+            order = root / "artifacts/crc-garden/block-order-proofs.sqlite"
+            prevouts = root / "artifacts/crc-garden/parent-prevouts.sqlite"
+            with sqlite3.connect(f"file:{order}?mode=ro", uri=True) as order_db, \
+                 sqlite3.connect(f"file:{prevouts}?mode=ro", uri=True) as prevout_db:
+                report["provenance"] = replay_mint_with_proofs(db, order_db, prevout_db)
+        print(json.dumps(report, sort_keys=True, indent=2))
 
 
 if __name__ == "__main__":

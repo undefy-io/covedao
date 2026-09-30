@@ -1,0 +1,82 @@
+{
+  "observations": {
+    "api_minted_atoms_total": 100000000000000000,
+    "asset_labels": {
+      "BTC": 159,
+      "LEAF": 645,
+      "ORDI": 8
+    },
+    "beneficiary_matches": 812,
+    "btc_payment_matches": 159,
+    "csv_blocks_in_mint_transactions": 0,
+    "csv_labels": {
+      "144": 219,
+      "1000": 149,
+      "2100": 168,
+      "6767": 276
+    },
+    "ico_payment_matches": 645,
+    "limitations": [
+      "CRC mint markers contain no minted amount, beneficiary, or CSV duration.",
+      "BTC sats and ICO marker amounts corroborate payment labels, not mint allocation formulas.",
+      "ORDI payments cannot be established from these raw Bitcoin transactions alone.",
+      "CSV is proven only for mint carriers spent inside this archive; 527 still-unspent carriers have unrevealed Taproot scripts.",
+      "All 812 minted amounts, including the clamped allocation, are site labels until a deterministic issuance rule is derived.",
+      "Same-block identical payment/tier can differ by one atom; block order and cumulative supply may affect rounding, but the rule is not specified on-chain.",
+      "A rate-only model trained on the first 75% of each asset/CSV tier fails exact held-out allocations; do not use it as a ledger rule.",
+      "The published P=m*S^1.618 integral does not fit when S is read as cumulative observed minted supply and m is fixed per asset/CSV tier; normalization, initial state, multipliers and rounding are unspecified.",
+      "The observation-only holdouts use API event order; use --with-proofs for confirmed block transaction order."
+    ],
+    "mint_amounts_on_chain": 0,
+    "mint_count": 812,
+    "minted_atoms_by_asset_label": {
+      "BTC": 120058047619051,
+      "LEAF": 99873765619047615,
+      "ORDI": 6176333333334
+    },
+    "naive_published_curve_holdout_exact": 0,
+    "naive_published_curve_holdout_total": 42,
+    "naive_published_curve_m_spread": {
+      "BTC:1000": 480.67560421172885,
+      "BTC:144": 598.3987612607294,
+      "BTC:2100": 11.971039967179273,
+      "BTC:6767": 10325.691850428491,
+      "ORDI:144": 6.617541946949016
+    },
+    "ordi_payment_unverified": 8,
+    "rate_only_holdout_exact": 8,
+    "rate_only_holdout_total": 206,
+    "revealed_csv_maturity_failures": 0,
+    "revealed_csv_spends": {
+      "144": 172,
+      "1000": 113
+    },
+    "same_block_same_payment_different_allocation_groups": 7,
+    "status_labels": {
+      "allocated": 811,
+      "clamped": 1
+    },
+    "vault_address": "bc1phuuulh7fs5zrm48ethfyqvt860fxsaxuq643telqn06yz4u3c70spyleaf"
+  },
+  "provenance": {
+    "api_order_disagrees_with_chain_blocks": 82,
+    "independent_balance_reason": "No mint amount is encoded in the Bitcoin transactions; parent prevouts and block order contain BTC data only, so non-site CRC balances cannot be reconstructed without issuance rules.",
+    "independent_final_balance_reconciliation_available": false,
+    "input_count": 1013,
+    "interpretation": "S=cumulative site-labelled issued tokens, fixed m per asset/CSV tier; this hypothesis fails holdout and is not a Garden ledger rule",
+    "mint_amounts_encoded": 0,
+    "missing_input_prevouts": 0,
+    "missing_positions": 0,
+    "naive_integral_coefficient_spread": {
+      "BTC:1000": 255.94125902019084,
+      "BTC:144": 601.8625370478752,
+      "BTC:2100": 9.43054961664388,
+      "BTC:6767": 10325.488591830153,
+      "ORDI:144": 4.653585898579459
+    },
+    "naive_integral_holdout_exact": 0,
+    "naive_integral_holdout_total": 42,
+    "ordered_mints": 812,
+    "site_label_supply_atoms": 100000000000000000
+  }
+}

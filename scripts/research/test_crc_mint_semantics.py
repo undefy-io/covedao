@@ -8,12 +8,14 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from crc_mint_semantics import inspect_mint, replay_mint_observations
+from crc_mint_semantics import inspect_mint, replay_mint_observations, replay_mint_with_proofs
 
 
 ROOT = Path(__file__).resolve().parents[2]
 DATABASE = ROOT / "artifacts/crc-garden/activity-2026-09-30.sqlite"
 FIXTURES = ROOT / "artifacts/crc-garden/golden-transactions.json"
+ORDER = ROOT / "artifacts/crc-garden/block-order-proofs.sqlite"
+PREVOUTS = ROOT / "artifacts/crc-garden/parent-prevouts.sqlite"
 
 
 class MintSemanticsTests(unittest.TestCase):
@@ -91,6 +93,21 @@ class MintSemanticsTests(unittest.TestCase):
         observed = inspect_mint(case["chain_transaction"]["outputs"])
         self.assertIsNone(observed.csv_blocks)
         self.assertIsNotNone(case["api_event"]["mint_csv_blocks"])
+
+    def test_block_proofs_and_prevouts_do_not_supply_mint_amounts(self):
+        with sqlite3.connect(f"file:{ORDER}?mode=ro", uri=True) as order_db, \
+             sqlite3.connect(f"file:{PREVOUTS}?mode=ro", uri=True) as prevout_db:
+            report = replay_mint_with_proofs(self.db, order_db, prevout_db)
+        self.assertEqual(report["ordered_mints"], 812)
+        self.assertEqual(report["missing_positions"], 0)
+        self.assertEqual(report["missing_input_prevouts"], 0)
+        self.assertEqual(report["input_count"], 1013)
+        self.assertEqual(report["api_order_disagrees_with_chain_blocks"], 82)
+        self.assertGreater(report["api_order_disagrees_with_chain_blocks"], 0)
+        self.assertEqual(report["mint_amounts_encoded"], 0)
+        self.assertFalse(report["independent_final_balance_reconciliation_available"])
+        self.assertEqual(report["naive_integral_holdout_exact"], 0)
+        self.assertGreater(report["naive_integral_holdout_total"], 0)
 
 
 if __name__ == "__main__":
