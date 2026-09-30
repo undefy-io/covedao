@@ -7,6 +7,7 @@ import { makeCrcSellerListing, sellerFillTermsFromPsbt, signCrcSellerFillAfterRe
 const deployTxid = "a".repeat(64);
 const sellerScriptHex = `0014${"b".repeat(40)}`;
 const buyerScriptHex = `0014${"c".repeat(40)}`;
+const buyerPaymentScriptHex = `0014${"9".repeat(40)}`;
 const protocolScriptHex = `0014${"d".repeat(40)}`;
 const vaultScriptHex = `5120${"a".repeat(64)}`;
 const sellerFunding = { txid: "e".repeat(64), vout: 0, valueSats: 10_000,
@@ -21,12 +22,14 @@ const asset = { network: "regtest" as const, deployTxid, ticker: "COVE",
   protocolVersion: 2, tokenOutpoint: `${sellerFunding.txid}:0`, tokenScriptHex: sellerScriptHex,
   tokenAtoms: 100n, protocolScriptHex, vaultScriptHex };
 
-function psbt(priceSats = 5_000, sighash = bitcoin.Transaction.SIGHASH_ALL) {
+function psbt(priceSats = 5_000, sighash = bitcoin.Transaction.SIGHASH_ALL,
+  funding = buyerFunding) {
   const template = buildCoveV2MarketFill({ ticker: "COVE", deploymentTxid: deployTxid,
     listedInput: sellerFunding, buyerScriptHex, recipientSats: 1_000,
     sellerNetPriceSats: priceSats, protocolScriptHex, protocolFeeSats: 1_000,
-    buyerChangeSats: 10_000 - priceSats - 1_000 - 1_000 - 400 });
-  const built = buildUnsignedPsbt(template, [sellerFunding, buyerFunding], 400, bitcoin.networks.regtest);
+    buyerChangeSats: 10_000 - priceSats - 1_000 - 1_000 - 400,
+    buyerChangeScriptHex: funding.scriptHex });
+  const built = buildUnsignedPsbt(template, [sellerFunding, funding], 400, bitcoin.networks.regtest);
   built.data.inputs[0]!.sighashType = sighash;
   return built.toBase64();
 }
@@ -78,5 +81,14 @@ describe("CRC seller authorization", () => {
     expect(() => sellerFillTermsFromPsbt(psbt(), listing,
       { ...asset, tokenOutpoint: `${"1".repeat(64)}:0` }, 100n)).toThrow();
     expect(() => sellerFillTermsFromPsbt(psbt(), { ...listing, protocolFeeSats: 1_001 }, asset, 100n)).toThrow();
+  });
+
+  it("reviews Xverse payment funding separately from the token recipient", () => {
+    const funding = { ...buyerFunding, scriptHex: buyerPaymentScriptHex };
+    const terms = sellerFillTermsFromPsbt(psbt(5_000, bitcoin.Transaction.SIGHASH_ALL, funding),
+      listing, asset, 100n);
+    expect(terms.buyerScriptHex).toBe(buyerScriptHex);
+    expect(terms.buyerFundingScriptHex).toBe(buyerPaymentScriptHex);
+    expect(terms.buyerFunding[0]?.scriptHex).toBe(buyerPaymentScriptHex);
   });
 });
