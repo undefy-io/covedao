@@ -265,6 +265,9 @@ importers:
       '@crclaunch/cove-indexer':
         specifier: workspace:*
         version: link:../../packages/cove-indexer
+      '@crclaunch/cove-mainnet':
+        specifier: workspace:*
+        version: link:../../packages/cove-mainnet
       '@crclaunch/curve':
         specifier: workspace:*
         version: link:../../packages/curve

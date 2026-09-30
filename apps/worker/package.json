@@ -25,6 +25,7 @@
     "@crclaunch/cove-app": "workspace:*",
     "@crclaunch/cove-guardian": "workspace:*",
     "@crclaunch/cove-indexer": "workspace:*",
+    "@crclaunch/cove-mainnet": "workspace:*",
     "@crclaunch/curve": "workspace:*",
     "@crclaunch/db": "workspace:*",
     "@crclaunch/protocol": "workspace:*",
