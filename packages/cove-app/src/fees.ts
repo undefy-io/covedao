@@ -1,4 +1,5 @@
 import { estimateVsize, SCRIPT_BYTES_P2TR, type SpendKind } from "@crclaunch/bitcoin";
+import { DISCOVERY_PAYLOAD_LIMIT } from "@crclaunch/cove-wire";
 
 /**
  * Cove-specific transaction shapes.
@@ -20,7 +21,7 @@ export const OP_RETURN_SCRIPT_BYTES = {
 } as const;
 
 /** Advisory crc-20 discovery envelope, when it is switched on. */
-export const DISCOVERY_SCRIPT_BYTES = 75;
+export const DISCOVERY_SCRIPT_BYTES = DISCOVERY_PAYLOAD_LIMIT + 3; // OP_RETURN + PUSHDATA1 + length
 
 export type CoveOperation = "DEPLOY" | "BACKING_BUY" | "REDEEM" | "TRANSFER";
 
@@ -48,7 +49,7 @@ export interface OperationShapeInput {
   feeScriptBytes: number;
   /** Token-carrier outputs going to someone else (TRANSFER). */
   recipientCarriers?: number;
-  /** Emit the advisory discovery envelope (BACKING_BUY only). */
+  /** Emit the advisory discovery envelope. */
   discovery?: boolean;
 }
 
@@ -82,7 +83,6 @@ export function estimateOperationVsize(op: CoveOperation, input: OperationShapeI
     case "BACKING_BUY":
       // vault successor, token carrier, protocol fee, creator share, BTC change
       outputs.push(SCRIPT_BYTES_P2TR, carrier, input.feeScriptBytes, SCRIPT_BYTES_P2TR, wallet);
-      if (input.discovery) outputs.push(DISCOVERY_SCRIPT_BYTES);
       break;
     case "REDEEM":
       // vault successor, payout, protocol fee, token change carrier, BTC change
@@ -94,6 +94,7 @@ export function estimateOperationVsize(op: CoveOperation, input: OperationShapeI
       outputs.push(carrier, wallet);
       break;
   }
+  if (input.discovery) outputs.push(DISCOVERY_SCRIPT_BYTES);
 
   const inputs = { p2wpkhInputs: 0, p2trInputs: 0, p2shP2wpkhInputs: 0 };
   tally(inputs, input.fundingInputs, input.fundingKind);

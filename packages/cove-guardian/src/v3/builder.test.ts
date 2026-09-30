@@ -24,7 +24,7 @@ const guardianXOnly = Buffer.from(GUARDIAN.publicKey.subarray(1));
 const recoveryXOnly = Buffer.from(ecc.pointFromScalar(Buffer.alloc(32, 0x43), true)!.subarray(1));
 const NONCE = Buffer.alloc(32, 0xab);
 
-function deploy() {
+function deploy(discoveryEnvelope?: { ticker: string }) {
   return buildDeployPsbtV3({ feeScript: Buffer.from("0014" + "f".repeat(40), "hex"),
     network: bitcoin.networks.regtest,
     identity: {
@@ -45,6 +45,7 @@ function deploy() {
     ],
     deployerChangeScript: Buffer.from("0014" + "c".repeat(40), "hex"),
     minerFeeSats: 1_000n,
+    discoveryEnvelope,
   });
 }
 
@@ -279,6 +280,68 @@ describe("V3 builders (offline)", () => {
 });
 
 describe("crc-20 discovery envelope in the built PSBT (§D1)", () => {
+  function expectTrailingDiscovery(outs: bitcoin.PsbtTxOutput[], ticker: string, operation: string) {
+    const binary = decodeV2(Buffer.from(outs[0]!.script).subarray(2));
+    const last = outs[outs.length - 1]!;
+    expect(last.value).toBe(0);
+    expect(last.script[0]).toBe(0x6a);
+    const payload = Buffer.from(last.script).subarray(last.script[1] === 0x4c ? 3 : 2);
+    expect(discoveryAgreesWithBinary(payload, binary, ticker)).toBe(true);
+    expect(JSON.parse(payload.toString("utf8"))).toMatchObject({ p: "crc-20", op: operation, tick: ticker });
+  }
+
+  it("appends a matching discovery output to DEPLOY", () => {
+    const plain = deploy().psbt.txOutputs;
+    const dual = deploy({ ticker: "FROG" }).psbt.txOutputs;
+    expect(dual).toHaveLength(plain.length + 1);
+    expectTrailingDiscovery(dual, "FROG", "deploy");
+  });
+
+  it("appends a matching discovery output to TRANSFER", () => {
+    const d = deploy();
+    const ticker = "ABCDEFGHIJKLMNOP";
+    const amount = 10_000_000_000n;
+    const transfer = buildTransferPsbtV2({
+      network: bitcoin.networks.regtest,
+      tokenId: d.tokenId,
+      tokenInputs: [{ txid: "c".repeat(64), vout: 2, script: Buffer.from("0014" + "a".repeat(40), "hex"), valueSats: TOKEN_CARRIER_SATS }],
+      tokenInputTotalAtoms: amount,
+      tokenOutputs: [{ script: Buffer.from("0014" + "b".repeat(40), "hex"), amountAtoms: amount }],
+      funderInputs: [{ txid: "d".repeat(64), vout: 0, script: Buffer.from("0014" + "d".repeat(40), "hex"), valueSats: 100_000n }],
+      funderChangeScript: Buffer.from("0014" + "d".repeat(40), "hex"),
+      btcOutputs: [],
+      minerFeeSats: 1_000n,
+      discoveryEnvelope: { ticker },
+    });
+    expect(transfer.psbt.txOutputs.at(-1)!.script[1]).toBe(0x4c);
+    expectTrailingDiscovery(transfer.psbt.txOutputs, ticker, "transfer");
+    expect(transfer.psbt.txOutputs[1]!.value).toBe(Number(TOKEN_CARRIER_SATS));
+  });
+
+  it("appends a matching discovery output to REDEEM", () => {
+    const d = deploy();
+    const amount = 1_000_000n * 100_000_000n;
+    const minted = applyMintV2(d.s0, amount);
+    const redeem = buildRedeemPsbtV3({
+      network: bitcoin.networks.regtest,
+      tokenId: d.tokenId,
+      prevState: minted.nextState,
+      prevBacking: { txid: "e".repeat(64), vout: 1, script: buildBackingVaultV3({ state: minted.nextState, guardianXOnly, recoveryKeyXOnly: recoveryXOnly }).scriptPubKey, valueSats: RESERVE_ANCHOR_SATS + minted.nextState.backingSats },
+      redeemAmountAtoms: amount,
+      tokenInputs: [{ txid: "f".repeat(64), vout: 2, script: Buffer.from("0014" + "e".repeat(40), "hex"), valueSats: TOKEN_CARRIER_SATS }],
+      tokenInputTotalAtoms: amount,
+      guardianXOnly,
+      recoveryKeyXOnly: recoveryXOnly,
+      sellerPayoutScript: Buffer.from("0014" + "e".repeat(40), "hex"),
+      sellerChangeScript: Buffer.from("0014" + "e".repeat(40), "hex"),
+      feeScript: Buffer.from("0014" + "f".repeat(40), "hex"),
+      minerFeeSats: 1_000n,
+      discoveryEnvelope: { ticker: "FROG" },
+    });
+    expectTrailingDiscovery(redeem.psbt.txOutputs, "FROG", "redeem");
+    expect(redeem.psbt.txOutputs[2]!.value).toBe(137_362);
+  });
+
   function mintWith(discoveryEnvelope?: { ticker: string }) {
     const d = deploy();
     return buildMintPsbtV3({

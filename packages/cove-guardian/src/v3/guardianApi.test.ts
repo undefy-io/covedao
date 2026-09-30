@@ -235,8 +235,9 @@ describe("remote Guardian client (§24)", () => {
 
   it("uses the service's configured network, not the client's claimed network (§C3)", async () => {
     let receivedNetwork: string | undefined;
+    let receivedTicker: string | undefined;
     const signer = {
-      signMint: async (req: { network: string }) => { receivedNetwork = req.network; return { ok: false as const, reason: "x", detail: "x" }; },
+      signMint: async (req: { network: string; discoveryTicker?: string }) => { receivedNetwork = req.network; receivedTicker = req.discoveryTicker; return { ok: false as const, reason: "x", detail: "x" }; },
       signRedeem: async () => ({ ok: false as const, reason: "x", detail: "x" }),
     };
     const transport = new InProcessGuardianTransport({ fundingChecker: CONFIRMED_FUNDING_FOR_TESTS,
@@ -246,6 +247,7 @@ describe("remote Guardian client (§24)", () => {
       network: "mainnet", // the SERVICE's configured network
       decode: (psbtBase64) => ({ psbt: bitcoin.Psbt.fromBase64(psbtBase64) }),
       loadView: async () => new CoveChainView(),
+      loadTicker: async () => "FROG",
       recoveryKeyXOnly,
       recoveryProfile: MAINNET1,
       feeScript,
@@ -260,6 +262,7 @@ describe("remote Guardian client (§24)", () => {
       tokenId: "ab".repeat(32),
     });
     expect(receivedNetwork).toBe("mainnet");
+    expect(receivedTicker).toBe("FROG");
   });
 
   it("enforces https for the HTTP transport (§C15)", () => {

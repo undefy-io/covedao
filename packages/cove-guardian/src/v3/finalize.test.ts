@@ -6,16 +6,17 @@ import {
   CoveChainView,
   TOKEN_CARRIER_SATS,
 } from "@crclaunch/cove-covenant";
-import { CHAIN_BITCOIN_REGTEST } from "@crclaunch/cove-wire";
+import { CHAIN_BITCOIN_REGTEST, serializeDiscovery } from "@crclaunch/cove-wire";
 import { isSimplicityAvailable } from "@crclaunch/cove-simplicity";
 import {
   buildDeployPsbtV3,
   buildMintPsbtV3,
   buildRedeemPsbtV3,
+  buildTransferPsbtV2,
   RESERVE_ANCHOR_SATS,
 } from "./builder.js";
 import { unsignedTransaction } from "./resolve.js";
-import { validateFinalizedDeployTransaction, validateFinalizedMintTransaction, validateFinalizedRedeemTransaction } from "./finalize.js";
+import { validateFinalizedDeployTransaction, validateFinalizedMintTransaction, validateFinalizedRedeemTransaction, validateFinalizedTransferTransaction } from "./finalize.js";
 import { LAUNCH_FEE_SATS } from "@crclaunch/cove-economics";
 
 /** Creator payout script recorded at DEPLOY (output 2). */
@@ -88,7 +89,7 @@ function mintedSetup() {
   return s;
 }
 
-function redeemRaw(redeemAmountAtoms: bigint, minerFeeSats: bigint): string {
+function redeemRaw(redeemAmountAtoms: bigint, minerFeeSats: bigint, discoveryEnvelope?: { ticker: string }): string {
   const s = mintedSetup();
   const bob = ECPair.makeRandom({ network: bitcoin.networks.regtest });
   const redeem = buildRedeemPsbtV3({
@@ -105,6 +106,7 @@ function redeemRaw(redeemAmountAtoms: bigint, minerFeeSats: bigint): string {
     sellerChangeScript: p2wpkh(bob),
     feeScript,
     minerFeeSats,
+    discoveryEnvelope,
   });
   return unsignedTransaction(redeem.psbt).toHex();
 }
@@ -123,6 +125,21 @@ describe("finalize — full/partial redeem BTC change layout (§3)", () => {
     const r = await validateFinalizedRedeemTransaction({ rawTxHex: raw, view: s.view, ...base() });
     expect("ok" in r).toBe(false);
     if (!("ok" in r)) expect(r.operation).toBe("REDEEM");
+  });
+
+  it.skipIf(!isSimplicityAvailable())("accepts a full redeem with a matching trailing discovery output", async () => {
+    const s = mintedSetup();
+    const raw = redeemRaw(MINT_AMOUNT, 1_000n, { ticker: "FROG" });
+    const r = await validateFinalizedRedeemTransaction({ rawTxHex: raw, view: s.view, discoveryTicker: "FROG", ...base() });
+    expect("rawTxHex" in r).toBe(true);
+  });
+
+  it("rejects a redeem discovery output with the wrong ticker", async () => {
+    const s = mintedSetup();
+    const raw = redeemRaw(MINT_AMOUNT, 1_000n, { ticker: "DOGE" });
+    const r = await validateFinalizedRedeemTransaction({ rawTxHex: raw, view: s.view, discoveryTicker: "FROG", ...base() });
+    expect("rawTxHex" in r).toBe(false);
+    if (!("rawTxHex" in r)) expect(r.reason).toBe("DISCOVERY_MISMATCH");
   });
 
   it.skipIf(!isSimplicityAvailable())("full redeem with BTC change (5 outputs) → valid", async () => {
@@ -200,7 +217,7 @@ describe("finalize — DEPLOY launch fee (output 3)", () => {
     recoveryKeyXOnly: recoveryXOnly,
     feeScript,
   };
-  function deployTx(): bitcoin.Transaction {
+  function deployTx(discoveryEnvelope?: { ticker: string }): bitcoin.Transaction {
     const d = buildDeployPsbtV3({
       feeScript,
       network: bitcoin.networks.regtest,
@@ -211,6 +228,7 @@ describe("finalize — DEPLOY launch fee (output 3)", () => {
       deployerChangeScript: CREATOR_SCRIPT,
       minerFeeSats: 1_000n,
       creatorScript: CREATOR_SCRIPT,
+      discoveryEnvelope,
     });
     return unsignedTransaction(d.psbt);
   }
@@ -221,6 +239,17 @@ describe("finalize — DEPLOY launch fee (output 3)", () => {
     expect(tx.outs[3]!.script.equals(feeScript)).toBe(true);
     const r = validateFinalizedDeployTransaction({ ...base, rawTxHex: tx.toHex() });
     expect("rawTxHex" in r).toBe(true);
+  });
+
+  it("accepts a matching DEPLOY discovery output and rejects a changed ticker", () => {
+    const tx = deployTx({ ticker: "FROG" });
+    const valid = validateFinalizedDeployTransaction({ ...base, rawTxHex: tx.toHex() });
+    expect("rawTxHex" in valid).toBe(true);
+    const wrong = serializeDiscovery({ p: "crc-20", op: "deploy", tick: "DOGE" });
+    tx.outs[tx.outs.length - 1]!.script = Buffer.concat([Buffer.from([0x6a, wrong.length]), wrong]);
+    const invalid = validateFinalizedDeployTransaction({ ...base, rawTxHex: tx.toHex() });
+    expect("rawTxHex" in invalid).toBe(false);
+    if (!("rawTxHex" in invalid)) expect(invalid.reason).toBe("DISCOVERY_MISMATCH");
   });
 
   it("refuses a DEPLOY with no fee, the wrong amount, or another address", () => {
@@ -237,5 +266,32 @@ describe("finalize — DEPLOY launch fee (output 3)", () => {
       expect({ label, ok: "rawTxHex" in r }).toEqual({ label, ok: false });
       if (!("rawTxHex" in r)) expect(r.reason).toBe("LAUNCH_FEE_MISSING");
     }
+  });
+});
+
+describe("finalize — TRANSFER discovery output", () => {
+  it("accepts a matching marker and rejects a different ticker", () => {
+    const s = mintedSetup();
+    const carrier = p2wpkh(s.alice);
+    const transfer = buildTransferPsbtV2({
+      network: bitcoin.networks.regtest,
+      tokenId: s.deploy.tokenId,
+      tokenInputs: [{ txid: MINT_TXID, vout: 2, script: carrier, valueSats: TOKEN_CARRIER_SATS }],
+      tokenInputTotalAtoms: MINT_AMOUNT,
+      tokenOutputs: [{ script: carrier, amountAtoms: MINT_AMOUNT }],
+      funderInputs: [{ txid: "bb".repeat(32), vout: 0, script: carrier, valueSats: 100_000n }],
+      funderChangeScript: carrier,
+      btcOutputs: [],
+      minerFeeSats: 1_000n,
+      discoveryEnvelope: { ticker: "FROG" },
+    });
+    const tx = unsignedTransaction(transfer.psbt);
+    const valid = validateFinalizedTransferTransaction({ rawTxHex: tx.toHex(), view: s.view, discoveryTicker: "FROG" });
+    expect("rawTxHex" in valid).toBe(true);
+    const wrong = serializeDiscovery({ p: "crc-20", op: "transfer", tick: "DOGE", amt: MINT_AMOUNT.toString() });
+    tx.outs[tx.outs.length - 1]!.script = Buffer.concat([Buffer.from([0x6a, wrong.length]), wrong]);
+    const invalid = validateFinalizedTransferTransaction({ rawTxHex: tx.toHex(), view: s.view, discoveryTicker: "FROG" });
+    expect("rawTxHex" in invalid).toBe(false);
+    if (!("rawTxHex" in invalid)) expect(invalid.reason).toBe("DISCOVERY_MISMATCH");
   });
 });

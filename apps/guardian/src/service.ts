@@ -1,5 +1,6 @@
 import * as bitcoin from "bitcoinjs-lib";
-import { createDb, PostgresRpcBudget, providerAccount } from "@crclaunch/db";
+import { createDb, PostgresRpcBudget, providerAccount, schema } from "@crclaunch/db";
+import { and, eq } from "drizzle-orm";
 import type { MainnetProfile, ResolvedMainnetProfile } from "@crclaunch/cove-mainnet";
 import type { VaultRecoveryProfile } from "@crclaunch/cove-vault";
 import { CoreRpcProvider, checkSpendSignature, unfinalizeKeyInputs } from "@crclaunch/bitcoin";
@@ -170,6 +171,17 @@ export function buildGuardianService(config: GuardianServiceConfig): BuiltGuardi
     guardianXOnly,
     network: config.network,
     decode: (psbtBase64) => ({ psbt: bitcoin.Psbt.fromBase64(psbtBase64) }),
+    loadTicker: async (tokenId) => {
+      const rows = await db.select({ ticker: schema.coveV3Tokens.ticker })
+        .from(schema.coveV3Tokens)
+        .where(and(
+          eq(schema.coveV3Tokens.network, config.network),
+          eq(schema.coveV3Tokens.tokenId, tokenId),
+          eq(schema.coveV3Tokens.canonical, true),
+        ))
+        .limit(1);
+      return rows[0]?.ticker;
+    },
     loadView: async (tokenId, psbt) => {
       const authorization = psbt.clone();
       unfinalizeKeyInputs(authorization);

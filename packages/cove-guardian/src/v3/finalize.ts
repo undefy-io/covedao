@@ -13,6 +13,7 @@ import { isValidRedeemPayout, COVE_FEE_CONFIG, CREATOR_RECORD_SATS, LAUNCH_FEE_S
 import { s0StateV2 } from "@crclaunch/cove-covenant";
 import { RESERVE_ANCHOR_SATS } from "./builder.js";
 import { decodeCoveOpReturnTx } from "./resolve.js";
+import { checkDiscoveryOutput } from "./discoveryOutput.js";
 import { buildCanonicalMintWitness, buildCanonicalRedeemWitness } from "./witness.js";
 import type { CoveCanonicalView, GuardianV3Network } from "./types.js";
 
@@ -68,6 +69,7 @@ export interface FinalizeParams {
   redeemFeeBps?: bigint;
   /** Flat sats deducted on top of the percentage. */
   redeemFeeFlatSats?: bigint;
+  discoveryTicker?: string;
 }
 
 const MAX_MINER_FEE = 20_000n;
@@ -203,6 +205,13 @@ export function validateFinalizedDeployTransaction(params: {
   if (BigInt(s0Out.value) !== RESERVE_ANCHOR_SATS) {
     return reject("S0_ANCHOR_MISMATCH");
   }
+  const discovery = checkDiscoveryOutput(
+    tx.outs.map((o, vout) => ({ vout, script: o.script, value: BigInt(o.value) })),
+    wire,
+    wire.ticker,
+  );
+  if (discovery.present && !discovery.agrees) return reject("DISCOVERY_MISMATCH");
+  if (tx.outs.length > 5 + discovery.allowance) return reject("UNEXPECTED_OUTPUT");
   return validated(params.rawTxHex, tx.getId(), "DEPLOY", tokenId.toString("hex"));
 }
 
@@ -289,11 +298,15 @@ export async function validateFinalizedMintTransaction(params: FinalizeParams): 
   ) {
     return reject("CREATOR_FEE_MISMATCH");
   }
-  // OP_RETURN, vault, carrier, fee, creator, change — plus the advisory
+  // OP_RETURN, vault, carrier, fee, creator, change — plus a matching
   // discovery OP_RETURN when it is the last output.
-  const last = tx.outs[tx.outs.length - 1];
-  const discovery = tx.outs.length > 5 && last !== undefined && last.script[0] === 0x6a ? 1 : 0;
-  if (tx.outs.length > 6 + discovery) return reject("UNEXPECTED_OUTPUT");
+  const discovery = checkDiscoveryOutput(
+    tx.outs.map((o, vout) => ({ vout, script: o.script, value: BigInt(o.value) })),
+    wire,
+    params.discoveryTicker,
+  );
+  if (discovery.present && !discovery.agrees) return reject("DISCOVERY_MISMATCH");
+  if (tx.outs.length > 6 + discovery.allowance) return reject("UNEXPECTED_OUTPUT");
 
   const minerFeeErr = checkMinerFee(tx, params.prevouts, maxMinerFee);
   if (minerFeeErr) return minerFeeErr;
@@ -400,6 +413,12 @@ export async function validateFinalizedRedeemTransaction(params: FinalizeParams)
   // Freeze the canonical layout (§3):
   //   FULL redeem:    0 OP_RETURN,1 vault,2 payout,3 fee,4 optional BTC change (max 5)
   //   PARTIAL redeem: 0 OP_RETURN,1 vault,2 payout,3 fee,4 token change carrier,5 optional BTC change (max 6)
+  const discovery = checkDiscoveryOutput(
+    tx.outs.map((o, vout) => ({ vout, script: o.script, value: BigInt(o.value) })),
+    wire,
+    params.discoveryTicker,
+  );
+  if (discovery.present && !discovery.agrees) return reject("DISCOVERY_MISMATCH");
   if (changeAtoms > 0n) {
     const changeOut = tx.outs[4];
     if (!changeOut) return reject("TOKEN_CHANGE_MISMATCH");
@@ -412,11 +431,11 @@ export async function validateFinalizedRedeemTransaction(params: FinalizeParams)
     ) {
       return reject("TOKEN_CHANGE_MISMATCH");
     }
-    if (tx.outs.length > 6) return reject("UNEXPECTED_OUTPUT");
+    if (tx.outs.length > 6 + discovery.allowance) return reject("UNEXPECTED_OUTPUT");
   } else {
     if (wire.changeAllocations.length !== 0) return reject("TOKEN_INFLATION");
     // output 4 (if present) is ordinary seller BTC change, NOT a token carrier.
-    if (tx.outs.length > 5) return reject("UNEXPECTED_OUTPUT");
+    if (tx.outs.length > 5 + discovery.allowance) return reject("UNEXPECTED_OUTPUT");
   }
 
   const minerFeeErr = checkMinerFee(tx, params.prevouts, maxMinerFee);
@@ -440,6 +459,7 @@ export function validateFinalizedTransferTransaction(params: {
   view: CoveCanonicalView;
   prevouts?: Map<string, ResolvedPrevout>;
   maxMinerFeeSats?: bigint;
+  discoveryTicker?: string;
 }): FinalValidationResult {
   const parsed = parseTx(params.rawTxHex);
   if (!(parsed instanceof bitcoin.Transaction)) return parsed;
@@ -467,6 +487,13 @@ export function validateFinalizedTransferTransaction(params: {
     if (BigInt(out.value) !== TOKEN_CARRIER_SATS) return reject("CARRIER_VALUE_MISMATCH");
     if (!isStandardCarrier(out.script)) return reject("CARRIER_NOT_STANDARD");
   }
+
+  const discovery = checkDiscoveryOutput(
+    tx.outs.map((o, vout) => ({ vout, script: o.script, value: BigInt(o.value) })),
+    wire,
+    params.discoveryTicker,
+  );
+  if (discovery.present && !discovery.agrees) return reject("DISCOVERY_MISMATCH");
 
   const maxMinerFee = params.maxMinerFeeSats ?? MAX_MINER_FEE;
   const minerFeeErr = checkMinerFee(tx, params.prevouts, maxMinerFee);

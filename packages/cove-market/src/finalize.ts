@@ -8,7 +8,7 @@ import {
   type ResolvedPrevout,
 } from "@crclaunch/cove-guardian/v3";
 import { parseCoveTx } from "@crclaunch/cove-indexer/v3";
-import { OP_TRANSFER } from "@crclaunch/cove-wire";
+import { OP_TRANSFER, decodeDiscovery } from "@crclaunch/cove-wire";
 import type { CoreRpcProvider } from "@crclaunch/bitcoin";
 import { dustThreshold } from "@crclaunch/cove-economics";
 import { MarketError } from "./errors.js";
@@ -52,6 +52,7 @@ export interface P2PFillTerms {
   buyerTokenScript: Buffer;
   buyerChangeScript: Buffer;
   feeScript: Buffer;
+  discoveryTicker?: string;
   buyerFundInputs: { txid: string; vout: number; script: Buffer; valueSats: bigint }[];
 }
 
@@ -133,6 +134,7 @@ export function validateFinalizedP2PFill(params: P2PFillValidationParams): Valid
     view: params.view,
     prevouts,
     maxMinerFeeSats: terms.minerFeeSats,
+    discoveryTicker: terms.discoveryTicker,
   });
   if (!("rawTxHex" in base)) reject("TRANSFER_VALIDATION", base.reason);
 
@@ -174,13 +176,16 @@ export function validateFinalizedP2PFill(params: P2PFillValidationParams): Valid
   if (!feeOut || !feeOut.script.equals(terms.feeScript) || BigInt(feeOut.value) !== terms.marketFeeSats) {
     reject("P2P_FEE", "p2p fee output mismatch");
   }
-  if (tx.outs.length > FILL_BUYER_CHANGE_VOUT) {
+  const last = tx.outs[tx.outs.length - 1];
+  const hasDiscovery = !!last && last.script[0] === 0x6a &&
+    decodeDiscovery(last.script.subarray(last.script[1] === 0x4c ? 3 : 2)) !== null;
+  if (tx.outs.length > FILL_BUYER_CHANGE_VOUT && !(hasDiscovery && tx.outs.length === FILL_BUYER_CHANGE_VOUT + 1)) {
     const buyerChange = tx.outs[FILL_BUYER_CHANGE_VOUT];
     if (!buyerChange || !buyerChange.script.equals(terms.buyerChangeScript)) {
       reject("BUYER_CHANGE", "unexpected buyer change output");
     }
   }
-  if (tx.outs.length > FILL_BUYER_CHANGE_VOUT + 1) reject("UNEXPECTED_OUTPUT", "too many outputs");
+  if (tx.outs.length > FILL_BUYER_CHANGE_VOUT + 1 + Number(hasDiscovery)) reject("UNEXPECTED_OUTPUT", "too many outputs");
 
   // (f) dust safety: seller payout and p2p fee must clear relay dust.
   if (terms.totalPriceSats < dustThreshold(terms.sellerPayoutScript)) {

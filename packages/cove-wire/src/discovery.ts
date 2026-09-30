@@ -1,5 +1,4 @@
 import { COVE_PROTOCOL_ID, OP_DEPLOY, OP_MINT, OP_REDEEM, OP_TRANSFER, opName } from "./opcodes.js";
-import { DATACARRIER_PAYLOAD_LIMIT } from "./opcodes.js";
 import type { ParsedEnvelopeV2 } from "./codecV2.js";
 import { canonicalTicker } from "./ticker.js";
 
@@ -29,9 +28,12 @@ import { canonicalTicker } from "./ticker.js";
 /** Canonical JSON key order. Fixed so the encoding is byte-deterministic. */
 const KEY_ORDER = ["p", "op", "tick", "amt"] as const;
 
+/** Maximum readable marker size, including the longest ticker and atom amount. */
+export const DISCOVERY_PAYLOAD_LIMIT = 96;
+
 /**
  * Deliberately ticker-keyed, with NO tokenId. A 32-byte tokenId is 64 hex
- * characters and pushes the payload to ~128B, over the 80B datacarrier limit —
+ * characters and pushes the payload to ~128B, over the discovery size limit —
  * and existing crc-20 envelopes in the wild are ticker-keyed for the same
  * reason. The authoritative binary envelope at vout 0 carries the real 32-byte
  * tokenId, so identity is never ambiguous where it matters.
@@ -106,10 +108,10 @@ export function encodeDiscovery(binary: ParsedEnvelopeV2, ticker?: string): Buff
   if (ticker !== undefined && env.tick === "") env.tick = canonicalTicker(ticker);
   if (env.tick === "") delete (env as { tick?: string }).tick;
   const bytes = serializeDiscovery(env);
-  if (bytes.length > DATACARRIER_PAYLOAD_LIMIT) {
+  if (bytes.length > DISCOVERY_PAYLOAD_LIMIT) {
     throw new DiscoveryError(
       "DISCOVERY_TOO_LARGE",
-      `discovery envelope is ${bytes.length}B, limit ${DATACARRIER_PAYLOAD_LIMIT}B`,
+      `discovery envelope is ${bytes.length}B, limit ${DISCOVERY_PAYLOAD_LIMIT}B`,
     );
   }
   return bytes;

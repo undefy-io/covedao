@@ -29,6 +29,12 @@ bitcoin.initEccLib(ecc as unknown as Parameters<typeof bitcoin.initEccLib>[0]);
 /** Fixed non-reserve satoshi anchor carried by every backing state UTXO. */
 export const RESERVE_ANCHOR_SATS = 10_000n;
 
+function appendDiscoveryOutput(psbt: bitcoin.Psbt, wire: Buffer, ticker: string | undefined): void {
+  if (ticker === undefined) return;
+  const discovery = encodeDiscovery(decodeV2(wire), ticker);
+  psbt.addOutput({ script: bitcoin.script.compile([bitcoin.opcodes.OP_RETURN!, discovery]), value: 0 });
+}
+
 /**
  * Add a change output, or fold change too small to stand alone into the miner
  * fee — and report the fee that results.
@@ -104,6 +110,7 @@ export function buildDeployPsbtV3(params: {
   /** The protocol fee address; output 3 pays it the launch fee. */
   feeScript: Buffer;
   minerFeeSats: Sats;
+  discoveryEnvelope?: { ticker: string };
 }): DeployResult {
   const creatorScript = params.creatorScript ?? params.deployerChangeScript;
   const tokenId = computeTokenId({ ...params.identity, creatorScript });
@@ -137,6 +144,7 @@ export function buildDeployPsbtV3(params: {
   const change = totalIn - RESERVE_ANCHOR_SATS - CREATOR_RECORD_SATS - LAUNCH_FEE_SATS - params.minerFeeSats;
   if (change < 0n) throw new Error("insufficient deployer funds");
   const settled = addChangeOrAbsorb(psbt, params.deployerChangeScript, change, params.minerFeeSats);
+  appendDiscoveryOutput(psbt, wire, params.discoveryEnvelope?.ticker);
 
   return { psbt, tokenId, s0, vault, wire, minerFeeSats: settled.minerFeeSats };
 }
@@ -257,13 +265,7 @@ export function buildMintPsbtV3(params: {
   // Advisory crc-20 discovery envelope, ALWAYS last so every fixed-index output
   // check above is unaffected. Derived from the same binary envelope the
   // validator re-derives, so the two can never disagree.
-  if (params.discoveryEnvelope) {
-    const discovery = encodeDiscovery(decodeV2(wire), params.discoveryEnvelope.ticker);
-    psbt.addOutput({
-      script: Buffer.concat([Buffer.from([0x6a, discovery.length]), discovery]),
-      value: 0,
-    });
-  }
+  appendDiscoveryOutput(psbt, wire, params.discoveryEnvelope?.ticker);
 
   return {
     psbt,
@@ -311,6 +313,7 @@ export function buildTransferPsbtV2(params: {
   /** BTC outputs in addition to the carrier outputs (P2P payment, p2p fee, …). */
   btcOutputs: { script: Buffer; valueSats: Sats }[];
   minerFeeSats: Sats;
+  discoveryEnvelope?: { ticker: string };
 }): TransferResult {
   if (params.tokenOutputs.length === 0) throw new Error("no token outputs");
   if (params.tokenOutputs.length > 4) throw new Error("max 4 token outputs");
@@ -350,6 +353,7 @@ export function buildTransferPsbtV2(params: {
   const change = totalIn - carriersOut - btcOut - params.minerFeeSats;
   if (change < 0n) throw new Error("insufficient transfer funds");
   const settled = addChangeOrAbsorb(psbt, params.funderChangeScript, change, params.minerFeeSats);
+  appendDiscoveryOutput(psbt, wire, params.discoveryEnvelope?.ticker);
 
   const allocations = params.tokenOutputs.map((o, i) => ({ vout: i + 1, amount: o.amountAtoms }));
   return { psbt, wire, allocations, tokenOutputs, minerFeeSats: settled.minerFeeSats };
@@ -410,6 +414,7 @@ export function buildRedeemPsbtV3(params: {
   redeemFeeFlatSats?: bigint;
   /** Merge payout and BTC change, funding fees from the seller wallet. Legacy standalone settlement is retained by default. */
   walletFundedFees?: boolean;
+  discoveryEnvelope?: { ticker: string };
 }): RedeemResult {
   const { nextState, grossSats } = applyRedeemV2(params.prevState, params.redeemAmountAtoms);
   const prevVault = buildBackingVaultV3({
@@ -489,6 +494,7 @@ export function buildRedeemPsbtV3(params: {
   const settled = params.walletFundedFees ? {minerFeeSats:params.minerFeeSats} : addChangeOrAbsorb(
     psbt, params.funderChangeScript ?? params.sellerChangeScript, change, params.minerFeeSats,
   );
+  appendDiscoveryOutput(psbt, wire, params.discoveryEnvelope?.ticker);
 
   return {
     psbt,

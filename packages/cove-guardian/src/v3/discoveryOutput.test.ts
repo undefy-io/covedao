@@ -87,11 +87,12 @@ describe("Guardian discovery-output check (§D1)", () => {
       expect(opReturnPayload(opReturn(Buffer.from("ab", "hex")))).toEqual(Buffer.from("ab", "hex"));
     });
 
-    it("returns null for non-OP_RETURN, truncated and PUSHDATA forms", () => {
+    it("accepts valid PUSHDATA1 and rejects non-OP_RETURN or malformed pushes", () => {
       expect(opReturnPayload(Buffer.alloc(22, 0x00))).toBeNull();
       expect(opReturnPayload(Buffer.from("6a", "hex"))).toBeNull();
       expect(opReturnPayload(Buffer.from("6a05ab", "hex"))).toBeNull();
-      expect(opReturnPayload(Buffer.from("6a4c02abcd", "hex"))).toBeNull();
+      expect(opReturnPayload(Buffer.from("6a4c02abcd", "hex"))).toEqual(Buffer.from("abcd", "hex"));
+      expect(opReturnPayload(Buffer.from("6a4c03abcd", "hex"))).toBeNull();
     });
   });
 });

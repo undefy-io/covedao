@@ -14,6 +14,8 @@ export interface MarketConfig {
   /** The market fee never drops below this, so a small fill is never refused for a dust fee. */
   p2pFeeMinSats: bigint;
   feeScript: Buffer;
+  /** Add the readable CRC-20 OP_RETURN to market fills. */
+  discoveryEnvelope?: boolean;
   /** How long a buyer holds a listing while their own wallet signs. */
   reservationTtlSeconds: number;
   /**

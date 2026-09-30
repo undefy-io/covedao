@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import { ECPairFactory } from "ecpair";
-import { encodeTransferV2 } from "@crclaunch/cove-wire";
+import { encodeTransferV2, serializeDiscovery } from "@crclaunch/cove-wire";
 import { CoveChainView, TOKEN_CARRIER_SATS, s0StateV2 } from "@crclaunch/cove-covenant";
 import { COVE_FEE_CONFIG, deterministicFee } from "@crclaunch/cove-economics";
 import { validateFinalizedP2PFill, assertSettlementCap, type P2PFillTerms } from "./finalize.js";
@@ -82,6 +82,7 @@ function buildSigned(terms: P2PFillTerms): string {
     feeScript: terms.feeScript,
     marketFeeSats: terms.marketFeeSats,
     minerFeeSats: terms.minerFeeSats,
+    discoveryEnvelope: terms.discoveryTicker ? { ticker: terms.discoveryTicker } : undefined,
   });
   psbt.signInput(0, buyer);
   attachSellerPresig(psbt, presig);
@@ -102,6 +103,15 @@ const opReturn = (allocations: { vout: number; amount: bigint }[]) => {
 };
 
 describe("validateFinalizedP2PFill — presigned layout", () => {
+  it("accepts a matching CRC-20 output and rejects a changed ticker", () => {
+    const terms = buildTerms({ discoveryTicker: "FROG" });
+    const tx = bitcoin.Transaction.fromHex(buildSigned(terms));
+    expect(tx.outs[tx.outs.length - 1]!.script.subarray(2).toString("utf8")).toContain('"p":"crc-20"');
+    expect(validateFinalizedP2PFill({ rawTxHex: tx.toHex(), terms, view: view(), network: "regtest" }).txid).toHaveLength(64);
+    const wrong = serializeDiscovery({ p: "crc-20", op: "transfer", tick: "DOGE", amt: sourceAmount.toString() });
+    tx.outs[tx.outs.length - 1]!.script = bitcoin.script.compile([bitcoin.opcodes.OP_RETURN!, wrong]);
+    expect(() => validateFinalizedP2PFill({ rawTxHex: tx.toHex(), terms, view: view(), network: "regtest" })).toThrow(/DISCOVERY_MISMATCH/);
+  });
   it("accepts a well-formed presigned fill (whole carrier → buyer, seller paid at vout 1)", () => {
     const terms = buildTerms();
     const hex = buildSigned(terms);

@@ -49,6 +49,7 @@ export {
   serializeDiscovery,
   discoveryFor,
   encodeDiscovery,
+  DISCOVERY_PAYLOAD_LIMIT,
   decodeDiscovery,
   discoveryAgreesWithBinary,
   DiscoveryError,

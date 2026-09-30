@@ -31,7 +31,10 @@ const OP_RETURN = 0x6a;
 export function opReturnPayload(script: Buffer): Buffer | null {
   if (script.length < 2 || script[0] !== OP_RETURN) return null;
   const len = script[1]!;
-  // Only the direct-push form is used by Cove; PUSHDATA variants are not ours.
+  if (len === 0x4c) {
+    if (script.length < 3 || script.length !== 3 + script[2]!) return null;
+    return script.subarray(3);
+  }
   if (len > 0x4b || script.length !== 2 + len) return null;
   return script.subarray(2);
 }

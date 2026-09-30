@@ -6,7 +6,7 @@ import {
   SIGHASH_SINGLE_ANYONECANPAY,
 } from "@crclaunch/bitcoin";
 import { TOKEN_CARRIER_SATS } from "@crclaunch/cove-covenant";
-import { encodeTransferV2 } from "@crclaunch/cove-wire";
+import { decodeV2, encodeDiscovery, encodeTransferV2 } from "@crclaunch/cove-wire";
 import { dustThreshold } from "@crclaunch/cove-economics";
 import { MarketError } from "./errors.js";
 
@@ -169,6 +169,7 @@ export function buildPresignedFillPsbt(params: {
   feeScript: Buffer;
   marketFeeSats: bigint;
   minerFeeSats: bigint;
+  discoveryEnvelope?: { ticker: string };
 }): { psbt: bitcoin.Psbt; minerFeeSats: bigint; changeSats: bigint } {
   if (params.fundInputs.length === 0) {
     throw new MarketError("BUYER_FUNDS_INSUFFICIENT", "a purchase needs at least one funding coin");
@@ -197,7 +198,15 @@ export function buildPresignedFillPsbt(params: {
   // Change below dust cannot be an output; it goes to the miner.
   if (change >= dustThreshold(params.buyerChangeScript)) {
     psbt.addOutput({ script: params.buyerChangeScript, value: Number(change) });
+    if (params.discoveryEnvelope) {
+      const payload = encodeDiscovery(decodeV2(wire), params.discoveryEnvelope.ticker);
+      psbt.addOutput({ script: bitcoin.script.compile([bitcoin.opcodes.OP_RETURN!, payload]), value: 0 });
+    }
     return { psbt, minerFeeSats: params.minerFeeSats, changeSats: change };
+  }
+  if (params.discoveryEnvelope) {
+    const payload = encodeDiscovery(decodeV2(wire), params.discoveryEnvelope.ticker);
+    psbt.addOutput({ script: bitcoin.script.compile([bitcoin.opcodes.OP_RETURN!, payload]), value: 0 });
   }
   return { psbt, minerFeeSats: params.minerFeeSats + change, changeSats: 0n };
 }

@@ -275,17 +275,18 @@ export class V3AppService {
       budget: new PostgresRpcBudget(db, `ord:${providerAccount({ url: config.ordUrl })}`, "public", 3),
     }) : null;
     this.fundingChecker = this.createFundingChecker();
+    const marketConfig = config.network === "mainnet"
+      ? mainnetMarketConfig({
+          p2pFeeBps: config.p2pFeeBps ?? 50,
+          feeScript: config.feeScript,
+          maxP2pSettlementSats: config.maxP2pSettlementSats ?? 0n,
+          chainIdentity: config.chainIdentity,
+        })
+      : defaultMarketConfig(config.network, config.feeScript, config.chainIdentity);
     this.market = new MarketService(
       db,
       provider,
-      config.network === "mainnet"
-        ? mainnetMarketConfig({
-            p2pFeeBps: config.p2pFeeBps ?? 50,
-            feeScript: config.feeScript,
-            maxP2pSettlementSats: config.maxP2pSettlementSats ?? 0n,
-            chainIdentity: config.chainIdentity,
-          })
-        : defaultMarketConfig(config.network, config.feeScript, config.chainIdentity),
+      { ...marketConfig, discoveryEnvelope: config.discoveryEnvelope },
     );
   }
 
@@ -296,6 +297,13 @@ export class V3AppService {
     if (this.config.network === "mainnet" && this.config.mainnetMutationsArmed !== true) {
       throw new AppError("MAINNET_DISABLED", "mainnet mutations are not armed");
     }
+  }
+
+  private async discoveryTickerFor(tokenId: string): Promise<string | undefined> {
+    if (!this.config.discoveryEnvelope) return undefined;
+    const ticker = (await getV3TokenDetail(this.db, this.config.network, tokenId))?.ticker;
+    if (!ticker) throw new AppError("STATE_CHANGED", "token ticker unavailable for CRC-20 output");
+    return ticker;
   }
 
   private createFundingChecker(observation?: BlockchainInfo): FundingInputChecker {
@@ -1042,6 +1050,7 @@ export class V3AppService {
       wallet,
       candidates: params.funding,
       targetSats: RESERVE_ANCHOR_SATS + CREATOR_RECORD_SATS + LAUNCH_FEE_SATS,
+      discovery: this.config.discoveryEnvelope,
       feeRateSatPerVb: params.feeRateSatPerVb,
       explicitMinerFeeSats: params.minerFeeSats,
     });
@@ -1061,6 +1070,7 @@ export class V3AppService {
       creatorScript,
       feeScript: this.config.feeScript,
       minerFeeSats,
+      discoveryEnvelope: this.config.discoveryEnvelope ? { ticker: canonicalTicker(params.ticker) } : undefined,
     });
     const psbtBase64 = result.psbt.toBase64();
     const digest = unsignedTxDigest(result.psbt);
@@ -1399,9 +1409,7 @@ export class V3AppService {
     }
     // The advisory crc-20 envelope is ticker-keyed; the canonical view resolves
     // tokens by tokenId, so look the ticker up only when the envelope is on.
-    const discoveryTicker = this.config.discoveryEnvelope
-      ? (await getV3TokenDetail(this.db, this.config.network, params.tokenId))?.ticker
-      : undefined;
+    const discoveryTicker = await this.discoveryTickerFor(params.tokenId);
     // What the buyer's own BTC must cover: the curve price, the protocol fee,
     // and the sats that ride on their new token carrier. The vault input
     // supplies the existing backing and the successor consumes it, so neither
@@ -1538,9 +1546,7 @@ export class V3AppService {
       }
       const backing = await this.loadBackingAt(session.tokenId!, session.backingTxid, session.backingVout);
       const view = this.overlayPendingBacking(await this.loadView(session.tokenId!), session.tokenId!, backing);
-      const discoveryTicker = this.config.discoveryEnvelope
-        ? (await getV3TokenDetail(this.db, this.config.network, session.tokenId!))?.ticker
-        : undefined;
+      const discoveryTicker = await this.discoveryTickerFor(session.tokenId!);
       const signed = await this.transitionSigner.signMint({
         psbt,
         view,
@@ -1579,6 +1585,7 @@ export class V3AppService {
         maxMinerFeeSats: this.config.maxMinerFeeSats,
         buyFeeBps: this.config.buyFeeBps,
         buyFeeFlatSats: this.config.buyFeeFlatSats,
+        discoveryTicker,
       });
       if (!("rawTxHex" in validated)) throw new AppError("GUARDIAN_REJECTED", validated.reason);
       const receipt = await this.broadcastSubmission(job, validated);
@@ -1688,6 +1695,7 @@ export class V3AppService {
     const tokenInputTotalAtoms = selected.reduce((s, u) => s + u.amountAtoms, 0n);
     const grossSats = grossRedeem(backing.state.issuedPublicSupplyAtoms / ATOMS_PER_TOKEN, params.amountAtoms / ATOMS_PER_TOKEN);
     const protocolFeeSats = redeemFeeSats(grossSats, this.config.redeemFeeBps, this.config.redeemFeeFlatSats);
+    const discoveryTicker = await this.discoveryTickerFor(params.tokenId);
     const walletFundedFees = grossSats - protocolFeeSats < dustThreshold(wallet.payments.scriptBuffer);
     const changeCarrierSats = tokenInputTotalAtoms > params.amountAtoms ? TOKEN_CARRIER_SATS : 0n;
     const carrierSatsIn = BigInt(tokenInputs.length) * TOKEN_CARRIER_SATS;
@@ -1699,6 +1707,7 @@ export class V3AppService {
         ? redeemWalletFundingTarget(grossSats, protocolFeeSats, wallet.payments.scriptBuffer, carrierSatsIn, changeCarrierSats)
         : changeCarrierSats - carrierSatsIn,
       tokenInputs: tokenInputs.length,
+      discovery: discoveryTicker !== undefined,
       feeRateSatPerVb: params.feeRateSatPerVb,
       explicitMinerFeeSats: params.minerFeeSats,
     });
@@ -1723,6 +1732,7 @@ export class V3AppService {
       funderChangeScript: wallet.payments.scriptBuffer,
       redeemFeeBps: this.config.redeemFeeBps,
       redeemFeeFlatSats: this.config.redeemFeeFlatSats,
+      discoveryEnvelope: discoveryTicker ? { ticker: discoveryTicker } : undefined,
     });
     const view = this.overlayPendingBacking(
       await this.loadView(
@@ -1742,6 +1752,7 @@ export class V3AppService {
       maxMinerFeeSats: this.config.maxMinerFeeSats,
       redeemFeeBps: this.config.redeemFeeBps,
       redeemFeeFlatSats: this.config.redeemFeeFlatSats,
+      discoveryTicker,
       fundingChecker: this.fundingChecker,
     };
     // Validate only; the Guardian signs at submit (see buildBackingBuy).
@@ -1825,6 +1836,7 @@ export class V3AppService {
         session.tokenId!,
         await this.loadBackingAt(session.tokenId!, session.backingTxid, session.backingVout),
       );
+      const discoveryTicker = await this.discoveryTickerFor(session.tokenId!);
       const signed = await this.transitionSigner.signRedeem({
         psbt,
         view,
@@ -1835,6 +1847,7 @@ export class V3AppService {
         maxMinerFeeSats: this.config.maxMinerFeeSats,
         redeemFeeBps: this.config.redeemFeeBps,
         redeemFeeFlatSats: this.config.redeemFeeFlatSats,
+        discoveryTicker,
         fundingChecker: this.fundingChecker,
       });
       if (!signed.ok) {
@@ -1862,6 +1875,7 @@ export class V3AppService {
         maxMinerFeeSats: this.config.maxMinerFeeSats,
         redeemFeeBps: this.config.redeemFeeBps,
         redeemFeeFlatSats: this.config.redeemFeeFlatSats,
+        discoveryTicker,
       });
       if (!("rawTxHex" in validated)) throw new AppError("GUARDIAN_REJECTED", validated.reason);
       const receipt = await this.broadcastSubmission(job, validated);
@@ -1967,6 +1981,7 @@ export class V3AppService {
     // same back in. The wallet's own BTC covers the difference and the fee.
     const carrierSatsOut = BigInt(tokenOutputs.length) * TOKEN_CARRIER_SATS;
     const carrierSatsIn = BigInt(tokenInputs.length) * TOKEN_CARRIER_SATS;
+    const discoveryTicker = await this.discoveryTickerFor(params.tokenId);
     const { inputs: funderInputs, minerFeeSats } = await this.resolveFundingAndFee({
       op: "TRANSFER",
       wallet,
@@ -1974,6 +1989,7 @@ export class V3AppService {
       targetSats: carrierSatsOut - carrierSatsIn,
       tokenInputs: tokenInputs.length,
       recipientCarriers: tokenOutputs.length,
+      discovery: discoveryTicker !== undefined,
       feeRateSatPerVb: params.feeRateSatPerVb,
       explicitMinerFeeSats: params.minerFeeSats,
     });
@@ -1987,6 +2003,7 @@ export class V3AppService {
       funderChangeScript: wallet.payments.scriptBuffer,
       btcOutputs: [],
       minerFeeSats,
+      discoveryEnvelope: discoveryTicker ? { ticker: discoveryTicker } : undefined,
     });
     const psbtBase64 = result.psbt.toBase64();
     const digest = unsignedTxDigest(result.psbt);
@@ -2065,6 +2082,7 @@ export class V3AppService {
         rawTxHex,
         view,
         maxMinerFeeSats: this.config.maxMinerFeeSats,
+        discoveryTicker: await this.discoveryTickerFor(session.tokenId!),
       });
       if (!("rawTxHex" in validated)) throw new AppError("GUARDIAN_REJECTED", validated.reason);
       const receipt = await this.broadcastSubmission(job, validated);

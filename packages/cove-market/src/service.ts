@@ -26,7 +26,7 @@ import {
 import { TOKEN_CARRIER_SATS, type CoveCanonicalView } from "@crclaunch/cove-covenant";
 import { loadCanonicalViewSnapshotFromDb, parseCoveTx, type HealthReport } from "@crclaunch/cove-indexer/v3";
 import { deterministicFee, dustThreshold } from "@crclaunch/cove-economics";
-import { OP_TRANSFER as OP_TRANSFER_CODE } from "@crclaunch/cove-wire";
+import { DISCOVERY_PAYLOAD_LIMIT, OP_TRANSFER as OP_TRANSFER_CODE } from "@crclaunch/cove-wire";
 import { scriptForKind, spendKindOf } from "@crclaunch/bitcoin";
 import { MarketError } from "./errors.js";
 import type { MarketConfig } from "./config.js";
@@ -714,6 +714,7 @@ export class MarketService {
 
     const source = await this.resolveSource(listingToV1(listing));
     const marketFee = this.marketFeeFor(listing.totalPriceSats);
+    const discoveryTicker = await this.discoveryTickerFor(listing.tokenId);
     const funderInputs = fillFundInputs(fill).map((f) => ({
       txid: f.txid,
       vout: f.vout,
@@ -736,6 +737,7 @@ export class MarketService {
         fill.buyerTokenScript.length / 2,
         this.config.feeScript.length,
         fill.buyerChangeScript.length / 2,
+        ...(discoveryTicker ? [DISCOVERY_PAYLOAD_LIMIT + 3] : []),
       ],
     });
     let minerFeeSats: bigint;
@@ -776,6 +778,7 @@ export class MarketService {
       feeScript: this.config.feeScript,
       marketFeeSats: marketFee,
       minerFeeSats,
+      discoveryEnvelope: discoveryTicker ? { ticker: discoveryTicker } : undefined,
     });
     // The seller's carrier brings its own 1,000 sats for the buyer's new one.
     const extraCarrierSats = 0n;
@@ -913,6 +916,7 @@ export class MarketService {
     const rawTxHex = psbt.extractTransaction().toHex();
 
     const terms = this.buildTerms(listing, fill);
+    terms.discoveryTicker = await this.discoveryTickerFor(listing.tokenId);
     const view = await this.loadView(listing.tokenId, listing.sourceTxid, listing.sourceVout);
     const validated = validateFinalizedP2PFill({
       rawTxHex,
@@ -1517,6 +1521,22 @@ export class MarketService {
   }
 
   // ── build terms / view helpers ────────────────────────────────────────────
+
+  private async discoveryTickerFor(tokenId: string): Promise<string | undefined> {
+    if (!this.config.discoveryEnvelope) return undefined;
+    const rows = await this.db
+      .select({ ticker: schema.coveV3Tokens.ticker })
+      .from(schema.coveV3Tokens)
+      .where(and(
+        eq(schema.coveV3Tokens.network, this.config.network),
+        eq(schema.coveV3Tokens.tokenId, tokenId),
+        eq(schema.coveV3Tokens.canonical, true),
+      ))
+      .limit(1);
+    const ticker = rows[0]?.ticker;
+    if (!ticker) throw new MarketError("STATE_CHANGED", "token ticker unavailable for CRC-20 output");
+    return ticker;
+  }
 
   private buildTerms(listing: ListingSelect, fill: FillSelect): P2PFillTerms {
     return {
