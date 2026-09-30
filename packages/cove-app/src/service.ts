@@ -78,6 +78,7 @@ import {
   dustThreshold,
 } from "@crclaunch/cove-economics";
 import { ATOMS_PER_TOKEN, LOT_TOKENS, PUBLIC_SUPPLY_ATOMS } from "@crclaunch/curve";
+import { splitMint, MintPlanError } from "./mint-plan.js";
 import {
   canonicalTicker,
   computeTokenId,
@@ -185,6 +186,17 @@ export interface BackingQuote {
   indexedHeight: bigint;
   indexedBlockHash: string;
   expiresAtHeight: bigint;
+}
+
+/** A mint split into parts that each fit the per-mint limit. Totals are over all parts. */
+export interface MintPlan {
+  tokenId: string;
+  amountAtoms: bigint;
+  parts: { amountAtoms: bigint; grossSats: bigint; feeSats: bigint; creatorFeeSats: bigint }[];
+  grossSats: bigint;
+  feeSats: bigint;
+  creatorFeeSats: bigint;
+  indexedHeight: bigint;
 }
 
 export interface RedeemQuote {
@@ -1360,6 +1372,44 @@ export class V3AppService {
       indexedHeight: backing.indexedHeight,
       indexedBlockHash: backing.indexedBlockHash,
       expiresAtHeight: backing.indexedHeight + 2n,
+    };
+  }
+
+  /**
+   * Price a mint that may be bigger than one mint is allowed to be. It comes
+   * back as parts, each one a mint the Guardian will sign on its own, priced in
+   * order as the curve climbs. The buyer sends them one after another.
+   */
+  async planBackingBuy(tokenId: string, amountAtoms: bigint): Promise<MintPlan> {
+    const backing = await this.loadQuoteBacking(tokenId);
+    let amounts: bigint[];
+    try {
+      amounts = splitMint({ supplyAtoms: backing.state.issuedPublicSupplyAtoms, amountAtoms, limits: this.mintLimits() });
+    } catch (e) {
+      if (e instanceof MintPlanError) throw new AppError("TOKEN_AMOUNT_INVALID", e.message);
+      throw e;
+    }
+    let state = backing.state;
+    const parts: MintPlan["parts"] = [];
+    for (const partAtoms of amounts) {
+      const gross = grossBuy(state.issuedPublicSupplyAtoms / ATOMS_PER_TOKEN, partAtoms / ATOMS_PER_TOKEN);
+      parts.push({
+        amountAtoms: partAtoms,
+        grossSats: gross,
+        feeSats: mintFeeSats(gross, partAtoms, this.config.buyFeeBps, this.config.buyFeeFlatSats),
+        creatorFeeSats: creatorFeeSats(gross),
+      });
+      state = applyMintV2(state, partAtoms).nextState;
+    }
+    const sum = (k: "grossSats" | "feeSats" | "creatorFeeSats") => parts.reduce((a, p) => a + p[k], 0n);
+    return {
+      tokenId,
+      amountAtoms,
+      parts,
+      grossSats: sum("grossSats"),
+      feeSats: sum("feeSats"),
+      creatorFeeSats: sum("creatorFeeSats"),
+      indexedHeight: backing.indexedHeight,
     };
   }
 

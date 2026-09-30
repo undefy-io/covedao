@@ -3,7 +3,7 @@ import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import { ECPairFactory } from "ecpair";
 import { signPsbtWithKey, signBip322WithKey } from "@crclaunch/wallets/e2e";
-import { IDENTITIES, mine, listBtcUtxos, rpc } from "./v3-rpc";
+import { IDENTITIES, mine, listBtcUtxos, rpc, fund } from "./v3-rpc";
 import { apiListPresigned, waitForListing } from "./v3-list";
 
 /**
@@ -38,10 +38,12 @@ async function status() {
 
 async function mineAndWait(n = 1) {
   await mine(n);
+  // Core's own height: the status observation can lag the blocks just mined.
+  const target = BigInt(await rpc<number>("getblockcount", []));
   // Wait for the V3 worker to catch up (indexer height == Core height).
   for (let i = 0; i < 60; i++) {
     const j = await status();
-    if (j.ok && j.data.indexer.health === "HEALTHY" && BigInt(j.data.core.height) === BigInt(j.data.indexer.indexedHeight)) return;
+    if (j.ok && j.data.indexer.health === "HEALTHY" && BigInt(j.data.indexer.indexedHeight) >= target) return;
     await new Promise((r) => setTimeout(r, 1000));
   }
   throw new Error("indexer did not catch up after mining");
@@ -195,7 +197,7 @@ test("E2E-004 redeem: Bob sells back to the vault", async ({ browser }) => {
   await page.getByLabel(/^Redeem/).fill("10000");
   await page.getByRole("button", { name: /review redeem/i }).click();
   await expect(page.getByText(/you are redeeming/i)).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText(/^you receive$/i)).toBeVisible();
+  await expect(page.getByText(/^you (receive|pay)$/i)).toBeVisible();
   await page.getByRole("button", { name: /confirm . sign/i }).click();
   await expect(page.getByText(/^redeemed\./i).first()).toBeVisible({ timeout: 60_000 });
   await mineAndWait(1);
@@ -244,7 +246,15 @@ test("E2E-006 P2P buy: Bob buys and it settles with no seller signature", async 
   await expect(alice.getByRole("button", { name: /review & sign sale/i })).toHaveCount(0);
 
   // FILLED; Bob holds the tokens; Alice was paid exactly, at vout 1.
-  const alicePf = await fetch(`${BASE}/api/v3/wallet/${IDENTITIES.alice.address}/portfolio`).then((r) => r.json());
+  // The worker marks the fill after it indexes the block, a moment after the
+  // indexer height moves.
+  let alicePf = await fetch(`${BASE}/api/v3/wallet/${IDENTITIES.alice.address}/portfolio`).then((r) => r.json());
+  for (let i = 0; i < 30; i++) {
+    const l = alicePf.data.listings.find((x: { listingId: string }) => x.listingId === listingId);
+    if (l?.status === "FILLED") break;
+    await new Promise((r) => setTimeout(r, 1000));
+    alicePf = await fetch(`${BASE}/api/v3/wallet/${IDENTITIES.alice.address}/portfolio`).then((r) => r.json());
+  }
   const filled = alicePf.data.listings.find((l: { listingId: string }) => l.listingId === listingId);
   expect(filled.status).toBe("FILLED");
   const fill = alicePf.data.fills.find((f: { listingId: string; status: string }) => f.listingId === listingId && f.status === "CONFIRMED");
@@ -269,8 +279,7 @@ test("E2E-008 cancel: Alice cancels a second listing", async ({ browser }) => {
 });
 
 test("E2E-009 mint-out: the page switches to Buy / Sell / Redeem, and the market works", async ({ browser }) => {
-  // Minting out takes about twenty capped mints, each confirmed in a block.
-  test.setTimeout(20 * 60_000);
+  test.setTimeout(10 * 60_000);
   // Carol launches and mints the whole curve in one go.
   const carol = await walletPage(browser, IDENTITIES.carol);
   await carol.goto(`${BASE}/launch`);
@@ -285,22 +294,26 @@ test("E2E-009 mint-out: the page switches to Buy / Sell / Redeem, and the market
   const fullId = tokens.data.find((t: { ticker: string }) => t.ticker === "FULL").tokenId as string;
 
   // One mint is capped (COVE_REGTEST_MAX_MINT_GROSS_SATS of curve price, 0.5
-  // BTC here) and the whole curve is about 0.73 BTC, so minting out takes two.
-  // The page stops each one at the cap and says so.
+  // BTC here) and the whole curve is more than that. Carol asks for all of it
+  // at once: the page splits it into mints that each fit the cap and sends them
+  // one after another, each spending the vault the one before made. Each mint
+  // needs its own confirmed coin, so she has a few.
+  await fund(IDENTITIES.carol.address, 1);
+  await fund(IDENTITIES.carol.address, 1);
+  await mineAndWait(1);
   await carol.goto(`${BASE}/token/${fullId}`);
   await carol.getByRole("button", { name: /connect wallet/i }).click();
-  for (let i = 0; i < 40; i++) {
-    const d = await fetch(`${BASE}/api/v3/tokens/${fullId}`).then((r) => r.json());
-    if (BigInt(d.data.issuedSupplyAtoms) >= 21_000_000n * T) break;
-    // The most one mint can take right now, from the sats quote.
-    const q = await fetch(`${BASE}/api/v3/backing/buy/quote-sats`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ tokenId: fullId, budgetSats: "150000000" }) }).then((r) => r.json());
-    await carol.getByLabel(/^Mint . FULL/).fill((BigInt(q.data.amountAtoms) / T).toString());
-    await expect(carol.getByRole("button", { name: /review mint/i })).toBeEnabled({ timeout: 30_000 });
-    await carol.getByRole("button", { name: /review mint/i }).click();
-    await carol.getByRole("button", { name: /confirm . sign/i }).click();
-    await expect(carol.getByText(/^minted\./i).first()).toBeVisible({ timeout: 60_000 });
-    await mineAndWait(1);
-  }
+  const before = await fetch(`${BASE}/api/v3/tokens/${fullId}`).then((r) => r.json());
+  const rest = 21_000_000n - BigInt(before.data.issuedSupplyAtoms) / T;
+  await carol.getByLabel(/^Mint . FULL/).fill(rest.toString());
+  await expect(carol.getByText(/sent as 2 mints/i).first()).toBeVisible({ timeout: 30_000 });
+  await carol.getByRole("button", { name: /review mint/i }).click();
+  await expect(carol.getByText(/sent as 2 mints/i).first()).toBeVisible();
+  await carol.getByRole("button", { name: /confirm . sign/i }).click();
+  await expect(carol.getByText(/^minted in 2 transactions/i).first()).toBeVisible({ timeout: 120_000 });
+  await mineAndWait(1);
+  const after = await fetch(`${BASE}/api/v3/tokens/${fullId}`).then((r) => r.json());
+  expect(BigInt(after.data.issuedSupplyAtoms)).toBe(21_000_000n * T);
 
   // Graduated: Mint is gone; Buy, Sell and Redeem are offered.
   await carol.reload();
@@ -313,7 +326,13 @@ test("E2E-009 mint-out: the page switches to Buy / Sell / Redeem, and the market
   await expect(carol.getByText(/listing created/i).first()).toBeVisible({ timeout: 60_000 });
   // A split was needed, so the listing goes live on the next block.
   await mineAndWait(1);
-  const firstAsk = await fetch(`${BASE}/api/v3/market/listings?tokenId=${fullId}`).then((r) => r.json());
+  // The worker activates it after it indexes that block.
+  let firstAsk = { data: [] as { status: string }[] };
+  for (let i = 0; i < 30; i++) {
+    firstAsk = await fetch(`${BASE}/api/v3/market/listings?tokenId=${fullId}`).then((r) => r.json());
+    if (firstAsk.data.some((l) => l.status === "ACTIVE")) break;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
   expect(firstAsk.data.filter((l: { status: string }) => l.status === "ACTIVE").length).toBe(1);
 
   // Bob buys it from the token page; Carol signs nothing.

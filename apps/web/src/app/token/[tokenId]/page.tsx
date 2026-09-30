@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useWallet } from "@/components/WalletProvider";
 import { verifyClientIntent } from "@crclaunch/wallets";
+import { Psbt } from "bitcoinjs-lib";
 import {
   fmtBtc,
   fmtTokens,
@@ -194,7 +195,7 @@ function TokenContent() {
     }
     const controller = new AbortController();
     const timer = setTimeout(() => {
-      void fetchBuyQuote<Quote>(tokenId, displayTokensToAtoms(amount), controller.signal)
+      void fetchBuyQuote<Quote>(tokenId, displayTokensToAtoms(amount), controller.signal, "plan")
         .then((j) => {
           if (controller.signal.aborted) return;
           if (j.ok) setMintQuote({ forAmount: amount, forBlock: pendingRevision, quote: j.data });
@@ -293,6 +294,20 @@ function TokenContent() {
         throw new Error(kind === "buy" ? t("tok.errMintNothing") : t("tok.errRedeemAmount"));
       if (BigInt(amountAtoms) % (1_000n * 100_000_000n) !== 0n) throw new Error(t("tok.errLots"));
       const endpoint = kind === "buy" ? "buy" : "redeem";
+      if (kind === "buy") {
+        // Over the per-mint limit it becomes several mints, reviewed together.
+        const pr = await fetch("/api/v3/backing/buy/plan", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ tokenId, amountAtoms }),
+        });
+        const pj = await pr.json();
+        if (!pj.ok) throw new Error(errorText(pj));
+        if (pj.data.parts.length > 1) {
+          setReview({ kind, amountAtoms, quote: pj.data, parts: pj.data.parts });
+          return;
+        }
+      }
       const qr = await fetch(`/api/v3/backing/${endpoint}/quote`, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -308,58 +323,113 @@ function TokenContent() {
     }
   }
 
+  /** Build one mint or redeem against its quote, verify it, sign it, send it. */
+  async function sendOne(
+    kind: "buy" | "sell",
+    amountAtoms: string,
+    quote: Quote,
+    /** Coins earlier parts of this mint already spent; the coin list may not know yet. */
+    spent: Set<string> = new Set(),
+  ): Promise<string> {
+    const funding = (await getUtxos(true)).filter((c) => !spent.has(`${c.txid}:${c.vout}`));
+    const isBuy = kind === "buy";
+    const br = await fetch(`/api/v3/backing/${isBuy ? "buy" : "redeem"}/build`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        tokenId,
+        amountAtoms,
+        // The buy binds to the exact backing state that was quoted, so the
+        // price cannot move between the review and the signature.
+        ...(isBuy
+          ? {
+              quoteBinding: {
+                stateHash: quote.stateHash,
+                backingOutpoint: quote.backingOutpoint,
+                expiresAtHeight: quote.expiresAtHeight,
+              },
+            }
+          : {}),
+        ...walletFields(),
+        funding,
+        feeRateSatPerVb: satPerVb ?? undefined,
+        idempotencyKey: `${kind}-${tokenId}-${Date.now()}`,
+      }),
+    });
+    const bj = await br.json();
+    if (!bj.ok) throw new Error(errorText(bj));
+    // Independently re-check the PSBT against the intent before signing: the
+    // price, the fees, the token amount and where the tokens land.
+    verifyClientIntent(bj.data.psbtBase64, bj.data.intent);
+    for (const input of Psbt.fromBase64(bj.data.psbtBase64).txInputs)
+      spent.add(`${Buffer.from(input.hash).reverse().toString("hex")}:${input.index}`);
+    const signed = await signPsbt(bj.data.psbtBase64, isBuy ? "BACKING_BUY" : "REDEEM");
+    const sr = await fetch(`/api/v3/backing/${isBuy ? "buy" : "redeem"}/submit`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId: bj.data.sessionId, signedPsbtBase64: signed }),
+    });
+    const sj = await sr.json();
+    if (!sj.ok) throw new Error(errorText(sj));
+    setTxid(sj.data.txid);
+    notifyLocalBroadcast();
+    return sj.data.txid as string;
+  }
+
   /** Step two: build against the reviewed quote, verify it, sign it, send it. */
   async function confirmTrade() {
     if (!detail || !connected || !review) return;
     setErr("");
     setBusy(true);
+    const parts = review.parts ?? [];
+    let done = 0;
     try {
-      const funding = await getUtxos(true);
-      const isBuy = review.kind === "buy";
-      const br = await fetch(`/api/v3/backing/${isBuy ? "buy" : "redeem"}/build`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          tokenId,
-          amountAtoms: review.amountAtoms,
-          // The buy binds to the exact backing state that was quoted, so the
-          // price cannot move between the review and the signature.
-          ...(isBuy
-            ? {
-                quoteBinding: {
-                  stateHash: review.quote.stateHash,
-                  backingOutpoint: review.quote.backingOutpoint,
-                  expiresAtHeight: review.quote.expiresAtHeight,
-                },
-              }
-            : {}),
-          ...walletFields(),
-          funding,
-          feeRateSatPerVb: satPerVb ?? undefined,
-          idempotencyKey: `${review.kind}-${tokenId}-${Date.now()}`,
-        }),
-      });
-      const bj = await br.json();
-      if (!bj.ok) throw new Error(errorText(bj));
-      // Independently re-check the PSBT against the intent before signing: the
-      // price, the fees, the token amount and where the tokens land.
-      verifyClientIntent(bj.data.psbtBase64, bj.data.intent);
-      const signed = await signPsbt(bj.data.psbtBase64, isBuy ? "BACKING_BUY" : "REDEEM");
-      const sr = await fetch(`/api/v3/backing/${isBuy ? "buy" : "redeem"}/submit`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sessionId: bj.data.sessionId, signedPsbtBase64: signed }),
-      });
-      const sj = await sr.json();
-      if (!sj.ok) throw new Error(errorText(sj));
-      setTxid(sj.data.txid);
-      notifyLocalBroadcast();
-      setMsg(isBuy ? t("tok.minted") : t("tok.redeemed"));
+      if (parts.length > 1) {
+        // One mint per part, each spending the vault the one before it made.
+        // Each part is quoted fresh, so it binds to that newer vault.
+        let prevTxid = "";
+        const spent = new Set<string>();
+        for (const part of parts) {
+          setMsg(t("tok.mintingPart", { i: String(done + 1), n: String(parts.length) }));
+          // After the first part, wait until the server prices against the vault
+          // that part made. A quote on the older vault would build a mint that
+          // double-spends the one just sent.
+          let quote: Quote | null = null;
+          for (let attempt = 0; attempt < 60; attempt++) {
+            const qr = await fetch("/api/v3/backing/buy/quote", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ tokenId, amountAtoms: part.amountAtoms }),
+            });
+            const qj = await qr.json();
+            if (!qj.ok) throw new Error(errorText(qj));
+            if (!prevTxid || qj.data.backingOutpoint.txid === prevTxid) {
+              quote = qj.data;
+              break;
+            }
+            await new Promise((r) => setTimeout(r, 1_000));
+          }
+          if (!quote) throw new Error(t("tok.quoteUnavailable"));
+          prevTxid = await sendOne("buy", part.amountAtoms, quote, spent);
+          done++;
+        }
+        setMsg(t("tok.mintedParts", { n: String(parts.length) }));
+      } else {
+        await sendOne(review.kind, review.amountAtoms, review.quote);
+        setMsg(review.kind === "buy" ? t("tok.minted") : t("tok.redeemed"));
+      }
       setReview(null);
       setAmount("");
       void refreshWallet();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      const m = e instanceof Error ? e.message : String(e);
+      if (done > 0) {
+        setMsg("");
+        setReview(null);
+        setAmount("");
+        void refreshWallet();
+        setErr(`${t("tok.mintPartsStopped", { done: String(done), n: String(parts.length) })} ${m}`);
+      } else setErr(m);
     } finally {
       setBusy(false);
     }
@@ -652,7 +722,7 @@ function TokenContent() {
                           BigInt(mintQuote.grossSats) +
                             BigInt(mintQuote.feeSats) +
                             BigInt(mintQuote.creatorFeeSats ?? "0") +
-                            1_000n,
+                            1_000n * BigInt(mintQuote.parts?.length ?? 1),
                         )
                       : "—"}
                   </span>
@@ -660,6 +730,9 @@ function TokenContent() {
                 {mintQuoteError ? <p className="text-xs text-pending">{mintQuoteError}</p> : null}
                 {mintQuote ? (
                   <p className="text-xs text-bone-dim">{t("tok.mintNetworkFeeNote")}</p>
+                ) : null}
+                {mintQuote?.parts && mintQuote.parts.length > 1 ? (
+                  <p className="text-xs text-bone-dim">{t("tok.mintParts", { n: String(mintQuote.parts.length) })}</p>
                 ) : null}
                 {balanceSats !== null ? (
                   <p className="text-xs text-bone-dim">
@@ -882,12 +955,23 @@ interface Quote {
   creatorFeeSats?: string;
   netSats?: string;
   supplyAfterAtoms: string;
+  /** From the plan call: the mints this amount is sent as. */
+  parts?: MintPart[];
+}
+
+interface MintPart {
+  amountAtoms: string;
+  grossSats: string;
+  feeSats: string;
+  creatorFeeSats: string;
 }
 
 interface Review {
   kind: "buy" | "sell";
   amountAtoms: string;
   quote: Quote;
+  /** A mint over the per-mint limit: sent as these mints, one after another. */
+  parts?: MintPart[];
 }
 
 /**
@@ -927,11 +1011,13 @@ function TradeReview({
   const gross = BigInt(review.quote.grossSats);
   const protocolFee = BigInt(review.quote.feeSats);
   const creatorFee = isBuy ? BigInt(review.quote.creatorFeeSats ?? "0") : 0n;
-  const minerFee = previewFeeSats(isBuy ? "BACKING_BUY" : "REDEEM") ?? 0n;
+  // Several mints each pay their own network fee and fund their own carrier.
+  const mints = BigInt(review.parts?.length ?? 1);
+  const minerFee = (previewFeeSats(isBuy ? "BACKING_BUY" : "REDEEM") ?? 0n) * mints;
   // The buyer also funds the 1,000-sat output their tokens ride on; it stays in
   // their wallet, but it is BTC they spend on this screen.
   const total = isBuy
-    ? gross + protocolFee + creatorFee + 1_000n + minerFee
+    ? gross + protocolFee + creatorFee + 1_000n * mints + minerFee
     : gross - protocolFee - minerFee;
 
   return (
@@ -941,12 +1027,15 @@ function TradeReview({
         <p className="mt-2 text-2xl tabular-nums text-bone">
           {fmtTokens(review.amountAtoms)} <span className="text-base text-bone-dim">{ticker}</span>
         </p>
+        {mints > 1n ? (
+          <p className="mt-2 text-xs text-bone-dim">{t("tok.mintParts", { n: String(mints) })}</p>
+        ) : null}
       </div>
 
       <dl className="space-y-2 text-sm">
         <Line k={t("tok.curvePrice")} v={fmtBtc(gross)} />
         {isBuy ? <Line k={t("tok.creator50")} v={`+${fmtBtc(creatorFee)}`} /> : null}
-        {isBuy ? <Line k={t("tok.carrier")} v={`+${fmtBtc(1_000n)}`} /> : null}
+        {isBuy ? <Line k={t("tok.carrier")} v={`+${fmtBtc(1_000n * mints)}`} /> : null}
         <Line k={t("tok.protocolFee")} v={`${isBuy ? "+" : "−"}${fmtBtc(protocolFee)}`} />
         <Line k={t("tok.networkFee")} v={`${isBuy ? "+" : "−"}\u2248${fmtBtc(minerFee)}`} />
         <div className="border-t border-rule-bright pt-2">

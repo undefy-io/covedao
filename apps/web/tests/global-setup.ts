@@ -1,4 +1,4 @@
-import { fund, mine, IDENTITIES } from "./v3-rpc";
+import { fund, mine, rpc, IDENTITIES } from "./v3-rpc";
 
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3100";
 
@@ -15,13 +15,15 @@ export default async function globalSetup() {
   // Carol mints out a whole curve: about ten BTC of curve price plus fees.
   await fund(IDENTITIES.carol.address, 15);
   await mine(1);
-  // Wait for the worker to index everything (health gate requires HEALTHY).
-  for (let i = 0; i < 120; i++) {
+  // Wait for the worker to index everything. Compare against Core's own height:
+  // the status health flag can still describe the chain before the blocks
+  // mined above, and a trade started while the indexer lags is refused.
+  const target = BigInt(await rpc<number>("getblockcount", []));
+  for (let i = 0; i < 180; i++) {
     try {
       const r = await fetch(`${BASE}/api/v3/status`);
-      const j = (await r.json()) as { ok?: boolean; data?: { indexer?: { health?: string; indexedHeight?: string }; core?: { height?: string } } };
-      if (j.ok && j.data?.indexer?.health === "HEALTHY") return;
-      if (j.ok && j.data?.core?.height && j.data?.indexer?.indexedHeight && BigInt(j.data.core.height) - BigInt(j.data.indexer.indexedHeight) <= 2n) return;
+      const j = (await r.json()) as { ok?: boolean; data?: { indexer?: { indexedHeight?: string } } };
+      if (j.ok && j.data?.indexer?.indexedHeight && BigInt(j.data.indexer.indexedHeight) >= target) return;
     } catch {
       // web app may still be starting
     }

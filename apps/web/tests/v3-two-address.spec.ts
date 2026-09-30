@@ -47,9 +47,11 @@ async function status() {
 
 async function mineAndWait(n = 1) {
   await mine(n);
+  // Core's own height: the status observation can lag the blocks just mined.
+  const target = BigInt(await rpc<number>("getblockcount", []));
   for (let i = 0; i < 60; i++) {
     const j = await status();
-    if (j.ok && j.data.indexer.health === "HEALTHY" && BigInt(j.data.core.height) === BigInt(j.data.indexer.indexedHeight)) return;
+    if (j.ok && j.data.indexer.health === "HEALTHY" && BigInt(j.data.indexer.indexedHeight) >= target) return;
     await new Promise((r) => setTimeout(r, 1000));
   }
   throw new Error("indexer did not catch up after mining");

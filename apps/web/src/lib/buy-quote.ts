@@ -22,11 +22,13 @@ export async function fetchBuyQuote<T>(
   tokenId: string,
   amountAtoms: string,
   signal: AbortSignal,
+  /** "plan" prices a mint over the per-mint limit as several mints. */
+  endpoint: "quote" | "plan" = "quote",
 ): Promise<QuoteResponse<T>> {
   const retryDelays = [1_000, 2_000, 4_000, 8_000, 8_000];
   for (let attempt = 0; ; attempt++) {
     signal.throwIfAborted();
-    const response = await fetch("/api/v3/backing/buy/quote", {
+    const response = await fetch(`/api/v3/backing/buy/${endpoint}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ tokenId, amountAtoms }),

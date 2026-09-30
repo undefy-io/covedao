@@ -5,6 +5,7 @@ export type {
   LaunchPrepareInput,
   LaunchPrepareResult,
   BackingQuote,
+  MintPlan,
   RedeemQuote,
   IntentV3,
 } from "./service.js";

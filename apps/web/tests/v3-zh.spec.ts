@@ -3,7 +3,7 @@ import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import { ECPairFactory } from "ecpair";
 import { signPsbtWithKey, signBip322WithKey } from "@crclaunch/wallets/e2e";
-import { IDENTITIES, mine, listBtcUtxos } from "./v3-rpc";
+import { IDENTITIES, mine, listBtcUtxos, rpc } from "./v3-rpc";
 
 /**
  * Simplified Chinese. The language button switches every page, the choice
@@ -21,9 +21,11 @@ test.describe.configure({ mode: "serial" });
 
 async function mineAndWait(n = 1) {
   await mine(n);
+  // Core's own height: the status observation can lag the blocks just mined.
+  const target = BigInt(await rpc<number>("getblockcount", []));
   for (let i = 0; i < 60; i++) {
     const j = await fetch(`${BASE}/api/v3/status`).then((r) => r.json());
-    if (j.ok && j.data.indexer.health === "HEALTHY" && BigInt(j.data.core.height) === BigInt(j.data.indexer.indexedHeight)) return;
+    if (j.ok && j.data.indexer.health === "HEALTHY" && BigInt(j.data.indexer.indexedHeight) >= target) return;
     await new Promise((r) => setTimeout(r, 1000));
   }
   throw new Error("indexer did not catch up after mining");
