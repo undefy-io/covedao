@@ -1,0 +1,628 @@
+{
+  "cases": [
+    {
+      "api_event": {
+        "amount_atoms": null,
+        "from_address": "bc1phuuulh7fs5zrm48ethfyqvt860fxsaxuq643telqn06yz4u3c70spyleaf",
+        "kind": "deploy",
+        "mint_beneficiary": null,
+        "mint_csv_blocks": null,
+        "mint_payment_amount_atoms": null,
+        "mint_payment_asset": null,
+        "mint_status": null,
+        "tick": "LEAF",
+        "to_address": null,
+        "txid": "546cc042d0f396a0d8ad67b6987d9d5c09619e6962738347ca1611a1d1841b67"
+      },
+      "category": "deploy",
+      "chain_transaction": {
+        "block_hash": "0000000000000000000115549c10ce59b1eec33ec9f63067242247ad68a9751b",
+        "block_height": 967485,
+        "crc_marker": {
+          "btc": "3333333",
+          "leaf": "1",
+          "lim": "2100000000",
+          "max": "1000000000",
+          "op": "deploy",
+          "ordi": "286",
+          "p": "crc-20",
+          "tick": "LEAF",
+          "type": "bonding"
+        },
+        "crc_marker_vout": 0,
+        "inputs": [
+          {
+            "txid": "ff66562e35fe4e224e8e37bcf4f63192f1d925cf94f0e08ab7e1d1f97b052570",
+            "vout": 0,
+            "witness_items": 1
+          }
+        ],
+        "outputs": [
+          {
+            "core_address": null,
+            "sats": 0,
+            "script_hex": "6a4c897b2270223a226372632d3230222c226f70223a226465706c6f79222c227469636b223a224c454146222c2274797065223a22626f6e64696e67222c226d6178223a2231303030303030303030222c226c696d223a2232313030303030303030222c226c656166223a2231222c226f726469223a22323836222c22627463223a2233333333333333227d",
+            "vout": 0
+          },
+          {
+            "core_address": "bc1ql4mad6nxx43t79u7wadwqhtu0hx54ssg6mjlte",
+            "sats": 208760,
+            "script_hex": "0014fd77d6ea663562bf179e775ae05d7c7dcd4ac208",
+            "vout": 1
+          }
+        ]
+      },
+      "raw_transaction_hex": "020000000001017025057bf9d1e1b78ae0f094cf25d9f19231f6f4bc378e4e224efe352e5666ff0000000000ffffffff0200000000000000008c6a4c897b2270223a226372632d3230222c226f70223a226465706c6f79222c227469636b223a224c454146222c2274797065223a22626f6e64696e67222c226d6178223a2231303030303030303030222c226c696d223a2232313030303030303030222c226c656166223a2231222c226f726469223a22323836222c22627463223a2233333333333333227d782f030000000000160014fd77d6ea663562bf179e775ae05d7c7dcd4ac208014047747e90eae51853c8d80e25b6b5937aa6889a36c33ade3d05074f096f98e0c68fb13851db4d5fb88210be77013b1be3fedc5ee1eff71099bf2f2e4c20b9155300000000",
+      "txid": "546cc042d0f396a0d8ad67b6987d9d5c09619e6962738347ca1611a1d1841b67"
+    },
+    {
+      "api_event": {
+        "amount_atoms": "108190476191",
+        "from_address": "bc1pcpsky7h9ddv6j78fvhkn59lv2dvs7nqrdjka2v90akz078fhxedq39u00c",
+        "kind": "mint",
+        "mint_beneficiary": "bc1p635rsze8zdvhnj8vn92wcaetnrxzlw7n82k5pav44w34sejryatq75lz34",
+        "mint_csv_blocks": 2100,
+        "mint_payment_amount_atoms": "30000",
+        "mint_payment_asset": "BTC",
+        "mint_status": "allocated",
+        "tick": "LEAF",
+        "to_address": "bc1p635rsze8zdvhnj8vn92wcaetnrxzlw7n82k5pav44w34sejryatq75lz34",
+        "txid": "17c4c6fa3a877aa42c142f4836c3cb6b10d4e588ff2150df842e2e3e3e89bde4"
+      },
+      "category": "mint_btc",
+      "chain_transaction": {
+        "block_hash": "0000000000000000000008d2c2f8f384ccdc984a5c7a0c966f4ca25b52942e7d",
+        "block_height": 967918,
+        "crc_marker": {
+          "op": "mint",
+          "p": "crc-20",
+          "tick": "LEAF"
+        },
+        "crc_marker_vout": 0,
+        "inputs": [
+          {
+            "txid": "2af206ef53e86c79fd9764ab374489ef94595a1672a3bd53eb9d4bc4d46e4185",
+            "vout": 5,
+            "witness_items": 1
+          }
+        ],
+        "outputs": [
+          {
+            "core_address": null,
+            "sats": 0,
+            "script_hex": "6a287b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a224c454146227d",
+            "vout": 0
+          },
+          {
+            "core_address": "bc1p635rsze8zdvhnj8vn92wcaetnrxzlw7n82k5pav44w34sejryatq75lz34",
+            "sats": 330,
+            "script_hex": "5120d468380b27135979c8ec9954ec772b98cc2fbbd33aad40f595aba35866432756",
+            "vout": 1
+          },
+          {
+            "core_address": "bc1phuuulh7fs5zrm48ethfyqvt860fxsaxuq643telqn06yz4u3c70spyleaf",
+            "sats": 30000,
+            "script_hex": "5120bf39cfdfc985043dd4f95dd2403167d3d26874dc06ab15e7e09bf4415791c79f",
+            "vout": 2
+          },
+          {
+            "core_address": "bc1pcpsky7h9ddv6j78fvhkn59lv2dvs7nqrdjka2v90akz078fhxedq39u00c",
+            "sats": 53934,
+            "script_hex": "5120c061627ae56b59a978e965ed3a17ec53590f4c036cadd530afed84ff1d37365a",
+            "vout": 3
+          }
+        ]
+      },
+      "raw_transaction_hex": "0200000000010185416ed4c44b9deb53bda372165a5994ef894437ab6497fd796ce853ef06f22a0500000000fdffffff0400000000000000002a6a287b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a224c454146227d4a01000000000000225120d468380b27135979c8ec9954ec772b98cc2fbbd33aad40f595aba358664327563075000000000000225120bf39cfdfc985043dd4f95dd2403167d3d26874dc06ab15e7e09bf4415791c79faed2000000000000225120c061627ae56b59a978e965ed3a17ec53590f4c036cadd530afed84ff1d37365a0140999f60d33abb96ca48c41926aa2fdff6fbc79c08b59d20d1b0577aff55fbd31ba5f370b1e152d06200e458ad2b35ac8c19fcf4823813e8aa8497754d641f1efc00000000",
+      "txid": "17c4c6fa3a877aa42c142f4836c3cb6b10d4e588ff2150df842e2e3e3e89bde4"
+    },
+    {
+      "api_event": {
+        "amount_atoms": "145658857142858",
+        "from_address": "bc1p7qpz46khgcdu7dcmw3t8wtt6hc7sf9r3djgevsgeym7tau825v6sfa97ek",
+        "kind": "mint",
+        "mint_beneficiary": "bc1ppxgzntmcp6t44yl5lt0nknfdwnzdmxm22jqgtu9xzcvah7tc8msq3d0z6y",
+        "mint_csv_blocks": 2100,
+        "mint_payment_amount_atoms": "163000000000000",
+        "mint_payment_asset": "LEAF",
+        "mint_status": "clamped",
+        "tick": "LEAF",
+        "to_address": "bc1ppxgzntmcp6t44yl5lt0nknfdwnzdmxm22jqgtu9xzcvah7tc8msq3d0z6y",
+        "txid": "394bdb537c5c1e7a11fe95230cafda2394911b86a054ca1c974bcfed5b7c8feb"
+      },
+      "category": "mint_leaf",
+      "chain_transaction": {
+        "block_hash": "0000000000000000000062b25ebb689e0866e3f4830373311291267ede20972f",
+        "block_height": 967930,
+        "crc_marker": {
+          "op": "mint",
+          "p": "crc-20",
+          "tick": "LEAF"
+        },
+        "crc_marker_vout": 2,
+        "inputs": [
+          {
+            "txid": "369d0b671cfaae4d39dd8a0691d29d71e29350a5e4b0f507cf8fc5a31c68c296",
+            "vout": 2,
+            "witness_items": 1
+          }
+        ],
+        "outputs": [
+          {
+            "core_address": null,
+            "sats": 0,
+            "script_hex": "6a3c7b2270223a2269636f2d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a2231363330303030227d",
+            "vout": 0
+          },
+          {
+            "core_address": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+            "sats": 546,
+            "script_hex": "76a91462e907b15cbf27d5425399ebf6f0fb50ebb88f1888ac",
+            "vout": 1
+          },
+          {
+            "core_address": null,
+            "sats": 0,
+            "script_hex": "6a287b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a224c454146227d",
+            "vout": 2
+          },
+          {
+            "core_address": "bc1ppxgzntmcp6t44yl5lt0nknfdwnzdmxm22jqgtu9xzcvah7tc8msq3d0z6y",
+            "sats": 330,
+            "script_hex": "5120099029af780e975a93f4fadf3b4d2d74c4dd9b6a548085f0a61619dbf9783ee0",
+            "vout": 3
+          },
+          {
+            "core_address": "bc1phuuulh7fs5zrm48ethfyqvt860fxsaxuq643telqn06yz4u3c70spyleaf",
+            "sats": 10000,
+            "script_hex": "5120bf39cfdfc985043dd4f95dd2403167d3d26874dc06ab15e7e09bf4415791c79f",
+            "vout": 4
+          },
+          {
+            "core_address": "bc1p7qpz46khgcdu7dcmw3t8wtt6hc7sf9r3djgevsgeym7tau825v6sfa97ek",
+            "sats": 847994,
+            "script_hex": "5120f0022aead7461bcf371b7456772d7abe3d0494716c9196411926fcbef0eaa335",
+            "vout": 5
+          }
+        ]
+      },
+      "raw_transaction_hex": "0200000000010196c2681ca3c58fcf07f5b0e4a55093e2719dd291068add394daefa1c670b9d360200000000fdffffff0600000000000000003e6a3c7b2270223a2269636f2d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a2231363330303030227d22020000000000001976a91462e907b15cbf27d5425399ebf6f0fb50ebb88f1888ac00000000000000002a6a287b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a224c454146227d4a01000000000000225120099029af780e975a93f4fadf3b4d2d74c4dd9b6a548085f0a61619dbf9783ee01027000000000000225120bf39cfdfc985043dd4f95dd2403167d3d26874dc06ab15e7e09bf4415791c79f7af00c0000000000225120f0022aead7461bcf371b7456772d7abe3d0494716c9196411926fcbef0eaa3350140f40e36af90dfcab4aed310a3e08eb1e2c0561041839a844d3cb507ca000f0a48d17f02d97d0c4dacdc4bee10927ced5d4eb4f7a97ddbcd5a34ec2501652252df00000000",
+      "txid": "394bdb537c5c1e7a11fe95230cafda2394911b86a054ca1c974bcfed5b7c8feb"
+    },
+    {
+      "api_event": {
+        "amount_atoms": "392190476190",
+        "from_address": "bc1pxlf06nm37lnw88gg94dujz9uges4vz8cm0q5l923hz43a865ekqqjt2zxm",
+        "kind": "mint",
+        "mint_beneficiary": "bc1pc755lc49da8t8227uafzhhm0j0re4m3ym7grzln27sdqdcdzr40senl38m",
+        "mint_csv_blocks": 6767,
+        "mint_payment_amount_atoms": "11000000000000000000",
+        "mint_payment_asset": "ORDI",
+        "mint_status": "allocated",
+        "tick": "LEAF",
+        "to_address": "bc1pc755lc49da8t8227uafzhhm0j0re4m3ym7grzln27sdqdcdzr40senl38m",
+        "txid": "256cc65bd40fcf1dac1836f25bf252369219181df86400716a89c4189967e4e1"
+      },
+      "category": "mint_ordi",
+      "chain_transaction": {
+        "block_hash": "000000000000000000020f1e5f032a911ff31dbd5f134d8c85e16fff26681058",
+        "block_height": 967562,
+        "crc_marker": {
+          "op": "mint",
+          "p": "crc-20",
+          "tick": "LEAF"
+        },
+        "crc_marker_vout": 0,
+        "inputs": [
+          {
+            "txid": "34dfc46b577e4aa59c3d8d38bacef0cec58e3d1de9d3db85856562321052532c",
+            "vout": 0,
+            "witness_items": 1
+          },
+          {
+            "txid": "c79487e5c77fd4bb18c7312f7c2fccaf6786ef07eda335dc7e6f11944403fd2e",
+            "vout": 0,
+            "witness_items": 1
+          }
+        ],
+        "outputs": [
+          {
+            "core_address": null,
+            "sats": 0,
+            "script_hex": "6a287b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a224c454146227d",
+            "vout": 0
+          },
+          {
+            "core_address": "bc1phuuulh7fs5zrm48ethfyqvt860fxsaxuq643telqn06yz4u3c70spyleaf",
+            "sats": 10546,
+            "script_hex": "5120bf39cfdfc985043dd4f95dd2403167d3d26874dc06ab15e7e09bf4415791c79f",
+            "vout": 1
+          },
+          {
+            "core_address": "bc1pc755lc49da8t8227uafzhhm0j0re4m3ym7grzln27sdqdcdzr40senl38m",
+            "sats": 330,
+            "script_hex": "5120c7a94fe2a56f4eb3a95ee7522bdf6f93c79aee24df90317e6af41a06e1a21d5f",
+            "vout": 2
+          },
+          {
+            "core_address": "bc1pxlf06nm37lnw88gg94dujz9uges4vz8cm0q5l923hz43a865ekqqjt2zxm",
+            "sats": 3163,
+            "script_hex": "512037d2fd4f71f7e6e39d082d5bc908bc46615608f8dbc14f9551b8ab1e9f54cd80",
+            "vout": 3
+          }
+        ]
+      },
+      "raw_transaction_hex": "020000000001022c5352103262658585dbd3e91d3d8ec5cef0ceba388d3d9ca54a7e576bc4df340000000000fdffffff2efd034494116f7edc35a3ed07ef8667afcc2f7c2f31c718bbd47fc7e58794c70000000000fdffffff0400000000000000002a6a287b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a224c454146227d3229000000000000225120bf39cfdfc985043dd4f95dd2403167d3d26874dc06ab15e7e09bf4415791c79f4a01000000000000225120c7a94fe2a56f4eb3a95ee7522bdf6f93c79aee24df90317e6af41a06e1a21d5f5b0c00000000000022512037d2fd4f71f7e6e39d082d5bc908bc46615608f8dbc14f9551b8ab1e9f54cd8001409b3f0c8a8546d40fad0782fe293b50db83d2160ba13a06acac63a899d9936c5dcd49ec729d41f5fb5c017986069d0113fec81af8aa8b3d5b2a6de21a20cc70be0140997cb434c9be041d53ce9a453b41bee8ea9e12c664e0ae67f9ac761d229b9591ebbab456f38ea0f9ee4f09ec64c9de60804df7ff6301b4e8a73ec6b87e7e756700000000",
+      "txid": "256cc65bd40fcf1dac1836f25bf252369219181df86400716a89c4189967e4e1"
+    },
+    {
+      "api_event": {
+        "amount_atoms": "4761904761905",
+        "from_address": "bc1pvv8xvmg4jmj3ktveugma4xvvueglsxgm5jptcr93cdymgfsrhq7qaypqn0",
+        "kind": "transfer",
+        "mint_beneficiary": null,
+        "mint_csv_blocks": null,
+        "mint_payment_amount_atoms": null,
+        "mint_payment_asset": null,
+        "mint_status": null,
+        "tick": "LEAF",
+        "to_address": "bc1pfn0xnhdm33x7tvkslx9nqdaxdfl4k4jz56d3fuchgps2rr9hm98q7342h0",
+        "txid": "15c742834713c96ece10c27b2833a61bfcadb51b78213f0a7568327442203489"
+      },
+      "category": "transfer_marker_0_outputs_3",
+      "chain_transaction": {
+        "block_hash": "00000000000000000000f04f1c68f9fa47a5ef4da8edbe5c42b148472e89f9de",
+        "block_height": 969170,
+        "crc_marker": {
+          "amt": "4761904761905",
+          "op": "transfer",
+          "p": "crc-20",
+          "tick": "LEAF"
+        },
+        "crc_marker_vout": 0,
+        "inputs": [
+          {
+            "txid": "129069b6621874970b600f4d9d205e11414b7ee07e2bac58a280f4feffe5d438",
+            "vout": 3,
+            "witness_items": 3
+          },
+          {
+            "txid": "4cd1fdb17145e0d7422647ae57681c9ff7f7921c539f04d3de89965325d0ba3e",
+            "vout": 0,
+            "witness_items": 1
+          }
+        ],
+        "outputs": [
+          {
+            "core_address": null,
+            "sats": 0,
+            "script_hex": "6a427b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a2234373631393034373631393035227d",
+            "vout": 0
+          },
+          {
+            "core_address": "bc1pfn0xnhdm33x7tvkslx9nqdaxdfl4k4jz56d3fuchgps2rr9hm98q7342h0",
+            "sats": 330,
+            "script_hex": "51204cde69ddbb8c4de5b2d0f98b3037a66a7f5b5642a69b14f3174060a18cb7d94e",
+            "vout": 1
+          },
+          {
+            "core_address": "bc1pfn0xnhdm33x7tvkslx9nqdaxdfl4k4jz56d3fuchgps2rr9hm98q7342h0",
+            "sats": 120844,
+            "script_hex": "51204cde69ddbb8c4de5b2d0f98b3037a66a7f5b5642a69b14f3174060a18cb7d94e",
+            "vout": 2
+          }
+        ]
+      },
+      "raw_transaction_hex": "0200000000010238d4e5fffef480a258ac2b7ee07e4b41115e209d4d0f600b97741862b66990120300000000e80300003ebad025539689ded3049f531c92f7f79f1c6857ae472642d7e04571b1fdd14c0000000000fdffffff030000000000000000446a427b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a2234373631393034373631393035227d4a010000000000002251204cde69ddbb8c4de5b2d0f98b3037a66a7f5b5642a69b14f3174060a18cb7d94e0cd80100000000002251204cde69ddbb8c4de5b2d0f98b3037a66a7f5b5642a69b14f3174060a18cb7d94e0340638614551fede15dd70b2e6fabee7678f746c25cca93097fe23f641ad52479d19c781fe7038d611912c1baad597c28cc021aeeb358006660d538995da4cac1c249203e7b332b5816d972abe801cc0e012179d2299c0d2d9924ff0a36cc990fb14f437502e803b275204cde69ddbb8c4de5b2d0f98b3037a66a7f5b5642a69b14f3174060a18cb7d94eac21c050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac00140be4eaf3400ebff37775bd4799a59f664e39335e4d83a0361580c7125cb7ad9d5785e3f4e886fcb1ae6c44fcb1cb39b7c6d9f322dc2a44a822ebdd2261382549b00000000",
+      "txid": "15c742834713c96ece10c27b2833a61bfcadb51b78213f0a7568327442203489"
+    },
+    {
+      "api_event": {
+        "amount_atoms": "10000000000000",
+        "from_address": "bc1q2mjk0qw86a0qwshpv7vuh02ylrqxpmpdru66ew",
+        "kind": "transfer",
+        "mint_beneficiary": null,
+        "mint_csv_blocks": null,
+        "mint_payment_amount_atoms": null,
+        "mint_payment_asset": null,
+        "mint_status": null,
+        "tick": "LEAF",
+        "to_address": "bc1pk6rlnew83q24lqr5eytltn3082a2yw5qprp8rylsf3tar2cfgqaq59huqm",
+        "txid": "6a70bfccbebf255d2a7ff18338ee29353c6561111a1fcba3818bf4217ff7baf0"
+      },
+      "category": "transfer_marker_0_outputs_4",
+      "chain_transaction": {
+        "block_hash": "00000000000000000001320829e8b2293f4beb31853da2c4ca38338a6869da37",
+        "block_height": 969231,
+        "crc_marker": {
+          "amt": "10000000000000",
+          "op": "transfer",
+          "p": "crc-20",
+          "tick": "LEAF"
+        },
+        "crc_marker_vout": 0,
+        "inputs": [
+          {
+            "txid": "19c09160cc5928ba937bb54b2f6facc51cee8f05d4f7c35305042cb4982862d1",
+            "vout": 3,
+            "witness_items": 2
+          }
+        ],
+        "outputs": [
+          {
+            "core_address": null,
+            "sats": 0,
+            "script_hex": "6a437b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a223130303030303030303030303030227d",
+            "vout": 0
+          },
+          {
+            "core_address": "bc1pk6rlnew83q24lqr5eytltn3082a2yw5qprp8rylsf3tar2cfgqaq59huqm",
+            "sats": 330,
+            "script_hex": "5120b687f9e5c788155f8074c917f5ce2f3abaa23a8008c27193f04c57d1ab09403a",
+            "vout": 1
+          },
+          {
+            "core_address": "bc1pv85mk7dh9ea4ylsamzvcwsseglj7smph8rm8hz8ksxg4d5q43u8selta0j",
+            "sats": 1347,
+            "script_hex": "512061e9bb79b72e7b527e1dd89987421947e5e86c3738f67b88f6819156d0158f0f",
+            "vout": 2
+          },
+          {
+            "core_address": "bc1q2mjk0qw86a0qwshpv7vuh02ylrqxpmpdru66ew",
+            "sats": 30157,
+            "script_hex": "001456e56781c7d75e0742e16799cbbd44f8c060ec2d",
+            "vout": 3
+          }
+        ]
+      },
+      "raw_transaction_hex": "02000000000101d1622898b42c040553c3f7d4058fee1cc5ac6f2f4bb57b93ba2859cc6091c0190300000000fdffffff040000000000000000456a437b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a223130303030303030303030303030227d4a01000000000000225120b687f9e5c788155f8074c917f5ce2f3abaa23a8008c27193f04c57d1ab09403a430500000000000022512061e9bb79b72e7b527e1dd89987421947e5e86c3738f67b88f6819156d0158f0fcd7500000000000016001456e56781c7d75e0742e16799cbbd44f8c060ec2d02483045022100bb587e6a4096a5e9d77f43a7795d44aa56f84604671bacbdc2f125536341406402205d67b69fca8bd03a084659735d0e95347a2b7e748e602d49b149d7c015fb6979012102a58c2d470bb4f03df9f2c89ab8690971ebcb19dda80b15952158a57d74a81df500000000",
+      "txid": "6a70bfccbebf255d2a7ff18338ee29353c6561111a1fcba3818bf4217ff7baf0"
+    },
+    {
+      "api_event": {
+        "amount_atoms": "9963095238096",
+        "from_address": "bc1p270rtvz2s8zyvcmeq69jxjsasr7684u88jq2np72s680zy2awt4s5whcae",
+        "kind": "transfer",
+        "mint_beneficiary": null,
+        "mint_csv_blocks": null,
+        "mint_payment_amount_atoms": null,
+        "mint_payment_asset": null,
+        "mint_status": null,
+        "tick": "LEAF",
+        "to_address": "bc1p6jzrr293euzrcm2x2nk0hrxtscudccxv6uydw4vhkhy0u89rcv5qxksp07",
+        "txid": "1c0fa19ee55828b9bf50476ff52a1c52e8a01bbe52f045d93ce65d41dc0c17f7"
+      },
+      "category": "transfer_marker_1_outputs_4",
+      "chain_transaction": {
+        "block_hash": "00000000000000000000976181f78e10045ed7a313c26142d5ef7f05d68097d7",
+        "block_height": 967977,
+        "crc_marker": {
+          "amt": "9963095238096",
+          "op": "transfer",
+          "p": "crc-20",
+          "tick": "LEAF"
+        },
+        "crc_marker_vout": 1,
+        "inputs": [
+          {
+            "txid": "52111ea31881a112ed8dddd64d57157f78c3c7be607748c0e5b666962353a9f6",
+            "vout": 3,
+            "witness_items": 3
+          },
+          {
+            "txid": "01b6e7174979ba4970edf3b0eec9cd29a6f3bc40ec8edb877ad5fc8bcd41cbf4",
+            "vout": 5,
+            "witness_items": 1
+          }
+        ],
+        "outputs": [
+          {
+            "core_address": "bc1p3sz7v3f5u8099mqt0zlslcs6jj2y9wmvflzk2asnfrtawzxfdmuqrrdnur",
+            "sats": 11104,
+            "script_hex": "51208c05e64534e1de52ec0b78bf0fe21a949442bb6c4fc565761348d7d708c96ef8",
+            "vout": 0
+          },
+          {
+            "core_address": null,
+            "sats": 0,
+            "script_hex": "6a427b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a2239393633303935323338303936227d",
+            "vout": 1
+          },
+          {
+            "core_address": "bc1p6jzrr293euzrcm2x2nk0hrxtscudccxv6uydw4vhkhy0u89rcv5qxksp07",
+            "sats": 330,
+            "script_hex": "5120d48431a8b1cf043c6d4654ecfb8ccb8638dc60ccd708d75597b5c8fe1ca3c328",
+            "vout": 2
+          },
+          {
+            "core_address": "bc1p270rtvz2s8zyvcmeq69jxjsasr7684u88jq2np72s680zy2awt4s5whcae",
+            "sats": 330,
+            "script_hex": "5120579e35b04a81c4466379068b234a1d80fda3d7873c80a987ca868ef1115d72eb",
+            "vout": 3
+          }
+        ]
+      },
+      "raw_transaction_hex": "02000000000102f6a953239666b6e5c0487760bec7c3787f15574dd6dd8ded12a18118a31e1152030000000090000000f4cb41cd8bfcd57a87db8eec40bcf3a629cdc9eeb0f3ed7049ba794917e7b6010500000000fdffffff04602b0000000000002251208c05e64534e1de52ec0b78bf0fe21a949442bb6c4fc565761348d7d708c96ef80000000000000000446a427b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a2239393633303935323338303936227d4a01000000000000225120d48431a8b1cf043c6d4654ecfb8ccb8638dc60ccd708d75597b5c8fe1ca3c3284a01000000000000225120579e35b04a81c4466379068b234a1d80fda3d7873c80a987ca868ef1115d72eb0340313e62506ce63bd307c699d7ef67fa8330f45af108b73123d75254225545a36385e5da6da4f9b8ddddde55a57e1ccf11ee3cb89a7fe617cfe623f45c55be292749203e7b332b5816d972abe801cc0e012179d2299c0d2d9924ff0a36cc990fb14f4375029000b275208c05e64534e1de52ec0b78bf0fe21a949442bb6c4fc565761348d7d708c96ef8ac21c050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac00140cacb31a24794db51d08bdf2eaa0fee0163ba29e34b41c5388991d7ad24c7e3db2a91a86d5ab75025cb33f99fabf30609608107c2543257769a6e6c7de9821b0600000000",
+      "txid": "1c0fa19ee55828b9bf50476ff52a1c52e8a01bbe52f045d93ce65d41dc0c17f7"
+    },
+    {
+      "api_event": {
+        "amount_atoms": "5000000000000",
+        "from_address": "bc1pynzkufav4q9tfsa8d3w3eck27hx6ev6z8x64h4jywp8s0wa5rzvq4hsv9s",
+        "kind": "transfer",
+        "mint_beneficiary": null,
+        "mint_csv_blocks": null,
+        "mint_payment_amount_atoms": null,
+        "mint_payment_asset": null,
+        "mint_status": null,
+        "tick": "LEAF",
+        "to_address": "bc1ppp6jkuy3aqy6vjjrcu5mp7m6cecsynzmyyc3gvr5h4u5qmztalsqvjdtl5",
+        "txid": "74f40f8732201bd8dbdfe6c5868cce993438f43a482f7953e760103aedc0b8a7"
+      },
+      "category": "transfer_marker_1_outputs_6",
+      "chain_transaction": {
+        "block_hash": "00000000000000000001c886f62eba66036a2fed31f8c0d6244452a9d840f1e3",
+        "block_height": 969291,
+        "crc_marker": {
+          "amt": "5000000000000",
+          "op": "transfer",
+          "p": "crc-20",
+          "tick": "LEAF"
+        },
+        "crc_marker_vout": 1,
+        "inputs": [
+          {
+            "txid": "d18247bc40595e2b936010d362bb90524b7dde6392190c6c5dc41913932a2685",
+            "vout": 0,
+            "witness_items": 1
+          },
+          {
+            "txid": "d18247bc40595e2b936010d362bb90524b7dde6392190c6c5dc41913932a2685",
+            "vout": 1,
+            "witness_items": 1
+          },
+          {
+            "txid": "ae1967281469c3184858dd2279b5e9f9f214376b95010222e8f04d13dc360cc0",
+            "vout": 81,
+            "witness_items": 2
+          },
+          {
+            "txid": "0572b9c82fa32c04f02db9d453c508900859d345f73f0bef1f8f1239ac06e3bd",
+            "vout": 1,
+            "witness_items": 1
+          }
+        ],
+        "outputs": [
+          {
+            "core_address": "bc1pynzkufav4q9tfsa8d3w3eck27hx6ev6z8x64h4jywp8s0wa5rzvq4hsv9s",
+            "sats": 146340,
+            "script_hex": "512024c56e27aca80ab4c3a76c5d1ce2caf5cdacb34239b55bd644704f07bbb41898",
+            "vout": 0
+          },
+          {
+            "core_address": null,
+            "sats": 0,
+            "script_hex": "6a427b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a2235303030303030303030303030227d",
+            "vout": 1
+          },
+          {
+            "core_address": "bc1ppp6jkuy3aqy6vjjrcu5mp7m6cecsynzmyyc3gvr5h4u5qmztalsqvjdtl5",
+            "sats": 1000,
+            "script_hex": "512008752b7091e809a64a43c729b0fb7ac671024c5b2131143074bd79406c4befe0",
+            "vout": 2
+          },
+          {
+            "core_address": "bc1pn2w870z6684y74teczw36rfvq5zqy9mu44rz8v5zfutf2spf0w4s92ag35",
+            "sats": 10440,
+            "script_hex": "51209a9c7f3c5ad1ea4f5579c09d1d0d2c050402177cad4623b2824f169540297bab",
+            "vout": 3
+          },
+          {
+            "core_address": "bc1q54cxdsctws0uxy6lx6uar5agzm07z3a7wu0zt2",
+            "sats": 1000,
+            "script_hex": "0014a57066c30b741fc3135f36b9d1d3a816dfe147be",
+            "vout": 4
+          },
+          {
+            "core_address": "bc1ppp6jkuy3aqy6vjjrcu5mp7m6cecsynzmyyc3gvr5h4u5qmztalsqvjdtl5",
+            "sats": 102860,
+            "script_hex": "512008752b7091e809a64a43c729b0fb7ac671024c5b2131143074bd79406c4befe0",
+            "vout": 5
+          }
+        ]
+      },
+      "raw_transaction_hex": "0200000000010485262a931319c45d6c0c199263de7d4b5290bb62d31060932b5e5940bc4782d10000000000ffffffff85262a931319c45d6c0c199263de7d4b5290bb62d31060932b5e5940bc4782d10100000000ffffffffc00c36dc134df0e8220201956b3714f2f9e9b57922dd584818c36914286719ae5100000000ffffffffbde306ac39128f1fef0b3ff745d359089008c553d4b92df0042ca32fc8b972050100000000ffffffff06a43b02000000000022512024c56e27aca80ab4c3a76c5d1ce2caf5cdacb34239b55bd644704f07bbb418980000000000000000446a427b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a2235303030303030303030303030227de80300000000000022512008752b7091e809a64a43c729b0fb7ac671024c5b2131143074bd79406c4befe0c8280000000000002251209a9c7f3c5ad1ea4f5579c09d1d0d2c050402177cad4623b2824f169540297babe803000000000000160014a57066c30b741fc3135f36b9d1d3a816dfe147becc9101000000000022512008752b7091e809a64a43c729b0fb7ac671024c5b2131143074bd79406c4befe0014166710b90af9755e3fbfd6330eed3237fdf0e3cdef076a628157a2338b3fe872bd6b3466e58b2dd3a12ce2c7661acb8e1207a0789c00cad782d6a9a3cba1693c38301410626904aeb7e42fd55e07f8dfd214eedeaabe6e9b01cf42e106d58e8c714339a79d7d8e4171833a2309322417f62b010e3a7ca227475c0d76bc11e2e836a1bfc8302483045022100e722b0805153b24197d9da0090d14533db9b06c6248fa055ffc6280a2d67876e02204b2a3dd13e924e599165786ff2608b32b88dd1cfcf7b5a2e851be2b9f530a88c012102e1aaa392011975bad60a56a66577fa3f3769097839d80b661f72b76519c91e0601405193d743d8241c0d54215320b71716342200545c8ab1e7583473c7aa6d14d0149793a022069a58b8c911e66c8f2f9492de1149934274f3d5827e24a18f6cc24b00000000",
+      "txid": "74f40f8732201bd8dbdfe6c5868cce993438f43a482f7953e760103aedc0b8a7"
+    },
+    {
+      "api_event": {
+        "amount_atoms": "5000000000000",
+        "from_address": "bc1pgnpzcu7urtd2vswrewgzxjel4t208crzdzlflfv9a2uf8k7n2yzsqw5yn7",
+        "kind": "transfer",
+        "mint_beneficiary": null,
+        "mint_csv_blocks": null,
+        "mint_payment_amount_atoms": null,
+        "mint_payment_asset": null,
+        "mint_status": null,
+        "tick": "LEAF",
+        "to_address": "bc1q0f7hh8jlejgqtkh5hjwauz4j2qw6dj5k8mgxff",
+        "txid": "8012a907a93e1faedd9e7c89bd25306db7449a2370d1b1957dc0d79011415c2a"
+      },
+      "category": "transfer_market_distinct_prevtx",
+      "chain_transaction": {
+        "block_hash": "0000000000000000000131fe25a80311ccb9cd81e5e66ee85c418cc420f73a17",
+        "block_height": 968648,
+        "crc_marker": {
+          "amt": "5000000000000",
+          "op": "transfer",
+          "p": "crc-20",
+          "tick": "LEAF"
+        },
+        "crc_marker_vout": 1,
+        "inputs": [
+          {
+            "txid": "5668026af9501e545f11b9880c055b5b8b6bb9424629635dafbf520e0fefb4cf",
+            "vout": 1,
+            "witness_items": 1
+          },
+          {
+            "txid": "782099a0776489239f7f8d3d2069f4bb16f239770c63b156fc7ab1947912dc77",
+            "vout": 0,
+            "witness_items": 1
+          },
+          {
+            "txid": "2cf401e2801af3dce5f9fd52efc88d4d752bc204008fd0f619175c1e0f65c587",
+            "vout": 68,
+            "witness_items": 2
+          },
+          {
+            "txid": "f4d16ac92139c794f1946fddc1007beed9633335cde6e6ba2def4fcd3ef31670",
+            "vout": 5,
+            "witness_items": 2
+          }
+        ],
+        "outputs": [
+          {
+            "core_address": "bc1pgnpzcu7urtd2vswrewgzxjel4t208crzdzlflfv9a2uf8k7n2yzsqw5yn7",
+            "sats": 301340,
+            "script_hex": "512044c22c73dc1adaa641c3cb90234b3faad4f3e06268be9fa585eab893dbd35105",
+            "vout": 0
+          },
+          {
+            "core_address": null,
+            "sats": 0,
+            "script_hex": "6a427b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a2235303030303030303030303030227d",
+            "vout": 1
+          },
+          {
+            "core_address": "bc1q0f7hh8jlejgqtkh5hjwauz4j2qw6dj5k8mgxff",
+            "sats": 1000,
+            "script_hex": "00147a7d7b9e5fcc9005daf4bc9dde0ab2501da6ca96",
+            "vout": 2
+          },
+          {
+            "core_address": "bc1qt42jes4ns6wkv9nr0j6tswepxm5cznc5mqx2dg",
+            "sats": 15900,
+            "script_hex": "00145d552cc2b3869d6616637cb4b83b2136e9814f14",
+            "vout": 3
+          },
+          {
+            "core_address": "bc1q54cxdsctws0uxy6lx6uar5agzm07z3a7wu0zt2",
+            "sats": 1000,
+            "script_hex": "0014a57066c30b741fc3135f36b9d1d3a816dfe147be",
+            "vout": 4
+          },
+          {
+            "core_address": "bc1q0f7hh8jlejgqtkh5hjwauz4j2qw6dj5k8mgxff",
+            "sats": 69080,
+            "script_hex": "00147a7d7b9e5fcc9005daf4bc9dde0ab2501da6ca96",
+            "vout": 5
+          }
+        ]
+      },
+      "raw_transaction_hex": "02000000000104cfb4ef0f0e52bfaf5d63294642b96b8b5b5b050c88b9115f541e50f96a0268560100000000ffffffff77dc127994b17afc56b1630c7739f216bbf469203d8d7f9f23896477a09920780000000000ffffffff87c5650f1e5c1719f6d08f0004c22b754d8dc8ef52fdf9e5dcf31a80e201f42c4400000000ffffffff7016f33ecd4fef2dbae6e6cd353363d9ee7b00c1dd6f94f194c73921c96ad1f40500000000ffffffff061c9904000000000022512044c22c73dc1adaa641c3cb90234b3faad4f3e06268be9fa585eab893dbd351050000000000000000446a427b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a2235303030303030303030303030227de8030000000000001600147a7d7b9e5fcc9005daf4bc9dde0ab2501da6ca961c3e0000000000001600145d552cc2b3869d6616637cb4b83b2136e9814f14e803000000000000160014a57066c30b741fc3135f36b9d1d3a816dfe147bed80d0100000000001600147a7d7b9e5fcc9005daf4bc9dde0ab2501da6ca9601413393a2d877f62239372e1d741d15de8df238849a2a55372c7183477f23d2dfaf031a0100c0954e0516e7ecbe9f7e8bb231b2be4165a0526e9903819ec0f1373883014137b9f6adb96ab4313c394cbb165569bfe5fd28d098aa53ef34d0ffc134971142b718a3d0c3aeed4a880d580c6f85fc2227afec4562768e1bef9999e6a413a2d5830247304402206f7deb0c721f22e91e568d7e064cdfdb3bcef0b81c8bc665df9c5bdc87067447022023dc277df782da491a11dcbbde265d2f94654d56826e0c557ac6817aeafc59dc012102e1aaa392011975bad60a56a66577fa3f3769097839d80b661f72b76519c91e0602483045022100a3dad6e91bc64583f474b8227289e3052e03de14dff9d2914e6d56dbb2ce054402202cea4d521afec4e1ca097198d8ca6283798eb26430646823ad4e870ba5471038012102b7b1d1e44c184ca7c13082ee982eb9be1b21da9868ee999fab405aa1b73eecc700000000",
+      "txid": "8012a907a93e1faedd9e7c89bd25306db7449a2370d1b1957dc0d79011415c2a"
+    }
+  ],
+  "source": "activity-2026-09-30.sqlite; confirmed Bitcoin Core raw bytes and separately archived crc.garden API labels"
+}
