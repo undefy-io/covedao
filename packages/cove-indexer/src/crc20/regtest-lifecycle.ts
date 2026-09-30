@@ -6,7 +6,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { eq } from "drizzle-orm";
 import { CoreRpcProvider } from "@crclaunch/bitcoin";
 import { quoteBuy, quoteSell } from "@crclaunch/crc20-curve";
-import { buildCoveV2MarketFill, buildCurveBuy, buildCurveBuyV2, buildCurveDeploy, buildCurveDeployV2, buildCurveSell, buildCurveSellV2, type CoveV2Input, type TxTemplate } from "@crclaunch/crc20-transactions";
+import { buildCoveV2MarketFill, buildCoveV2Transfer, buildCurveBuy, buildCurveBuyV2, buildCurveDeploy, buildCurveDeployV2, buildCurveSell, buildCurveSellV2, type CoveV2Input, type TxTemplate } from "@crclaunch/crc20-transactions";
 import { schema } from "@crclaunch/db";
 import { saveAuthorizedCrcLaunchIntent } from "./intents.js";
 import { syncCrcTip, type CrcWorkerSnapshot } from "./runner.js";
@@ -210,6 +210,48 @@ async function main(): Promise<void> {
       requireEqual(synced.snapshot.state.assets[assetId]?.balances[transferred.scriptHex] ?? "0", "0", "ordinary same-script BTC input has no token authority");
       funding = unrelated.change;
 
+      const beforeWithdrawal = Object.entries(synced.snapshot.state.assets[assetId]!.tokenUtxos ?? {})
+        .find(([, coin]) => coin.scriptHex === buyer.scriptHex && BigInt(coin.atoms) === 100_000_000_000n);
+      if (!beforeWithdrawal) throw new Error("seller token coin missing before withdrawal race");
+      const [listedTxidBefore, listedVoutBefore] = beforeWithdrawal[0].split(":");
+      const tokenParent = bitcoin.Transaction.fromHex(await rpc.call<string>("getrawtransaction", [listedTxidBefore]));
+      const tokenOutput = tokenParent.outs[Number(listedVoutBefore)];
+      if (!tokenOutput) throw new Error("withdrawal token parent output missing");
+      const oldListedInput: CoveV2Input & Funding = { txid: listedTxidBefore!, vout: Number(listedVoutBefore),
+        sats: tokenOutput.value, valueSats: tokenOutput.value, scriptHex: buyer.scriptHex,
+        tokenAtoms: BigInt(beforeWithdrawal[1].atoms), tokenDeploymentTxid: deploy.txid };
+      const splitFunding = await signRaw(rpc, unsigned([funding], [
+        { sats: 20_000, scriptHex: buyer.scriptHex },
+        { sats: funding.sats - 21_000, scriptHex: buyer.scriptHex },
+      ]), buyer.scriptHex);
+      requireEqual(await rpc.call<string>("sendrawtransaction", [splitFunding.rawHex]), splitFunding.txid, "split independent sale funding");
+      await mine(rpc, miner.address);
+      synced = await syncCrcTip({ db, provider, network: "regtest", activationHeight, protocolScriptHex: protocol.scriptHex, snapshot: synced.snapshot });
+      const saleFunding: Funding = { txid: splitFunding.txid, vout: 0, sats: 20_000, scriptHex: buyer.scriptHex };
+      funding = splitFunding.change;
+      const withdrawnBuyer = await rpc.address();
+      const staleSaleTemplate = buildCoveV2MarketFill({ ticker, deploymentTxid: deploy.txid,
+        listedInput: oldListedInput, buyerScriptHex: withdrawnBuyer.scriptHex, recipientSats: 330,
+        sellerNetPriceSats: 2_000, protocolScriptHex: protocol.scriptHex, protocolFeeSats: 1_000,
+        buyerChangeSats: saleFunding.sats - 4_330 });
+      const staleSale = await sign(rpc, staleSaleTemplate, [oldListedInput, saleFunding], withdrawnBuyer.scriptHex);
+      const withdrawalTemplate = buildCoveV2Transfer({ ticker, deploymentTxid: deploy.txid,
+        amountAtoms: oldListedInput.tokenAtoms, tokenInputs: [oldListedInput],
+        recipientScriptHex: buyer.scriptHex, recipientSats: 330,
+        btcChangeSats: funding.sats - 1_000, btcChangeScriptHex: buyer.scriptHex });
+      const withdrawal = await sign(rpc, withdrawalTemplate, [oldListedInput, funding], buyer.scriptHex);
+      requireEqual(await rpc.call<string>("sendrawtransaction", [withdrawal.rawHex]), withdrawal.txid, "token withdrawal broadcast");
+      let staleSaleRejected = false;
+      try { await rpc.call<string>("sendrawtransaction", [staleSale.rawHex]); } catch { staleSaleRejected = true; }
+      requireEqual(staleSaleRejected, true, "sale after token withdrawal must conflict at Bitcoin UTXO level");
+      await mine(rpc, miner.address);
+      synced = await syncCrcTip({ db, provider, network: "regtest", activationHeight, protocolScriptHex: protocol.scriptHex, snapshot: synced.snapshot });
+      requireEqual(synced.snapshot.state.assets[assetId]?.tokenUtxos?.[`${withdrawal.txid}:1`]?.atoms,
+        "100000000000", "withdrawn token remains with seller");
+      requireEqual(synced.snapshot.state.assets[assetId]?.tokenUtxos?.[beforeWithdrawal[0]], undefined,
+        "old listed token outpoint is gone");
+      funding = withdrawal.change;
+
       const live = synced.snapshot.state.assets[assetId]!;
       const [vaultTxid, vaultVoutText] = live.curve.vaultOutpoint.split(":");
       const brokenVault = await signRaw(rpc, unsigned([
@@ -267,7 +309,9 @@ async function main(): Promise<void> {
     requireEqual((await hydrateCrcLedger(db, "regtest")).state.assets[assetId]?.curve.vaultOutpoint, previousSnapshot!.state.assets[assetId]?.curve.vaultOutpoint, "persisted reorg restored vault");
     if (!isDeepStrictEqual(recovered.snapshot.projection, previousSnapshot!.projection)) throw new Error("reorg did not restore the prior CRC projection");
     requireEqual((await db.select().from(schema.coveCrcEvents).where(eq(schema.coveCrcEvents.network, "regtest"))).length, eventCountBeforeReorg - 1, "reorg CRC event count");
-    console.log(JSON.stringify({ ok: true, ticker, deployTxid: deploy.txid, trades: operations.length, reorgRollback: recovered.rolledBack, cursor: recovered.snapshot.cursor?.height }));
+    console.log(JSON.stringify({ ok: true, version: v2 ? 2 : 1, ticker, deployTxid: deploy.txid,
+      trades: operations.length, ...(v2 ? { adversarial: ["ordinary-utxo", "withdrawal-conflict", "broken-vault-fill", "competing-fill"] } : {}),
+      reorgRollback: recovered.rolledBack, cursor: recovered.snapshot.cursor?.height }));
     await clean(db);
   } finally {
     await pool.end();
