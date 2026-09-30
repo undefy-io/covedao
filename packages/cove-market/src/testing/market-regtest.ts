@@ -1,7 +1,7 @@
 import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import { randomBytes } from "node:crypto";
-import { CoreRpcProvider } from "@crclaunch/bitcoin";
+import { CoreRpcProvider, loadFeeRates } from "@crclaunch/bitcoin";
 import { createDb, schema } from "@crclaunch/db";
 import { eq } from "drizzle-orm";
 import { TOKEN_CARRIER_SATS } from "@crclaunch/cove-covenant";
@@ -111,6 +111,26 @@ async function main() {
   await rpc.createWallet("cove-market");
   const mineAddr = await rpc.getNewAddress();
   await rpc.generate(101, mineAddr);
+
+  // The market prices miner fees from the worker's stored fee observation and
+  // refuses one older than two minutes. No worker runs here, so keep one fresh
+  // the way the worker would.
+  const observeFees = async () => {
+    const rates = await loadFeeRates(provider);
+    const fields = {
+      feesObservedAt: new Date(),
+      feeRates: {
+        ...rates,
+        floorSatPerVb: rates.floorSatPerVb.toString(),
+        ceilingSatPerVb: rates.ceilingSatPerVb.toString(),
+        tiers: rates.tiers.map((tier) => ({ ...tier, satPerVb: tier.satPerVb.toString() })),
+      },
+    };
+    await db.insert(schema.coveV3Runtime).values({ network: "regtest", ...fields })
+      .onConflictDoUpdate({ target: schema.coveV3Runtime.network, set: fields });
+  };
+  await observeFees();
+  setInterval(() => void observeFees().catch(() => {}), 30_000).unref();
 
   let state = await hydrateState(db, "regtest", cfg);
   // Funding inputs must be confirmed and hold no Cove tokens, checked against the real node.
