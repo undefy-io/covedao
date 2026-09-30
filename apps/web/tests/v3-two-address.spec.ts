@@ -208,7 +208,13 @@ test("X-006 P2P fill: nested-segwit buyer, Taproot seller", async ({ browser }) 
   // The Taproot seller signed nothing at sale time.
   expect(signsBy(DAVE)).toBe(daveSignsBefore);
 
-  const pf = await portfolio(dave.ordinalsAddress);
+  // The worker marks the fill a moment after it indexes the block.
+  let pf = await portfolio(dave.ordinalsAddress);
+  for (let i = 0; i < 30; i++) {
+    if (pf.data.listings.find((l: { listingId: string }) => l.listingId === listingId)?.status === "FILLED") break;
+    await new Promise((r) => setTimeout(r, 1000));
+    pf = await portfolio(dave.ordinalsAddress);
+  }
   expect(pf.data.listings.find((l: { listingId: string }) => l.listingId === listingId).status).toBe("FILLED");
   const erinPf = await portfolio(erin.ordinalsAddress);
   const h = erinPf.data.holdings.find((x: { tokenId: string }) => x.tokenId === tokenId);
