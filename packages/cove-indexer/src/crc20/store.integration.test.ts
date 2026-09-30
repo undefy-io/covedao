@@ -114,4 +114,51 @@ describe.skipIf(!isolated)("CRC persistence on isolated PostgreSQL", () => {
     await Promise.all([writer(), reader()]);
     expect((await hydrateCrcProjection(db!, isolatedNetwork)).cursor?.height).toBe(115);
   });
+
+  it("persists v2 token coins and burn atomically through deep and same-height reorgs", async () => {
+    const isolatedNetwork = `regtest-${randomUUID()}`;
+    const key = `${isolatedNetwork}:${deploy}`;
+    const owner = "0014" + "66".repeat(20);
+    const nextOwner = "0014" + "77".repeat(20);
+    const a: CrcProjection = {
+      assets: { [key]: { ...deployed.assets[assetId]!, protocolVersion: 2, burnedAtoms: "0" } },
+      vaults: { [key]: { ...deployed.vaults[assetId]! } },
+      balances: {}, tokenUtxos: { [key]: {} },
+    };
+    const b = structuredClone(a);
+    b.vaults[key] = { ...a.vaults[key]!, txid: "55".repeat(32), vout: 2, btcSats: "11000", mintedAtoms: "100000000000" };
+    b.tokenUtxos![key] = { [`${"55".repeat(32)}:1`]: {
+      scriptHex: owner, atoms: "100000000000", createdHeight: 101, createdBlockHash: hashB,
+    } };
+    b.balances[key] = { [owner]: "100000000000" };
+    const c = structuredClone(b);
+    c.tokenUtxos![key] = {
+      [`${"66".repeat(32)}:1`]: { scriptHex: nextOwner, atoms: "60000000000", createdHeight: 102, createdBlockHash: hashC },
+      [`${"66".repeat(32)}:2`]: { scriptHex: owner, atoms: "40000000000", createdHeight: 102, createdBlockHash: hashC },
+    };
+    c.balances[key] = { [owner]: "40000000000", [nextOwner]: "60000000000" };
+    const d = structuredClone(c);
+    delete d.tokenUtxos![key]![`${"66".repeat(32)}:2`];
+    d.assets[key]!.burnedAtoms = "40000000000";
+    d.balances[key] = { [nextOwner]: "60000000000" };
+    const hashD = "dd".repeat(32);
+    await persistCrcBlock(db!, isolatedNetwork, { height: 100, hash: hashA, parentHash: "00".repeat(32) }, empty, a, []);
+    await persistCrcBlock(db!, isolatedNetwork, { height: 101, hash: hashB, parentHash: hashA }, a, b, []);
+    await persistCrcBlock(db!, isolatedNetwork, { height: 102, hash: hashC, parentHash: hashB }, b, c, []);
+    await persistCrcBlock(db!, isolatedNetwork, { height: 103, hash: hashD, parentHash: hashC }, c, d, []);
+    expect((await hydrateCrcProjection(db!, isolatedNetwork)).state).toEqual(d);
+    for (const prior of [c, b, a, empty]) {
+      expect(await rollbackCrcTip(db!, isolatedNetwork)).toBe(true);
+      expect((await hydrateCrcProjection(db!, isolatedNetwork)).state).toEqual(prior);
+    }
+    const alternate = structuredClone(b);
+    const alternateHash = "ee".repeat(32);
+    alternate.tokenUtxos![key] = { [`${"88".repeat(32)}:1`]: {
+      scriptHex: nextOwner, atoms: "100000000000", createdHeight: 101, createdBlockHash: alternateHash,
+    } };
+    alternate.balances[key] = { [nextOwner]: "100000000000" };
+    await persistCrcBlock(db!, isolatedNetwork, { height: 100, hash: hashA, parentHash: "00".repeat(32) }, empty, a, []);
+    await persistCrcBlock(db!, isolatedNetwork, { height: 101, hash: alternateHash, parentHash: hashA }, a, alternate, []);
+    expect((await hydrateCrcProjection(db!, isolatedNetwork)).state).toEqual(alternate);
+  });
 });

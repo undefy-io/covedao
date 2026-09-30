@@ -36,6 +36,13 @@ function txidOf(assetKey: string, network: string): string {
   return txid;
 }
 
+function pointOf(value: string): { txid: string; vout: number } {
+  const match = /^([0-9a-f]{64}):(0|[1-9][0-9]*)$/.exec(value);
+  const vout = match ? Number(match[2]) : NaN;
+  if (!match || !Number.isSafeInteger(vout)) throw new Error(`invalid CRC token outpoint ${value}`);
+  return { txid: match[1]!, vout };
+}
+
 async function writeDelta(tx: DbTransaction, network: string, state: CrcProjection, undo: CrcUndo): Promise<void> {
   for (const key of Object.keys(undo.balances)) {
     const deployTxid = txidOf(key, network);
@@ -45,6 +52,26 @@ async function writeDelta(tx: DbTransaction, network: string, state: CrcProjecti
         await tx.delete(schema.coveCrcBalances).where(and(eq(schema.coveCrcBalances.network, network), eq(schema.coveCrcBalances.deployTxid, deployTxid), eq(schema.coveCrcBalances.scriptHex, scriptHex)));
       } else {
         await tx.insert(schema.coveCrcBalances).values({ network, deployTxid, scriptHex, atoms: BigInt(atoms) }).onConflictDoUpdate({ target: [schema.coveCrcBalances.network, schema.coveCrcBalances.deployTxid, schema.coveCrcBalances.scriptHex], set: { atoms: BigInt(atoms) } });
+      }
+    }
+  }
+  for (const [key, coins] of Object.entries(undo.tokenUtxos ?? {})) {
+    const deployTxid = txidOf(key, network);
+    for (const point of Object.keys(coins)) {
+      const { txid, vout } = pointOf(point);
+      const coin = state.tokenUtxos?.[key]?.[point];
+      if (!coin) {
+        await tx.delete(schema.coveCrcTokenUtxos).where(and(
+          eq(schema.coveCrcTokenUtxos.network, network), eq(schema.coveCrcTokenUtxos.deployTxid, deployTxid),
+          eq(schema.coveCrcTokenUtxos.txid, txid), eq(schema.coveCrcTokenUtxos.vout, vout),
+        ));
+      } else {
+        const row = { network, deployTxid, txid, vout, scriptHex: coin.scriptHex,
+          atoms: BigInt(coin.atoms), createdHeight: BigInt(coin.createdHeight), createdBlockHash: coin.createdBlockHash };
+        await tx.insert(schema.coveCrcTokenUtxos).values(row).onConflictDoUpdate({
+          target: [schema.coveCrcTokenUtxos.network, schema.coveCrcTokenUtxos.deployTxid,
+            schema.coveCrcTokenUtxos.txid, schema.coveCrcTokenUtxos.vout], set: row,
+        });
       }
     }
   }
@@ -64,24 +91,30 @@ async function writeDelta(tx: DbTransaction, network: string, state: CrcProjecti
     if (!asset) {
       await tx.delete(schema.coveCrcAssets).where(and(eq(schema.coveCrcAssets.network, network), eq(schema.coveCrcAssets.deployTxid, deployTxid)));
     } else {
-      const row = { network, deployTxid, ticker: asset.ticker, deployHeight: BigInt(asset.deployHeight), deployBlockHash: asset.deployBlockHash, launchSaltHex: asset.launchSaltHex, creatorScriptHex: asset.creatorScriptHex, protocolScriptHex: asset.protocolScriptHex };
+      const row = { network, deployTxid, ticker: asset.ticker, deployHeight: BigInt(asset.deployHeight), deployBlockHash: asset.deployBlockHash, launchSaltHex: asset.launchSaltHex, creatorScriptHex: asset.creatorScriptHex, protocolScriptHex: asset.protocolScriptHex,
+        protocolVersion: asset.protocolVersion ?? 1, burnedAtoms: asset.protocolVersion === 2 ? BigInt(asset.burnedAtoms!) : null };
       await tx.insert(schema.coveCrcAssets).values(row).onConflictDoUpdate({ target: [schema.coveCrcAssets.network, schema.coveCrcAssets.deployTxid], set: row });
     }
   }
 }
 
 export async function readCrcProjectionInTransaction(db: DbTransaction, network: string): Promise<{ state: CrcProjection; cursor: CrcBlock | null; stateRoot: string }> {
-  const [assets, vaults, balances, cursors] = await Promise.all([
+  const [assets, vaults, balances, tokenUtxos, cursors] = await Promise.all([
     db.select().from(schema.coveCrcAssets).where(eq(schema.coveCrcAssets.network, network)),
     db.select().from(schema.coveCrcVaults).where(eq(schema.coveCrcVaults.network, network)),
     db.select().from(schema.coveCrcBalances).where(eq(schema.coveCrcBalances.network, network)),
+    db.select().from(schema.coveCrcTokenUtxos).where(eq(schema.coveCrcTokenUtxos.network, network)),
     db.select().from(schema.coveCrcCursor).where(eq(schema.coveCrcCursor.network, network)),
   ]);
   const state: CrcProjection = { assets: {}, vaults: {}, balances: {} };
   for (const row of assets) {
     const height = Number(row.deployHeight);
     if (!Number.isSafeInteger(height)) throw new Error("CRC deployment height exceeds safe integer");
-    state.assets[`${network}:${row.deployTxid}`] = { ticker: row.ticker, deployTxid: row.deployTxid, deployHeight: height, deployBlockHash: row.deployBlockHash, launchSaltHex: row.launchSaltHex, creatorScriptHex: row.creatorScriptHex, protocolScriptHex: row.protocolScriptHex };
+    const key = `${network}:${row.deployTxid}`;
+    if (row.protocolVersion !== 1 && row.protocolVersion !== 2) throw new Error(`invalid CRC asset protocol version ${row.protocolVersion}`);
+    state.assets[key] = { ticker: row.ticker, deployTxid: row.deployTxid, deployHeight: height, deployBlockHash: row.deployBlockHash, launchSaltHex: row.launchSaltHex, creatorScriptHex: row.creatorScriptHex, protocolScriptHex: row.protocolScriptHex,
+      ...(row.protocolVersion === 2 ? { protocolVersion: 2, burnedAtoms: row.burnedAtoms?.toString() ?? "" } : {}) };
+    if (row.protocolVersion === 2) (state.tokenUtxos ??= {})[key] = {};
   }
   for (const row of vaults) {
     if (row.availability !== "active" && row.availability !== "unavailable") throw new Error(`invalid CRC vault availability ${row.availability}`);
@@ -91,10 +124,21 @@ export async function readCrcProjectionInTransaction(db: DbTransaction, network:
     const key = `${network}:${row.deployTxid}`;
     (state.balances[key] ??= {})[row.scriptHex] = row.atoms.toString();
   }
+  for (const row of tokenUtxos) {
+    const key = `${network}:${row.deployTxid}`;
+    const height = Number(row.createdHeight);
+    if (!Number.isSafeInteger(height)) throw new Error("CRC token creation height exceeds safe integer");
+    (state.tokenUtxos ??= {})[key] ??= {};
+    state.tokenUtxos[key]![`${row.txid}:${row.vout}`] = {
+      scriptHex: row.scriptHex, atoms: row.atoms.toString(), createdHeight: height,
+      createdBlockHash: row.createdBlockHash,
+    };
+  }
+  applyCrcBlock(state, state, network);
   const root = crcProjectionRoot(state);
   const cursor = cursors[0];
   if (cursor && cursor.stateRoot !== root) throw new Error(`CRC projection root mismatch for ${network}`);
-  if (!cursor && (assets.length || vaults.length || balances.length)) throw new Error(`CRC projection exists without cursor for ${network}`);
+  if (!cursor && (assets.length || vaults.length || balances.length || tokenUtxos.length)) throw new Error(`CRC projection exists without cursor for ${network}`);
   const height = cursor ? Number(cursor.height) : null;
   if (height !== null && !Number.isSafeInteger(height)) throw new Error("CRC cursor height exceeds safe integer");
   return { state, cursor: cursor ? { height: height!, hash: cursor.blockHash, parentHash: "" } : null, stateRoot: root };
@@ -146,6 +190,11 @@ export async function rollbackCrcTip(db: Database, network: string): Promise<boo
     for (const [key, value] of Object.entries(undo.vaults)) if (value) prior.vaults[key] = value;
     for (const [key, holders] of Object.entries(undo.balances)) {
       for (const [script, atoms] of Object.entries(holders)) if (atoms !== null) (prior.balances[key] ??= {})[script] = atoms;
+    }
+    for (const [key, coins] of Object.entries(undo.tokenUtxos ?? {})) {
+      for (const [point, coin] of Object.entries(coins)) {
+        if (coin !== null) ((prior.tokenUtxos ??= {})[key] ??= {})[point] = coin;
+      }
     }
     await writeDelta(tx, network, prior, undo);
     await tx.delete(schema.coveCrcEvents).where(and(eq(schema.coveCrcEvents.network, network), eq(schema.coveCrcEvents.blockHash, cursor.blockHash)));

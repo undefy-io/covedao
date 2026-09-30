@@ -2,6 +2,7 @@ import * as bitcoin from "bitcoinjs-lib";
 import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import { createCoveLedger } from "@crclaunch/crc20-ledger/cove-replay";
+import { requiredBackingV1 } from "@crclaunch/crc20-curve";
 import { coveLedgerFromProjection, projectionFromCoveLedger, replayCrcBlock } from "./worker.js";
 
 const h = (byte: string) => byte.repeat(64);
@@ -104,5 +105,75 @@ describe("confirmed CRC block adapter", () => {
     ], { getRawTransaction: async () => { throw new Error("unexpected RPC"); } });
     expect(replay.events.map((event) => event.status)).toEqual(["applied", "applied", "broken"]);
     expect(replay.state.assets[`regtest:${deploy.txid}`]?.status).toBe("broken");
+  });
+
+  it("replays an unmarked spend of a v2 token outpoint as a burn and projects its undoable coin state", async () => {
+    const parent = rawTx(null, [
+      { scriptHex: protocol, valueSats: 500 }, { scriptHex: buyer, valueSats: 1000 },
+    ]);
+    const spend = rawTx({ txid: parent.txid, vout: 1 }, [{ scriptHex: creator, valueSats: 900 }]);
+    const deploy = h("e");
+    const key = `regtest:${deploy}`;
+    const initial = createCoveLedger();
+    initial.assets[key] = {
+      ticker: "V2", status: "live", protocolVersion: 2,
+      vaultScriptHex: vault, creatorScriptHex: creator, protocolScriptHex: protocol,
+      curve: { version: "cove-curve-v1", mintedAtoms: 100000000000n, vaultAtoms: 0n,
+        circulatingAtoms: 100000000000n, vaultSats: 330n + requiredBackingV1(1000n),
+        vaultAnchorSats: 330n, vaultOutpoint: `${h("f")}:1` },
+      tokenUtxos: { [`${parent.txid}:1`]: { scriptHex: buyer, atoms: "100000000000" } },
+      burnedAtoms: "0", balances: { [buyer]: "100000000000", [vault]: "0" },
+    };
+    const result = await replayCrcBlock(initial, {
+      network: "regtest", height: 102, hash: h("a"), parentHash: h("0"), rawTxs: [spend.rawHex],
+    }, [], { getRawTransaction: async () => parent.rawHex });
+    expect(result.events).toMatchObject([{ txid: spend.txid, status: "invalid", valid: false }]);
+    expect(result.state.assets[key]?.tokenUtxos).toEqual({});
+    expect(result.state.assets[key]?.burnedAtoms).toBe("100000000000");
+    const before = {
+      assets: { [key]: { ticker: "V2", deployTxid: deploy, deployHeight: 100,
+        deployBlockHash: h("b"), launchSaltHex: h("c"), creatorScriptHex: creator,
+        protocolScriptHex: protocol, protocolVersion: 2 as const, burnedAtoms: "0" } },
+      vaults: { [key]: { txid: h("f"), vout: 1, scriptHex: vault,
+        btcSats: (330n + requiredBackingV1(1000n)).toString(), mintedAtoms: "100000000000",
+        inventoryAtoms: "0", availability: "active" as const } },
+      balances: { [key]: { [buyer]: "100000000000" } },
+      tokenUtxos: { [key]: { [`${parent.txid}:1`]: { scriptHex: buyer, atoms: "100000000000",
+        createdHeight: 101, createdBlockHash: h("b") } } },
+    };
+    const projected = projectionFromCoveLedger(result.state, before,
+      { height: 102, hash: h("a"), parentHash: h("0") }, []);
+    expect(projected.assets[key]?.burnedAtoms).toBe("100000000000");
+    expect(projected.tokenUtxos?.[key]).toEqual({});
+    expect(coveLedgerFromProjection(projected, result.events, "regtest", { [key]: 330n }).assets[key]?.burnedAtoms).toBe("100000000000");
+  });
+
+  it("finds a v2 token output created and burned later in the same block", async () => {
+    const parent = rawTx(null, [{ scriptHex: buyer, valueSats: 1000 }]);
+    const deploy = h("d");
+    const key = `regtest:${deploy}`;
+    const transfer = rawTx({ txid: parent.txid, vout: 0 }, [
+      { scriptHex: marker({ p: "crc-20", op: "transfer", tick: "V2", amt: "100000000000", id: deploy, v: 2 }), valueSats: 0 },
+      { scriptHex: creator, valueSats: 900 },
+    ]);
+    const burn = rawTx({ txid: transfer.txid, vout: 1 }, [{ scriptHex: buyer, valueSats: 800 }]);
+    const initial = createCoveLedger();
+    initial.assets[key] = {
+      ticker: "V2", status: "live", protocolVersion: 2,
+      vaultScriptHex: vault, creatorScriptHex: creator, protocolScriptHex: protocol,
+      curve: { version: "cove-curve-v1", mintedAtoms: 100000000000n, vaultAtoms: 0n,
+        circulatingAtoms: 100000000000n, vaultSats: 330n + requiredBackingV1(1000n),
+        vaultAnchorSats: 330n, vaultOutpoint: `${h("f")}:1` },
+      tokenUtxos: { [`${parent.txid}:0`]: { scriptHex: buyer, atoms: "100000000000" } },
+      burnedAtoms: "0", balances: { [buyer]: "100000000000", [vault]: "0" },
+    };
+    const provider = { getRawTransaction: vi.fn(async () => parent.rawHex) };
+    const replay = await replayCrcBlock(initial, {
+      network: "regtest", height: 102, hash: h("a"), parentHash: h("0"), rawTxs: [transfer.rawHex, burn.rawHex],
+    }, [], provider);
+    expect(replay.events.map((event) => event.status)).toEqual(["applied", "invalid"]);
+    expect(provider.getRawTransaction).toHaveBeenCalledTimes(1);
+    expect(replay.state.assets[key]?.tokenUtxos).toEqual({});
+    expect(replay.state.assets[key]?.burnedAtoms).toBe("100000000000");
   });
 });

@@ -685,6 +685,8 @@ export const coveCrcAssets = pgTable("cove_crc_assets", {
   launchSaltHex: text("launch_salt_hex").notNull(),
   creatorScriptHex: text("creator_script_hex").notNull(),
   protocolScriptHex: text("protocol_script_hex").notNull(),
+  protocolVersion: integer("protocol_version").notNull().default(1),
+  burnedAtoms: atoms("burned_atoms"),
 }, (t) => [
   primaryKey({ columns: [t.network, t.deployTxid] }),
   index("cove_crc_assets_ticker_idx").on(t.network, t.ticker),
@@ -742,6 +744,21 @@ export const coveCrcCursor = pgTable("cove_crc_cursor", {
   blockHash: text("block_hash").notNull(),
   stateRoot: text("state_root").notNull(),
 });
+
+export const coveCrcTokenUtxos = pgTable("cove_crc_token_utxos", {
+  network: text("network").notNull(),
+  deployTxid: text("deploy_txid").notNull(),
+  txid: text("txid").notNull(),
+  vout: integer("vout").notNull(),
+  scriptHex: text("script_hex").notNull(),
+  atoms: atoms("atoms").notNull(),
+  createdHeight: atoms("created_height").notNull(),
+  createdBlockHash: text("created_block_hash").notNull(),
+}, (t) => [
+  primaryKey({ columns: [t.network, t.deployTxid, t.txid, t.vout] }),
+  uniqueIndex("cove_crc_token_utxos_one_asset_uq").on(t.network, t.txid, t.vout),
+  index("cove_crc_token_utxos_owner_idx").on(t.network, t.deployTxid, t.scriptHex),
+]);
 
 export const coveCrcUndo = pgTable("cove_crc_undo", {
   network: text("network").notNull(),

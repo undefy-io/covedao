@@ -8,12 +8,12 @@ const trusted = {
   protocolScriptHex: script("3"), vaultAnchorSats: 330,
 };
 
-function signedDeploy(change = 1670, feeScript = trusted.protocolScriptHex) {
+function signedDeploy(change = 1670, feeScript = trusted.protocolScriptHex, curveVersion = "cove-curve-v1") {
   const tx = new bitcoin.Transaction();
   tx.version = 2;
   tx.addInput(Buffer.from("44".repeat(32), "hex"), 0);
   tx.ins[0]!.witness = [Buffer.from("55".repeat(64), "hex")];
-  const marker = bitcoin.script.compile([bitcoin.opcodes.OP_RETURN!, Buffer.from(JSON.stringify({ p: "crc-20", op: "deploy", tick: "COVE", type: "bonding", max: "2100000000000000", cv: "cove-curve-v1" }))]);
+  const marker = bitcoin.script.compile([bitcoin.opcodes.OP_RETURN!, Buffer.from(JSON.stringify({ p: "crc-20", op: "deploy", tick: "COVE", type: "bonding", max: "2100000000000000", cv: curveVersion }))]);
   tx.addOutput(marker, 0);
   tx.addOutput(Buffer.from(trusted.vaultScriptHex, "hex"), 330);
   tx.addOutput(Buffer.from(trusted.creatorScriptHex, "hex"), 1000);
@@ -40,5 +40,11 @@ describe("authorized Cove launch intent", () => {
     const raw = signedDeploy().toHex();
     expect(() => prepareCrcLaunchIntent("signet", raw, { ...trusted, launchSaltHex: "aa" })).toThrow();
     expect(() => prepareCrcLaunchIntent("signet", raw, { ...trusted, vaultScriptHex: script("6") })).toThrow();
+  });
+
+  it("authorizes a distinct v2 deploy while rejecting unknown curve versions", () => {
+    const v2 = signedDeploy(1670, trusted.protocolScriptHex, "cove-curve-v2");
+    expect(prepareCrcLaunchIntent("signet", v2.toHex(), trusted)).toMatchObject({ txid: v2.getId(), ticker: "COVE" });
+    expect(() => prepareCrcLaunchIntent("signet", signedDeploy(1670, trusted.protocolScriptHex, "cove-curve-v3").toHex(), trusted)).toThrow();
   });
 });

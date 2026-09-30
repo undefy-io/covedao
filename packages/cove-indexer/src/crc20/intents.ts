@@ -51,8 +51,9 @@ export function prepareCrcLaunchIntent(network: BitcoinNetwork, signedRawHex: st
     Object.keys(parsed.envelope.payload).sort().join(",") !== "cv,max,op,p,tick,type" ||
     parsed.envelope.payload.p !== "crc-20" || parsed.envelope.payload.op !== "deploy" ||
     parsed.envelope.payload.type !== "bonding" || parsed.envelope.payload.max !== "2100000000000000" ||
-    parsed.envelope.payload.cv !== "cove-curve-v1" || tx.outs[0]!.script.length > 260) {
-    throw new Error("invalid Cove v1 deployment marker");
+    (parsed.envelope.payload.cv !== "cove-curve-v1" && parsed.envelope.payload.cv !== "cove-curve-v2") ||
+    tx.outs[0]!.script.length > 260) {
+    throw new Error("invalid Cove deployment marker");
   }
   if (!exact(tx.outs[1], trusted.vaultAnchorSats, trusted.vaultScriptHex) ||
     !exact(tx.outs[2], 1000, trusted.creatorScriptHex) ||

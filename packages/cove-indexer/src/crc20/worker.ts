@@ -8,7 +8,7 @@ import type { Database } from "@crclaunch/db";
 import { schema } from "@crclaunch/db";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { persistCrcBlock, readCrcProjectionInTransaction, type CrcBlock, type CrcEvent } from "./store.js";
-import type { CrcProjection } from "./persistence.js";
+import type { CrcProjection, CrcTokenUtxo } from "./persistence.js";
 import { prepareCrcLaunchIntent } from "./intents.js";
 
 export type CrcRawBlock = CrcBlock & { network: BitcoinNetwork; rawTxs: readonly string[] };
@@ -23,9 +23,10 @@ function outpoint(input: Transaction["ins"][number]): string {
   return `${Buffer.from(input.hash).reverse().toString("hex")}:${input.index}`;
 }
 
-function relevant(tx: Transaction, txid: string, network: BitcoinNetwork, state: CoveLedgerState, registeredTxids: ReadonlySet<string>, liveVaults: ReadonlyMap<string, string>): boolean {
+function relevant(tx: Transaction, txid: string, network: BitcoinNetwork, state: CoveLedgerState, registeredTxids: ReadonlySet<string>, liveVaults: ReadonlyMap<string, string>, liveTokenOutpoints: ReadonlyMap<string, string>): boolean {
   if (tx.ins.length === 1 && tx.ins[0]!.index === 0xffffffff && tx.ins[0]!.hash.equals(Buffer.alloc(32))) return false;
   if (tx.ins.some((input) => liveVaults.has(outpoint(input)))) return true;
+  if (tx.ins.some((input) => liveTokenOutpoints.has(outpoint(input)))) return true;
   const parsed = parseCrc20Transaction(tx.outs.map((output) => ({ scriptHex: output.script.toString("hex"), valueSats: output.value })));
   if (parsed.status !== "valid") return false;
   if (parsed.envelope.kind === "deploy") return registeredTxids.has(txid);
@@ -46,15 +47,27 @@ export async function replayCrcBlock(
   const parentCache = new Map<string, Promise<string>>();
   const registeredTxids = new Set(registrations.filter((entry) => entry.network === block.network).map((entry) => entry.txid));
   const liveVaults = new Map<string, string>();
+  const liveTokenOutpoints = new Map<string, string>();
+  const tokenKeysByAsset = new Map<string, Set<string>>();
   for (const [assetId, asset] of Object.entries(initial.assets)) if (asset.status === "live") liveVaults.set(asset.curve.vaultOutpoint, assetId);
+  for (const [assetId, asset] of Object.entries(initial.assets)) {
+    if (asset.protocolVersion !== 2) continue;
+    const keys = new Set(Object.keys(asset.tokenUtxos ?? {}));
+    tokenKeysByAsset.set(assetId, keys);
+    for (const point of keys) {
+      if (liveTokenOutpoints.has(point)) throw new Error(`duplicate canonical CRC token outpoint ${point}`);
+      liveTokenOutpoints.set(point, assetId);
+    }
+  }
   const events: CrcReplayEvent[] = [];
   let state = initial;
   for (let index = 0; index < txs.length; index++) {
     const tx = txs[index]!;
     const txid = txids[index]!;
     const rawHex = block.rawTxs[index]!;
-    if (relevant(tx, txid, block.network, state, registeredTxids, liveVaults)) {
+    if (relevant(tx, txid, block.network, state, registeredTxids, liveVaults, liveTokenOutpoints)) {
       const spentVaults = tx.ins.map((input) => ({ point: outpoint(input), assetId: liveVaults.get(outpoint(input)) })).filter((item): item is { point: string; assetId: string } => !!item.assetId);
+      const spentTokenAssets = new Set(tx.ins.map((input) => liveTokenOutpoints.get(outpoint(input))).filter((assetId): assetId is string => !!assetId));
       const marker = parseCrc20Transaction(tx.outs.map((output) => ({ scriptHex: output.script.toString("hex"), valueSats: output.value })));
       if (marker.status === "valid" && marker.envelope.kind === "deploy" && spentVaults.length === 0) {
         const registration = registrations.find((entry) => entry.network === block.network && entry.txid === txid);
@@ -85,6 +98,21 @@ export async function replayCrcBlock(
       }, registrations);
       if (result.status === "invalid" && result.reason === "parent transaction does not match raw input outpoint") throw new Error(result.reason);
       state = result.state;
+      const touchedTokenAssets = new Set(spentTokenAssets);
+      if (parsed.status === "valid") {
+        const markerAssetId = parsed.envelope.kind === "deploy" ? `${block.network}:${txid}`
+          : typeof parsed.envelope.payload.id === "string" ? `${block.network}:${parsed.envelope.payload.id}` : null;
+        if (markerAssetId && state.assets[markerAssetId]?.protocolVersion === 2) touchedTokenAssets.add(markerAssetId);
+      }
+      for (const assetId of touchedTokenAssets) {
+        for (const point of tokenKeysByAsset.get(assetId) ?? []) liveTokenOutpoints.delete(point);
+        const keys = new Set(Object.keys(state.assets[assetId]?.tokenUtxos ?? {}));
+        tokenKeysByAsset.set(assetId, keys);
+        for (const point of keys) {
+          if (liveTokenOutpoints.has(point)) throw new Error(`duplicate canonical CRC token outpoint ${point}`);
+          liveTokenOutpoints.set(point, assetId);
+        }
+      }
       for (const { point, assetId } of spentVaults) {
         liveVaults.delete(point);
         const updated = state.assets[assetId];
@@ -100,7 +128,7 @@ export async function replayCrcBlock(
         txid, blockHeight: block.height, txIndex: index,
         operation: parsed.status === "valid" ? parsed.envelope.kind : null,
         status: result.status, valid: result.status === "applied", reason: result.reason,
-        deployTxid: parsed.status === "valid" && parsed.envelope.kind === "deploy" ? txid : typeof markerId === "string" && txidPattern.test(markerId) ? markerId : brokenId ?? null,
+        deployTxid: parsed.status === "valid" && parsed.envelope.kind === "deploy" ? txid : typeof markerId === "string" && txidPattern.test(markerId) ? markerId : brokenId ?? [...spentTokenAssets][0]?.split(":")[1] ?? null,
         amountAtoms: parsed.status === "valid" && parsed.envelope.kind !== "deploy" && typeof parsed.envelope.payload.amt === "string" && /^[1-9][0-9]*$/.test(parsed.envelope.payload.amt) ? parsed.envelope.payload.amt : null,
       });
     }
@@ -116,10 +144,13 @@ export function projectionFromCoveLedger(state: CoveLedgerState, before: CrcProj
     const prior = before.assets[key];
     const registration = registrations.find((entry) => entry.txid === deployTxid && key.startsWith(`${entry.network}:`));
     if (!prior && !registration) throw new Error(`missing trusted Cove launch intent for ${key}`);
-    projection.assets[key] = prior ?? {
+    projection.assets[key] = {
+      ...(prior ?? {
       ticker: asset.ticker, deployTxid, deployHeight: block.height, deployBlockHash: block.hash,
       launchSaltHex: registration!.launchSaltHex,
       creatorScriptHex: asset.creatorScriptHex, protocolScriptHex: asset.protocolScriptHex,
+      }),
+      ...(asset.protocolVersion === 2 ? { protocolVersion: 2, burnedAtoms: asset.burnedAtoms ?? "0" } : {}),
     };
     const split = asset.curve.vaultOutpoint.lastIndexOf(":");
     const vaultTxid = asset.curve.vaultOutpoint.slice(0, split);
@@ -131,6 +162,16 @@ export function projectionFromCoveLedger(state: CoveLedgerState, before: CrcProj
     };
     for (const [script, atoms] of Object.entries(asset.balances)) {
       if (atoms !== "0") (projection.balances[key] ??= {})[script] = atoms;
+    }
+    if (asset.protocolVersion === 2) {
+      const coins: Record<string, CrcTokenUtxo> = (projection.tokenUtxos ??= {})[key] = {};
+      for (const [point, coin] of Object.entries(asset.tokenUtxos ?? {})) {
+        const previous = before.tokenUtxos?.[key]?.[point];
+        if (previous && (previous.scriptHex !== coin.scriptHex || previous.atoms !== coin.atoms)) {
+          throw new Error(`CRC token outpoint changed amount or owner ${point}`);
+        }
+        coins[point] = previous ?? { ...coin, createdHeight: block.height, createdBlockHash: block.hash };
+      }
     }
   }
   return projection;
@@ -150,6 +191,11 @@ export function coveLedgerFromProjection(projection: CrcProjection, events: read
     if (vaultAnchorSats === undefined || vaultAnchorSats < 0n || vaultSats !== vaultAnchorSats + requiredBackingV1(circulatingAtoms / 100_000_000n)) throw new Error("CRC vault backing does not match trusted launch anchor");
     assets[key] = {
       ticker: meta.ticker, status: vault.availability === "active" ? "live" : "broken",
+      ...(meta.protocolVersion === 2 ? {
+        protocolVersion: 2 as const, burnedAtoms: meta.burnedAtoms,
+        tokenUtxos: Object.fromEntries(Object.entries(projection.tokenUtxos?.[key] ?? {}).map(([point, coin]) =>
+          [point, { scriptHex: coin.scriptHex, atoms: coin.atoms }])),
+      } : {}),
       vaultScriptHex: vault.scriptHex, creatorScriptHex: meta.creatorScriptHex, protocolScriptHex: meta.protocolScriptHex,
       curve: { version: "cove-curve-v1", mintedAtoms, vaultAtoms, circulatingAtoms, vaultSats, vaultAnchorSats, vaultOutpoint: `${vault.txid}:${vault.vout}` },
       balances: { ...projection.balances[key] },
