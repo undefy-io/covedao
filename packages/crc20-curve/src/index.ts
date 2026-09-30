@@ -11,7 +11,11 @@ const LOT_ATOMS = LOT_TOKENS * ATOMS_PER_TOKEN;
 const CAP_ATOMS = PUBLIC_SUPPLY * ATOMS_PER_TOKEN;
 
 export function isCoveCurveDeploy(payload: Record<string, unknown>): boolean {
-  return payload.p === "crc-20" && payload.op === "deploy" && payload.cv === "cove-curve-v1";
+  return Object.keys(payload).sort().join(",") === "cv,max,op,p,tick,type" &&
+    payload.p === "crc-20" && payload.op === "deploy" &&
+    typeof payload.tick === "string" && /^[A-Za-z0-9]{1,16}$/.test(payload.tick) &&
+    payload.type === "bonding" && payload.max === CAP_ATOMS.toString() &&
+    payload.cv === "cove-curve-v1";
 }
 
 export type CurveState = Readonly<{

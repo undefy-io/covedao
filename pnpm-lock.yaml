@@ -744,6 +744,9 @@ importers:
 
   packages/crc20-ledger:
     dependencies:
+      '@crclaunch/cove-economics':
+        specifier: workspace:*
+        version: link:../cove-economics
       '@crclaunch/crc20-base':
         specifier: workspace:*
         version: link:../crc20-base
@@ -763,6 +766,9 @@ importers:
 
   packages/crc20-transactions:
     dependencies:
+      '@crclaunch/cove-economics':
+        specifier: workspace:*
+        version: link:../cove-economics
       '@crclaunch/crc20-base':
         specifier: workspace:*
         version: link:../crc20-base

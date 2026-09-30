@@ -17,6 +17,7 @@
   "dependencies": {
     "@crclaunch/crc20-base": "workspace:*",
     "@crclaunch/crc20-curve": "workspace:*",
+    "@crclaunch/cove-economics": "workspace:*",
     "bitcoinjs-lib": "^6.1.7"
   },
   "devDependencies": {

@@ -61,16 +61,40 @@ describe("CRC-first Cove transaction prototype", () => {
       scripts.creator,
       scripts.protocol,
     ]);
+    expect(template.outputs[2]?.valueSats).toBe(1_000);
+    expect(template.outputs[3]?.valueSats).toBe(7_000);
+    expect(template.requiredFundingSats).toBe(8_330);
     expect(decode(template.tx)).toMatchObject({
       status: "valid",
       envelope: { kind: "deploy", markerVout: 0 },
     });
   });
 
+  it("rejects an alternative cap and dust outputs for this curve version", () => {
+    expect(() =>
+      buildCurveDeploy({
+        ticker: "COVE",
+        maxAtoms: "2100000000000001",
+        scripts,
+        vaultAnchorSats: 330,
+      }),
+    ).toThrow(/maximum supply/i);
+    const legacyScript = bitcoin.payments.p2pkh({ pubkey: buyer.publicKey }).output!.toString("hex");
+    expect(() =>
+      buildCurveDeploy({
+        ticker: "COVE",
+        maxAtoms: "2100000000000000",
+        scripts: { ...scripts, vault: legacyScript },
+        vaultAnchorSats: 330,
+      }),
+    ).toThrow(/dust/i);
+  });
+
   it("new mint buy puts recipient immediately after the marker and pays exact reserve and fees", () => {
     const quote = quoteBuy(state0, 100_000n);
     const template = buildCurveBuy({
       ticker: "COVE",
+      deploymentTxid: "99".repeat(32),
       state: state0,
       amountTokens: 100_000n,
       scripts,
@@ -79,7 +103,7 @@ describe("CRC-first Cove transaction prototype", () => {
     expect(template.operation).toBe("mint");
     expect(decode(template.tx)).toMatchObject({
       status: "valid",
-      envelope: { kind: "mint", markerVout: 0, payload: { amt: quote.amountAtoms.toString() } },
+      envelope: { kind: "mint", markerVout: 0, payload: { amt: quote.amountAtoms.toString(), id: "99".repeat(32) } },
     });
     expect(template.outputs[1]).toMatchObject({ valueSats: 330, scriptHex: scripts.buyer });
     expect(template.outputs[2]).toMatchObject({
@@ -95,7 +119,7 @@ describe("CRC-first Cove transaction prototype", () => {
 
   it("sell sends tokens to the next vault output; resale transfers vault inventory before minting", () => {
     const saleQuote = quoteSell(minted, 40_000n);
-    const sale = buildCurveSell({ ticker: "COVE", state: minted, amountTokens: 40_000n, scripts });
+    const sale = buildCurveSell({ ticker: "COVE", deploymentTxid: "99".repeat(32), state: minted, amountTokens: 40_000n, scripts });
     expect(decode(sale.tx)).toMatchObject({
       status: "valid",
       envelope: {
@@ -130,6 +154,7 @@ describe("CRC-first Cove transaction prototype", () => {
     });
     const resale = buildCurveBuy({
       ticker: "COVE",
+      deploymentTxid: "99".repeat(32),
       state: inventory,
       amountTokens: 40_000n,
       scripts,
@@ -146,6 +171,7 @@ describe("CRC-first Cove transaction prototype", () => {
   it("requires exact funding and a seller-online full-transaction signature that rejects mutation", () => {
     const template = buildCurveSell({
       ticker: "COVE",
+      deploymentTxid: "99".repeat(32),
       state: minted,
       amountTokens: 40_000n,
       scripts,
@@ -197,5 +223,25 @@ describe("CRC-first Cove transaction prototype", () => {
     addedInput.addInput(Buffer.alloc(32, 9), 0);
     expect(valid(addedInput)).toBe(false);
     expect(() => buildUnsignedPsbt(template, [sellerFund], 1_000)).toThrow(/vault input/i);
+  });
+
+  it("requires an unambiguous deployment id on every post-deploy marker", () => {
+    expect(() => buildCurveBuy({
+      ticker: "COVE",
+      deploymentTxid: "not-a-txid",
+      state: state0,
+      amountTokens: 1_000n,
+      scripts,
+      recipientSats: 330,
+    })).toThrow(/deployment/i);
+    const buy = buildCurveBuy({
+      ticker: "COVE",
+      deploymentTxid: "99".repeat(32),
+      state: state0,
+      amountTokens: 1_000n,
+      scripts,
+      recipientSats: 330,
+    });
+    expect(decode(buy.tx)).toMatchObject({ status: "valid", envelope: { payload: { id: "99".repeat(32) } } });
   });
 });
