@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import { createCoveLedger } from "@crclaunch/crc20-ledger/cove-replay";
 import { requiredBackingV1 } from "@crclaunch/crc20-curve";
+import { applyCrcBlock, rollbackCrcBlock } from "./persistence.js";
 import { coveLedgerFromProjection, projectionFromCoveLedger, replayCrcBlock } from "./worker.js";
 
 const h = (byte: string) => byte.repeat(64);
@@ -148,7 +149,7 @@ describe("confirmed CRC block adapter", () => {
     expect(coveLedgerFromProjection(projected, result.events, "regtest", { [key]: 330n }).assets[key]?.burnedAtoms).toBe("100000000000");
   });
 
-  it("finds a v2 token output created and burned later in the same block", async () => {
+  it("burns a same-block v2 token spend disguised as an unregistered deploy and undoes it on reorg", async () => {
     const parent = rawTx(null, [{ scriptHex: buyer, valueSats: 1000 }]);
     const deploy = h("d");
     const key = `regtest:${deploy}`;
@@ -156,7 +157,10 @@ describe("confirmed CRC block adapter", () => {
       { scriptHex: marker({ p: "crc-20", op: "transfer", tick: "V2", amt: "100000000000", id: deploy, v: 2 }), valueSats: 0 },
       { scriptHex: creator, valueSats: 900 },
     ]);
-    const burn = rawTx({ txid: transfer.txid, vout: 1 }, [{ scriptHex: buyer, valueSats: 800 }]);
+    const burn = rawTx({ txid: transfer.txid, vout: 1 }, [
+      { scriptHex: marker({ p: "crc-20", op: "deploy", tick: "FAKE", type: "bonding", max: "2100000000000000", cv: "cove-curve-v2" }), valueSats: 0 },
+      { scriptHex: vault, valueSats: 330 }, { scriptHex: buyer, valueSats: 470 },
+    ]);
     const initial = createCoveLedger();
     initial.assets[key] = {
       ticker: "V2", status: "live", protocolVersion: 2,
@@ -172,8 +176,24 @@ describe("confirmed CRC block adapter", () => {
       network: "regtest", height: 102, hash: h("a"), parentHash: h("0"), rawTxs: [transfer.rawHex, burn.rawHex],
     }, [], provider);
     expect(replay.events.map((event) => event.status)).toEqual(["applied", "invalid"]);
+    expect(replay.events[1]?.operation).toBe("deploy");
     expect(provider.getRawTransaction).toHaveBeenCalledTimes(1);
     expect(replay.state.assets[key]?.tokenUtxos).toEqual({});
     expect(replay.state.assets[key]?.burnedAtoms).toBe("100000000000");
+    const before = {
+      assets: { [key]: { ticker: "V2", deployTxid: deploy, deployHeight: 100,
+        deployBlockHash: h("b"), launchSaltHex: h("c"), creatorScriptHex: creator,
+        protocolScriptHex: protocol, protocolVersion: 2 as const, burnedAtoms: "0" } },
+      vaults: { [key]: { txid: h("f"), vout: 1, scriptHex: vault,
+        btcSats: (330n + requiredBackingV1(1000n)).toString(), mintedAtoms: "100000000000",
+        inventoryAtoms: "0", availability: "active" as const } },
+      balances: { [key]: { [buyer]: "100000000000" } },
+      tokenUtxos: { [key]: { [`${parent.txid}:0`]: { scriptHex: buyer, atoms: "100000000000",
+        createdHeight: 101, createdBlockHash: h("b") } } },
+    };
+    const projected = projectionFromCoveLedger(replay.state, before,
+      { height: 102, hash: h("a"), parentHash: h("b") }, []);
+    const applied = applyCrcBlock(before, projected, "regtest");
+    expect(rollbackCrcBlock(applied.state, applied.undo)).toEqual(before);
   });
 });

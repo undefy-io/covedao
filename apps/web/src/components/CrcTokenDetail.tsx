@@ -12,6 +12,8 @@ type Token = {
   network: string;
   deployTxid: string;
   deployHeight: string;
+  protocolVersion: 1 | 2;
+  burnedAtoms: string | null;
   mintedAtoms: string;
   inventoryAtoms: string;
   circulatingAtoms: string;
@@ -21,7 +23,7 @@ type Token = {
 
 export function CrcTokenDetail({ assetId }: { assetId: string }) {
   const { connected, address, publicKey, ordinalsAddress, ordinalsPublicKey,
-    connect, getUtxos, getUtxosForAddress, signPsbt } = useWallet();
+    connect, getUtxos, signPsbt } = useWallet();
   const [token, setToken] = useState<Token | null>(null);
   const [indexedHeight, setIndexedHeight] = useState("");
   const [error, setError] = useState("");
@@ -46,10 +48,23 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
         throw new Error("Miner fee must be 1 to 20,000 sats");
       }
       const paymentFunding = (await getUtxos(true)).slice(0, 40);
-      const sellerFunding = side === "sell"
-        ? (await getUtxosForAddress(ordinalsAddress || address, true))[0]
-        : undefined;
-      if (side === "sell" && !sellerFunding) throw new Error("No confirmed token carrier found in your ordinals wallet");
+      let sellerFunding: { txid: string; vout: number }[] | undefined;
+      if (side === "sell") {
+        const response = await fetch(`/api/crc/v1/tokens/${encodeURIComponent(assetId)}/utxos?address=${encodeURIComponent(ordinalsAddress || address)}`, { cache: "no-store" });
+        const body = await response.json();
+        if (!response.ok || !body.ok) throw new Error(body.error?.message || "Could not read indexed token outputs");
+        if (body.data.truncated) throw new Error("This wallet has more than 100 token outputs. Consolidate before selling.");
+        const selected: { txid: string; vout: number }[] = [];
+        let selectedAtoms = 0n;
+        for (const coin of body.data.utxos as { txid: string; vout: number; atoms: string }[]) {
+          if (selectedAtoms >= BigInt(amountAtoms)) break;
+          selected.push({ txid: coin.txid, vout: coin.vout });
+          selectedAtoms += BigInt(coin.atoms);
+        }
+        if (selectedAtoms < BigInt(amountAtoms)) throw new Error("Not enough indexed token outputs are available for this sale");
+        if (selected.length > 32) throw new Error("This sale needs more than 32 token outputs. Consolidate first.");
+        sellerFunding = selected;
+      }
       const buildResponse = await fetch(`/api/crc/v1/backing/${side}/build`, {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -89,7 +104,7 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
       const amountAtoms = parseCrcTokenQuantity(quantity);
       const response = await fetch(`/api/crc/v1/backing/${side}/quote`, {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ assetId, amountAtoms, ...(side === "sell" ? { sellerAddress: ordinalsAddress || address, payoutAddress: address } : {}) }),
+        body: JSON.stringify({ assetId, amountAtoms, ...(side === "sell" ? { sellerAddress: ordinalsAddress || address, payoutAddress: ordinalsAddress || address } : {}) }),
       });
       const body = await response.json();
       if (!body.ok) throw new Error(body.error?.message ?? "Could not quote trade");
@@ -135,12 +150,14 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
         <h1 className="mt-3 text-3xl text-bone">${token.ticker}</h1>
         <p className="mt-2 break-all font-mono text-xs text-bone-dim">{token.assetId}</p>
         <p className="mt-3 text-xs text-bone-dim">Confirmed at block {token.deployHeight} · indexed through {indexedHeight}</p>
+        {token.protocolVersion === 1 && <p className="mt-3 text-sm text-bone-dim">Legacy Cove v1 token · view only. New trading uses Cove v2 deployments.</p>}
       </section>
       <section className="grid gap-3 sm:grid-cols-2">
         <Metric name="Circulating" value={`${formatAtoms(token.circulatingAtoms)} tokens`} />
         <Metric name="Vault inventory" value={`${formatAtoms(token.inventoryAtoms)} tokens`} />
         <Metric name="Lifetime minted" value={`${formatAtoms(token.mintedAtoms)} tokens`} />
         <Metric name="Vault BTC" value={`${token.vault.btcSats} sats`} />
+        {token.protocolVersion === 2 && <Metric name="Burned" value={`${formatAtoms(token.burnedAtoms ?? "0")} tokens`} />}
       </section>
       <section className="border border-rule bg-ink-2 p-6">
         <h2 className="text-lg text-bone">Buy and sell</h2>
@@ -154,12 +171,13 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
           <input value={quantity} onChange={(event) => { setQuantity(event.target.value); setQuote(null); }} inputMode="numeric" className="mt-2 block w-full border border-rule bg-ink px-3 py-2 text-bone outline-none focus:border-signal" />
         </label>
         {side === "sell" && !connected && <button type="button" onClick={() => void connect()} className="btn-ghost mt-3">Connect wallet to preview sell</button>}
-        <button type="button" disabled={quoting || token.availability !== "active"} onClick={() => void preview()} className="btn mt-4 block disabled:opacity-50">{quoting ? "Calculating…" : "Preview quote"}</button>
+        <button type="button" disabled={quoting || token.availability !== "active" || token.protocolVersion !== 2} onClick={() => void preview()} className="btn mt-4 block disabled:opacity-50">{quoting ? "Calculating…" : "Preview quote"}</button>
         {quoteError && <p role="alert" className="mt-3 text-sm text-danger">{quoteError}</p>}
         {quote && <div className="mt-4 space-y-1 border-t border-rule pt-4 text-sm text-bone-dim">
           <p>Backing: {quote.grossSats} sats</p>
           <p>Protocol fee: {quote.protocolFeeSats} sats</p>
-          {side === "buy" ? <><p>Creator fee: {quote.creatorFeeSats} sats</p><p className="text-bone">Total before miner fee: {quote.buyerTotalSats} sats</p></> : <><p>Seller payout: {quote.sellerPayoutSats} sats</p><p>Wallet top-up: {quote.walletTopUpSats} sats</p><p className="text-bone">Net before miner fee: {quote.sellerNetSats} sats</p></>}
+          {side === "buy" ? <><p>Creator fee: {quote.creatorFeeSats} sats</p><p className="text-bone">Total before miner fee: {quote.buyerTotalSats} sats</p></> : <><p>Curve payout: {quote.sellerPayoutSats} sats</p><p>Wallet top-up: {quote.walletTopUpSats} sats</p><p className="text-bone">Net before miner fee: {quote.sellerNetSats} sats</p></>}
+          {side === "sell" && <><p className="break-all">BTC payout address: {ordinalsAddress || address}</p><p>Your token output’s BTC is returned in the payout in addition to the curve amount.</p></>}
           <p className="text-xs">Miner fee is separate. The vault may change before signing.</p>
         </div>}
         {quote && tradingActive && <div className="mt-4">

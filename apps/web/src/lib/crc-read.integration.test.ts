@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { sql } from "drizzle-orm";
 import { createDb } from "@crclaunch/db";
-import { listCrcAssets, readCrcAsset, readCrcBalance, readCrcQuoteAsset, readCrcWalletBalances } from "./crc-read";
+import { listCrcAssets, readCrcAsset, readCrcBalance, readCrcQuoteAsset, readCrcTokenUtxo, readCrcTokenUtxos, readCrcWalletBalances } from "./crc-read";
 import { quoteCrcBuy, quoteCrcSell } from "./crc-quote";
 
 const url = process.env.CRC_READ_TEST_DATABASE_URL;
@@ -18,6 +18,7 @@ const owner = "0014" + "1".repeat(40);
 describe.skipIf(!isolated)("Cove CRC database reads", () => {
   beforeAll(async () => {
     for (const network of ["signet", "regtest"]) {
+      await db!.execute(sql`delete from cove_crc_token_utxos where network = ${network} and deploy_txid in (${first}, ${second})`);
       await db!.execute(sql`delete from cove_crc_balances where network = ${network} and deploy_txid in (${first}, ${second})`);
       await db!.execute(sql`delete from cove_crc_vaults where network = ${network} and deploy_txid in (${first}, ${second})`);
       await db!.execute(sql`delete from cove_crc_assets where network = ${network} and deploy_txid in (${first}, ${second})`);
@@ -39,10 +40,18 @@ describe.skipIf(!isolated)("Cove CRC database reads", () => {
     }
     await db!.execute(sql`insert into cove_crc_balances (network,deploy_txid,script_hex,atoms)
       values ('signet',${first},${owner},100000000000),('signet',${second},${owner},50000000000),('regtest',${first},${owner},200000000000)`);
+    await db!.execute(sql`update cove_crc_assets set protocol_version = 2, burned_atoms = 50000000000
+      where network = 'signet' and deploy_txid = ${second}`);
+    await db!.execute(sql`insert into cove_crc_token_utxos
+      (network,deploy_txid,txid,vout,script_hex,atoms,created_height,created_block_hash)
+      values ('signet',${second},${"a".repeat(64)},1,${owner},25000000000,12,${"b".repeat(64)}),
+        ('signet',${second},${"b".repeat(64)},1,${owner},25000000000,13,${"c".repeat(64)}),
+        ('signet',${second},${second},1,${`0014${second.slice(0, 40)}`},100000000000,12,${"b".repeat(64)})`);
   });
 
   afterAll(async () => {
     for (const network of ["signet", "regtest"]) {
+      await db!.execute(sql`delete from cove_crc_token_utxos where network = ${network} and deploy_txid in (${first}, ${second})`);
       await db!.execute(sql`delete from cove_crc_balances where network = ${network} and deploy_txid in (${first}, ${second})`);
       await db!.execute(sql`delete from cove_crc_vaults where network = ${network} and deploy_txid in (${first}, ${second})`);
       await db!.execute(sql`delete from cove_crc_assets where network = ${network} and deploy_txid in (${first}, ${second})`);
@@ -76,6 +85,29 @@ describe.skipIf(!isolated)("Cove CRC database reads", () => {
     expect(firstPage[0]?.assetId).toBe(`signet:${first}`);
     const nextPage = await readCrcWalletBalances(db!, "signet", owner, 1, { atoms: 100000000000n, deployTxid: first });
     expect(nextPage[0]?.assetId).toBe(`signet:${second}`);
+  });
+
+  it("uses only live indexed v2 coins for wallet balances and seller authority", async () => {
+    await db!.execute(sql`update cove_crc_balances set atoms = 999000000000
+      where network = 'signet' and deploy_txid = ${second} and script_hex = ${owner}`);
+    try {
+      expect(await readCrcBalance(db!, "signet", second, owner)).toBe(50000000000n);
+      expect(await readCrcWalletBalances(db!, "signet", owner, 100)).toContainEqual({
+        assetId: `signet:${second}`, ticker: "SAME", atoms: "50000000000",
+      });
+      expect(await readCrcTokenUtxos(db!, "signet", second, owner)).toMatchObject([
+        { txid: "a".repeat(64), vout: 1, atoms: "25000000000" },
+        { txid: "b".repeat(64), vout: 1, atoms: "25000000000" },
+      ]);
+      expect(await readCrcTokenUtxos(db!, "regtest", second, owner)).toEqual([]);
+      expect(await readCrcTokenUtxos(db!, "signet", second, "0014" + "2".repeat(40))).toEqual([]);
+      expect(await readCrcTokenUtxo(db!, "signet", second, "a".repeat(64), 1)).toEqual({ scriptHex: owner, atoms: 25000000000n });
+      expect(await readCrcTokenUtxo(db!, "regtest", second, "a".repeat(64), 1)).toBeNull();
+      expect(await readCrcTokenUtxo(db!, "signet", first, "a".repeat(64), 1)).toBeNull();
+    } finally {
+      await db!.execute(sql`update cove_crc_balances set atoms = 50000000000
+        where network = 'signet' and deploy_txid = ${second} and script_hex = ${owner}`);
+    }
   });
 
   it("quotes the confirmed vault inventory from Postgres without Core", async () => {

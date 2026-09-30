@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as bitcoin from "bitcoinjs-lib";
 
 const mocks = vi.hoisted(() => ({ cursor: vi.fn(), asset: vi.fn(), registered: vi.fn(), balance: vi.fn() }));
 vi.mock("./crc-server", () => ({ getCrcReadServices: () => ({ db: {}, network: "signet" }) }));
@@ -14,6 +15,7 @@ const assetId = `signet:${txid}`;
 const sellerAddress = "tb1qg358gsla30dtx228u3za8253zncpzdwkrl6eem";
 const token = {
   assetId, mintedAtoms: "0", inventoryAtoms: "0", circulatingAtoms: "0",
+  protocolVersion: 2, burnedAtoms: "0",
   availability: "active", vault: { txid, vout: 1, btcSats: "330" },
   vaultAnchorSats: "330",
 };
@@ -64,5 +66,20 @@ describe("CRC quote routes", () => {
     const missingIntent = await crcQuoteRoute(request({ assetId, amountAtoms: "100000000000" }), "buy");
     expect(missingIntent.status).toBe(503);
     expect((await missingIntent.json()).error.code).toBe("INVALID_STATE");
+  });
+
+  it("keeps legacy v1 deployments read-only", async () => {
+    mocks.asset.mockResolvedValue({ ...token, protocolVersion: 1, burnedAtoms: null });
+    const response = await crcQuoteRoute(request({ assetId, amountAtoms: "100000000000" }), "buy");
+    expect(response.status).toBe(409);
+    expect((await response.json()).error.code).toBe("CRC_V1_READ_ONLY");
+  });
+
+  it("rejects a payout address that differs from the token owner", async () => {
+    const otherAddress = bitcoin.address.fromOutputScript(Buffer.from("0014" + "9".repeat(40), "hex"), bitcoin.networks.testnet);
+    const response = await crcQuoteRoute(request({ assetId, amountAtoms: "100000000000",
+      sellerAddress, payoutAddress: otherAddress }), "sell");
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.code).toBe("PAYOUT_ADDRESS_INVALID");
   });
 });

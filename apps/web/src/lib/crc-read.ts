@@ -1,4 +1,4 @@
-import { and, desc, eq, lt, or } from "drizzle-orm";
+import { and, asc, desc, eq, lt, or, sql } from "drizzle-orm";
 import { schema, type Database } from "@crclaunch/db";
 
 export type CrcNetwork = "regtest" | "signet" | "testnet" | "mainnet";
@@ -36,6 +36,8 @@ type AssetRow = {
   deployBlockHash: string;
   creatorScriptHex: string;
   protocolScriptHex: string;
+  protocolVersion: number;
+  burnedAtoms: bigint | null;
   txid: string;
   vout: number;
   scriptHex: string;
@@ -49,6 +51,9 @@ export function projectCrcAsset(row: AssetRow) {
   if (
     row.mintedAtoms < 0n || row.inventoryAtoms < 0n || row.inventoryAtoms > row.mintedAtoms ||
     row.btcSats < 0n || row.deployHeight < 0n || row.vout < 0 ||
+    (row.protocolVersion !== 1 && row.protocolVersion !== 2) ||
+    (row.protocolVersion === 1 && row.burnedAtoms !== null) ||
+    (row.protocolVersion === 2 && (row.burnedAtoms === null || row.burnedAtoms < 0n || row.burnedAtoms > row.mintedAtoms)) ||
     !["active", "unavailable"].includes(row.availability)
   ) throw new Error("inconsistent Cove CRC projection");
   return {
@@ -60,6 +65,8 @@ export function projectCrcAsset(row: AssetRow) {
     deployBlockHash: row.deployBlockHash,
     creatorScriptHex: row.creatorScriptHex,
     protocolScriptHex: row.protocolScriptHex,
+    protocolVersion: row.protocolVersion as 1 | 2,
+    burnedAtoms: row.burnedAtoms?.toString() ?? null,
     mintedAtoms: row.mintedAtoms.toString(),
     inventoryAtoms: row.inventoryAtoms.toString(),
     circulatingAtoms: (row.mintedAtoms - row.inventoryAtoms).toString(),
@@ -81,6 +88,8 @@ const assetColumns = {
   deployBlockHash: schema.coveCrcAssets.deployBlockHash,
   creatorScriptHex: schema.coveCrcAssets.creatorScriptHex,
   protocolScriptHex: schema.coveCrcAssets.protocolScriptHex,
+  protocolVersion: schema.coveCrcAssets.protocolVersion,
+  burnedAtoms: schema.coveCrcAssets.burnedAtoms,
   txid: schema.coveCrcVaults.txid,
   vout: schema.coveCrcVaults.vout,
   scriptHex: schema.coveCrcVaults.scriptHex,
@@ -157,42 +166,73 @@ export async function readCrcQuoteAsset(db: Database, network: CrcNetwork, deplo
 }
 
 export async function readCrcBalance(db: Database, network: CrcNetwork, deployTxid: string, scriptHex: string): Promise<bigint> {
-  const [row] = await db.select({ atoms: schema.coveCrcBalances.atoms })
-    .from(schema.coveCrcBalances)
-    .where(and(
-      eq(schema.coveCrcBalances.network, network),
-      eq(schema.coveCrcBalances.deployTxid, deployTxid),
-      eq(schema.coveCrcBalances.scriptHex, scriptHex),
-    )).limit(1);
-  return row?.atoms ?? 0n;
+  const result = await db.execute(sql`
+    select case when a.protocol_version = 2 then
+      (select coalesce(sum(u.atoms), 0) from cove_crc_token_utxos u
+        where u.network = a.network and u.deploy_txid = a.deploy_txid and u.script_hex = ${scriptHex})
+    else (select coalesce(b.atoms, 0) from cove_crc_balances b
+        where b.network = a.network and b.deploy_txid = a.deploy_txid and b.script_hex = ${scriptHex})
+    end as atoms
+    from cove_crc_assets a where a.network = ${network} and a.deploy_txid = ${deployTxid} limit 1`);
+  return BigInt((result.rows[0] as { atoms?: string | number | bigint } | undefined)?.atoms ?? 0);
+}
+
+export async function readCrcTokenUtxos(db: Database, network: CrcNetwork, deployTxid: string, scriptHex: string, limit = 101) {
+  const rows = await db.select({
+    txid: schema.coveCrcTokenUtxos.txid,
+    vout: schema.coveCrcTokenUtxos.vout,
+    scriptHex: schema.coveCrcTokenUtxos.scriptHex,
+    atoms: schema.coveCrcTokenUtxos.atoms,
+    createdHeight: schema.coveCrcTokenUtxos.createdHeight,
+    createdBlockHash: schema.coveCrcTokenUtxos.createdBlockHash,
+  }).from(schema.coveCrcTokenUtxos)
+    .innerJoin(schema.coveCrcAssets, and(
+      eq(schema.coveCrcTokenUtxos.network, schema.coveCrcAssets.network),
+      eq(schema.coveCrcTokenUtxos.deployTxid, schema.coveCrcAssets.deployTxid),
+    ))
+    .where(and(eq(schema.coveCrcTokenUtxos.network, network),
+      eq(schema.coveCrcTokenUtxos.deployTxid, deployTxid),
+      eq(schema.coveCrcTokenUtxos.scriptHex, scriptHex),
+      eq(schema.coveCrcAssets.protocolVersion, 2)))
+    .orderBy(desc(schema.coveCrcTokenUtxos.atoms), asc(schema.coveCrcTokenUtxos.txid), asc(schema.coveCrcTokenUtxos.vout))
+    .limit(limit);
+  return rows.map((row) => ({ ...row, atoms: row.atoms.toString(), createdHeight: row.createdHeight.toString() }));
+}
+
+export async function readCrcTokenUtxo(db: Database, network: CrcNetwork, deployTxid: string, txid: string, vout: number) {
+  const [row] = await db.select({ scriptHex: schema.coveCrcTokenUtxos.scriptHex,
+    atoms: schema.coveCrcTokenUtxos.atoms }).from(schema.coveCrcTokenUtxos)
+    .innerJoin(schema.coveCrcAssets, and(
+      eq(schema.coveCrcTokenUtxos.network, schema.coveCrcAssets.network),
+      eq(schema.coveCrcTokenUtxos.deployTxid, schema.coveCrcAssets.deployTxid),
+    ))
+    .where(and(eq(schema.coveCrcTokenUtxos.network, network),
+      eq(schema.coveCrcTokenUtxos.deployTxid, deployTxid),
+      eq(schema.coveCrcTokenUtxos.txid, txid), eq(schema.coveCrcTokenUtxos.vout, vout),
+      eq(schema.coveCrcAssets.protocolVersion, 2))).limit(1);
+  return row ? { scriptHex: row.scriptHex, atoms: row.atoms } : null;
 }
 
 export async function readCrcWalletBalances(
   db: Database, network: CrcNetwork, scriptHex: string, limit: number,
   before?: { atoms: bigint; deployTxid: string },
 ) {
-  const rows = await db.select({
-    deployTxid: schema.coveCrcBalances.deployTxid,
-    ticker: schema.coveCrcAssets.ticker,
-    atoms: schema.coveCrcBalances.atoms,
-  }).from(schema.coveCrcBalances)
-    .innerJoin(schema.coveCrcAssets, and(
-      eq(schema.coveCrcBalances.network, schema.coveCrcAssets.network),
-      eq(schema.coveCrcBalances.deployTxid, schema.coveCrcAssets.deployTxid),
-    ))
-    .where(and(
-      eq(schema.coveCrcBalances.network, network),
-      eq(schema.coveCrcBalances.scriptHex, scriptHex),
-      before ? or(
-        lt(schema.coveCrcBalances.atoms, before.atoms),
-        and(eq(schema.coveCrcBalances.atoms, before.atoms), lt(schema.coveCrcBalances.deployTxid, before.deployTxid)),
-      ) : undefined,
-    ))
-    .orderBy(desc(schema.coveCrcBalances.atoms), desc(schema.coveCrcBalances.deployTxid))
-    .limit(limit);
-  return rows.map((row) => ({
-    assetId: formatCrcAssetId(network, row.deployTxid),
-    ticker: row.ticker,
-    atoms: row.atoms.toString(),
+  const rows = await db.execute(sql`
+    with owned as (
+      select b.deploy_txid, b.atoms from cove_crc_balances b
+        join cove_crc_assets a on a.network = b.network and a.deploy_txid = b.deploy_txid
+        where b.network = ${network} and b.script_hex = ${scriptHex} and a.protocol_version = 1
+      union all
+      select u.deploy_txid, sum(u.atoms) as atoms from cove_crc_token_utxos u
+        join cove_crc_assets a on a.network = u.network and a.deploy_txid = u.deploy_txid
+        where u.network = ${network} and u.script_hex = ${scriptHex} and a.protocol_version = 2
+        group by u.deploy_txid
+    )
+    select o.deploy_txid as "deployTxid", a.ticker, o.atoms::text as atoms
+    from owned o join cove_crc_assets a on a.network = ${network} and a.deploy_txid = o.deploy_txid
+    where ${before ? sql`(o.atoms, o.deploy_txid) < (${before.atoms}, ${before.deployTxid})` : sql`true`}
+    order by o.atoms desc, o.deploy_txid desc limit ${limit}`);
+  return (rows.rows as { deployTxid: string; ticker: string; atoms: string }[]).map((row) => ({
+    assetId: formatCrcAssetId(network, row.deployTxid), ticker: row.ticker, atoms: row.atoms,
   }));
 }

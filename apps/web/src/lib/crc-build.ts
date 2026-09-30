@@ -1,12 +1,13 @@
 import { createHash, randomBytes } from "node:crypto";
 import type * as bitcoin from "bitcoinjs-lib";
 import { unsignedTxDigest } from "@crclaunch/cove-app";
-import { buildCoveDeployWithVault, buildCurveBuy, buildCurveSell, buildUnsignedPsbt, selectCrcFunding, type FundingInput } from "@crclaunch/crc20-transactions";
+import { buildCoveDeployWithVaultV2, buildCurveBuyV2, buildCurveSellV2, buildUnsignedPsbt, selectCrcFunding, type CoveV2Input } from "@crclaunch/crc20-transactions";
 import type { VaultRecoveryProfile } from "@crclaunch/cove-vault";
 import type { Database } from "@crclaunch/db";
 import { loadCrcFundingCandidates, type CrcFundingOutpoint } from "./crc-funding";
 import { createCrcBuildSession } from "./crc-session";
 import { crcCurveStateFromAsset, quoteCrcBuy, quoteCrcSell, type CrcQuoteAsset } from "./crc-quote";
+import { readCrcTokenUtxo } from "./crc-read";
 
 export async function buildCrcLaunchSession(params: {
   db: Database;
@@ -35,7 +36,7 @@ export async function buildCrcLaunchSession(params: {
     vaultAnchorSats: 330,
     network: params.bitcoinNetwork,
   };
-  const first = buildCoveDeployWithVault(base);
+  const first = buildCoveDeployWithVaultV2(base);
   const candidates = await loadCrcFundingCandidates(params.db, params.network, params.walletScriptHex, params.funding, {
     publicKeyHex: params.walletPublicKeyHex,
   });
@@ -45,7 +46,7 @@ export async function buildCrcLaunchSession(params: {
     minerFeeSats: params.minerFeeSats,
     changeScriptHex: params.walletScriptHex,
   });
-  const built = buildCoveDeployWithVault({
+  const built = buildCoveDeployWithVaultV2({
     ...base,
     changeSats: selected.changeSats,
     changeScriptHex: params.walletScriptHex,
@@ -98,6 +99,7 @@ export async function buildCrcLaunchSession(params: {
 }
 
 export type CrcTradeAsset = CrcQuoteAsset & {
+  protocolVersion: 2;
   network: "regtest" | "signet" | "testnet" | "mainnet";
   deployTxid: string;
   ticker: string;
@@ -118,14 +120,15 @@ export async function buildCrcTradeSession(params: {
   tokenScriptHex: string;
   walletPublicKeyHex?: string;
   tokenPublicKeyHex?: string;
-  sellerFunding?: CrcFundingOutpoint;
-  verifiedSellerInput?: FundingInput;
+  sellerFunding?: CrcFundingOutpoint[];
+  verifiedSellerInputs?: CoveV2Input[];
   paymentFunding: CrcFundingOutpoint[];
   minerFeeSats: number;
   idempotencyKey: string;
   feeScriptHex: string;
 }) {
   const { asset } = params;
+  if (asset.protocolVersion !== 2) throw new Error("legacy Cove CRC asset is read-only");
   if (asset.network !== params.network || asset.assetId !== `${params.network}:${asset.deployTxid}` ||
     asset.vault.scriptHex !== asset.registeredVaultScriptHex ||
     asset.protocolScriptHex !== params.feeScriptHex) {
@@ -138,29 +141,41 @@ export async function buildCrcTradeSession(params: {
   const quote = params.operation === "buy"
     ? quoteCrcBuy(asset, params.amountAtoms)
     : quoteCrcSell(asset, params.amountAtoms, params.walletScriptHex);
-  const vaultInput = {
+  const vaultInput: CoveV2Input = {
     txid: asset.vault.txid, vout: asset.vault.vout,
     valueSats: Number(asset.vault.btcSats), scriptHex: asset.vault.scriptHex,
+    tokenAtoms: BigInt(asset.inventoryAtoms),
+    ...(BigInt(asset.inventoryAtoms) > 0n ? { tokenDeploymentTxid: asset.deployTxid } : {}),
   };
   if (!Number.isSafeInteger(vaultInput.valueSats)) throw new Error("CRC vault value exceeds safe integer");
-  if (params.verifiedSellerInput &&
-    (!params.sellerFunding || params.verifiedSellerInput.txid !== params.sellerFunding.txid ||
-      params.verifiedSellerInput.vout !== params.sellerFunding.vout ||
-      params.verifiedSellerInput.scriptHex !== params.tokenScriptHex)) {
-    throw new Error("verified CRC seller input does not match wallet intent");
+  const vaultCoin = await readCrcTokenUtxo(params.db, params.network, asset.deployTxid, vaultInput.txid, vaultInput.vout);
+  if (BigInt(asset.inventoryAtoms) > 0n
+    ? !vaultCoin || vaultCoin.scriptHex !== vaultInput.scriptHex || vaultCoin.atoms !== vaultInput.tokenAtoms
+    : vaultCoin !== null) {
+    throw new Error("indexed CRC vault inventory does not match its token outpoint");
   }
-  const sellerInputs = params.operation === "sell" && params.verifiedSellerInput
-    ? [params.verifiedSellerInput]
-    : params.operation === "sell" && params.sellerFunding
-    ? await loadCrcFundingCandidates(params.db, params.network, params.tokenScriptHex, [params.sellerFunding], {
-      allowCarrier: true, publicKeyHex: params.tokenPublicKeyHex,
-    }) : [];
-  if (params.operation === "sell" && sellerInputs.length !== 1) throw new Error("CRC seller token carrier is required");
+  const sellerInputs = params.operation === "sell" ? params.verifiedSellerInputs ?? [] : [];
+  if (params.operation === "sell" && (!sellerInputs.length || sellerInputs.length > 32 ||
+    sellerInputs.length !== params.sellerFunding?.length)) throw new Error("verified CRC seller token inputs are required");
+  for (let index = 0; index < sellerInputs.length; index++) {
+    const input = sellerInputs[index]!;
+    const intended = params.sellerFunding![index]!;
+    const coin = await readCrcTokenUtxo(params.db, params.network, asset.deployTxid, input.txid, input.vout);
+    if (input.txid !== intended.txid || input.vout !== intended.vout ||
+      input.scriptHex !== params.tokenScriptHex || input.tokenDeploymentTxid !== asset.deployTxid ||
+      !coin || coin.scriptHex !== input.scriptHex || coin.atoms !== input.tokenAtoms) {
+      throw new Error("verified CRC seller input does not match indexed token authority");
+    }
+  }
+  if (params.operation === "sell" && sellerInputs.reduce((sum, input) => sum + input.tokenAtoms, 0n) < params.amountAtoms) {
+    throw new Error("seller token outpoints do not cover the sale amount");
+  }
   const paymentOutpoints = params.paymentFunding.filter((coin) =>
-    !params.sellerFunding || coin.txid !== params.sellerFunding.txid || coin.vout !== params.sellerFunding.vout);
+    !params.sellerFunding?.some((seller) => coin.txid === seller.txid && coin.vout === seller.vout));
   const candidates = await loadCrcFundingCandidates(params.db, params.network, params.walletScriptHex, paymentOutpoints, {
     publicKeyHex: params.walletPublicKeyHex,
   });
+  const btcCandidates: CoveV2Input[] = candidates.map((input) => ({ ...input, tokenAtoms: 0n }));
   const scripts = {
     buyer: params.tokenScriptHex,
     seller: params.tokenScriptHex,
@@ -173,12 +188,13 @@ export async function buildCrcTradeSession(params: {
     amountTokens: params.amountAtoms / 100_000_000n, scripts,
   };
   const makeTemplate = (changeSats?: number) => params.operation === "buy"
-    ? buildCurveBuy({ ...common, recipientSats: 1_000, changeSats, changeScriptHex: params.walletScriptHex })
-    : buildCurveSell({ ...common, sellerPayoutScriptHex: params.walletScriptHex,
-      changeSats, changeScriptHex: params.walletScriptHex });
+    ? buildCurveBuyV2({ ...common, vaultInput, recipientSats: 1_000, changeSats, changeScriptHex: params.walletScriptHex })
+    : buildCurveSellV2({ ...common, vaultInput, sellerTokenInputs: sellerInputs,
+      ...(sellerInputs.reduce((sum, input) => sum + input.tokenAtoms, 0n) > params.amountAtoms ? { tokenChangeSats: 1_000 } : {}),
+      sellerPayoutScriptHex: params.tokenScriptHex, changeSats, changeScriptHex: params.walletScriptHex });
   const base = makeTemplate();
   const selected = selectCrcFunding({
-    mandatoryInputs: [vaultInput, ...sellerInputs], candidates,
+    mandatoryInputs: [vaultInput, ...sellerInputs], candidates: btcCandidates,
     outputsSats: base.outputs.reduce((sum, output) => sum + output.valueSats, 0),
     minerFeeSats: params.minerFeeSats, changeScriptHex: params.walletScriptHex,
   });

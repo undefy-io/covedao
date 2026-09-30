@@ -34,6 +34,7 @@ describe.skipIf(!isolated)("CRC launch build from observed wallet funding", () =
     const built = await buildCrcLaunchSession(params);
     const psbt = bitcoin.Psbt.fromBase64(built.psbtBase64, { network: bitcoin.networks.regtest });
     expect(psbt.txOutputs.map((output) => output.value)).toEqual([0, 330, 1000, 7000, 670]);
+    expect(psbt.txOutputs[0]!.script.toString("utf8")).toContain("cove-curve-v2");
     expect(built.intent.vaultScriptHex).toMatch(/^5120[0-9a-f]{64}$/);
     expect((await buildCrcLaunchSession(params)).sessionId).toBe(built.sessionId);
   });

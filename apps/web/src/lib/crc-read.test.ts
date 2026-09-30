@@ -27,6 +27,8 @@ describe("Cove CRC read contract", () => {
       btcSats: 1_000n,
       mintedAtoms: 200_000_000_000n,
       inventoryAtoms: 100_000_000_000n,
+      protocolVersion: 2,
+      burnedAtoms: 50_000_000_000n,
       availability: "active",
     };
     const first = projectCrcAsset({ ...base, deployTxid: txid });
@@ -34,6 +36,8 @@ describe("Cove CRC read contract", () => {
     expect(first.assetId).not.toBe(second.assetId);
     expect(first.ticker).toBe(second.ticker);
     expect(first.circulatingAtoms).toBe("100000000000");
+    expect(first.protocolVersion).toBe(2);
+    expect(first.burnedAtoms).toBe("50000000000");
     expect(first.vault.btcSats).toBe("1000");
     expect(() => JSON.stringify(first)).not.toThrow();
   });
@@ -43,7 +47,8 @@ describe("Cove CRC read contract", () => {
       network: "signet", deployTxid: txid, ticker: "BAD", deployHeight: 1n,
       deployBlockHash: "b".repeat(64), creatorScriptHex: "00", protocolScriptHex: "00",
       txid: txid, vout: 1, scriptHex: "00", btcSats: 0n,
-      mintedAtoms: 0n, inventoryAtoms: 1n, availability: "active",
+      mintedAtoms: 0n, inventoryAtoms: 1n, protocolVersion: 1,
+      burnedAtoms: null, availability: "active",
     })).toThrow(/inconsistent/i);
   });
 

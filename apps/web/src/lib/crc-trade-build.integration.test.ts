@@ -17,18 +17,21 @@ const deployTxid = "a".repeat(64);
 const vaultTxid = "b".repeat(64);
 const paymentTxid = "c".repeat(64);
 const sellerTxid = "d".repeat(64);
+const secondSellerTxid = "e".repeat(64);
 const key = `trade-${randomUUID()}`;
 
 describe.skipIf(!isolated)("CRC trade build from DB-observed inputs", () => {
   afterAll(async () => {
     await db!.execute(sql`delete from cove_crc_build_sessions where network = ${network} and idempotency_key like ${key + "%"}`);
+    await db!.execute(sql`delete from cove_crc_token_utxos where network = ${network} and deploy_txid = ${deployTxid}`);
+    await db!.execute(sql`delete from cove_crc_assets where network = ${network} and deploy_txid = ${deployTxid}`);
     await db!.execute(sql`delete from cove_wallet_funding where network = ${network} and wallet_script in (${buyer}, ${seller})`);
   });
 
   it("makes vault input zero, payment change separate from token recipient, and immutable idempotency", async () => {
     await saveWalletFundingSnapshot(db!, network, buyer, [{ txid: paymentTxid, vout: 0, valueSats: "30000", confirmations: 1 }]);
     const asset = {
-      assetId: `${network}:${deployTxid}`, network, deployTxid, ticker: "TEST", creatorScriptHex: seller,
+      assetId: `${network}:${deployTxid}`, network, deployTxid, ticker: "TEST", protocolVersion: 2 as const, creatorScriptHex: seller,
       protocolScriptHex: fee, registeredVaultScriptHex: vault, mintedAtoms: "0", inventoryAtoms: "0",
       circulatingAtoms: "0", vaultAnchorSats: "330", availability: "active" as const,
       vault: { txid: vaultTxid, vout: 1, btcSats: "330", scriptHex: vault },
@@ -41,6 +44,7 @@ describe.skipIf(!isolated)("CRC trade build from DB-observed inputs", () => {
     };
     const built = await buildCrcTradeSession(input);
     const psbt = bitcoin.Psbt.fromBase64(built.psbtBase64, { network: bitcoin.networks.regtest });
+    expect(psbt.txOutputs[0]!.script.toString("utf8")).toContain('"v":2');
     expect(psbt.txInputs[0]).toMatchObject({ index: 1 });
     expect(Buffer.from(psbt.txInputs[0]!.hash).reverse().toString("hex")).toBe(vaultTxid);
     expect(psbt.txOutputs[1]!.script.toString("hex")).toBe(seller);
@@ -49,11 +53,18 @@ describe.skipIf(!isolated)("CRC trade build from DB-observed inputs", () => {
     await expect(buildCrcTradeSession({ ...input, amountAtoms: 20_000_000_000_000n })).rejects.toThrow(/idempotency/i);
   });
 
-  it("uses an observed seller carrier as input one and pays the payment address", async () => {
+  it("uses only an indexed seller token output as input one and pays its owner", async () => {
     await saveWalletFundingSnapshot(db!, network, seller, [{ txid: sellerTxid, vout: 1, valueSats: "1000", confirmations: 1 }]);
     await saveWalletFundingSnapshot(db!, network, buyer, [{ txid: paymentTxid, vout: 0, valueSats: "30000", confirmations: 1 }]);
+    await db!.execute(sql`insert into cove_crc_assets
+      (network,deploy_txid,ticker,deploy_height,deploy_block_hash,launch_salt_hex,creator_script_hex,protocol_script_hex,protocol_version,burned_atoms)
+      values (${network},${deployTxid},'TEST',100,${"a".repeat(64)},${"b".repeat(64)},${seller},${fee},2,0)`);
+    await db!.execute(sql`insert into cove_crc_token_utxos
+      (network,deploy_txid,txid,vout,script_hex,atoms,created_height,created_block_hash)
+      values (${network},${deployTxid},${sellerTxid},1,${seller},5000000000000,101,${"c".repeat(64)}),
+        (${network},${deployTxid},${secondSellerTxid},1,${seller},5000000000000,101,${"c".repeat(64)})`);
     const asset = {
-      assetId: `${network}:${deployTxid}`, network, deployTxid, ticker: "TEST", creatorScriptHex: seller,
+      assetId: `${network}:${deployTxid}`, network, deployTxid, ticker: "TEST", protocolVersion: 2 as const, creatorScriptHex: seller,
       protocolScriptHex: fee, registeredVaultScriptHex: vault, mintedAtoms: "10000000000000", inventoryAtoms: "0",
       circulatingAtoms: "10000000000000", vaultAnchorSats: "330", availability: "active" as const,
       vault: { txid: vaultTxid, vout: 1, btcSats: "3030", scriptHex: vault },
@@ -61,11 +72,17 @@ describe.skipIf(!isolated)("CRC trade build from DB-observed inputs", () => {
     const built = await buildCrcTradeSession({
       db: db!, network, bitcoinNetwork: bitcoin.networks.regtest, asset, operation: "sell",
       amountAtoms: 10_000_000_000_000n, walletScriptHex: buyer, tokenScriptHex: seller,
-      sellerFunding: { txid: sellerTxid, vout: 1 }, paymentFunding: [{ txid: paymentTxid, vout: 0 }],
+      sellerFunding: [{ txid: sellerTxid, vout: 1 }, { txid: secondSellerTxid, vout: 1 }],
+      verifiedSellerInputs: [{ txid: sellerTxid, vout: 1, valueSats: 1000, scriptHex: seller,
+        tokenAtoms: 5_000_000_000_000n, tokenDeploymentTxid: deployTxid },
+      { txid: secondSellerTxid, vout: 1, valueSats: 1000, scriptHex: seller,
+        tokenAtoms: 5_000_000_000_000n, tokenDeploymentTxid: deployTxid }],
+      paymentFunding: [{ txid: paymentTxid, vout: 0 }],
       minerFeeSats: 1000, idempotencyKey: key + "-sell", feeScriptHex: fee,
     });
     const psbt = bitcoin.Psbt.fromBase64(built.psbtBase64, { network: bitcoin.networks.regtest });
     expect(Buffer.from(psbt.txInputs[1]!.hash).reverse().toString("hex")).toBe(sellerTxid);
-    expect(psbt.txOutputs[2]!.script.toString("hex")).toBe(buyer);
+    expect(Buffer.from(psbt.txInputs[2]!.hash).reverse().toString("hex")).toBe(secondSellerTxid);
+    expect(psbt.txOutputs[2]!.script.toString("hex")).toBe(seller);
   });
 });

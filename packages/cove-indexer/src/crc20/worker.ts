@@ -69,7 +69,7 @@ export async function replayCrcBlock(
       const spentVaults = tx.ins.map((input) => ({ point: outpoint(input), assetId: liveVaults.get(outpoint(input)) })).filter((item): item is { point: string; assetId: string } => !!item.assetId);
       const spentTokenAssets = new Set(tx.ins.map((input) => liveTokenOutpoints.get(outpoint(input))).filter((assetId): assetId is string => !!assetId));
       const marker = parseCrc20Transaction(tx.outs.map((output) => ({ scriptHex: output.script.toString("hex"), valueSats: output.value })));
-      if (marker.status === "valid" && marker.envelope.kind === "deploy" && spentVaults.length === 0) {
+      if (marker.status === "valid" && marker.envelope.kind === "deploy" && spentVaults.length === 0 && spentTokenAssets.size === 0) {
         const registration = registrations.find((entry) => entry.network === block.network && entry.txid === txid);
         const rawHash = createHash("sha256").update(Buffer.from(rawHex, "hex")).digest("hex");
         if (!registration || registration.rawSha256 !== rawHash) {

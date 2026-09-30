@@ -1,5 +1,6 @@
-import { walletFundingSnapshot, type Database } from "@crclaunch/db";
+import { walletFundingSnapshot, schema, type Database } from "@crclaunch/db";
 import type { FundingInput } from "@crclaunch/crc20-transactions";
+import { and, eq, inArray } from "drizzle-orm";
 
 export type CrcFundingOutpoint = { txid: string; vout: number };
 
@@ -14,13 +15,19 @@ export async function loadCrcFundingCandidates(
   if (!outpoints.length) return [];
   const observed = await walletFundingSnapshot(db, network, walletScriptHex);
   if (!observed) throw new Error("wallet UTXOs have not been observed; refresh the wallet first");
+  const tokenRows = await db.select({ txid: schema.coveCrcTokenUtxos.txid, vout: schema.coveCrcTokenUtxos.vout })
+    .from(schema.coveCrcTokenUtxos)
+    .where(and(eq(schema.coveCrcTokenUtxos.network, network),
+      inArray(schema.coveCrcTokenUtxos.txid, [...new Set(outpoints.map((coin) => coin.txid))])));
+  const tokenOutpoints = new Set(tokenRows.map((row) => `${row.txid}:${row.vout}`));
   const byOutpoint = new Map(observed.map((coin) => [`${coin.txid}:${coin.vout}`, coin]));
   const seen = new Set<string>();
-  return outpoints.map(({ txid, vout }) => {
+  return outpoints.map(({ txid, vout }): FundingInput | null => {
     if (!/^[0-9a-f]{64}$/.test(txid) || !Number.isSafeInteger(vout) || vout < 0) throw new Error("invalid CRC funding outpoint");
     const key = `${txid}:${vout}`;
     if (seen.has(key)) throw new Error("duplicate CRC funding outpoint");
     seen.add(key);
+    if (tokenOutpoints.has(key)) return null;
     const coin = byOutpoint.get(key);
     if (!coin) throw new Error("CRC funding outpoint was not observed for this wallet");
     const valueSats = BigInt(coin.valueSats);
@@ -31,5 +38,5 @@ export async function loadCrcFundingCandidates(
       txid, vout, valueSats: Number(valueSats), scriptHex: walletScriptHex,
       ...(options.publicKeyHex ? { publicKeyHex: options.publicKeyHex } : {}),
     };
-  });
+  }).filter((input): input is FundingInput => input !== null);
 }
