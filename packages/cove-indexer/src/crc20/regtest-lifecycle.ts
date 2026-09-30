@@ -161,7 +161,7 @@ async function main(): Promise<void> {
       })() : undefined;
       const fixedOutputs = buyQuote
         ? 330n + curve.vaultSats + buyQuote.grossSats + buyQuote.protocolFeeSats + buyQuote.creatorFeeSats
-        : curve.vaultSats - sellQuote!.grossSats + sellQuote!.sellerPayoutSats + sellQuote!.protocolFeeSats;
+        : curve.vaultSats - sellQuote!.grossSats + sellQuote!.sellerPayoutSats + sellQuote!.protocolFeeSats + BigInt(tokenInput?.sats ?? 0);
       const change = Number(curve.vaultSats + BigInt(funding.sats) + BigInt(tokenInput?.sats ?? 0) - fixedOutputs - 1_000n);
       if (change < 330) throw new Error("regtest funding change below dust");
       const [vaultTxid, vaultVoutText] = curve.vaultOutpoint.split(":");

@@ -185,11 +185,11 @@ describe("Cove v2 outpoint authority", () => {
     const payment = fund(10_000);
     const sale = tx([{ rawHex: mint.rawHex, vout: 2 }, { rawHex: mint.rawHex, vout: 1 }, { rawHex: payment.rawHex, vout: 0 }], [
       marker({ p: "crc-20", op: "transfer", tick: "COVE", amt: "100000000000", id: deploy.txid, v: 2 }),
-      { valueSats: 330, scriptHex: vault }, { valueSats: 330, scriptHex: seller },
-      { valueSats: 1_000, scriptHex: protocol }, { valueSats: 8_027, scriptHex: seller },
+      { valueSats: 330, scriptHex: vault }, { valueSats: 660, scriptHex: seller },
+      { valueSats: 1_000, scriptHex: protocol }, { valueSats: 7_697, scriptHex: seller },
     ]);
     const sold = applyCoveConfirmed(minted.state, observe(sale, [mint, mint, payment], 2), [registration]);
-    expect(sold.status).toBe("applied");
+    expect(sold.status, sold.reason).toBe("applied");
     expect(sold.state.assets[`signet:${deploy.txid}`]?.tokenUtxos).toMatchObject({
       [`${sale.txid}:1`]: { scriptHex: vault, atoms: "100000000000" },
     });

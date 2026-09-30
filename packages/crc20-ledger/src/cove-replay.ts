@@ -247,11 +247,13 @@ function applyV2Operation(state: CoveLedgerState, observation: CoveObservation, 
         const sellerScript = sellerCoin.scriptHex;
         let cursor = 1;
         let sellerAtoms = 0n;
+        let carrierSats = 0n;
         while (cursor < inputs.length && coins[inputs[cursor]!.outpoint]) {
           const input = inputs[cursor]!;
           const coin = coins[input.outpoint]!;
           if (coin.scriptHex !== sellerScript || input.scriptHex.toLowerCase() !== sellerScript) throw new Error("seller token inputs have different scripts");
           sellerAtoms += BigInt(coin.atoms);
+          carrierSats += BigInt(input.valueSats);
           delete coins[input.outpoint];
           cursor++;
         }
@@ -263,7 +265,7 @@ function applyV2Operation(state: CoveLedgerState, observation: CoveObservation, 
         const dust = dustThreshold(Buffer.from(payoutScript, "hex"));
         const quote = quoteSell(curve, amountAtoms / ATOMS_PER_TOKEN, dust);
         if (!exact(outputs[1], curve.vaultSats - quote.grossSats, asset.vaultScriptHex) ||
-          !exact(outputs[2], quote.sellerPayoutSats, payoutScript) ||
+          !exact(outputs[2], quote.sellerPayoutSats + carrierSats, payoutScript) ||
           !exact(outputs[3], quote.protocolFeeSats, asset.protocolScriptHex)) throw new Error("sell backing, fee, or payout mismatch");
         const remainder = sellerAtoms - amountAtoms;
         if (remainder > 0n) {
@@ -280,7 +282,7 @@ function applyV2Operation(state: CoveLedgerState, observation: CoveObservation, 
         delete coins[curve.vaultOutpoint];
         curve = applySell(curve, { amountAtoms, previousVaultOutpoint: curve.vaultOutpoint,
           nextVaultOutpoint: `${txid}:1`, nextVaultSats: BigInt(outputs[1]!.valueSats),
-          protocolFeeSats: BigInt(outputs[3]!.valueSats), sellerPayoutSats: BigInt(outputs[2]!.valueSats),
+          protocolFeeSats: BigInt(outputs[3]!.valueSats), sellerPayoutSats: quote.sellerPayoutSats,
           walletTopUpSats: quote.walletTopUpSats, payoutDustSats: dust });
         coins[`${txid}:1`] = { scriptHex: asset.vaultScriptHex, atoms: (inventory + amountAtoms).toString() };
       }

@@ -82,6 +82,8 @@ describe("CRC v2 token UTXO transaction topology", () => {
     ]);
     expect(() => buildUnsignedPsbt(fill, [fund("b", 13_330, buyer), listed], 1_000)).toThrow(/token input|order/i);
     expect(buildUnsignedPsbt(fill, [listed, fund("b", 13_330, buyer)], 1_000).txInputs).toHaveLength(2);
+    expect(() => buildUnsignedPsbt(fill, [listed, { ...fund("a", 13_330, buyer), txid: "A".repeat(64) }], 1_000))
+      .toThrow(/duplicate input outpoint/i);
     expect(() => buildCoveV2MarketFill({ ticker: "COVE", deploymentTxid: id,
       listedInput: { ...listed, tokenAtoms: 0n }, buyerScriptHex: buyer, recipientSats: 330,
       sellerNetPriceSats: 10_000, protocolScriptHex: protocol, protocolFeeSats: 1_000 })).toThrow(/token/i);
@@ -131,6 +133,10 @@ describe("CRC v2 token UTXO transaction topology", () => {
     const sellerInput = token("b", 40_001n * 100_000_000n);
     const sell = buildCurveSellV2({ ticker: "COVE", deploymentTxid: id, state,
       amountTokens: 40_000n, scripts, vaultInput, sellerTokenInputs: [sellerInput], tokenChangeSats: 330 });
+    const largerCarrier = buildCurveSellV2({ ticker: "COVE", deploymentTxid: id, state,
+      amountTokens: 40_000n, scripts, vaultInput,
+      sellerTokenInputs: [{ ...sellerInput, valueSats: 1_000 }], tokenChangeSats: 330 });
+    expect(largerCarrier.outputs[2]!.valueSats - sell.outputs[2]!.valueSats).toBe(670);
     expect(payload(sell.outputs)).toMatchObject({ op: "transfer", v: 2, ch: 4 });
     expect(sell.outputs[1]?.scriptHex).toBe(vault);
     expect(sell.outputs[4]).toEqual({ valueSats: 330, scriptHex: seller });

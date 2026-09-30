@@ -516,11 +516,12 @@ export function buildCurveSellV2(params: {
   const quote = quoteSell(params.state, params.amountTokens, dustThreshold(Buffer.from(payoutScript, "hex")));
   if (total < quote.amountAtoms) throw new Error("insufficient seller token allocation");
   const remainder = total - quote.amountAtoms;
+  const carrierSats = params.sellerTokenInputs.reduce((sum, input) => sum + BigInt(input.valueSats), 0n);
   if (remainder > 0n && params.tokenChangeSats === undefined) throw new Error("token change output is required");
   if (remainder === 0n && params.tokenChangeSats !== undefined) throw new Error("token change output is not allowed");
   const outputs = [
     { valueSats: safeSats(params.state.vaultSats - quote.grossSats), scriptHex: params.scripts.vault },
-    { valueSats: safeSats(quote.sellerPayoutSats), scriptHex: payoutScript },
+    { valueSats: safeSats(quote.sellerPayoutSats + carrierSats), scriptHex: payoutScript },
     { valueSats: safeSats(quote.protocolFeeSats), scriptHex: params.scripts.protocol },
     ...(remainder > 0n ? [{ valueSats: params.tokenChangeSats!, scriptHex: params.scripts.seller }] : []),
     ...finalChange(params.changeSats, params.changeScriptHex ?? payoutScript),
