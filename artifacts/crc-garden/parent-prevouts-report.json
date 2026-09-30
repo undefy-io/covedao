@@ -1,0 +1,17 @@
+{
+  "api_from_differs_first_input": 0,
+  "api_from_first_input_unavailable": 0,
+  "api_from_matches_first_input": 1950,
+  "events": 1950,
+  "inputs": 5190,
+  "mismatch_examples": [],
+  "missing": 0,
+  "parent_sources": {
+    "bitcoin-core-publicnode": 1220,
+    "blockstream-esplora-raw": 699,
+    "event-archive-core": 1001,
+    "mempool-esplora-raw": 489
+  },
+  "parent_transactions": 3409,
+  "wrong": 0
+}
