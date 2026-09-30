@@ -175,6 +175,7 @@ export type CrcFillReservation = Readonly<{
   listingId: string;
   network: CrcNetwork;
   buyerScriptHex: string;
+  buyerFundingScriptHex?: string;
   protocolScriptHex: string;
   recipientSats: number;
   minerFeeSats: number;
@@ -210,6 +211,7 @@ export async function reserveCrcFill(
     }
     const options: CrcFillOptions = { listing, asset, sellerFunding: request.sellerFunding,
       buyerFunding: request.buyerFunding, buyerScriptHex: request.buyerScriptHex,
+      buyerFundingScriptHex: request.buyerFundingScriptHex,
       protocolScriptHex: request.protocolScriptHex, recipientSats: request.recipientSats,
       minerFeeSats: request.minerFeeSats, currentHeight: height };
     const { psbt } = createCrcFill(options);
@@ -282,19 +284,20 @@ export async function listCrcSellerFillRequests(
   network: CrcNetwork,
   sellerScriptHex: string,
 ): Promise<{ fillId: string; listingId: string; buyerSignedPsbtBase64: string;
-  amountAtoms: string; priceSats: string; expiresAt: string }[]> {
+  amountAtoms: string; priceSats: string; expiresAt: string; listing: CrcListing }[]> {
   const rows = await db.execute(sql`SELECT f.id AS fill_id, f.listing_id,
-    f.buyer_signed_psbt_base64, f.expires_at, l.amount_atoms, l.price_sats
+    f.buyer_signed_psbt_base64, f.expires_at, l.*
     FROM cove_crc_market_fills f JOIN cove_crc_market_listings l ON l.id = f.listing_id
     WHERE f.network = ${network} AND l.seller_script_hex = ${sellerScriptHex}
       AND f.status = 'BUYER_SIGNED' AND l.status = 'RESERVED' AND f.expires_at > now()
     ORDER BY f.created_at ASC LIMIT 50`);
   return rows.rows.map((value) => {
-    const row = value as { fill_id: string; listing_id: string; buyer_signed_psbt_base64: string;
-      amount_atoms: string; price_sats: string; expires_at: string | Date };
+    const row = value as ListingRow & { fill_id: string; listing_id: string; buyer_signed_psbt_base64: string;
+      expires_at: string | Date };
     return { fillId: row.fill_id, listingId: row.listing_id,
       buyerSignedPsbtBase64: row.buyer_signed_psbt_base64,
-      amountAtoms: row.amount_atoms, priceSats: row.price_sats, expiresAt: new Date(row.expires_at).toISOString() };
+      amountAtoms: row.amount_atoms, priceSats: row.price_sats,
+      expiresAt: new Date(row.expires_at).toISOString(), listing: rowListing(row) };
   });
 }
 

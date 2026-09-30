@@ -83,4 +83,14 @@ export {
   type CrcFillOptions,
   type CrcListing,
   type IndexedCrcAsset,
+  type CrcNetwork,
 } from "./crc20/market.js";
+export {
+  createCrcListing,
+  cancelCrcListing,
+  reserveCrcFill,
+  submitBuyerSignedCrcFill,
+  listCrcSellerFillRequests,
+  acceptSignedCrcFill,
+  broadcastCrcFill,
+} from "./crc20/store.js";

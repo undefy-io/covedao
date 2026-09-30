@@ -1,5 +1,5 @@
 import * as bitcoin from "bitcoinjs-lib";
-import { checkSpendSignature } from "@crclaunch/bitcoin";
+import { checkSpendSignature } from "@crclaunch/bitcoin/spend";
 import type { CoreRpcProvider } from "@crclaunch/bitcoin";
 import { buildCoveV2MarketFill, buildUnsignedPsbt, type CoveV2Input } from "@crclaunch/crc20-transactions";
 import { deterministicFee } from "@crclaunch/cove-economics";
@@ -48,6 +48,7 @@ export type CrcFillOptions = Readonly<{
   sellerFunding: CoveV2Input;
   buyerFunding: readonly CoveV2Input[];
   buyerScriptHex: string;
+  buyerFundingScriptHex?: string;
   protocolScriptHex: string;
   recipientSats: number;
   minerFeeSats: number;
@@ -84,6 +85,10 @@ export function validateCrcListing(listing: CrcListing, asset: IndexedCrcAsset, 
   "invalid seller payout or fee");
   assert(validHexScript(listing.sellerScriptHex) && validHexScript(listing.sellerPayoutScriptHex),
     "invalid seller script");
+  const sellerScript = Buffer.from(listing.sellerScriptHex, "hex");
+  assert((sellerScript.length === 22 && sellerScript[0] === 0 && sellerScript[1] === 0x14) ||
+    (sellerScript.length === 34 && sellerScript[0] === 0x51 && sellerScript[1] === 0x20),
+  "market seller token output must use a native SegWit or Taproot address");
   assert(validHexScript(asset.protocolScriptHex) && validHexScript(asset.vaultScriptHex),
     "registered Cove scripts are invalid");
   assert(listing.sellerScriptHex.toLowerCase() !== asset.vaultScriptHex.toLowerCase(),
@@ -140,8 +145,10 @@ function expectedFill(options: CrcFillOptions): bitcoin.Psbt {
     sellerFunding.tokenAtoms === listing.amountAtoms &&
     sellerFunding.tokenDeploymentTxid === listing.deployTxid,
   "seller token outpoint does not match trusted funding");
+  const fundingScriptHex = options.buyerFundingScriptHex ?? options.buyerScriptHex;
+  assert(validHexScript(fundingScriptHex), "buyer funding script is invalid");
   assert(buyerFunding.length > 0 && buyerFunding.every((input) =>
-    input.scriptHex.toLowerCase() === options.buyerScriptHex.toLowerCase() &&
+    input.scriptHex.toLowerCase() === fundingScriptHex.toLowerCase() &&
     input.tokenAtoms === 0n && input.tokenDeploymentTxid === undefined),
   "buyer funding must be token-free and belong to buyer script");
   assert(options.buyerScriptHex.toLowerCase() !== listing.sellerScriptHex.toLowerCase(),
@@ -168,6 +175,7 @@ function expectedFill(options: CrcFillOptions): bitcoin.Psbt {
     protocolScriptHex: options.protocolScriptHex,
     protocolFeeSats: listing.protocolFeeSats,
     buyerChangeSats: Number(change),
+    buyerChangeScriptHex: fundingScriptHex,
   });
   return buildUnsignedPsbt(template, [sellerFunding, ...buyerFunding], options.minerFeeSats,
     networkParams(listing.network));
@@ -201,7 +209,9 @@ export function verifyCrcFillTransaction(psbt: bitcoin.Psbt, options: CrcFillOpt
     const actual = psbt.data.inputs[index]!;
     const trusted = expected.data.inputs[index]!;
     assert(actual.witnessUtxo?.value === trusted.witnessUtxo?.value &&
-      actual.witnessUtxo?.script.equals(trusted.witnessUtxo!.script),
+      actual.witnessUtxo?.script.equals(trusted.witnessUtxo!.script) &&
+      (actual.redeemScript?.toString("hex") ?? null) === (trusted.redeemScript?.toString("hex") ?? null) &&
+      (actual.tapInternalKey?.toString("hex") ?? null) === (trusted.tapInternalKey?.toString("hex") ?? null),
     "fill funding differs from trusted inputs");
     assert(actual.sighashType === bitcoin.Transaction.SIGHASH_ALL,
       "fill input must use SIGHASH_ALL");

@@ -1,5 +1,5 @@
 import * as bitcoin from "bitcoinjs-lib";
-import { verifyCrcFillTransaction, type CrcFillOptions } from "@crclaunch/cove-market";
+import { verifyCrcFillTransaction, type CrcFillOptions } from "@crclaunch/cove-market/crc20/browser";
 
 export async function signCrcMarketFillAfterReview(
   psbtBase64: string,

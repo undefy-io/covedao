@@ -5,7 +5,8 @@ import { GET } from "../status/route";
 describe("CRC market settlement gate", () => {
   it("fails closed for every market mutation without touching DB or Core", async () => {
     for (const operation of ["listings", "reserve", "buyer-sign", "seller-sign", "broadcast", "cancel", "withdraw"]) {
-      const response = await POST();
+      const response = await POST(new Request(`http://localhost/api/crc/v1/market/${operation}`, { method: "POST" }),
+        { params: Promise.resolve({ operation }) });
       const body = await response.json();
       expect(operation).toBeTruthy();
       expect(response.status).toBe(503);

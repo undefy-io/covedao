@@ -439,6 +439,7 @@ export function buildCoveV2MarketFill(params: {
   protocolScriptHex: string;
   protocolFeeSats: number;
   buyerChangeSats?: number;
+  buyerChangeScriptHex?: string;
 }): TxTemplate {
   checkV2Input(params.listedInput, params.deploymentTxid, true);
   if (!Number.isSafeInteger(params.sellerNetPriceSats) || params.sellerNetPriceSats < 0) {
@@ -449,7 +450,7 @@ export function buildCoveV2MarketFill(params: {
     { valueSats: params.recipientSats, scriptHex: params.buyerScriptHex },
     { valueSats: payout, scriptHex: params.listedInput.scriptHex },
     { valueSats: params.protocolFeeSats, scriptHex: params.protocolScriptHex },
-    ...finalChange(params.buyerChangeSats, params.buyerScriptHex),
+    ...finalChange(params.buyerChangeSats, params.buyerChangeScriptHex ?? params.buyerScriptHex),
   ];
   return v2Template("transfer", v2Payload("transfer", params.ticker, params.listedInput.tokenAtoms,
     params.deploymentTxid), outputs, [params.listedInput], params.deploymentTxid);

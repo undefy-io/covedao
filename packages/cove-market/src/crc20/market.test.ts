@@ -59,6 +59,10 @@ describe("Cove CRC marketplace exact fill", () => {
     expect(() => validateCrcListing({ ...listing, sellerScriptHex: vaultScript,
       sellerPayoutScriptHex: vaultScript }, { ...asset, tokenScriptHex: vaultScript }, 100n)).toThrow();
     expect(() => validateCrcListing(listing, asset, 200n)).toThrow();
+    const nestedSeller = bitcoin.payments.p2sh({ redeem: bitcoin.payments.p2wpkh({ pubkey: seller.publicKey }) }).output!.toString("hex");
+    expect(() => validateCrcListing({ ...listing, sellerScriptHex: nestedSeller,
+      sellerPayoutScriptHex: nestedSeller }, { ...asset, tokenScriptHex: nestedSeller }, 100n))
+      .toThrow("native SegWit or Taproot");
   });
 
   it("builds exact seller payout and recipient, with seller anchor first", () => {
@@ -71,6 +75,37 @@ describe("Cove CRC marketplace exact fill", () => {
     expect(tx.outs[3]!.value).toBe(600);
     expect(tx.outs[0]!.script.toString("hex")).toContain(Buffer.from('"v":2').toString("hex"));
     expect(() => verifyCrcFillTransaction(fill.psbt, options)).not.toThrow();
+  });
+
+  it("sends tokens to the buyer's ordinals script and BTC change to the payment script", () => {
+    const ordinalsScript = `5120${"9".repeat(64)}`;
+    const terms = { ...options, buyerScriptHex: ordinalsScript,
+      buyerFundingScriptHex: buyerScript };
+    const fill = createCrcFill(terms);
+    const tx = bitcoin.Transaction.fromBuffer(fill.psbt.data.globalMap.unsignedTx.toBuffer());
+    expect(tx.outs[1]!.script.toString("hex")).toBe(ordinalsScript);
+    expect(tx.outs[4]!.script.toString("hex")).toBe(buyerScript);
+    expect(() => verifyCrcFillTransaction(fill.psbt, terms)).not.toThrow();
+    expect(() => verifyCrcFillTransaction(fill.psbt,
+      { ...terms, buyerFundingScriptHex: ordinalsScript })).toThrow();
+  });
+
+  it("builds a nested SegWit buyer funding input with its redeem script", () => {
+    const nested = bitcoin.payments.p2sh({ redeem: bitcoin.payments.p2wpkh({ pubkey: buyer.publicKey }) });
+    const nestedScript = nested.output!.toString("hex");
+    const ordinalsScript = `5120${"9".repeat(64)}`;
+    const terms = { ...options, buyerScriptHex: ordinalsScript,
+      buyerFundingScriptHex: nestedScript, buyerFunding: [{ ...buyerFunding,
+        scriptHex: nestedScript, publicKeyHex: buyer.publicKey.toString("hex") }] };
+    const fill = createCrcFill(terms);
+    const tx = bitcoin.Transaction.fromBuffer(fill.psbt.data.globalMap.unsignedTx.toBuffer());
+    expect(tx.outs[1]!.script.toString("hex")).toBe(ordinalsScript);
+    expect(tx.outs[4]!.script.toString("hex")).toBe(nestedScript);
+    expect(fill.psbt.data.inputs[1]!.redeemScript?.toString("hex")).toBe(nested.redeem?.output?.toString("hex"));
+    expect(() => verifyCrcFillTransaction(fill.psbt, terms)).not.toThrow();
+    const altered = fill.psbt.clone();
+    delete altered.data.inputs[1]!.redeemScript;
+    expect(() => verifyCrcFillTransaction(altered, terms)).toThrow("trusted inputs");
   });
 
   it("rejects wrong recipient, payout, fee, outpoint, amount and network", () => {
