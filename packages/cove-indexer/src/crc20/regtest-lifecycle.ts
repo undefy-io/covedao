@@ -32,8 +32,8 @@ class Rpc {
     return body.result;
   }
 
-  async address(): Promise<{ address: string; scriptHex: string }> {
-    const address = await this.call<string>("getnewaddress", ["", "bech32m"], true);
+  async address(type: "bech32m" | "p2sh-segwit" = "bech32m"): Promise<{ address: string; scriptHex: string }> {
+    const address = await this.call<string>("getnewaddress", ["", type], true);
     const info = await this.call<{ scriptPubKey: string }>("getaddressinfo", [address], true);
     return { address, scriptHex: info.scriptPubKey };
   }
@@ -136,7 +136,7 @@ async function main(): Promise<void> {
     const operations: readonly { side: "buy" | "sell"; tokens: bigint }[] = [
       { side: "buy", tokens: 1_000n }, { side: "buy", tokens: 1_000n }, { side: "buy", tokens: 1_000n },
       { side: "sell", tokens: 1_000n }, { side: "sell", tokens: 1_000n }, { side: "sell", tokens: 1_000n },
-      ...(v2 ? [{ side: "buy" as const, tokens: 1_000n }] : []),
+      ...(v2 ? [{ side: "buy" as const, tokens: 1_000n }, { side: "buy" as const, tokens: 1_000n }] : []),
     ];
     let previousSnapshot: CrcWorkerSnapshot | undefined;
     let lastBlockHash = "";
@@ -210,6 +210,30 @@ async function main(): Promise<void> {
       requireEqual(synced.snapshot.state.assets[assetId]?.balances[transferred.scriptHex] ?? "0", "0", "ordinary same-script BTC input has no token authority");
       funding = unrelated.change;
 
+      const tamperedCoin = Object.entries(synced.snapshot.state.assets[assetId]!.tokenUtxos ?? {})
+        .find(([, coin]) => coin.scriptHex === buyer.scriptHex && BigInt(coin.atoms) === 100_000_000_000n);
+      if (!tamperedCoin) throw new Error("token coin missing for marker tamper test");
+      const [tamperedTxid, tamperedVout] = tamperedCoin[0].split(":");
+      const tamperedParent = bitcoin.Transaction.fromHex(await rpc.call<string>("getrawtransaction", [tamperedTxid]));
+      const tamperedOutput = tamperedParent.outs[Number(tamperedVout)];
+      if (!tamperedOutput) throw new Error("tamper token parent output missing");
+      const badMarker = bitcoin.script.compile([bitcoin.opcodes.OP_RETURN!, Buffer.from(JSON.stringify({
+        p: "crc-20", op: "transfer", tick: ticker, amt: "100000000001", id: deploy.txid, v: 2,
+      }))]).toString("hex");
+      const invalidTransfer = await signRaw(rpc, unsigned([
+        { txid: tamperedTxid!, vout: Number(tamperedVout), sats: tamperedOutput.value, scriptHex: buyer.scriptHex }, funding,
+      ], [
+        { sats: 0, scriptHex: badMarker }, { sats: tamperedOutput.value, scriptHex: transferred.scriptHex },
+        { sats: funding.sats - 1_000, scriptHex: buyer.scriptHex },
+      ]), buyer.scriptHex);
+      requireEqual(await rpc.call<string>("sendrawtransaction", [invalidTransfer.rawHex]), invalidTransfer.txid, "tampered marker broadcast");
+      await mine(rpc, miner.address);
+      synced = await syncCrcTip({ db, provider, network: "regtest", activationHeight, protocolScriptHex: protocol.scriptHex, snapshot: synced.snapshot });
+      requireEqual(synced.snapshot.state.assets[assetId]?.tokenUtxos?.[tamperedCoin[0]], undefined, "tampered token outpoint removed");
+      requireEqual(synced.snapshot.state.assets[assetId]?.burnedAtoms, "100000000000", "tampered token amount burned");
+      requireEqual(synced.snapshot.state.assets[assetId]?.balances[transferred.scriptHex] ?? "0", "0", "tampered marker cannot mint recipient balance");
+      funding = invalidTransfer.change;
+
       const beforeWithdrawal = Object.entries(synced.snapshot.state.assets[assetId]!.tokenUtxos ?? {})
         .find(([, coin]) => coin.scriptHex === buyer.scriptHex && BigInt(coin.atoms) === 100_000_000_000n);
       if (!beforeWithdrawal) throw new Error("seller token coin missing before withdrawal race");
@@ -229,15 +253,15 @@ async function main(): Promise<void> {
       synced = await syncCrcTip({ db, provider, network: "regtest", activationHeight, protocolScriptHex: protocol.scriptHex, snapshot: synced.snapshot });
       const saleFunding: Funding = { txid: splitFunding.txid, vout: 0, sats: 20_000, scriptHex: buyer.scriptHex };
       funding = splitFunding.change;
-      const withdrawnBuyer = await rpc.address();
+      const withdrawnBuyer = await rpc.address("p2sh-segwit");
       const staleSaleTemplate = buildCoveV2MarketFill({ ticker, deploymentTxid: deploy.txid,
-        listedInput: oldListedInput, buyerScriptHex: withdrawnBuyer.scriptHex, recipientSats: 330,
+        listedInput: oldListedInput, buyerScriptHex: withdrawnBuyer.scriptHex, recipientSats: 600,
         sellerNetPriceSats: 2_000, protocolScriptHex: protocol.scriptHex, protocolFeeSats: 1_000,
         buyerChangeSats: saleFunding.sats - 4_330 });
       const staleSale = await sign(rpc, staleSaleTemplate, [oldListedInput, saleFunding], withdrawnBuyer.scriptHex);
       const withdrawalTemplate = buildCoveV2Transfer({ ticker, deploymentTxid: deploy.txid,
         amountAtoms: oldListedInput.tokenAtoms, tokenInputs: [oldListedInput],
-        recipientScriptHex: buyer.scriptHex, recipientSats: 330,
+        recipientScriptHex: withdrawnBuyer.scriptHex, recipientSats: 600,
         btcChangeSats: funding.sats - 1_000, btcChangeScriptHex: buyer.scriptHex });
       const withdrawal = await sign(rpc, withdrawalTemplate, [oldListedInput, funding], buyer.scriptHex);
       requireEqual(await rpc.call<string>("sendrawtransaction", [withdrawal.rawHex]), withdrawal.txid, "token withdrawal broadcast");
@@ -248,6 +272,8 @@ async function main(): Promise<void> {
       synced = await syncCrcTip({ db, provider, network: "regtest", activationHeight, protocolScriptHex: protocol.scriptHex, snapshot: synced.snapshot });
       requireEqual(synced.snapshot.state.assets[assetId]?.tokenUtxos?.[`${withdrawal.txid}:1`]?.atoms,
         "100000000000", "withdrawn token remains with seller");
+      requireEqual(synced.snapshot.state.assets[assetId]?.tokenUtxos?.[`${withdrawal.txid}:1`]?.scriptHex,
+        withdrawnBuyer.scriptHex, "nested SegWit wallet owns withdrawn token");
       requireEqual(synced.snapshot.state.assets[assetId]?.tokenUtxos?.[beforeWithdrawal[0]], undefined,
         "old listed token outpoint is gone");
       funding = withdrawal.change;
@@ -267,14 +293,14 @@ async function main(): Promise<void> {
       funding = brokenVault.change;
 
       const listed = Object.entries(synced.snapshot.state.assets[assetId]!.tokenUtxos ?? {})
-        .find(([, coin]) => coin.scriptHex === buyer.scriptHex && BigInt(coin.atoms) === 100_000_000_000n);
+        .find(([, coin]) => coin.scriptHex === withdrawnBuyer.scriptHex && BigInt(coin.atoms) === 100_000_000_000n);
       if (!listed) throw new Error("market listing token outpoint missing after vault failure");
       const [listedTxid, listedVout] = listed[0].split(":");
       const parent = bitcoin.Transaction.fromHex(await rpc.call<string>("getrawtransaction", [listedTxid]));
       const listedOutput = parent.outs[Number(listedVout)];
       if (!listedOutput) throw new Error("market token parent output missing");
       const listedInput: CoveV2Input & Funding = { txid: listedTxid!, vout: Number(listedVout),
-        sats: listedOutput.value, valueSats: listedOutput.value, scriptHex: buyer.scriptHex,
+        sats: listedOutput.value, valueSats: listedOutput.value, scriptHex: withdrawnBuyer.scriptHex,
         tokenAtoms: BigInt(listed[1].atoms), tokenDeploymentTxid: deploy.txid };
       const marketBuyer = await rpc.address();
       const rivalBuyer = await rpc.address();
@@ -310,7 +336,7 @@ async function main(): Promise<void> {
     if (!isDeepStrictEqual(recovered.snapshot.projection, previousSnapshot!.projection)) throw new Error("reorg did not restore the prior CRC projection");
     requireEqual((await db.select().from(schema.coveCrcEvents).where(eq(schema.coveCrcEvents.network, "regtest"))).length, eventCountBeforeReorg - 1, "reorg CRC event count");
     console.log(JSON.stringify({ ok: true, version: v2 ? 2 : 1, ticker, deployTxid: deploy.txid,
-      trades: operations.length, ...(v2 ? { adversarial: ["ordinary-utxo", "withdrawal-conflict", "broken-vault-fill", "competing-fill"] } : {}),
+      trades: operations.length, ...(v2 ? { adversarial: ["ordinary-utxo", "marker-tamper", "withdrawal-conflict", "nested-seller-fill", "broken-vault-fill", "competing-fill"] } : {}),
       reorgRollback: recovered.rolledBack, cursor: recovered.snapshot.cursor?.height }));
     await clean(db);
   } finally {
