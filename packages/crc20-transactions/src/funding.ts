@@ -38,6 +38,11 @@ export function selectCrcFunding(params: {
     if (seen.has(outpoint)) throw new Error("duplicate CRC funding outpoint");
     seen.add(outpoint);
   }
+  if (candidates.some((input) => "tokenAtoms" in input &&
+    ((input as FundingInput & { tokenAtoms?: bigint }).tokenAtoms !== 0n ||
+      (input as FundingInput & { tokenDeploymentTxid?: string }).tokenDeploymentTxid !== undefined))) {
+    throw new Error("token-bearing input cannot be ordinary BTC funding");
+  }
   if (candidates.some((input) => input.scriptHex.toLowerCase() !== changeScriptHex.toLowerCase())) {
     throw new Error("candidate UTXO does not belong to the payment script");
   }
