@@ -79,7 +79,7 @@ jobs:
           echo "compiled MINT CMR: $MINT_CMR"
 
       - name: Push V3 schema to Postgres (non-interactive)
-        run: pnpm --filter @crclaunch/db exec drizzle-kit push --force
+        run: pnpm --filter @crclaunch/db exec drizzle-kit migrate
         env:
           DATABASE_URL: ${{ env.COVE_TEST_DATABASE_URL }}
 
