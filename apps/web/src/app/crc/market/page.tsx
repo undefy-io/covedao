@@ -5,7 +5,7 @@ export default function CrcMarketPage() {
     <p className="eyebrow">Cove CRC-20</p>
     <h1 className="text-2xl text-bone">Marketplace</h1>
     <p className="text-sm leading-relaxed text-bone-dim">
-      Peer to peer token sales are paused while token escrow settlement is being completed.
+      Peer to peer token sales are paused while v2 token settlement is being tested.
       You can still use the Cove bonding curve to buy and sell Cove tokens.
     </p>
     <Link href="/" className="btn-ghost inline-block">Browse tokens</Link>

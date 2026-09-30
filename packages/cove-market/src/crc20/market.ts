@@ -1,7 +1,7 @@
 import * as bitcoin from "bitcoinjs-lib";
 import { checkSpendSignature } from "@crclaunch/bitcoin";
 import type { CoreRpcProvider } from "@crclaunch/bitcoin";
-import { buildCoveMarketFill, buildUnsignedPsbt, type FundingInput } from "@crclaunch/crc20-transactions";
+import { buildCoveV2MarketFill, buildUnsignedPsbt, type CoveV2Input } from "@crclaunch/crc20-transactions";
 import { deterministicFee } from "@crclaunch/cove-economics";
 import { verifyBip322 } from "../order/signature.js";
 
@@ -27,8 +27,10 @@ export type IndexedCrcAsset = Readonly<{
   network: CrcNetwork;
   deployTxid: string;
   ticker: string;
-  status: "live" | "broken";
-  sellerBalanceAtoms: bigint;
+  protocolVersion: number;
+  tokenOutpoint: string | null;
+  tokenScriptHex: string | null;
+  tokenAtoms: bigint;
 }>;
 
 export function crcMarketFee(priceSats: number, feeBps: bigint, minFeeSats: bigint = 1_000n): number {
@@ -41,8 +43,8 @@ export function crcMarketFee(priceSats: number, feeBps: bigint, minFeeSats: bigi
 export type CrcFillOptions = Readonly<{
   listing: CrcListing;
   asset: IndexedCrcAsset;
-  sellerFunding: FundingInput;
-  buyerFunding: readonly FundingInput[];
+  sellerFunding: CoveV2Input;
+  buyerFunding: readonly CoveV2Input[];
   buyerScriptHex: string;
   protocolScriptHex: string;
   recipientSats: number;
@@ -66,9 +68,11 @@ export function validateCrcListing(listing: CrcListing, asset: IndexedCrcAsset, 
   assert(/^[0-9a-f]{64}$/.test(listing.deployTxid), "invalid deployment id");
   assert(listing.network === asset.network && listing.deployTxid === asset.deployTxid,
     "deployment is not a registered Cove asset on this network");
-  assert(asset.status === "live" && asset.ticker === listing.ticker, "Cove asset is unavailable");
-  assert(listing.amountAtoms > 0n && listing.amountAtoms <= asset.sellerBalanceAtoms,
-    "indexed seller balance is insufficient");
+  assert(asset.protocolVersion === 2 && asset.ticker === listing.ticker, "Cove v2 asset is unavailable");
+  assert(listing.amountAtoms > 0n && asset.tokenAtoms === listing.amountAtoms &&
+    asset.tokenOutpoint === `${listing.sellerAnchorTxid}:${listing.sellerAnchorVout}` &&
+    asset.tokenScriptHex?.toLowerCase() === listing.sellerScriptHex.toLowerCase(),
+  "listed token outpoint is missing or differs from indexed allocation");
   assert(listing.expiresAtHeight > currentHeight, "listing has expired");
   assert(/^[0-9a-f]{64}$/.test(listing.sellerAnchorTxid) &&
     Number.isSafeInteger(listing.sellerAnchorVout) && listing.sellerAnchorVout >= 0,
@@ -79,11 +83,11 @@ export function validateCrcListing(listing: CrcListing, asset: IndexedCrcAsset, 
   assert(validHexScript(listing.sellerScriptHex) && validHexScript(listing.sellerPayoutScriptHex),
     "invalid seller script");
   assert(listing.sellerScriptHex.toLowerCase() === listing.sellerPayoutScriptHex.toLowerCase(),
-    "v1 seller payout must use the token owner script");
+    "seller payout must use the token owner script");
 }
 
 export function crcListingMessage(listing: CrcListing): string {
-  return `Cove CRC marketplace listing v1\n${JSON.stringify({
+  return `Cove CRC marketplace listing v2\n${JSON.stringify({
     id: listing.id,
     network: listing.network,
     deployTxid: listing.deployTxid,
@@ -106,7 +110,7 @@ export function verifyCrcListingAuthorization(listing: CrcListing, signatureB64:
 }
 
 export function crcCancelMessage(listing: CrcListing): string {
-  return `Cove CRC marketplace cancellation v1\n${listing.network}:${listing.deployTxid}:${listing.id}:${listing.sellerScriptHex}`;
+  return `Cove CRC marketplace cancellation v2\n${listing.network}:${listing.deployTxid}:${listing.id}:${listing.sellerScriptHex}`;
 }
 
 export function verifyCrcCancellation(listing: CrcListing, signatureB64: string): void {
@@ -126,11 +130,14 @@ function expectedFill(options: CrcFillOptions): bitcoin.Psbt {
   assert(sellerFunding.txid === listing.sellerAnchorTxid &&
     sellerFunding.vout === listing.sellerAnchorVout &&
     sellerFunding.valueSats === listing.sellerAnchorSats &&
-    sellerFunding.scriptHex.toLowerCase() === listing.sellerScriptHex.toLowerCase(),
-  "seller anchor does not match trusted funding");
+    sellerFunding.scriptHex.toLowerCase() === listing.sellerScriptHex.toLowerCase() &&
+    sellerFunding.tokenAtoms === listing.amountAtoms &&
+    sellerFunding.tokenDeploymentTxid === listing.deployTxid,
+  "seller token outpoint does not match trusted funding");
   assert(buyerFunding.length > 0 && buyerFunding.every((input) =>
-    input.scriptHex.toLowerCase() === options.buyerScriptHex.toLowerCase()),
-  "buyer funding must belong to buyer script");
+    input.scriptHex.toLowerCase() === options.buyerScriptHex.toLowerCase() &&
+    input.tokenAtoms === 0n && input.tokenDeploymentTxid === undefined),
+  "buyer funding must be token-free and belong to buyer script");
   assert(options.buyerScriptHex.toLowerCase() !== listing.sellerScriptHex.toLowerCase(),
     "self fills are not supported");
   assert(safePositiveSats(options.recipientSats) && Number.isSafeInteger(options.minerFeeSats) &&
@@ -141,14 +148,13 @@ function expectedFill(options: CrcFillOptions): bitcoin.Psbt {
   assert(inputSats >= requiredSats, "funding is insufficient");
   const change = inputSats - requiredSats;
   assert(change <= BigInt(Number.MAX_SAFE_INTEGER), "change exceeds safe range");
-  const template = buildCoveMarketFill({
+  const template = buildCoveV2MarketFill({
     ticker: listing.ticker,
     deploymentTxid: listing.deployTxid,
-    amountAtoms: listing.amountAtoms,
-    sellerScriptHex: listing.sellerPayoutScriptHex,
+    listedInput: sellerFunding,
     buyerScriptHex: options.buyerScriptHex,
     recipientSats: options.recipientSats,
-    sellerPayoutSats: listing.priceSats + listing.sellerAnchorSats,
+    sellerNetPriceSats: listing.priceSats,
     protocolScriptHex: options.protocolScriptHex,
     protocolFeeSats: listing.protocolFeeSats,
     buyerChangeSats: Number(change),
@@ -167,7 +173,7 @@ export async function verifyCurrentCrcFunding(
 ): Promise<void> {
   const seen = new Set<string>();
   for (const input of [options.sellerFunding, ...options.buyerFunding]) {
-    const outpoint = `${input.txid}:${input.vout}`;
+    const outpoint = `${input.txid.toLowerCase()}:${input.vout}`;
     assert(!seen.has(outpoint), "duplicate funding input");
     seen.add(outpoint);
     const current = await core.getTxout(input.txid, input.vout, true);

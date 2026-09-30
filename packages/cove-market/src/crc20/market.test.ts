@@ -29,13 +29,15 @@ const listing = {
   protocolFeeSats: 600,
   expiresAtHeight: 200n,
 };
-const asset = { network: "regtest" as const, deployTxid, ticker: "COVE", status: "live" as const, sellerBalanceAtoms: 500_000_000_000n };
-const sellerFunding = { txid: listing.sellerAnchorTxid, vout: 0, valueSats: 10_000, scriptHex: sellerScript };
-const buyerFunding = { txid: "c".repeat(64), vout: 1, valueSats: 10_000, scriptHex: buyerScript };
+const asset = { network: "regtest" as const, deployTxid, ticker: "COVE", protocolVersion: 2 as const,
+  tokenOutpoint: `${listing.sellerAnchorTxid}:0`, tokenScriptHex: sellerScript, tokenAtoms: listing.amountAtoms };
+const sellerFunding = { txid: listing.sellerAnchorTxid, vout: 0, valueSats: 10_000, scriptHex: sellerScript,
+  tokenAtoms: listing.amountAtoms, tokenDeploymentTxid: deployTxid };
+const buyerFunding = { txid: "c".repeat(64), vout: 1, valueSats: 10_000, scriptHex: buyerScript, tokenAtoms: 0n };
 const options = { listing, asset, sellerFunding, buyerFunding: [buyerFunding], buyerScriptHex: buyerScript, protocolScriptHex: protocolScript, recipientSats: 1_000, minerFeeSats: 400, currentHeight: 100n };
 
 describe("Cove CRC marketplace exact fill", () => {
-  it("accepts a registered Cove asset with indexed seller balance", () => {
+  it("accepts a registered Cove v2 asset with the exact indexed token outpoint", () => {
     expect(() => validateCrcListing(listing, asset, 100n)).not.toThrow();
     const signed = signBip322P2wpkh(Buffer.alloc(32, 0x32), Buffer.from(sellerScript, "hex"), crcListingMessage(listing));
     expect(() => verifyCrcListingAuthorization(listing, signed)).not.toThrow();
@@ -45,11 +47,13 @@ describe("Cove CRC marketplace exact fill", () => {
     expect(() => verifyCrcCancellation({ ...listing, id: "22222222-2222-4222-8222-222222222222" }, cancel)).toThrow();
   });
 
-  it("rejects external ids, another network, insufficient or stale balance", () => {
+  it("rejects external ids, v1, another network, missing or mismatched token outpoints", () => {
     expect(() => validateCrcListing(listing, { ...asset, deployTxid: "d".repeat(64) }, 100n)).toThrow();
     expect(() => validateCrcListing(listing, { ...asset, network: "signet" }, 100n)).toThrow();
-    expect(() => validateCrcListing(listing, { ...asset, sellerBalanceAtoms: 0n }, 100n)).toThrow();
-    expect(() => validateCrcListing(listing, { ...asset, status: "broken" }, 100n)).toThrow();
+    expect(() => validateCrcListing(listing, { ...asset, protocolVersion: 1 }, 100n)).toThrow();
+    expect(() => validateCrcListing(listing, { ...asset, tokenAtoms: 0n }, 100n)).toThrow();
+    expect(() => validateCrcListing(listing, { ...asset, tokenOutpoint: `${"f".repeat(64)}:0` }, 100n)).toThrow();
+    expect(() => validateCrcListing(listing, { ...asset, tokenScriptHex: buyerScript }, 100n)).toThrow();
     expect(() => validateCrcListing(listing, asset, 200n)).toThrow();
   });
 
@@ -61,6 +65,7 @@ describe("Cove CRC marketplace exact fill", () => {
     expect(tx.outs[2]!.value).toBe(15_000);
     expect(tx.outs[2]!.script.toString("hex")).toBe(sellerScript);
     expect(tx.outs[3]!.value).toBe(600);
+    expect(tx.outs[0]!.script.toString("hex")).toContain(Buffer.from('"v":2').toString("hex"));
     expect(() => verifyCrcFillTransaction(fill.psbt, options)).not.toThrow();
   });
 
@@ -71,6 +76,7 @@ describe("Cove CRC marketplace exact fill", () => {
       { listing: { ...listing, priceSats: 5_001 } },
       { listing: { ...listing, amountAtoms: 200_000_000_000n } },
       { listing: { ...listing, sellerAnchorTxid: "f".repeat(64) } },
+      { asset: { ...asset, tokenOutpoint: `${"f".repeat(64)}:0` } },
       { protocolScriptHex: buyerScript },
     ]) expect(() => verifyCrcFillTransaction(fill.psbt, { ...options, ...patch })).toThrow();
   });
@@ -85,7 +91,6 @@ describe("Cove CRC marketplace exact fill", () => {
     const mutated = fill.psbt.clone();
     const tx = bitcoin.Transaction.fromBuffer(mutated.data.globalMap.unsignedTx.toBuffer());
     tx.outs[2]!.value -= 1;
-    // A newly built PSBT with altered payout cannot retain valid ALL signatures.
     const other = createCrcFill({ ...options, listing: { ...listing, priceSats: 4_999 }, buyerFunding: [{ ...buyerFunding, valueSats: 10_001 }] });
     other.psbt.data.inputs[0]!.partialSig = fill.psbt.data.inputs[0]!.partialSig;
     expect(() => verifyCrcFillSignatures(other.psbt, 1)).toThrow();

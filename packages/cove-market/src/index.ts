@@ -75,4 +75,12 @@ export { getBuyRoutes, getSellOptions, type BuyRoute, type SellOption } from "./
 export { assertMarketReady, assertMarketEnabled, healthErrorFor, marketEnabledFlag } from "./health.js";
 
 export { readStoredFeeObservation } from "./fee-observation.js";
-export { crcMarketFee } from "./crc20/market.js";
+export {
+  crcMarketFee,
+  crcListingMessage,
+  crcCancelMessage,
+  verifyCrcFillTransaction,
+  type CrcFillOptions,
+  type CrcListing,
+  type IndexedCrcAsset,
+} from "./crc20/market.js";

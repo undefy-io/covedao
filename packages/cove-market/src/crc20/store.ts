@@ -3,12 +3,13 @@ import { sql } from "drizzle-orm";
 import { broadcastRecordedTransaction, checkSpendSignature } from "@crclaunch/bitcoin";
 import type { CoreRpcProvider } from "@crclaunch/bitcoin";
 import type { Database, DbTransaction } from "@crclaunch/db";
-import type { FundingInput } from "@crclaunch/crc20-transactions";
+import type { CoveV2Input } from "@crclaunch/crc20-transactions";
 import {
   createCrcFill,
   crcMarketFee,
   validateCrcListing,
   verifyCrcFillSignatures,
+  verifyCrcCancellation,
   verifyCrcListingAuthorization,
   verifyCurrentCrcFunding,
   type CrcFillOptions,
@@ -40,19 +41,25 @@ function rowListing(row: ListingRow): CrcListing {
 
 async function indexedAsset(tx: DbTransaction, listing: CrcListing): Promise<{ asset: IndexedCrcAsset; height: bigint; protocolScriptHex: string }> {
   const result = await tx.execute(sql`
-    SELECT a.ticker, a.protocol_script_hex, v.availability, COALESCE(b.atoms, 0) AS balance_atoms,
+    SELECT a.ticker, a.protocol_version, a.protocol_script_hex,
+      u.txid AS token_txid, u.vout AS token_vout, u.script_hex AS token_script_hex,
+      u.atoms AS token_atoms,
       COALESCE(c.height, a.deploy_height) AS height
     FROM cove_crc_assets a
-    JOIN cove_crc_vaults v ON v.network = a.network AND v.deploy_txid = a.deploy_txid
-    LEFT JOIN cove_crc_balances b ON b.network = a.network AND b.deploy_txid = a.deploy_txid AND b.script_hex = ${listing.sellerScriptHex}
+    LEFT JOIN cove_crc_token_utxos u ON u.network = a.network AND u.deploy_txid = a.deploy_txid
+      AND u.txid = ${listing.sellerAnchorTxid} AND u.vout = ${listing.sellerAnchorVout}
     LEFT JOIN cove_crc_cursor c ON c.network = a.network
     WHERE a.network = ${listing.network} AND a.deploy_txid = ${listing.deployTxid}
   `);
-  const row = result.rows[0] as { ticker: string; protocol_script_hex: string; availability: string; balance_atoms: string; height: string } | undefined;
+  const row = result.rows[0] as { ticker: string; protocol_version: number; protocol_script_hex: string;
+    token_txid: string | null; token_vout: number | null; token_script_hex: string | null;
+    token_atoms: string | null; height: string } | undefined;
   if (!row) throw new Error("deployment is not a registered Cove asset on this network");
   return {
     asset: { network: listing.network, deployTxid: listing.deployTxid, ticker: row.ticker,
-      status: row.availability === "active" ? "live" : "broken", sellerBalanceAtoms: BigInt(row.balance_atoms) },
+      protocolVersion: row.protocol_version,
+      tokenOutpoint: row.token_txid === null ? null : `${row.token_txid}:${row.token_vout}`,
+      tokenScriptHex: row.token_script_hex, tokenAtoms: BigInt(row.token_atoms ?? 0) },
     height: BigInt(row.height), protocolScriptHex: row.protocol_script_hex,
   };
 }
@@ -66,6 +73,27 @@ async function checkAnchor(core: CoreUtxo, listing: CrcListing): Promise<void> {
   if (!output || output.scriptPubKeyHex.toLowerCase() !== listing.sellerScriptHex.toLowerCase() ||
     output.valueSats !== BigInt(listing.sellerAnchorSats)) {
     throw new Error("seller anchor is spent or differs from Core");
+  }
+}
+
+async function assertTokenFreeBuyerFunding(tx: DbTransaction, network: CrcNetwork,
+  funding: readonly CoveV2Input[]): Promise<void> {
+  for (const input of funding) {
+    const txid = input.txid.toLowerCase();
+    const result = await tx.execute(sql`SELECT 1 FROM cove_crc_token_utxos
+      WHERE network = ${network} AND txid = ${txid} AND vout = ${input.vout} LIMIT 1`);
+    if (result.rows.length > 0) throw new Error("buyer funding carries a Cove token allocation");
+  }
+}
+
+async function assertTokenFreePsbtBuyerFunding(tx: DbTransaction, network: CrcNetwork,
+  psbt: bitcoin.Psbt): Promise<void> {
+  const unsigned = bitcoin.Transaction.fromBuffer(psbt.data.globalMap.unsignedTx.toBuffer());
+  for (const input of unsigned.ins.slice(1)) {
+    const txid = Buffer.from(input.hash).reverse().toString("hex");
+    const result = await tx.execute(sql`SELECT 1 FROM cove_crc_token_utxos
+      WHERE network = ${network} AND txid = ${txid} AND vout = ${input.index} LIMIT 1`);
+    if (result.rows.length > 0) throw new Error("buyer funding carries a Cove token allocation");
   }
 }
 
@@ -98,6 +126,47 @@ export async function createCrcListing(
   });
 }
 
+export async function cancelCrcListing(db: Database, network: CrcNetwork, listingId: string,
+  sellerAuthorizationB64: string): Promise<void> {
+  await db.transaction(async (tx) => {
+    await lockCrcProjection(tx, network);
+    const result = await tx.execute(sql`SELECT * FROM cove_crc_market_listings
+      WHERE id = ${listingId} AND network = ${network} FOR UPDATE`);
+    const row = result.rows[0] as ListingRow | undefined;
+    if (!row) throw new Error("Cove listing not found on this network");
+    const listing = rowListing(row);
+    verifyCrcCancellation(listing, sellerAuthorizationB64);
+    if (row.status === "CANCELED") return;
+    if (row.status !== "OPEN" && row.status !== "RESERVED") {
+      throw new Error("listing can no longer be canceled");
+    }
+    const pending = await tx.execute(sql`SELECT id, status FROM cove_crc_market_fills
+      WHERE listing_id = ${listingId} AND network = ${network} FOR UPDATE`);
+    if (pending.rows.some((fill) => !["RESERVED", "FAILED"].includes((fill as { status: string }).status))) {
+      throw new Error("buyer-signed fill can no longer be canceled");
+    }
+    await tx.execute(sql`UPDATE cove_crc_market_fills SET status = 'FAILED', updated_at = now()
+      WHERE listing_id = ${listingId} AND network = ${network} AND status = 'RESERVED'`);
+    await tx.execute(sql`UPDATE cove_crc_market_listings SET status = 'CANCELED', updated_at = now()
+      WHERE id = ${listingId} AND network = ${network}`);
+  });
+}
+
+export async function releaseExpiredCrcReservations(db: Database, network: CrcNetwork): Promise<number> {
+  return db.transaction(async (tx) => {
+    await lockCrcProjection(tx, network);
+    const expired = await tx.execute(sql`UPDATE cove_crc_market_fills SET status = 'FAILED', updated_at = now()
+      WHERE network = ${network} AND status = 'RESERVED' AND expires_at <= now()
+      RETURNING listing_id`);
+    for (const fill of expired.rows) {
+      const listingId = (fill as { listing_id: string }).listing_id;
+      await tx.execute(sql`UPDATE cove_crc_market_listings SET status = 'OPEN', updated_at = now()
+        WHERE id = ${listingId} AND network = ${network} AND status = 'RESERVED'`);
+    }
+    return expired.rows.length;
+  });
+}
+
 export type CrcFillReservation = Readonly<{
   fillId: string;
   listingId: string;
@@ -106,8 +175,8 @@ export type CrcFillReservation = Readonly<{
   protocolScriptHex: string;
   recipientSats: number;
   minerFeeSats: number;
-  sellerFunding: FundingInput;
-  buyerFunding: readonly FundingInput[];
+  sellerFunding: CoveV2Input;
+  buyerFunding: readonly CoveV2Input[];
 }>;
 
 export async function reserveCrcFill(
@@ -117,6 +186,13 @@ export async function reserveCrcFill(
 ): Promise<{ psbtBase64: string; unsignedTxDigest: string }> {
   return db.transaction(async (tx) => {
     await lockCrcProjection(tx, request.network);
+    const expired = await tx.execute(sql`UPDATE cove_crc_market_fills SET status = 'FAILED', updated_at = now()
+      WHERE listing_id = ${request.listingId} AND network = ${request.network}
+        AND status = 'RESERVED' AND expires_at <= now() RETURNING listing_id`);
+    if (expired.rows.length > 0) {
+      await tx.execute(sql`UPDATE cove_crc_market_listings SET status = 'OPEN', updated_at = now()
+        WHERE id = ${request.listingId} AND network = ${request.network} AND status = 'RESERVED'`);
+    }
     const selected = await tx.execute(sql`SELECT * FROM cove_crc_market_listings
       WHERE id = ${request.listingId} AND network = ${request.network} FOR UPDATE`);
     const row = selected.rows[0] as ListingRow | undefined;
@@ -124,6 +200,7 @@ export async function reserveCrcFill(
     if (row.status !== "OPEN") throw new Error("listing is already reserved or closed");
     const listing = rowListing(row);
     const { asset, height, protocolScriptHex } = await indexedAsset(tx, listing);
+    await assertTokenFreeBuyerFunding(tx, request.network, request.buyerFunding);
     if (request.protocolScriptHex.toLowerCase() !== protocolScriptHex.toLowerCase()) {
       throw new Error("protocol fee recipient differs from registered Cove deployment");
     }
@@ -183,6 +260,7 @@ export async function submitBuyerSignedCrcFill(
     const { asset, height } = await indexedAsset(tx, listing);
     validateCrcListing(listing, asset, height);
     const original = parsePsbt(row.psbt_base64, bitcoinNetwork(network));
+    await assertTokenFreePsbtBuyerFunding(tx, network, original);
     const signed = parsePsbt(buyerSignedPsbtBase64, bitcoinNetwork(network));
     assertSameTrustedPsbt(original, signed);
     if (signed.data.inputs.length < 2) throw new Error("buyer input is missing");
@@ -239,6 +317,7 @@ export async function acceptSignedCrcFill(
     const { asset, height } = await indexedAsset(tx, listing);
     validateCrcListing(listing, asset, height);
     const original = parsePsbt(row.original_psbt, bitcoinNetwork(network));
+    await assertTokenFreePsbtBuyerFunding(tx, network, original);
     const signed = parsePsbt(signedPsbtBase64, bitcoinNetwork(network));
     assertSameTrustedPsbt(original, signed);
     verifyCrcFillSignatures(signed, signed.data.inputs.length - 1);
@@ -300,6 +379,7 @@ export async function broadcastCrcFill(
     const listing = rowListing(row);
     const { asset, height } = await indexedAsset(tx, listing);
     validateCrcListing(listing, asset, height);
+    await assertTokenFreePsbtBuyerFunding(tx, network, parsePsbt(row.signed_psbt_base64, bitcoinNetwork(network)));
     return { txid: row.txid, signed: row.signed_psbt_base64, alreadyBroadcast: false };
   });
   if (loaded.alreadyBroadcast) return loaded.txid;
