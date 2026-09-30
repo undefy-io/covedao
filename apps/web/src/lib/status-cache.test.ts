@@ -58,3 +58,10 @@ it("keeps shared database quota enforcement for mutations", async () => {
   expect(await checkRateLimit(request(), "build-buy")).toBeNull();
   expect(services.execute).toHaveBeenCalledTimes(1);
 });
+
+it("admits ordinary public reads without updating a shared database quota row", async () => {
+  const { checkRateLimit } = await import("./rate-limit");
+  const responses = await Promise.all(Array.from({ length: 100 }, () => checkRateLimit(request(), "read-token")));
+  expect(responses.every((response) => response === null)).toBe(true);
+  expect(services.execute).not.toHaveBeenCalled();
+});

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { requiredBackingSats } from "@crclaunch/cove-economics";
 import {
   applyBuy,
   applySell,
@@ -6,6 +7,7 @@ import {
   isCoveCurveDeploy,
   quoteBuy,
   quoteSell,
+  requiredBackingV1,
   type CurveState,
 } from "../src/index.js";
 
@@ -67,6 +69,28 @@ describe("CRC-first Cove curve state", () => {
     expect(next.circulatingAtoms).toBe(next.mintedAtoms);
     expect(next.vaultAtoms).toBe(0n);
     expect(next.vaultSats).toBe(3_030n);
+  });
+
+  it("pins the Cove v1 price step and fee schedule at a stage boundary", () => {
+    const initial = createCurveState("deploy:1", 330n);
+    const first = buy(initial, 100_000n, "first:1");
+    expect(first.vaultSats).toBe(3_030n);
+    expect(quoteBuy(first, 1_000n)).toMatchObject({
+      grossSats: 54n,
+      protocolFeeSats: 5_015n,
+      creatorFeeSats: 546n,
+    });
+    const second = buy(first, 1_000n, "second:1");
+    expect(second.vaultSats).toBe(3_084n);
+    expect(quoteSell(second, 1_000n)).toMatchObject({ grossSats: 54n, protocolFeeSats: 1_000n });
+  });
+
+  it("matches the original reserve at every stage boundary while freezing v1 constants", () => {
+    for (let stage = 0n; stage <= 210n; stage++) {
+      const supply = stage * 100_000n;
+      expect(requiredBackingV1(supply)).toBe(requiredBackingSats(supply));
+      if (stage < 210n) expect(requiredBackingV1(supply + 1_000n)).toBe(requiredBackingSats(supply + 1_000n));
+    }
   });
 
   it("sells partial and full amounts into vault inventory, then resells before minting", () => {

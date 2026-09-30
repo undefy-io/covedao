@@ -50,6 +50,7 @@ interface WalletState {
   signPsbt: (psbtBase64: string, operation: string) => Promise<string>;
   signBip322: (message: string) => Promise<string>;
   getUtxos: (confirmedOnly?: boolean) => Promise<{ txid: string; vout: number }[]>;
+  getUtxosForAddress: (address: string, confirmedOnly?: boolean) => Promise<{ txid: string; vout: number }[]>;
   /** Everything a build needs to describe this wallet to the server. */
   walletFields: () => {
     walletScript: string;
@@ -90,6 +91,7 @@ interface TestWallet {
   signPsbt(params: { psbtBase64: string; inputIndexes?: number[]; operation: string }): Promise<string>;
   signBip322Simple?(params: { message: string }): Promise<string>;
   getUtxos?(): Promise<{ txid: string; vout: number }[]>;
+  getUtxosForAddress?(address: string): Promise<{ txid: string; vout: number }[]>;
 }
 
 function getTestWallet(): TestWallet | null {
@@ -107,7 +109,7 @@ interface Connected {
   isTestWallet: boolean;
 }
 
-export function WalletProvider({ children }: { children: React.ReactNode }) {
+export function WalletProvider({ children, protocolMode = "legacy" }: { children: React.ReactNode; protocolMode?: "legacy" | "crc-read-only" }) {
   const [conn, setConn] = useState<Connected | null>(null);
   const [capabilities, setCapabilities] = useState<WalletCapabilities | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -280,11 +282,35 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     // From Cove's own node, not the wallet: the server re-resolves every
     // outpoint against Core at build time, and a list from somewhere else
     // just produces failures nobody can explain.
-    const r = await fetch(`/api/v3/wallet/utxos?address=${encodeURIComponent(conn.payments.address)}`);
+    const path = protocolMode === "legacy" ? "/api/v3/wallet/utxos" : "/api/crc/v1/wallet/utxos";
+    const r = await fetch(`${path}?address=${encodeURIComponent(conn.payments.address)}`);
     const j = await r.json();
     if (!j.ok) throw new WalletError("FAILED", j.error?.detail || j.error?.message || tr("wal.cannotList"));
     return selectFundingCandidates(j.data.utxos as WalletFundingCoin[], confirmedOnly);
-  }, [conn]);
+  }, [conn, protocolMode]);
+
+  const getUtxosForAddress = useCallback(async (walletAddress: string, confirmedOnly = false) => {
+    if (!conn) return [];
+    if (conn.isTestWallet) {
+      const test = getTestWallet();
+      if (test?.getUtxosForAddress) return selectFundingCandidates(await test.getUtxosForAddress(walletAddress), confirmedOnly);
+      return test?.getUtxos ? selectFundingCandidates(await test.getUtxos(), confirmedOnly) : [];
+    }
+    const path = protocolMode === "legacy" ? "/api/v3/wallet/utxos" : "/api/crc/v1/wallet/utxos";
+    const response = await fetch(`${path}?address=${encodeURIComponent(walletAddress)}`);
+    const body = await response.json();
+    if (!body.ok) throw new WalletError("FAILED", body.error?.detail || body.error?.message || tr("wal.cannotList"));
+    if (protocolMode !== "legacy") {
+      const coins = (body.data.utxos as WalletFundingCoin[]).filter((coin) =>
+        !confirmedOnly || coin.confirmations === undefined || coin.confirmations > 0);
+      return coins.sort((a, b) => {
+        const left = BigInt(a.valueSats ?? "0");
+        const right = BigInt(b.valueSats ?? "0");
+        return left < right ? -1 : left > right ? 1 : 0;
+      }).slice(0, 256).map(({ txid, vout }) => ({ txid, vout }));
+    }
+    return selectFundingCandidates(body.data.utxos as WalletFundingCoin[], confirmedOnly);
+  }, [conn, protocolMode]);
 
   const walletFields = useCallback(() => {
     if (!conn) return { walletScript: "", walletAddress: "" };
@@ -316,12 +342,13 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       signPsbt,
       signBip322,
       getUtxos,
+      getUtxosForAddress,
       walletFields,
       pickerOpen,
       openPicker: () => setPickerOpen(true),
       closePicker: () => setPickerOpen(false),
     }),
-    [conn, capabilities, connect, connectDev, devIdentity, disconnect, signPsbt, signBip322, getUtxos, walletFields, pickerOpen],
+    [conn, capabilities, connect, connectDev, devIdentity, disconnect, signPsbt, signBip322, getUtxos, getUtxosForAddress, walletFields, pickerOpen],
   );
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;

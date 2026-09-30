@@ -1,14 +1,26 @@
-import { ATOMS_PER_TOKEN, LOT_TOKENS } from "@crclaunch/curve";
-import {
-  PUBLIC_SUPPLY,
-  creatorFeeSats,
-  quoteBuy as baseQuoteBuy,
-  quoteRedeem,
-  requiredBackingSats,
-} from "@crclaunch/cove-economics";
-
+const ATOMS_PER_TOKEN = 100_000_000n;
+const LOT_TOKENS = 1_000n;
+const STAGE_TOKENS = 100_000n;
+const STAGE_COUNT = 210n;
+const STAGE_BASE_LOT_SATS = 27n;
+const CAP_TOKENS = STAGE_TOKENS * STAGE_COUNT;
 const LOT_ATOMS = LOT_TOKENS * ATOMS_PER_TOKEN;
-const CAP_ATOMS = PUBLIC_SUPPLY * ATOMS_PER_TOKEN;
+const CAP_ATOMS = CAP_TOKENS * ATOMS_PER_TOKEN;
+
+function ceilBps(sats: bigint, bps: bigint): bigint {
+  return (sats * bps + 9_999n) / 10_000n;
+}
+
+export function requiredBackingV1(supplyTokens: bigint): bigint {
+  if (supplyTokens < 0n || supplyTokens > CAP_TOKENS || supplyTokens % LOT_TOKENS !== 0n) {
+    fail("INVALID_SUPPLY", "Cove v1 supply must be whole lots within the cap");
+  }
+  const fullStages = supplyTokens / STAGE_TOKENS;
+  const partialLots = (supplyTokens % STAGE_TOKENS) / LOT_TOKENS;
+  const fullCost = STAGE_BASE_LOT_SATS * (STAGE_TOKENS / LOT_TOKENS) *
+    fullStages * (fullStages + 1n) / 2n;
+  return fullCost + partialLots * STAGE_BASE_LOT_SATS * (fullStages + 1n);
+}
 
 export function isCoveCurveDeploy(payload: Record<string, unknown>): boolean {
   return Object.keys(payload).sort().join(",") === "cv,max,op,p,tick,type" &&
@@ -100,7 +112,7 @@ function assertState(state: CurveState): void {
     state.vaultAtoms % LOT_ATOMS !== 0n ||
     state.vaultAnchorSats < 0n ||
     state.vaultSats !==
-      state.vaultAnchorSats + requiredBackingSats(state.circulatingAtoms / ATOMS_PER_TOKEN) ||
+      state.vaultAnchorSats + requiredBackingV1(state.circulatingAtoms / ATOMS_PER_TOKEN) ||
     !state.vaultOutpoint
   ) {
     fail("INVALID_STATE", "curve supply or backing invariant failed");
@@ -135,15 +147,19 @@ export function quoteBuy(state: CurveState, amountTokens: bigint): BuyQuote {
     if (state.mintedAtoms + amountAtoms > CAP_ATOMS) fail("CAP_EXCEEDED", "mint exceeds cap");
     operation = "mint";
   }
-  const quote = baseQuoteBuy(state.circulatingAtoms / ATOMS_PER_TOKEN, amountTokens);
-  const creatorFee = creatorFeeSats(quote.gross);
+  const circulatingTokens = state.circulatingAtoms / ATOMS_PER_TOKEN;
+  const gross = requiredBackingV1(circulatingTokens + amountTokens) - requiredBackingV1(circulatingTokens);
+  if (gross < 1n) fail("ECONOMIC_DUST", "buy must add at least one sat of backing");
+  const protocolFee = 5_000n + 10n * (amountTokens / LOT_TOKENS) + ceilBps(gross, 750n);
+  const creatorShare = ceilBps(gross, 5_000n);
+  const creatorFee = creatorShare > 546n ? creatorShare : 546n;
   return {
     operation,
     amountAtoms,
-    grossSats: quote.gross,
-    protocolFeeSats: quote.fee,
+    grossSats: gross,
+    protocolFeeSats: protocolFee,
     creatorFeeSats: creatorFee,
-    buyerTotalSats: quote.net + creatorFee,
+    buyerTotalSats: gross + protocolFee + creatorFee,
   };
 }
 
@@ -162,17 +178,22 @@ export function quoteSell(
     );
   }
   if (payoutDustSats < 0n) fail("INVALID_DUST", "payout dust must be non-negative");
-  const quote = quoteRedeem(state.circulatingAtoms / ATOMS_PER_TOKEN, amountTokens);
-  const sellerPayoutSats = quote.net > payoutDustSats ? quote.net : payoutDustSats;
-  const walletTopUpSats = sellerPayoutSats + quote.fee - quote.gross;
+  const circulatingTokens = state.circulatingAtoms / ATOMS_PER_TOKEN;
+  const gross = requiredBackingV1(circulatingTokens) - requiredBackingV1(circulatingTokens - amountTokens);
+  if (gross < 1n) fail("ECONOMIC_DUST", "sell must remove at least one sat of backing");
+  const percentageFee = ceilBps(gross, 750n);
+  const protocolFee = percentageFee > 1_000n ? percentageFee : 1_000n;
+  const net = gross - protocolFee;
+  const sellerPayoutSats = net > payoutDustSats ? net : payoutDustSats;
+  const walletTopUpSats = sellerPayoutSats + protocolFee - gross;
   return {
     operation: "transfer",
     amountAtoms,
-    grossSats: quote.gross,
-    protocolFeeSats: quote.fee,
+    grossSats: gross,
+    protocolFeeSats: protocolFee,
     sellerPayoutSats,
     walletTopUpSats,
-    sellerNetSats: quote.net,
+    sellerNetSats: net,
   };
 }
 

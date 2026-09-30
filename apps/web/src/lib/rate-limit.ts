@@ -38,6 +38,11 @@ export function createStatusRateLimiter(
 }
 
 const allowStatus = createStatusRateLimiter();
+const allowPublicRead = createStatusRateLimiter(() => performance.now(), {
+  total: 20_000,
+  perIp: 1_200,
+  subjects: 10_000,
+});
 
 let checking = 0;
 
@@ -50,6 +55,10 @@ export async function checkRateLimit(req: Request, operation: string, limiter?: 
   if (limiter) return limiter.check({ scope: "ip", subject: clientIp(req), operation }, { limit: 120, windowMs: 60_000 }).allowed ? null : denied();
   if (operation === "read-status")
     return allowStatus(clientIp(req, serverEnv.COVE_TRUSTED_CLIENT_IP_HEADER)) ? null : denied();
+  const expensive = /^(build-|prepare-|create-|submit-|finalize-|buyer-|reserve|cancel-)/.test(operation);
+  const group = expensive ? "mutation" : operation === "read-utxos" ? "address" : "read";
+  if (group === "read")
+    return allowPublicRead(clientIp(req, serverEnv.COVE_TRUSTED_CLIENT_IP_HEADER)) ? null : denied();
   const unavailable = () => {
     const response = fail("CAPACITY_UNAVAILABLE", "Please retry shortly.", 503, true);
     response.headers.set("retry-after", "2");
@@ -57,8 +66,6 @@ export async function checkRateLimit(req: Request, operation: string, limiter?: 
   };
   if (checking >= 64) return unavailable();
   const { db, config } = getV3Services();
-  const expensive = /^(build-|prepare-|create-|submit-|finalize-|buyer-|reserve|cancel-)/.test(operation);
-  const group = expensive ? "mutation" : operation === "read-utxos" ? "address" : "read";
   const globalLimit = expensive ? 60 : group === "address" ? 240 : 20_000;
   checking++;
   try {

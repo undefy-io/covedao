@@ -1,0 +1,25 @@
+CREATE TABLE IF NOT EXISTS "cove_crc_build_sessions" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "network" text NOT NULL,
+  "operation" text NOT NULL,
+  "deployment_txid" text,
+  "idempotency_key" text NOT NULL,
+  "request_hash" text NOT NULL,
+  "unsigned_tx_digest" text NOT NULL,
+  "psbt_base64" text NOT NULL,
+  "wallet_script_hex" text NOT NULL,
+  "token_script_hex" text NOT NULL,
+  "trusted_json" jsonb NOT NULL,
+  "status" text NOT NULL DEFAULT 'BUILT',
+  "signed_psbt_sha256" text,
+  "claimed_at" timestamptz,
+  "signed_raw_hex" text,
+  "txid" text,
+  "created_at" timestamptz NOT NULL DEFAULT now(),
+  "updated_at" timestamptz NOT NULL DEFAULT now(),
+  "expires_at" timestamptz NOT NULL DEFAULT (now() + interval '15 minutes'),
+  CONSTRAINT "cove_crc_build_sessions_idempotency_uq" UNIQUE ("network", "idempotency_key"),
+  CONSTRAINT "cove_crc_build_sessions_operation_ck" CHECK ("operation" IN ('deploy', 'mint-buy', 'inventory-buy', 'sell')),
+  CONSTRAINT "cove_crc_build_sessions_status_ck" CHECK ("status" IN ('BUILT', 'SIGNING', 'READY', 'BROADCAST'))
+);
+CREATE INDEX IF NOT EXISTS "cove_crc_build_sessions_status_idx" ON "cove_crc_build_sessions" ("network", "status", "created_at");

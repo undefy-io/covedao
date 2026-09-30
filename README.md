@@ -2,7 +2,31 @@
 
 # covs.trade
 
-> covs.trade — covenant-powered CRC launchpad on Bitcoin.
+> covs.trade — a Bitcoin token launchpad under active CRC-20 cutover.
+
+## CRC-20 v1 release status
+
+The new Cove-issued CRC-20 path is selected with `COVE_PROTOCOL_MODE=crc20`.
+It uses CRC-20 JSON markers, a Cove-specific curve, a confirmed-block indexer,
+and a separate Guardian service. Launch, buy, and sell are implemented behind
+`COVE_CRC_TRADING_ACTIVE` and have passed a real Bitcoin Core regtest cycle,
+including Guardian-signed buy and sell, repeated trades, and reorg rollback.
+See [the v1 transaction rules](docs/COVE_CRC20_V1.md) for exact layouts and
+custody assumptions.
+
+**This is not a public mainnet release yet.** The mainnet profile still needs
+operator public parameters, a canary has not reconciled, and the current
+marketplace fill is disabled. Script-based token balances do not make a
+seller's listed Bitcoin UTXO exclusive token authority, so a signed fill
+could pay the seller without a valid token transfer. The market API fails
+closed while confirmed per-listing escrow is built (Beads `covedao-rrf`).
+The `COVE_CRC_TRADING_ACTIVE` flag does not enable marketplace fills.
+
+The remaining sections describe the earlier V3 implementation, which stays
+available under `COVE_PROTOCOL_MODE=legacy`. Its binary `CV` envelope and
+mainnet instructions do not describe the new CRC-20 wire format.
+
+## Legacy V3 design
 
 **covs — a CRC-family token launchpad on Bitcoin L1 — state-committed Taproot UTXOs,
 an open indexer, and a non-custodial marketplace.**
@@ -308,7 +332,7 @@ pnpm cove:signet-proof             # signet lifecycle, real broadcast
 
 ---
 
-## Mainnet status
+## Legacy V3 mainnet status
 
 **Mainnet is not activated.** The committed profile
 (`packages/cove-mainnet/profiles.toml`, `[networks.mainnet]`) still has placeholders for

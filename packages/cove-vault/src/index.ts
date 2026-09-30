@@ -41,3 +41,10 @@ export {
 } from "./vault.js";
 export { taprootMerkleRoot, merklePaths } from "./taproot.js";
 export { buildBackingVaultV3 } from "./backingVault.js";
+export {
+  buildCrc20AssetVault,
+  crc20AssetCommitment,
+  crc20DeploymentTag,
+  randomCrc20LaunchSalt,
+  type Crc20AssetIdentity,
+} from "./crc20-vault.js";

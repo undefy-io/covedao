@@ -1,4 +1,5 @@
 import { bool, cleanEnv, str, url, makeValidator } from "envalid";
+import { parseProtocolMode } from "./protocol-mode";
 
 const budgetRate = makeValidator((value: string) => {
   const rate = Number(value);
@@ -17,12 +18,17 @@ function loadServerEnv() {
       COVE_RPC_REQUESTS_PER_SECOND: process.env.COVE_RPC_REQUESTS_PER_SECOND,
       COVE_TRUSTED_CLIENT_IP_HEADER: process.env.COVE_TRUSTED_CLIENT_IP_HEADER,
       COVE_NETWORK: process.env.COVE_NETWORK,
+      COVE_PROTOCOL_MODE: process.env.COVE_PROTOCOL_MODE,
+      COVE_CRC_TRADING_ACTIVE: process.env.COVE_CRC_TRADING_ACTIVE,
       COVE_DATABASE_URL: process.env.COVE_DATABASE_URL || process.env.DATABASE_URL,
       COVE_BITCOIN_RPC_URL: process.env.COVE_BITCOIN_RPC_URL || undefined,
       COVE_BITCOIN_RPC_API_KEY: process.env.COVE_BITCOIN_RPC_API_KEY || undefined,
+      COVE_BITCOIN_RPC_USER: process.env.COVE_BITCOIN_RPC_USER || undefined,
+      COVE_BITCOIN_RPC_PASSWORD: process.env.COVE_BITCOIN_RPC_PASSWORD || undefined,
       COVE_GUARDIAN_ENDPOINT: process.env.COVE_GUARDIAN_ENDPOINT || undefined,
       COVE_GUARDIAN_AUTH_TOKEN: process.env.COVE_GUARDIAN_AUTH_TOKEN || undefined,
       COVE_FEE_ADDRESS: process.env.COVE_FEE_ADDRESS || undefined,
+      COVE_TEST_ONLY_PROFILE_PATH: process.env.COVE_TEST_ONLY_PROFILE_PATH || undefined,
       COVE_V3_CANARY_ACTIVE: process.env.COVE_V3_CANARY_ACTIVE || undefined,
       SENTRY_DSN: process.env.SENTRY_DSN || undefined,
       SENTRY_ENVIRONMENT: process.env.SENTRY_ENVIRONMENT || undefined,
@@ -31,12 +37,17 @@ function loadServerEnv() {
       COVE_RPC_REQUESTS_PER_SECOND: budgetRate({ default: process.env.COVE_NETWORK === "regtest" ? 90 : 3 }),
       COVE_TRUSTED_CLIENT_IP_HEADER: str({ choices: ["none", "cf-connecting-ip", "x-real-ip"], default: "none" }),
       COVE_NETWORK: str({ choices: ["regtest", "signet", "testnet", "mainnet"] }),
+      COVE_PROTOCOL_MODE: makeValidator(parseProtocolMode)({ default: "legacy" }),
+      COVE_CRC_TRADING_ACTIVE: bool({ default: false }),
       COVE_DATABASE_URL: url(),
       COVE_BITCOIN_RPC_URL: url({ default: undefined }),
       COVE_BITCOIN_RPC_API_KEY: str({ default: undefined }),
+      COVE_BITCOIN_RPC_USER: str({ default: undefined }),
+      COVE_BITCOIN_RPC_PASSWORD: str({ default: undefined }),
       COVE_GUARDIAN_ENDPOINT: url({ default: undefined }),
       COVE_GUARDIAN_AUTH_TOKEN: str({ default: undefined }),
       COVE_FEE_ADDRESS: str({ default: undefined }),
+      COVE_TEST_ONLY_PROFILE_PATH: str({ default: undefined }),
       COVE_V3_CANARY_ACTIVE: bool({ default: false }),
       SENTRY_DSN: url({ default: undefined }),
       SENTRY_ENVIRONMENT: str({ choices: ["dev", "staging", "prod"], default: "dev" }),

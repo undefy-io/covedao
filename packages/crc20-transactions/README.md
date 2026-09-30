@@ -1,12 +1,14 @@
-# CRC-first transaction prototype
+# Cove CRC-20 v1 transaction builders
 
-This package builds unsigned output layouts and exact-funded PSBTs for a proposed Cove curve extension. It is not connected to the production routes, indexer, or Guardian.
+This package builds unsigned output layouts and exact-funded PSBTs for the [Cove CRC-20 v1 format](../../docs/COVE_CRC20_V1.md). It is not connected to production routes, indexer, or Guardian yet.
 
 Deploy emits one CRC-20 JSON marker at vout 0, then the vault, creator, and protocol outputs. A new-mint buy emits a mint marker at vout 0 and its buyer recipient at vout 1. An inventory buy emits a transfer marker at vout 0 and its buyer recipient at vout 1. A sell emits a transfer marker at vout 0 and its vault recipient at vout 1, followed by seller payout and protocol fee. In the archived Garden transfer corpus, the recipient immediately followed the marker in every observed transfer; this package follows that topology.
 
-The marker fields for Cove deploy and mint are candidates, not verified LEAF mint rules. In particular, the meaning of `max`, `type`, and mint `amt` to a general CRC-20 indexer remains open. The proposal uses one marker per transaction and does not claim that Garden would recognize these Cove launches.
+Deploy, mint, and transfer fields are Cove-defined rules. `max` is atoms, `amt` is atoms, and post-deploy markers carry the deployment transaction ID. `buildCoveTransfer` emits an ordinary peer transfer without spending the vault. `buildCoveMarketFill` places buyer tokens at vout 1, then seller BTC payout and protocol fee, and requires a seller input at input 0. The seller signs the complete fill while online with `SIGHASH_ALL`; listing storage and fill authorization are separate work. These rules do not claim Garden recognition.
 
-The PSBT builder requires the current vault outpoint as input zero, exact input/output/miner-fee balance, and `SIGHASH_ALL` on every input. The seller signs the completed transaction while online. Tests prove that changing the marker, vault replacement, seller payout, protocol fee, recipient script, or input set invalidates the seller's signature. The prototype does not authorize a vault spend or prove token ownership; those are production Guardian and ledger responsibilities.
+The PSBT builder requires the current vault outpoint as input zero, exact input/output/miner-fee balance, and `SIGHASH_ALL` on every input. Deploy, buy, and sell builders can append an explicit final wallet change output after the protocol outputs. Sell payout dust follows the seller output script. Funding inputs support P2WPKH, P2TR, and P2SH-P2WPKH; nested inputs require the matching compressed wallet public key so the builder can attach the verified redeem script. Taproot wallet inputs may provide their x-only internal public key. P2PKH requires a full parent transaction and is rejected by this builder. The seller signs the completed transaction while online. Tests prove that changing the marker, vault replacement, seller payout, protocol fee, recipient script, or input set invalidates the seller's signature. The prototype does not authorize a vault spend or prove token ownership; those are production Guardian and ledger responsibilities.
+
+`selectCrcFunding` preserves mandatory vault and token-owner inputs, selects payment inputs, returns explicit dust-safe change, and enforces the 20,000-sat miner-fee cap. `verifyCrcWalletSignedPsbt` compares the signed PSBT with the stored unsigned intent and checks all wallet signatures. `verifyCrcGuardianSignedPsbt` checks the returned script-path witness, its Taproot control block, the unchanged transaction, and all wallet signatures before broadcast.
 
 ## Local Bitcoin Core policy check
 

@@ -1,6 +1,6 @@
 # Cove CRC-20 v1 transaction format
 
-Status: Cove protocol design for implementation. The standalone `crc20-*` packages are prototypes; this document does not describe the currently deployed V3 transaction format.
+Status: Cove CRC-20 v1 launch, buy, and sell are implemented and have passed mined regtest tests. Public mainnet activation and atomic marketplace settlement remain open release gates. This document does not describe the legacy V3 transaction format.
 
 ## Evidence and scope
 
@@ -12,7 +12,7 @@ Cove indexes only deployments explicitly registered for this launch service. Nei
 
 One zero-satoshi OP_RETURN at vout 0 contains one UTF-8 JSON object with `p:"crc-20"`. There is exactly one CRC marker. The JSON payload is at most 256 bytes. Writer field order is fixed as shown below; readers reject duplicate keys, unknown fields, wrong types, noncanonical positive atom strings, unsupported versions, malformed UTF-8, and ambiguous layouts. The marker may exceed legacy 80-byte relay limits; supported node policy and relay acceptance must be tested before activation. Output scripts are stored and compared as bytes, not addresses. Only recognized spendable script types are accepted, with the script-specific dust threshold.
 
-Post-deploy markers carry the lowercase 64-hex `id` of the deployment transaction. This is a Cove extension that disambiguates tokens sharing a ticker. Vault trades must also spend the current vault outpoint in input 0; the `id` must match that vault's registered asset. Peer transfers identify the asset with `id` and must prove the sender from a verified input prevout. No ticker-only fallback is allowed.
+Post-deploy markers carry the lowercase 64-hex `id` of the deployment transaction. This is a Cove extension that disambiguates tokens sharing a ticker. Vault trades must also spend the current vault outpoint in input 0; the `id` must match that vault's registered asset. Peer transfers identify the asset with `id` and must prove the sender from a verified input prevout. No ticker-only fallback is allowed. A peer transfer to the vault script is invalid because it would change inventory without moving the BTC reserve.
 
 ## Deploy
 
@@ -20,7 +20,7 @@ Post-deploy markers carry the lowercase 64-hex `id` of the deployment transactio
 {"p":"crc-20","op":"deploy","tick":"COVE","type":"bonding","max":"2100000000000000","cv":"cove-curve-v1"}
 ```
 
-`max` is decimal atoms for Cove v1: 21,000,000 public tokens at 10^8 atoms per token. The fixed `cove-curve-v1` version rejects any other cap. Outputs: 0 marker; 1 unique asset vault anchor; 2 creator record of exactly 1,000 sats; 3 configured protocol launch fee of exactly 7,000 sats; optional final ordinary change. The registration records the creator, vault, and protocol scripts. The protocol script must match trusted network launch configuration. The deploy and registration must be bound to the same confirmed txid.
+`max` is decimal atoms for Cove v1: 21,000,000 public tokens at 10^8 atoms per token. The fixed `cove-curve-v1` version rejects any other cap. Outputs: 0 marker; 1 unique asset vault anchor; 2 creator record of exactly 1,000 sats; 3 configured protocol launch fee of exactly 7,000 sats; optional final ordinary change. Vault construction uses a fresh 32-byte launch salt so two deployments with the same marker and ticker have distinct vault scripts; the authorized launch intent retains the salt and exact script. Successor vault UTXOs reuse that asset's script, while the current outpoint and BTC value move with each trade. The registration records the creator, vault, and protocol scripts. The protocol script must match trusted network launch configuration. The deploy and registration must be bound to the same confirmed txid.
 
 ## Buy from newly issued supply
 
@@ -28,7 +28,7 @@ Post-deploy markers carry the lowercase 64-hex `id` of the deployment transactio
 {"p":"crc-20","op":"mint","tick":"COVE","amt":"100000000000","id":"<deployment txid>"}
 ```
 
-Input 0 spends the current vault. Outputs: 0 marker; 1 buyer/token recipient; 2 replacement vault; 3 protocol fee; 4 creator fee; optional final buyer change. `amt` is positive decimal atoms and a multiple of 1,000 display tokens. Mint only when vault token inventory is empty. The replacement vault equals the previous vault sats plus the exact curve reserve delta. The other payment values and scripts must match the versioned quote.
+Input 0 spends the current vault. Outputs: 0 marker; 1 buyer/token recipient; 2 replacement vault; 3 protocol fee; 4 creator fee; optional final buyer payment change. `amt` is positive decimal atoms and a multiple of 1,000 display tokens. The buyer token recipient may be a separate ordinals script from the signed BTC funding input; change returns to that funding script. Mint only when vault token inventory is empty. The replacement vault equals the previous vault sats plus the exact curve reserve delta. The other payment values and scripts must match the versioned quote.
 
 ## Buy from vault inventory
 
@@ -36,7 +36,7 @@ Use `op:"transfer"` with the same `tick`, `amt`, and `id` fields and the same in
 
 ## Sell to the vault
 
-Use `op:"transfer"` with `tick`, `amt`, and `id`. Input 0 spends the current vault; input 1 must be a seller-authorized, verified prevout. Outputs: 0 marker; 1 replacement vault and token recipient; 2 seller payout; 3 protocol fee; optional final seller change. The replacement vault loses the exact reserve delta. The seller's token balance falls; vault inventory rises. Lifetime minted supply does not fall. There is no creator fee on a sell. Seller payout must satisfy script dust rules; any wallet top-up and miner fee are funded by inputs and checked separately.
+Use `op:"transfer"` with `tick`, `amt`, and `id`. Input 0 spends the current vault; input 1 must be a seller-authorized, verified prevout for the seller's token-holding script. An optional later input may fund BTC fees from the seller's payment script. Outputs: 0 marker; 1 replacement vault and token recipient; 2 seller payout to a script present in the signed seller inputs; 3 protocol fee; optional final change to a script present in those inputs. The replacement vault loses the exact reserve delta. The seller's token balance falls; vault inventory rises. Lifetime minted supply does not fall. There is no creator fee on a sell. Seller payout must satisfy script dust rules; any wallet top-up and miner fee are funded by inputs and checked separately.
 
 ## Peer transfer
 
@@ -47,6 +47,8 @@ Use `op:"transfer"` with `tick`, `amt`, and `id`; input 0 is a verified sender p
 State is minted atoms `M`, vault atoms `V`, and circulating atoms `C=M−V`; vault sats are `anchor+R(C)`. Buy gross is `R(C+q)−R(C)` and sell gross is `R(C)−R(C−q)`. The 210-stage integer price table and fee constants are fixed for `cove-curve-v1`; changing them requires another version. Current fees are buy protocol `5000 + 10×lots + ceil(750×gross/10000)`, buy creator `max(546,ceil(5000×gross/10000))`, and sell protocol `max(1000,ceil(750×gross/10000))`. Miner fees come from verified input-minus-output value, not the reserve.
 
 Indexing uses confirmed raw transactions and authoritative prevouts in block transaction order. Builders and Guardian require signatures committing to all inputs and outputs; the validator must not trust a caller-supplied `assetId`, amount, sender, or destination. Each transaction either applies all curve, balance, and vault changes or none. A confirmed spend of the current vault that fails Cove rules marks the asset unavailable until recovery; it cannot leave the old vault apparently tradable. Reorg rollback includes registration, vault lineage, balances, lifetime supply, and availability. Unknown assets and malformed transactions never credit token balances.
+
+The initial vault uses a single Guardian-controlled execution key, following the existing custody choice. User signatures on funding or token inputs bind ordinary trades, and Guardian policy checks the curve and outputs before it signs. The Guardian key can nevertheless spend vault BTC alone; a state hash revealed in a Taproot script is a commitment, not an on-chain covenant. Product copy and operations must treat the reserve as Guardian-custodied until an enforceable covenant design is deployed.
 
 ## Implementation gates
 

@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./v3": "./src/v3/index.ts",
+    "./crc20": "./src/crc20/index.ts",
     "./legacy": "./src/index.ts",
     "./testing": "./src/v3/testing/regtest-fixture.ts"
   },
@@ -30,6 +31,7 @@
     "mainnet-config": "tsx src/mainnet-config.ts",
     "mainnet-canary": "tsx src/mainnet-canary.ts",
     "regtest-reorg": "tsx src/regtest-reorg.ts",
+    "crc:regtest-lifecycle": "tsx src/crc20/regtest-lifecycle.ts",
     "v3:persistent-lifecycle": "tsx src/v3/persistent-lifecycle.ts",
     "v3:persistent-reorg-matrix": "tsx src/v3/persistent-reorg-matrix.ts"
   },
@@ -40,19 +42,25 @@
     "@crclaunch/cove-economics": "workspace:*",
     "@crclaunch/cove-vault": "workspace:*",
     "@crclaunch/cove-wire": "workspace:*",
+    "@crclaunch/crc20-base": "workspace:*",
+    "@crclaunch/crc20-curve": "workspace:*",
+    "@crclaunch/crc20-ledger": "workspace:*",
+    "@crclaunch/crc20-transactions": "workspace:*",
     "@crclaunch/curve": "workspace:*",
-    "@crclaunch/protocol": "workspace:*",
     "@crclaunch/db": "workspace:*",
+    "@crclaunch/protocol": "workspace:*",
     "bitcoinjs-lib": "^6.1.7",
-    "tiny-secp256k1": "^2.2.3",
+    "dotenv": "^16.4.7",
     "drizzle-orm": "^0.36.4",
-    "dotenv": "^16.4.7"
+    "pg": "^8.23.0",
+    "tiny-secp256k1": "^2.2.3"
   },
   "devDependencies": {
     "@crclaunch/cove-guardian": "workspace:*",
+    "@types/pg": "^8.23.1",
+    "ecpair": "^2.1.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8",
-    "ecpair": "^2.1.0"
+    "vitest": "^2.1.8"
   }
 }

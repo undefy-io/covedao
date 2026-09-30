@@ -89,11 +89,20 @@ export function handleError(e: unknown): Response {
     "STATE_CHANGED",
     "MEMPOOL_REJECTED",
     "BROADCAST_FAILED",
+    "PROTOCOL_MIGRATING",
+    "CRC_TRADING_DISABLED",
+    "GUARDIAN_UNAVAILABLE",
   ].includes(code);
   const status =
     code === "INTERNAL_ERROR"
       ? 500
       : code === "CORE_UNAVAILABLE"
+        ? 503
+      : code === "PROTOCOL_MIGRATING"
+        ? 503
+      : code === "CRC_TRADING_DISABLED"
+        ? 503
+      : code === "GUARDIAN_UNAVAILABLE" || code === "BROADCAST_FAILED" || code === "INDEXER_REBUILDING"
         ? 503
       : code === "REQUEST_TOO_LARGE"
         ? 413
@@ -119,6 +128,10 @@ function humanCopy(code: string): string {
       return "This trade is too small to be worth making.";
     case "INDEXER_REBUILDING":
       return "covs is rebuilding chain state. Trading is temporarily paused.";
+    case "PROTOCOL_MIGRATING":
+      return "The legacy trading API is paused while Cove CRC-20 is being deployed.";
+    case "CRC_TRADING_DISABLED":
+      return "Cove CRC-20 trading is not active on this server yet.";
     case "INDEXER_UNHEALTHY":
       return "The covs indexer is catching up. Trading is temporarily paused.";
     case "CORE_UNAVAILABLE":

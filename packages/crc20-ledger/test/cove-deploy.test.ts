@@ -80,6 +80,11 @@ describe("registered Cove deployments", () => {
     expect(secondResult.status).toBe("applied");
     expect(Object.keys(secondResult.state.assets).sort()).toEqual([`signet:${registration.txid}`, `signet:${second.txid}`].sort());
   });
+
+  it("rejects two registered assets sharing one vault script", () => {
+    const duplicateVault = { ...registration, txid: txid("b") };
+    expect(applyRegisteredCoveDeploy(createLedger(), deployment(), [registration, duplicateVault]).status).toBe("invalid");
+  });
 });
 
 describe("Cove post-deploy marker format", () => {

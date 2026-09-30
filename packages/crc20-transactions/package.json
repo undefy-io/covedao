@@ -15,14 +15,16 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@crclaunch/bitcoin": "workspace:*",
+    "@crclaunch/cove-economics": "workspace:*",
+    "@crclaunch/cove-vault": "workspace:*",
     "@crclaunch/crc20-base": "workspace:*",
     "@crclaunch/crc20-curve": "workspace:*",
-    "@crclaunch/cove-economics": "workspace:*",
-    "bitcoinjs-lib": "^6.1.7"
+    "bitcoinjs-lib": "^6.1.7",
+    "tiny-secp256k1": "^2.2.3"
   },
   "devDependencies": {
     "ecpair": "^2.1.0",
-    "tiny-secp256k1": "^2.2.3",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   }

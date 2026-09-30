@@ -147,12 +147,24 @@ importers:
       '@crclaunch/cove-indexer':
         specifier: workspace:*
         version: link:../../packages/cove-indexer
+      '@crclaunch/cove-mainnet':
+        specifier: workspace:*
+        version: link:../../packages/cove-mainnet
       '@crclaunch/cove-market':
         specifier: workspace:*
         version: link:../../packages/cove-market
+      '@crclaunch/cove-vault':
+        specifier: workspace:*
+        version: link:../../packages/cove-vault
       '@crclaunch/cove-wire':
         specifier: workspace:*
         version: link:../../packages/cove-wire
+      '@crclaunch/crc20-curve':
+        specifier: workspace:*
+        version: link:../../packages/crc20-curve
+      '@crclaunch/crc20-transactions':
+        specifier: workspace:*
+        version: link:../../packages/crc20-transactions
       '@crclaunch/curve':
         specifier: workspace:*
         version: link:../../packages/curve
@@ -497,6 +509,18 @@ importers:
       '@crclaunch/cove-wire':
         specifier: workspace:*
         version: link:../cove-wire
+      '@crclaunch/crc20-base':
+        specifier: workspace:*
+        version: link:../crc20-base
+      '@crclaunch/crc20-curve':
+        specifier: workspace:*
+        version: link:../crc20-curve
+      '@crclaunch/crc20-ledger':
+        specifier: workspace:*
+        version: link:../crc20-ledger
+      '@crclaunch/crc20-transactions':
+        specifier: workspace:*
+        version: link:../crc20-transactions
       '@crclaunch/curve':
         specifier: workspace:*
         version: link:../curve
@@ -515,6 +539,9 @@ importers:
       drizzle-orm:
         specifier: ^0.36.4
         version: 0.36.4(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(@types/react@19.3.0)(pg@8.23.0)(react@19.2.8)
+      pg:
+        specifier: ^8.23.0
+        version: 8.23.0
       tiny-secp256k1:
         specifier: ^2.2.3
         version: 2.2.4
@@ -522,6 +549,9 @@ importers:
       '@crclaunch/cove-guardian':
         specifier: workspace:*
         version: link:../cove-guardian
+      '@types/pg':
+        specifier: ^8.23.1
+        version: 8.23.1
       ecpair:
         specifier: ^2.1.0
         version: 2.1.0
@@ -595,6 +625,9 @@ importers:
       '@crclaunch/cove-wire':
         specifier: workspace:*
         version: link:../cove-wire
+      '@crclaunch/crc20-transactions':
+        specifier: workspace:*
+        version: link:../crc20-transactions
       '@crclaunch/curve':
         specifier: workspace:*
         version: link:../curve
@@ -750,10 +783,16 @@ importers:
       '@crclaunch/crc20-base':
         specifier: workspace:*
         version: link:../crc20-base
+      '@crclaunch/crc20-curve':
+        specifier: workspace:*
+        version: link:../crc20-curve
       bitcoinjs-lib:
         specifier: 6.1.8
         version: 6.1.8
     devDependencies:
+      '@crclaunch/crc20-transactions':
+        specifier: workspace:*
+        version: link:../crc20-transactions
       '@types/node':
         specifier: ^22.10.0
         version: 22.20.4
@@ -766,9 +805,15 @@ importers:
 
   packages/crc20-transactions:
     dependencies:
+      '@crclaunch/bitcoin':
+        specifier: workspace:*
+        version: link:../bitcoin
       '@crclaunch/cove-economics':
         specifier: workspace:*
         version: link:../cove-economics
+      '@crclaunch/cove-vault':
+        specifier: workspace:*
+        version: link:../cove-vault
       '@crclaunch/crc20-base':
         specifier: workspace:*
         version: link:../crc20-base
@@ -778,13 +823,13 @@ importers:
       bitcoinjs-lib:
         specifier: 6.1.8
         version: 6.1.8
+      tiny-secp256k1:
+        specifier: ^2.2.3
+        version: 2.2.4
     devDependencies:
       ecpair:
         specifier: ^2.1.0
         version: 2.1.0
-      tiny-secp256k1:
-        specifier: ^2.2.3
-        version: 2.2.4
       typescript:
         specifier: ^5.7.2
         version: 5.9.3

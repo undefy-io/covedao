@@ -19,7 +19,7 @@ if (
   );
 }
 
-if (serverEnv.COVE_NETWORK === "mainnet") {
+if (serverEnv.COVE_NETWORK === "mainnet" && serverEnv.COVE_PROTOCOL_MODE === "legacy") {
   const { config, transitionSigner } = getV3Services();
   watchGuardianAgreement(transitionSigner, config, { service: "web" });
 }

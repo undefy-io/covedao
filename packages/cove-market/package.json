@@ -28,7 +28,8 @@
     "tiny-secp256k1": "^2.2.3",
     "ecpair": "^2.1.0",
     "drizzle-orm": "^0.36.4",
-    "@crclaunch/cove-vault": "workspace:*"
+    "@crclaunch/cove-vault": "workspace:*",
+    "@crclaunch/crc20-transactions": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.19.2",

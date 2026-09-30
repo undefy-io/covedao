@@ -73,6 +73,11 @@ export function applyRegisteredCoveDeploy(
     (entry) => entry.network === transaction.network && entry.txid === transaction.txid,
   );
   if (!registration) return { status: "ignored", reason: "deployment is not registered by Cove", state };
+  if (registrations.some((entry) => entry.network === transaction.network &&
+    entry.txid !== transaction.txid &&
+    entry.vaultScriptHex.toLowerCase() === registration.vaultScriptHex.toLowerCase())) {
+    return invalid(state, "Cove vault script must be unique per asset");
+  }
   if (!transaction.outputs[0] || transaction.outputs[0].scriptHex.length > 520) {
     return invalid(state, "Cove marker exceeds 256-byte payload limit");
   }

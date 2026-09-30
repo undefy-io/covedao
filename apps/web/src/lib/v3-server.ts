@@ -5,6 +5,7 @@ import type { GuardianTransitionSigner } from "@crclaunch/cove-guardian/v3";
 import { loadV3AppConfig, V3AppService, buildAppTransitionSigner, type V3AppConfig } from "@crclaunch/cove-app";
 import { AppError } from "@crclaunch/cove-app";
 import { serverEnv } from "./server-env";
+import { assertLegacyProtocolMode } from "./protocol-mode";
 
 /**
  * Production V3 server runtime (§6/§7/§8/§11/§12). Real Core RPC + real Postgres.
@@ -26,6 +27,7 @@ export interface V3Services {
 const globalForV3 = globalThis as unknown as { __coveV3Services?: V3Services };
 
 export function getV3Services(): V3Services {
+  assertLegacyProtocolMode(serverEnv.COVE_PROTOCOL_MODE);
   if (globalForV3.__coveV3Services) return globalForV3.__coveV3Services;
   const config = loadV3AppConfig(process.env);
   // Mainnet signs only through the Guardian service; refuse to start without it.

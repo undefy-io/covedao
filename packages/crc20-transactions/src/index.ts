@@ -2,6 +2,12 @@ import * as bitcoin from "bitcoinjs-lib";
 import { parseCrc20Transaction, type TxOutput } from "@crclaunch/crc20-base";
 import { quoteBuy, quoteSell, type CurveState } from "@crclaunch/crc20-curve";
 import { dustThreshold } from "@crclaunch/cove-economics";
+import {
+  buildCrc20AssetVault,
+  crc20DeploymentTag,
+  type CoveVault,
+  type VaultRecoveryProfile,
+} from "@crclaunch/cove-vault";
 
 const COVE_V1_MAX_ATOMS = "2100000000000000";
 const COVE_V1_CREATOR_RECORD_SATS = 1_000;
@@ -20,6 +26,7 @@ export type FundingInput = Readonly<{
   vout: number;
   valueSats: number;
   scriptHex: string;
+  publicKeyHex?: string;
 }>;
 
 export type TxTemplate = Readonly<{
@@ -29,6 +36,7 @@ export type TxTemplate = Readonly<{
   markerBytes: number;
   requiredFundingSats: number;
   previousVaultOutpoint?: string;
+  requiredFirstInputScriptHex?: string;
 }>;
 
 function safeSats(value: bigint): number {
@@ -96,27 +104,66 @@ function template(
 export function buildCurveDeploy(params: {
   ticker: string;
   maxAtoms: string;
-  scripts: ScriptSet;
+  scripts: Pick<ScriptSet, "vault" | "creator" | "protocol">;
   vaultAnchorSats: number;
+  changeSats?: number;
+  changeScriptHex?: string;
 }): TxTemplate {
   if (params.maxAtoms !== COVE_V1_MAX_ATOMS) throw new Error("invalid maximum supply for Cove v1");
+  const change = finalChange(params.changeSats, params.changeScriptHex);
   return template(
     "deploy",
-    {
-      p: "crc-20",
-      op: "deploy",
-      tick: params.ticker,
-      type: "bonding",
-      max: params.maxAtoms,
-      cv: "cove-curve-v1",
-    },
+    curveDeployPayload(params.ticker),
     [
       { valueSats: params.vaultAnchorSats, scriptHex: params.scripts.vault },
       { valueSats: COVE_V1_CREATOR_RECORD_SATS, scriptHex: params.scripts.creator },
       { valueSats: COVE_V1_LAUNCH_FEE_SATS, scriptHex: params.scripts.protocol },
+      ...change,
     ],
-    params.vaultAnchorSats + COVE_V1_CREATOR_RECORD_SATS + COVE_V1_LAUNCH_FEE_SATS,
+    params.vaultAnchorSats + COVE_V1_CREATOR_RECORD_SATS + COVE_V1_LAUNCH_FEE_SATS + (params.changeSats ?? 0),
   );
+}
+
+function curveDeployPayload(ticker: string): Record<string, string> {
+  return { p: "crc-20", op: "deploy", tick: ticker, type: "bonding", max: COVE_V1_MAX_ATOMS, cv: "cove-curve-v1" };
+}
+
+function finalChange(changeSats: number | undefined, scriptHex: string | undefined): TxOutput[] {
+  if (changeSats === undefined || changeSats === 0) return [];
+  if (!Number.isSafeInteger(changeSats) || changeSats < 0 || !scriptHex) {
+    throw new Error("invalid wallet change output");
+  }
+  return [{ valueSats: changeSats, scriptHex }];
+}
+
+export function buildCoveDeployWithVault(params: {
+  ticker: string;
+  launchSalt: Buffer;
+  guardianXOnly: Buffer;
+  recoveryProfile: VaultRecoveryProfile;
+  creatorScriptHex: string;
+  protocolScriptHex: string;
+  vaultAnchorSats: number;
+  changeSats?: number;
+  changeScriptHex?: string;
+  network?: bitcoin.networks.Network;
+}): { template: TxTemplate; vault: CoveVault } {
+  const markerBytes = Buffer.from(JSON.stringify(curveDeployPayload(params.ticker)), "utf8");
+  const vault = buildCrc20AssetVault({
+    asset: { deploymentTag: crc20DeploymentTag(markerBytes), launchSalt: params.launchSalt },
+    guardianXOnly: params.guardianXOnly,
+    recoveryProfile: params.recoveryProfile,
+    network: params.network,
+  });
+  const template = buildCurveDeploy({
+    ticker: params.ticker,
+    maxAtoms: COVE_V1_MAX_ATOMS,
+    scripts: { vault: vault.scriptPubKey.toString("hex"), creator: params.creatorScriptHex, protocol: params.protocolScriptHex },
+    vaultAnchorSats: params.vaultAnchorSats,
+    changeSats: params.changeSats,
+    changeScriptHex: params.changeScriptHex,
+  });
+  return { template, vault };
 }
 
 export function buildCurveBuy(params: {
@@ -126,6 +173,8 @@ export function buildCurveBuy(params: {
   amountTokens: bigint;
   scripts: ScriptSet;
   recipientSats: number;
+  changeSats?: number;
+  changeScriptHex?: string;
 }): TxTemplate {
   if (!/^[0-9a-f]{64}$/.test(params.deploymentTxid)) throw new Error("invalid deployment txid");
   const quote = quoteBuy(params.state, params.amountTokens);
@@ -144,9 +193,10 @@ export function buildCurveBuy(params: {
       },
       { valueSats: safeSats(quote.protocolFeeSats), scriptHex: params.scripts.protocol },
       { valueSats: safeSats(quote.creatorFeeSats), scriptHex: params.scripts.creator },
+      ...finalChange(params.changeSats, params.changeScriptHex ?? params.scripts.buyer),
     ],
     safeSats(
-      quote.grossSats + quote.protocolFeeSats + quote.creatorFeeSats + BigInt(params.recipientSats),
+      quote.grossSats + quote.protocolFeeSats + quote.creatorFeeSats + BigInt(params.recipientSats) + BigInt(params.changeSats ?? 0),
     ),
     params.state.vaultOutpoint,
   );
@@ -158,9 +208,17 @@ export function buildCurveSell(params: {
   state: CurveState;
   amountTokens: bigint;
   scripts: ScriptSet;
+  changeSats?: number;
+  sellerPayoutScriptHex?: string;
+  changeScriptHex?: string;
 }): TxTemplate {
   if (!/^[0-9a-f]{64}$/.test(params.deploymentTxid)) throw new Error("invalid deployment txid");
-  const quote = quoteSell(params.state, params.amountTokens);
+  const payoutScriptHex = params.sellerPayoutScriptHex ?? params.scripts.seller;
+  const quote = quoteSell(
+    params.state,
+    params.amountTokens,
+    dustThreshold(Buffer.from(payoutScriptHex, "hex")),
+  );
   return template(
     "transfer",
     { p: "crc-20", op: "transfer", tick: params.ticker, amt: quote.amountAtoms.toString(), id: params.deploymentTxid },
@@ -169,12 +227,65 @@ export function buildCurveSell(params: {
         valueSats: safeSats(params.state.vaultSats - quote.grossSats),
         scriptHex: params.scripts.vault,
       },
-      { valueSats: safeSats(quote.sellerPayoutSats), scriptHex: params.scripts.seller },
+      { valueSats: safeSats(quote.sellerPayoutSats), scriptHex: payoutScriptHex },
       { valueSats: safeSats(quote.protocolFeeSats), scriptHex: params.scripts.protocol },
+      ...finalChange(params.changeSats, params.changeScriptHex ?? payoutScriptHex),
     ],
-    safeSats(quote.walletTopUpSats),
+    safeSats(quote.walletTopUpSats + BigInt(params.changeSats ?? 0)),
     params.state.vaultOutpoint,
   );
+}
+
+export function buildCoveTransfer(params: {
+  ticker: string;
+  deploymentTxid: string;
+  amountAtoms: bigint;
+  senderScriptHex: string;
+  recipientScriptHex: string;
+  recipientSats: number;
+  changeSats?: number;
+}): TxTemplate {
+  if (!/^[0-9a-f]{64}$/.test(params.deploymentTxid)) throw new Error("invalid deployment txid");
+  if (params.amountAtoms <= 0n) throw new Error("transfer amount must be positive");
+  const changeSats = params.changeSats ?? 0;
+  if (!Number.isSafeInteger(changeSats) || changeSats < 0) throw new Error("invalid change amount");
+  const outputs: TxOutput[] = [{ valueSats: params.recipientSats, scriptHex: params.recipientScriptHex }];
+  if (changeSats > 0) outputs.push({ valueSats: changeSats, scriptHex: params.senderScriptHex });
+  return template(
+    "transfer",
+    { p: "crc-20", op: "transfer", tick: params.ticker, amt: params.amountAtoms.toString(), id: params.deploymentTxid },
+    outputs,
+    safeSats(BigInt(params.recipientSats) + BigInt(changeSats)),
+  );
+}
+
+export function buildCoveMarketFill(params: {
+  ticker: string;
+  deploymentTxid: string;
+  amountAtoms: bigint;
+  sellerScriptHex: string;
+  buyerScriptHex: string;
+  recipientSats: number;
+  sellerPayoutSats: number;
+  protocolScriptHex: string;
+  protocolFeeSats: number;
+  buyerChangeSats?: number;
+}): TxTemplate {
+  if (!/^[0-9a-f]{64}$/.test(params.deploymentTxid)) throw new Error("invalid deployment txid");
+  if (params.amountAtoms <= 0n) throw new Error("market amount must be positive");
+  const outputs: TxOutput[] = [
+    { valueSats: params.recipientSats, scriptHex: params.buyerScriptHex },
+    { valueSats: params.sellerPayoutSats, scriptHex: params.sellerScriptHex },
+    { valueSats: params.protocolFeeSats, scriptHex: params.protocolScriptHex },
+    ...finalChange(params.buyerChangeSats, params.buyerScriptHex),
+  ];
+  const built = template(
+    "transfer",
+    { p: "crc-20", op: "transfer", tick: params.ticker, amt: params.amountAtoms.toString(), id: params.deploymentTxid },
+    outputs,
+    safeSats(outputs.reduce((sum, output) => sum + BigInt(output.valueSats), 0n)),
+  );
+  return { ...built, requiredFirstInputScriptHex: params.sellerScriptHex };
 }
 
 export function buildUnsignedPsbt(
@@ -189,6 +300,10 @@ export function buildUnsignedPsbt(
     if (!first || `${first.txid}:${first.vout}` !== txTemplate.previousVaultOutpoint) {
       throw new Error("first input must be the current vault input");
     }
+  }
+  if (txTemplate.requiredFirstInputScriptHex &&
+    inputs[0]?.scriptHex.toLowerCase() !== txTemplate.requiredFirstInputScriptHex.toLowerCase()) {
+    throw new Error("first input must be the seller input");
   }
   const seen = new Set<string>();
   let inputSats = 0n;
@@ -206,6 +321,33 @@ export function buildUnsignedPsbt(
     }
     seen.add(outpoint);
     checkScript(input.scriptHex);
+    const fundingScript = Buffer.from(input.scriptHex, "hex");
+    const p2wpkh = fundingScript.length === 22 && fundingScript[0] === 0 && fundingScript[1] === 0x14;
+    const p2tr = fundingScript.length === 34 && fundingScript[0] === 0x51 && fundingScript[1] === 0x20;
+    const p2sh = fundingScript.length === 23 && fundingScript[0] === 0xa9 && fundingScript[1] === 0x14 && fundingScript[22] === 0x87;
+    if (!p2wpkh && !p2tr && !p2sh) {
+      throw new Error("unsupported funding script without full parent transaction");
+    }
+    let redeemScript: Buffer | undefined;
+    let tapInternalKey: Buffer | undefined;
+    if (p2sh) {
+      if (!input.publicKeyHex || !/^(02|03)[0-9a-fA-F]{64}$/.test(input.publicKeyHex)) {
+        throw new Error("nested SegWit funding requires a compressed wallet public key");
+      }
+      const pubkey = Buffer.from(input.publicKeyHex, "hex");
+      const nested = bitcoin.payments.p2sh({ redeem: bitcoin.payments.p2wpkh({ pubkey, network }), network });
+      if (!nested.output?.equals(fundingScript) || !nested.redeem?.output) {
+        throw new Error("wallet public key does not match funding script");
+      }
+      redeemScript = nested.redeem.output;
+    }
+    if (p2tr && input.publicKeyHex) {
+      if (!/^[0-9a-fA-F]{64}$/.test(input.publicKeyHex)) throw new Error("invalid Taproot wallet public key");
+      const internal = Buffer.from(input.publicKeyHex, "hex");
+      const derived = bitcoin.payments.p2tr({ internalPubkey: internal, network });
+      if (!derived.output?.equals(fundingScript)) throw new Error("Taproot wallet public key does not match funding script");
+      tapInternalKey = internal;
+    }
     if (!Number.isSafeInteger(input.valueSats) || input.valueSats < 0)
       throw new Error("invalid input value");
     inputSats += BigInt(input.valueSats);
@@ -214,6 +356,8 @@ export function buildUnsignedPsbt(
       index: input.vout,
       witnessUtxo: { script: Buffer.from(input.scriptHex, "hex"), value: input.valueSats },
       sighashType: bitcoin.Transaction.SIGHASH_ALL,
+      ...(redeemScript ? { redeemScript } : {}),
+      ...(tapInternalKey ? { tapInternalKey } : {}),
     });
   }
   let outputSats = 0n;
@@ -228,3 +372,6 @@ export function buildUnsignedPsbt(
   }
   return psbt;
 }
+
+export { selectCrcFunding } from "./funding.js";
+export { verifyCrcWalletSignedPsbt, verifyCrcGuardianSignedPsbt } from "./intent.js";

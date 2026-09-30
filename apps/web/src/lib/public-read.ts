@@ -4,7 +4,21 @@ import { PublicReadCache } from "./read-cache";
 
 const cache = new PublicReadCache();
 const statusCache = new PublicReadCache(1, 64 * 1024, 1);
+const epochReads = new Map<string, Promise<Record<string, unknown>>>();
 export type PublicReadScope = "confirmed" | "market" | "trades" | "status" | "fees";
+function generationRow(network: string, db: ReturnType<typeof getV3Services>["db"]): Promise<Record<string, unknown>> {
+  const existing = epochReads.get(network);
+  if (existing) return existing;
+  const read = (async () => {
+    const result = await db.execute(sql`select e.chain_generation::text, e.trade_revision::text, e.metadata_revision::text, e.market_revision::text, e.pending_revision::text,
+      c.block_hash, c.rebuilding, r.chain_observed_at, r.pending_observed_at, r.fees_observed_at, r.core_reachable
+      from (select ${network}::text as network) n left join cove_observation_epochs e on e.network = n.network
+      left join cove_v3_cursor c on c.network = n.network left join cove_v3_runtime r on r.network = n.network`);
+    return (result.rows[0] ?? {}) as Record<string, unknown>;
+  })().finally(() => epochReads.delete(network));
+  epochReads.set(network, read);
+  return read;
+}
 function normalizedRequest(req: Request) {
   const url = new URL(req.url),
     query: Record<string, string> = {};
@@ -42,12 +56,7 @@ export async function cachePublic(
     return response;
   }
   const generation = async () => {
-    const result =
-      await db.execute(sql`select e.chain_generation::text, e.trade_revision::text, e.metadata_revision::text, e.market_revision::text, e.pending_revision::text,
-      c.block_hash, c.rebuilding, r.chain_observed_at, r.pending_observed_at, r.fees_observed_at, r.core_reachable
-      from (select ${config.network}::text as network) n left join cove_observation_epochs e on e.network = n.network
-      left join cove_v3_cursor c on c.network = n.network left join cove_v3_runtime r on r.network = n.network`);
-    const r = result.rows[0] ?? {};
+    const r = await generationRow(config.network, db);
     const values = [r.chain_generation, r.block_hash, r.rebuilding, r.metadata_revision];
     if (scope === "market") values.push(r.market_revision);
     if (scope === "trades" || scope === "market")
