@@ -179,7 +179,7 @@ export function createCrcFill(options: CrcFillOptions): { psbt: bitcoin.Psbt } {
 
 export async function verifyCurrentCrcFunding(
   core: Pick<CoreRpcProvider, "getTxout">,
-  options: CrcFillOptions,
+  options: Pick<CrcFillOptions, "sellerFunding" | "buyerFunding">,
 ): Promise<void> {
   const seen = new Set<string>();
   for (const input of [options.sellerFunding, ...options.buyerFunding]) {

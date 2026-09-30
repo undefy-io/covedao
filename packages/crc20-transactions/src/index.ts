@@ -510,6 +510,9 @@ export function buildCurveSellV2(params: {
   const total = checkV2TokenInputs(params.sellerTokenInputs, params.deploymentTxid, params.scripts.seller);
   if (total > params.state.circulatingAtoms) throw new Error("seller token inputs exceed circulating supply");
   const payoutScript = params.sellerPayoutScriptHex ?? params.scripts.seller;
+  if (payoutScript.toLowerCase() !== params.scripts.seller.toLowerCase()) {
+    throw new Error("v2 seller payout must use the token input owner script");
+  }
   const quote = quoteSell(params.state, params.amountTokens, dustThreshold(Buffer.from(payoutScript, "hex")));
   if (total < quote.amountAtoms) throw new Error("insufficient seller token allocation");
   const remainder = total - quote.amountAtoms;
@@ -569,7 +572,7 @@ export function buildUnsignedPsbt(
   const psbt = new bitcoin.Psbt({ network });
   psbt.setVersion(2);
   for (const input of inputs) {
-    const outpoint = `${input.txid}:${input.vout}`;
+    const outpoint = `${input.txid.toLowerCase()}:${input.vout}`;
     if (
       !/^[0-9a-fA-F]{64}$/.test(input.txid) ||
       !Number.isSafeInteger(input.vout) ||

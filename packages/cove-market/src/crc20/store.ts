@@ -187,6 +187,7 @@ export async function reserveCrcFill(
   request: CrcFillReservation,
   core: CoreUtxo,
 ): Promise<{ psbtBase64: string; unsignedTxDigest: string }> {
+  await verifyCurrentCrcFunding(core, request);
   return db.transaction(async (tx) => {
     await lockCrcProjection(tx, request.network);
     const expired = await tx.execute(sql`UPDATE cove_crc_market_fills SET status = 'FAILED', updated_at = now()
@@ -212,7 +213,6 @@ export async function reserveCrcFill(
       protocolScriptHex: request.protocolScriptHex, recipientSats: request.recipientSats,
       minerFeeSats: request.minerFeeSats, currentHeight: height };
     const { psbt } = createCrcFill(options);
-    await verifyCurrentCrcFunding(core, options);
     const unsignedTxDigest = bitcoin.crypto.sha256(psbt.data.globalMap.unsignedTx.toBuffer()).toString("hex");
     await tx.execute(sql`INSERT INTO cove_crc_market_fills
       (id, network, listing_id, buyer_script_hex, unsigned_tx_digest, psbt_base64)

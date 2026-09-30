@@ -139,6 +139,9 @@ describe("CRC v2 token UTXO transaction topology", () => {
       fund("c", sell.requiredFundingSats + 1_000)], 1_000).txInputs).toHaveLength(3);
     expect(() => buildUnsignedPsbt(sell, [vaultInput, sellerInput,
       fund("c", sell.requiredFundingSats + 999)], 1_000)).toThrow(/fund outputs/i);
+    expect(() => buildCurveSellV2({ ticker: "COVE", deploymentTxid: id, state,
+      amountTokens: 40_000n, scripts, vaultInput, sellerTokenInputs: [sellerInput],
+      tokenChangeSats: 330, sellerPayoutScriptHex: buyer })).toThrow(/payout must use the token input owner/);
   });
 
   it("funding selector never promotes token carriers into ordinary BTC candidates", () => {

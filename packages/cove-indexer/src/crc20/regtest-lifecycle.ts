@@ -6,7 +6,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { eq } from "drizzle-orm";
 import { CoreRpcProvider } from "@crclaunch/bitcoin";
 import { quoteBuy, quoteSell } from "@crclaunch/crc20-curve";
-import { buildCurveBuy, buildCurveDeploy, buildCurveSell, type TxTemplate } from "@crclaunch/crc20-transactions";
+import { buildCoveV2MarketFill, buildCurveBuy, buildCurveBuyV2, buildCurveDeploy, buildCurveDeployV2, buildCurveSell, buildCurveSellV2, type CoveV2Input, type TxTemplate } from "@crclaunch/crc20-transactions";
 import { schema } from "@crclaunch/db";
 import { saveAuthorizedCrcLaunchIntent } from "./intents.js";
 import { syncCrcTip, type CrcWorkerSnapshot } from "./runner.js";
@@ -51,12 +51,24 @@ function transaction(template: TxTemplate, inputs: readonly Funding[]): bitcoin.
 
 async function sign(rpc: Rpc, template: TxTemplate, inputs: readonly Funding[], changeScriptHex: string): Promise<Signed> {
   const unsigned = transaction(template, inputs);
+  return signRaw(rpc, unsigned, changeScriptHex);
+}
+
+async function signRaw(rpc: Rpc, unsigned: bitcoin.Transaction, changeScriptHex: string): Promise<Signed> {
   const result = await rpc.call<{ hex: string; complete: boolean; errors?: unknown[] }>("signrawtransactionwithwallet", [unsigned.toHex()], true);
   if (!result.complete) throw new Error(`Core did not sign all inputs: ${JSON.stringify(result.errors ?? [])}`);
   const signed = bitcoin.Transaction.fromHex(result.hex);
   const vout = signed.outs.findIndex((output, index) => index === signed.outs.length - 1 && output.script.toString("hex") === changeScriptHex);
   if (vout < 0) throw new Error("signed transaction lacks expected change output");
   return { txid: signed.getId(), rawHex: result.hex, change: { txid: signed.getId(), vout, sats: signed.outs[vout]!.value, scriptHex: changeScriptHex } };
+}
+
+function unsigned(inputs: readonly Funding[], outputs: readonly { sats: number; scriptHex: string }[]): bitcoin.Transaction {
+  const tx = new bitcoin.Transaction();
+  tx.version = 2;
+  for (const input of inputs) tx.addInput(Buffer.from(input.txid, "hex").reverse(), input.vout);
+  for (const output of outputs) tx.addOutput(Buffer.from(output.scriptHex, "hex"), output.sats);
+  return tx;
 }
 
 async function mine(rpc: Rpc, address: string): Promise<string> {
@@ -71,6 +83,7 @@ async function clean(db: ReturnType<typeof drizzle<typeof schema>>): Promise<voi
   await db.delete(schema.coveCrcUndo).where(eq(schema.coveCrcUndo.network, network));
   await db.delete(schema.coveCrcBlocks).where(eq(schema.coveCrcBlocks.network, network));
   await db.delete(schema.coveCrcBalances).where(eq(schema.coveCrcBalances.network, network));
+  await db.delete(schema.coveCrcTokenUtxos).where(eq(schema.coveCrcTokenUtxos.network, network));
   await db.delete(schema.coveCrcVaults).where(eq(schema.coveCrcVaults.network, network));
   await db.delete(schema.coveCrcAssets).where(eq(schema.coveCrcAssets.network, network));
   await db.delete(schema.coveCrcCursor).where(eq(schema.coveCrcCursor.network, network));
@@ -78,6 +91,7 @@ async function clean(db: ReturnType<typeof drizzle<typeof schema>>): Promise<voi
 }
 
 async function main(): Promise<void> {
+  const v2 = process.env.CRC_REGTEST_V2 === "1";
   const databaseUrl = process.env.CRC_TEST_DATABASE_URL;
   const parsed = databaseUrl ? new URL(databaseUrl) : null;
   if (process.env.CRC_REGTEST_E2E !== "1" || parsed?.hostname !== "127.0.0.1" || parsed.port !== "5435" || parsed.pathname !== "/crc_test") {
@@ -107,7 +121,8 @@ async function main(): Promise<void> {
     if (fundedVout < 0) throw new Error("wallet funding output missing");
     let funding: Funding = { txid: fundedTxid, vout: fundedVout, sats: 200_000, scriptHex: buyer.scriptHex };
     const ticker = `RG${randomBytes(3).toString("hex").toUpperCase()}`;
-    const deploy = await sign(rpc, buildCurveDeploy({ ticker, maxAtoms: "2100000000000000", scripts, vaultAnchorSats: 330, changeSats: funding.sats - 8_330 - 1_000, changeScriptHex: buyer.scriptHex }), [funding], buyer.scriptHex);
+    const deployBuilder = v2 ? buildCurveDeployV2 : buildCurveDeploy;
+    const deploy = await sign(rpc, deployBuilder({ ticker, maxAtoms: "2100000000000000", scripts, vaultAnchorSats: 330, changeSats: funding.sats - 8_330 - 1_000, changeScriptHex: buyer.scriptHex }), [funding], buyer.scriptHex);
     const launchSaltHex = randomBytes(32).toString("hex");
     await saveAuthorizedCrcLaunchIntent(db, "regtest", deploy.rawHex, { launchSaltHex, vaultScriptHex: vault.scriptHex, creatorScriptHex: creator.scriptHex, protocolScriptHex: protocol.scriptHex, vaultAnchorSats: 330 });
     requireEqual(await rpc.call<string>("sendrawtransaction", [deploy.rawHex]), deploy.txid, "deploy broadcast txid");
@@ -121,6 +136,7 @@ async function main(): Promise<void> {
     const operations: readonly { side: "buy" | "sell"; tokens: bigint }[] = [
       { side: "buy", tokens: 1_000n }, { side: "buy", tokens: 1_000n }, { side: "buy", tokens: 1_000n },
       { side: "sell", tokens: 1_000n }, { side: "sell", tokens: 1_000n }, { side: "sell", tokens: 1_000n },
+      ...(v2 ? [{ side: "buy" as const, tokens: 1_000n }] : []),
     ];
     let previousSnapshot: CrcWorkerSnapshot | undefined;
     let lastBlockHash = "";
@@ -131,18 +147,37 @@ async function main(): Promise<void> {
       const curve = asset.curve;
       const buyQuote = operation.side === "buy" ? quoteBuy(curve, operation.tokens) : null;
       const sellQuote = operation.side === "sell" ? quoteSell(curve, operation.tokens, 330n) : null;
+      const tokenEntry = operation.side === "sell" && v2 ? Object.entries(asset.tokenUtxos ?? {})
+        .find(([, coin]) => coin.scriptHex === buyer.scriptHex && BigInt(coin.atoms) === operation.tokens * 100_000_000n) : undefined;
+      if (operation.side === "sell" && v2 && !tokenEntry) throw new Error("indexed seller token coin missing");
+      const tokenInput = tokenEntry ? await (async () => {
+        const [txid, vout] = tokenEntry[0].split(":");
+        const parent = bitcoin.Transaction.fromHex(await rpc.call<string>("getrawtransaction", [txid]));
+        const output = parent.outs[Number(vout)];
+        if (!output || output.script.toString("hex") !== tokenEntry[1].scriptHex) throw new Error("token carrier parent mismatch");
+        return { txid: txid!, vout: Number(vout), sats: output.value, valueSats: output.value,
+          scriptHex: tokenEntry[1].scriptHex,
+          tokenAtoms: BigInt(tokenEntry[1].atoms), tokenDeploymentTxid: deploy.txid } satisfies CoveV2Input & Funding;
+      })() : undefined;
       const fixedOutputs = buyQuote
         ? 330n + curve.vaultSats + buyQuote.grossSats + buyQuote.protocolFeeSats + buyQuote.creatorFeeSats
         : curve.vaultSats - sellQuote!.grossSats + sellQuote!.sellerPayoutSats + sellQuote!.protocolFeeSats;
-      const change = Number(curve.vaultSats + BigInt(funding.sats) - fixedOutputs - 1_000n);
+      const change = Number(curve.vaultSats + BigInt(funding.sats) + BigInt(tokenInput?.sats ?? 0) - fixedOutputs - 1_000n);
       if (change < 330) throw new Error("regtest funding change below dust");
-      const template = operation.side === "buy"
-        ? buildCurveBuy({ ticker, deploymentTxid: deploy.txid, state: curve, amountTokens: operation.tokens, scripts, recipientSats: 330, changeSats: change, changeScriptHex: buyer.scriptHex })
-        : buildCurveSell({ ticker, deploymentTxid: deploy.txid, state: curve, amountTokens: operation.tokens, scripts, changeSats: change, changeScriptHex: buyer.scriptHex });
       const [vaultTxid, vaultVoutText] = curve.vaultOutpoint.split(":");
-      const trade = await sign(rpc, template, [
-        { txid: vaultTxid!, vout: Number(vaultVoutText), sats: Number(curve.vaultSats), scriptHex: vault.scriptHex }, funding,
-      ], buyer.scriptHex);
+      const vaultInput: CoveV2Input & Funding = { txid: vaultTxid!, vout: Number(vaultVoutText),
+        sats: Number(curve.vaultSats), valueSats: Number(curve.vaultSats), scriptHex: vault.scriptHex,
+        tokenAtoms: curve.vaultAtoms, ...(curve.vaultAtoms > 0n ? { tokenDeploymentTxid: deploy.txid } : {}) };
+      const template = operation.side === "buy"
+        ? v2 ? buildCurveBuyV2({ ticker, deploymentTxid: deploy.txid, state: curve, amountTokens: operation.tokens,
+          scripts, recipientSats: 330, vaultInput, changeSats: change, changeScriptHex: buyer.scriptHex })
+          : buildCurveBuy({ ticker, deploymentTxid: deploy.txid, state: curve, amountTokens: operation.tokens,
+            scripts, recipientSats: 330, changeSats: change, changeScriptHex: buyer.scriptHex })
+        : v2 ? buildCurveSellV2({ ticker, deploymentTxid: deploy.txid, state: curve, amountTokens: operation.tokens,
+          scripts, vaultInput, sellerTokenInputs: [tokenInput!], changeSats: change, changeScriptHex: buyer.scriptHex })
+          : buildCurveSell({ ticker, deploymentTxid: deploy.txid, state: curve, amountTokens: operation.tokens,
+            scripts, changeSats: change, changeScriptHex: buyer.scriptHex });
+      const trade = await sign(rpc, template, [vaultInput, ...(tokenInput ? [tokenInput] : []), funding], buyer.scriptHex);
       requireEqual(await rpc.call<string>("sendrawtransaction", [trade.rawHex]), trade.txid, `trade ${index} broadcast txid`);
       lastBlockHash = await mine(rpc, miner.address);
       synced = await syncCrcTip({ db, provider, network: "regtest", activationHeight, protocolScriptHex: protocol.scriptHex, snapshot: synced.snapshot });
@@ -160,7 +195,69 @@ async function main(): Promise<void> {
       requireEqual(chainVault ? Math.round(chainVault.value * 100_000_000) : null, Number(currentVault.vaultSats), `trade ${index} chain vault`);
       funding = trade.change;
     }
-    requireEqual((await db.select().from(schema.coveCrcEvents).where(eq(schema.coveCrcEvents.network, "regtest"))).length, 7, "confirmed CRC event count");
+    if (v2) {
+      const transferred = await rpc.address();
+      const marker = bitcoin.script.compile([bitcoin.opcodes.OP_RETURN!, Buffer.from(JSON.stringify({
+        p: "crc-20", op: "transfer", tick: ticker, amt: "100000000000", id: deploy.txid, v: 2,
+      }))]).toString("hex");
+      const unrelated = await signRaw(rpc, unsigned([funding], [
+        { sats: 0, scriptHex: marker }, { sats: 330, scriptHex: transferred.scriptHex },
+        { sats: funding.sats - 1_330, scriptHex: buyer.scriptHex },
+      ]), buyer.scriptHex);
+      requireEqual(await rpc.call<string>("sendrawtransaction", [unrelated.rawHex]), unrelated.txid, "unrelated transfer broadcast");
+      await mine(rpc, miner.address);
+      synced = await syncCrcTip({ db, provider, network: "regtest", activationHeight, protocolScriptHex: protocol.scriptHex, snapshot: synced.snapshot });
+      requireEqual(synced.snapshot.state.assets[assetId]?.balances[transferred.scriptHex] ?? "0", "0", "ordinary same-script BTC input has no token authority");
+      funding = unrelated.change;
+
+      const live = synced.snapshot.state.assets[assetId]!;
+      const [vaultTxid, vaultVoutText] = live.curve.vaultOutpoint.split(":");
+      const brokenVault = await signRaw(rpc, unsigned([
+        { txid: vaultTxid!, vout: Number(vaultVoutText), sats: Number(live.curve.vaultSats), scriptHex: vault.scriptHex }, funding,
+      ], [
+        { sats: Number(live.curve.vaultSats), scriptHex: buyer.scriptHex },
+        { sats: funding.sats - 1_000, scriptHex: buyer.scriptHex },
+      ]), buyer.scriptHex);
+      requireEqual(await rpc.call<string>("sendrawtransaction", [brokenVault.rawHex]), brokenVault.txid, "invalid vault spend broadcast");
+      await mine(rpc, miner.address);
+      synced = await syncCrcTip({ db, provider, network: "regtest", activationHeight, protocolScriptHex: protocol.scriptHex, snapshot: synced.snapshot });
+      requireEqual(synced.snapshot.state.assets[assetId]?.status, "broken", "backing unavailable after vault spend");
+      funding = brokenVault.change;
+
+      const listed = Object.entries(synced.snapshot.state.assets[assetId]!.tokenUtxos ?? {})
+        .find(([, coin]) => coin.scriptHex === buyer.scriptHex && BigInt(coin.atoms) === 100_000_000_000n);
+      if (!listed) throw new Error("market listing token outpoint missing after vault failure");
+      const [listedTxid, listedVout] = listed[0].split(":");
+      const parent = bitcoin.Transaction.fromHex(await rpc.call<string>("getrawtransaction", [listedTxid]));
+      const listedOutput = parent.outs[Number(listedVout)];
+      if (!listedOutput) throw new Error("market token parent output missing");
+      const listedInput: CoveV2Input & Funding = { txid: listedTxid!, vout: Number(listedVout),
+        sats: listedOutput.value, valueSats: listedOutput.value, scriptHex: buyer.scriptHex,
+        tokenAtoms: BigInt(listed[1].atoms), tokenDeploymentTxid: deploy.txid };
+      const marketBuyer = await rpc.address();
+      const rivalBuyer = await rpc.address();
+      const buyerChangeSats = funding.sats - 4_330;
+      if (buyerChangeSats < 330) throw new Error("market buyer change below dust");
+      const saleTemplate = buildCoveV2MarketFill({ ticker, deploymentTxid: deploy.txid, listedInput,
+        buyerScriptHex: marketBuyer.scriptHex, recipientSats: 330, sellerNetPriceSats: 2_000,
+        protocolScriptHex: protocol.scriptHex, protocolFeeSats: 1_000, buyerChangeSats });
+      const rivalTemplate = buildCoveV2MarketFill({ ticker, deploymentTxid: deploy.txid, listedInput,
+        buyerScriptHex: rivalBuyer.scriptHex, recipientSats: 330, sellerNetPriceSats: 2_000,
+        protocolScriptHex: protocol.scriptHex, protocolFeeSats: 1_000, buyerChangeSats });
+      const sale = await sign(rpc, saleTemplate, [listedInput, funding], marketBuyer.scriptHex);
+      const rival = await sign(rpc, rivalTemplate, [listedInput, funding], rivalBuyer.scriptHex);
+      requireEqual(await rpc.call<string>("sendrawtransaction", [sale.rawHex]), sale.txid, "market fill broadcast");
+      let conflictingFillRejected = false;
+      try { await rpc.call<string>("sendrawtransaction", [rival.rawHex]); } catch { conflictingFillRejected = true; }
+      requireEqual(conflictingFillRejected, true, "competing fill must conflict at Bitcoin UTXO level");
+      previousSnapshot = synced.snapshot;
+      lastBlockHash = await mine(rpc, miner.address);
+      synced = await syncCrcTip({ db, provider, network: "regtest", activationHeight, protocolScriptHex: protocol.scriptHex, snapshot: synced.snapshot });
+      requireEqual(synced.snapshot.state.assets[assetId]?.balances[marketBuyer.scriptHex], "100000000000", "market buyer credited after vault break");
+      requireEqual(synced.snapshot.state.assets[assetId]?.tokenUtxos?.[`${sale.txid}:1`]?.atoms, "100000000000", "market token UTXO indexed");
+    }
+    const eventCountBeforeReorg = (await db.select().from(schema.coveCrcEvents).where(eq(schema.coveCrcEvents.network, "regtest"))).length;
+    if (!v2) requireEqual(eventCountBeforeReorg, operations.length + 1, "confirmed CRC event count");
     await rpc.call("invalidateblock", [lastBlockHash]);
     const alternative = await rpc.call<{ hash: string }>("generateblock", [miner.address, []]);
     const recovered = await syncCrcTip({ db, provider, network: "regtest", activationHeight, protocolScriptHex: protocol.scriptHex, snapshot: synced.snapshot });
@@ -169,7 +266,7 @@ async function main(): Promise<void> {
     requireEqual(recovered.snapshot.state.assets[assetId]?.curve.vaultOutpoint, previousSnapshot!.state.assets[assetId]?.curve.vaultOutpoint, "reorg restored vault");
     requireEqual((await hydrateCrcLedger(db, "regtest")).state.assets[assetId]?.curve.vaultOutpoint, previousSnapshot!.state.assets[assetId]?.curve.vaultOutpoint, "persisted reorg restored vault");
     if (!isDeepStrictEqual(recovered.snapshot.projection, previousSnapshot!.projection)) throw new Error("reorg did not restore the prior CRC projection");
-    requireEqual((await db.select().from(schema.coveCrcEvents).where(eq(schema.coveCrcEvents.network, "regtest"))).length, 6, "reorg CRC event count");
+    requireEqual((await db.select().from(schema.coveCrcEvents).where(eq(schema.coveCrcEvents.network, "regtest"))).length, eventCountBeforeReorg - 1, "reorg CRC event count");
     console.log(JSON.stringify({ ok: true, ticker, deployTxid: deploy.txid, trades: operations.length, reorgRollback: recovered.rolledBack, cursor: recovered.snapshot.cursor?.height }));
     await clean(db);
   } finally {

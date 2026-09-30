@@ -1,0 +1,49 @@
+# Rejected: script-account CRC marketplace escrow
+
+Status: **rejected as a safety design** after independent review. The sections below record the candidate and why it failed. Market mutations remain disabled. Beads `covedao-433` tracks the UTXO-bound replacement; `covedao-inp`, `covedao-1mp`, and `covedao-3xt` were superseded.
+
+## Why this candidate is insufficient
+
+The unique escrow script does not bind a script-account token balance to the deposit outpoint. A holder of a recovery key can receive another BTC UTXO at the same escrow script and spend that unrelated UTXO as input 0 to transfer the entire escrow balance. The original deposit outpoint remains unspent, so a previously signed buyer fill can pay the seller while CRC replay rejects its transfer.
+
+An unrelated confirmed invalid spend of the asset vault currently marks the whole asset broken. A market fill spending the untouched escrow outpoint remains Bitcoin-valid, but CRC replay rejects it because the asset is unavailable. A reorg can also place the seller's transfer from an independent UTXO before the escrow deposit, then mine the Bitcoin-valid deposit and child fill in the same replacement chain. The deposit and fill lose CRC validity while buyer BTC still pays. `packages/crc20-ledger/test/escrow-threat.test.ts` characterizes all three failures.
+
+Strict safety requires token authority bound to exact spendable UTXOs across issuance, transfers, redemption, and market fills, plus a decision that circulating token transfers do not fail solely because the backing vault is broken. `docs/COVE_CRC20_V2_UTXO_AUTHORITY.md` specifies that replacement. The rest of this file is retained only as rejected design history; none of its proposed activation rules is sufficient to open the marketplace.
+
+## Why the ordinary listing anchor fails
+
+Cove CRC balances currently belong to a script, while a peer transfer proves that script by spending any UTXO from it as input 0. A seller can move their entire token balance using UTXO B and leave listed UTXO A unspent. A later BTC-for-token fill spending A can confirm and pay the seller, then fail CRC replay because the seller's balance is zero. The transaction's `SIGHASH_ALL` signatures, a current `gettxout(A)`, and a fresh balance check before broadcast do not bind A to the token balance at mining time. `packages/crc20-ledger/test/escrow-threat.test.ts` reproduces this ordering.
+
+## Authority and identity
+
+Each listing receives a distinct P2TR escrow script controlled by the Guardian execution key. The script is derived from a domain-separated commitment to the network, Cove deployment txid, random 32-byte listing nonce, seller token script, and exact atom amount. Canonical commitment bytes are `UTF8(network) || 0x00 || deployTxid[32] || nonce[32] || uint16be(scriptLength) || sellerScript || uint64be(amountAtoms)`. The tag is `CoveCRC20MarketEscrow/v1`. The execution leaf commits to that hash and verifies the Guardian key. An independent delayed recovery leaf and NUMS internal key complete the Taproot tree. The commitment distinguishes scripts; it does not enforce the CRC rules on Bitcoin. The Guardian remains a custodian of escrow tokens.
+
+The server registers an immutable intent before broadcasting a deposit: `(network, deployment txid, listing ID, nonce, escrow script, seller script, amount atoms, net price sats, fee policy, expiry)`. The seller authorizes these terms with BIP-322 from the token-holding script. Script uniqueness is enforced by `(network, escrow script)` and `(network, nonce)` constraints. A ticker is display data; the deployment txid identifies the asset. The Guardian independently recomputes the script from the intent and trusted keys.
+
+## Deposit and activation
+
+The seller signs a CRC `transfer` with input 0 from their token script, marker at vout 0 containing the registered asset `id` and exact `amt`, and the unique escrow script at vout 1. The wallet funds any BTC change and miner fee. The signed raw deposit and txid are recorded before broadcast; the indexer accepts activation only after that exact transaction confirms and replays as valid. The listing becomes active only when the canonical escrow balance equals the listed atoms, the registered deposit output at `txid:1` has the expected script and BTC value, and Core reports the outpoint unspent. Unconfirmed deposits, external deployment IDs, wrong scripts, unexpected amounts, or a broken asset cannot activate.
+
+Only the Guardian and delayed recovery signers can spend an escrow output. A seller can transfer other tokens elsewhere after deposit, but cannot move the escrowed balance through another seller UTXO. Additional ordinary BTC sent to the escrow script does not grant authority. An extra CRC transfer into the script changes its indexed balance; the listing freezes when the balance differs from the registered amount. This allows a cheap denial of service by token donation, so support must provide a provenance-checked withdrawal/refund procedure. A frozen listing cannot accept buyer signatures.
+
+## Exact fill
+
+The buyer prepares one complete transaction: input 0 is the registered, confirmed escrow outpoint; later inputs are buyer BTC funding. Vout 0 is the CRC `transfer` marker for the exact listed amount and deployment ID; vout 1 is the buyer's token recipient; vout 2 pays the seller `escrowAnchorSats + netPriceSats`; vout 3 pays the configured protocol fee; the only optional remaining output is buyer change. The buyer pays `netPrice + protocolFee + recipientCarrier + minerFee`; the escrow anchor is returned to the seller and is not part of the sale price. All signatures commit to every input and output.
+
+The buyer signs their funding inputs first. The online seller then BIP-322 signs the exact unsigned transaction digest, listing ID, fill ID, network, and expiry. The Guardian checks both authorizations, exact output/fee amounts and scripts, the immutable intent, canonical indexed escrow balance, current Core outpoint and buyer funding, and a durable one-fill signing journal before signing input 0 with `SIGHASH_ALL`. The signed transaction is persisted before broadcast. A competing fill or withdrawal spends the same escrow outpoint, so at most one can confirm. Bitcoin enforces the BTC outputs and outpoint conflict, but does not enforce CRC token validity. The honest Guardian must apply exactly the indexer's CRC rules before signing; otherwise a BTC payment can confirm while the indexer rejects the token transfer. A rejected or losing Bitcoin fill leaves buyer BTC unspent.
+
+The Guardian must never sign from another UTXO at the same escrow script for this listing. Its signer route accepts only the exact registered outpoint and refuses a polluted balance. It may sign at most one candidate per outpoint except an explicitly adjudicated replacement with identical economic outputs and stronger fee. No reusable `SIGHASH_SINGLE|ANYONECANPAY` seller signature is used.
+
+## Withdrawal, invalid spends, and reorgs
+
+A seller-authorized withdrawal spends the same escrow outpoint in input 0 and returns the exact listed atoms to the seller script at vout 1. The escrow output alone cannot cover a new dust carrier plus miner fee, so the seller or operator must add a verified BTC funding input. The Guardian validates the refund destination and signs the complete transaction. A withdrawal and fill conflict at the Bitcoin outpoint; whichever confirms first wins. Once a fill is signed, cancellation cannot promise that the seller will recover the tokens. The UI must show this state and wait for a final chain outcome.
+
+The indexer watches every registered escrow outpoint spend. A valid fill or withdrawal changes the listing state only after canonical confirmation. Any confirmed spend without the expected CRC marker, amount, recipient, or output layout marks that escrow unavailable even if the script-account balance still appears positive. `escrow-threat.test.ts` shows that ordinary CRC replay currently ignores such an unmarked spend; the watch rule is required. Rollback restores the prior outpoint, balance, and listing state from the same block undo. After a reorg, no listing is reopened until the canonical deposit and outpoint are checked again; signed fills remain tracked, not blindly re-broadcast.
+
+## Custody and recovery gate
+
+The Guardian execution key can move escrow tokens without seller permission if compromised. It can also sign a Bitcoin-valid fill with an invalid CRC transfer and leave the buyer without indexed tokens. A leaked delayed recovery key can move escrow tokens after its CSV delay. These risks follow the chosen custodial model and must be stated before deposit. The current generic Cove recovery profile does not give the seller direct recovery. Before deposits are enabled, choose and test one liveness path: a seller-controlled CSV leaf that supported wallets or a documented CLI can actually spend, or an independently held operator recovery threshold with named key owners, delay, monitoring, and a tested manual withdrawal process. The UI must show the delay, who can recover, and who funds recovery miner fees. If neither path is operational, marketplace deposits remain disabled.
+
+## Required tests before opening the market
+
+Run real Core regtest tests for competing seller transfers before deposit, a valid confirmed deposit, wrong/unconfirmed deposit, unrelated escrow UTXO, extra token donation, missing-marker escrow spend, competing buyer fills, withdrawal versus fill in both mining orders, Core rejection of changed payout/recipient/fee, Guardian outage recovery, replacement policy, and same-height reorgs. Assert the seller's net BTC gain and the buyer's indexed token gain in the winning chain. Pure replay tests establish the old vulnerability and expected accounting, but cannot prove Bitcoin signature validity, UTXO conflicts, or recovery spendability.

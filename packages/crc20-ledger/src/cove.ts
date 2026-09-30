@@ -19,15 +19,26 @@ function invalid(state: LedgerState, reason: string): ApplyResult {
   return { status: "invalid", reason, state };
 }
 
+function markerPayloadLength(scriptHex: string): number {
+  const bytes = Buffer.from(scriptHex, "hex");
+  if (bytes[0] !== 0x6a) return Number.POSITIVE_INFINITY;
+  const opcode = bytes[1];
+  if (opcode === undefined) return Number.POSITIVE_INFINITY;
+  const offset = opcode <= 0x4b ? 2 : opcode === 0x4c ? 3 : opcode === 0x4d ? 4 : opcode === 0x4e ? 6 : 0;
+  return offset > 0 ? bytes.length - offset : Number.POSITIVE_INFINITY;
+}
+
 export type CoveOperationResult =
-  | { status: "valid"; kind: "mint" | "transfer"; amountAtoms: bigint }
+  | { status: "valid"; kind: "mint" | "transfer"; amountAtoms: bigint; changeVout?: number }
   | { status: "invalid"; reason: string };
 
 export function validateCoveOperation(
   outputs: readonly TxOutput[],
   asset: Readonly<{ txid: string; ticker: string }>,
+  version: 1 | 2 = 1,
 ): CoveOperationResult {
-  if (!outputs[0] || outputs[0].scriptHex.length > 520) {
+  if (!outputs[0] || outputs[0].scriptHex.length > 520 ||
+    (version === 2 && markerPayloadLength(outputs[0].scriptHex) > 256)) {
     return { status: "invalid", reason: "Cove marker exceeds 256-byte payload limit" };
   }
   const parsed = parseCrc20Transaction(outputs);
@@ -36,9 +47,12 @@ export function validateCoveOperation(
   }
   const { envelope } = parsed;
   const payload = envelope.payload;
+  const keys = Object.keys(payload).sort().join(",");
+  const v2Keys = payload.ch === undefined ? "amt,id,op,p,tick,v" : "amt,ch,id,op,p,tick,v";
   if (
     envelope.markerVout !== 0 ||
-    Object.keys(payload).sort().join(",") !== "amt,id,op,p,tick" ||
+    keys !== (version === 1 ? "amt,id,op,p,tick" : v2Keys) ||
+    (version === 2 && payload.v !== 2) ||
     payload.p !== "crc-20" ||
     payload.op !== envelope.kind ||
     payload.tick !== asset.ticker ||
@@ -47,6 +61,10 @@ export function validateCoveOperation(
     typeof payload.amt !== "string" ||
     !/^[1-9][0-9]*$/.test(payload.amt)
   ) return { status: "invalid", reason: "invalid Cove operation marker or asset id" };
+  if (version === 2 && payload.ch !== undefined &&
+    (!Number.isSafeInteger(payload.ch) || Number(payload.ch) < 2 || Number(payload.ch) >= outputs.length)) {
+    return { status: "invalid", reason: "invalid Cove token change index" };
+  }
   const recipient = outputs[1];
   const script = recipient && Buffer.from(recipient.scriptHex, "hex");
   const supported = script && (
@@ -61,7 +79,8 @@ export function validateCoveOperation(
     outputs.slice(1).some((output) => output.scriptHex.toLowerCase().startsWith("6a"))) {
     return { status: "invalid", reason: "invalid or ambiguous Cove recipient output" };
   }
-  return { status: "valid", kind: envelope.kind, amountAtoms: BigInt(payload.amt) };
+  return { status: "valid", kind: envelope.kind, amountAtoms: BigInt(payload.amt),
+    ...(version === 2 && payload.ch !== undefined ? { changeVout: Number(payload.ch) } : {}) };
 }
 
 export function applyRegisteredCoveDeploy(
@@ -78,7 +97,8 @@ export function applyRegisteredCoveDeploy(
     entry.vaultScriptHex.toLowerCase() === registration.vaultScriptHex.toLowerCase())) {
     return invalid(state, "Cove vault script must be unique per asset");
   }
-  if (!transaction.outputs[0] || transaction.outputs[0].scriptHex.length > 520) {
+  if (!transaction.outputs[0] || transaction.outputs[0].scriptHex.length > 520 ||
+    markerPayloadLength(transaction.outputs[0].scriptHex) > 256) {
     return invalid(state, "Cove marker exceeds 256-byte payload limit");
   }
   const parsed = parseCrc20Transaction(transaction.outputs);
@@ -89,9 +109,9 @@ export function applyRegisteredCoveDeploy(
   if (
     Object.keys(payload).sort().join(",") !== "cv,max,op,p,tick,type" ||
     payload.p !== "crc-20" || payload.op !== "deploy" ||
-    payload.type !== "bonding" || payload.cv !== "cove-curve-v1" ||
+    payload.type !== "bonding" || (payload.cv !== "cove-curve-v1" && payload.cv !== "cove-curve-v2") ||
     payload.max !== "2100000000000000"
-  ) return invalid(state, "invalid Cove v1 deploy marker");
+  ) return invalid(state, "invalid Cove deploy marker");
   const outputs = transaction.outputs;
   if (outputs.length !== 4 && outputs.length !== 5) return invalid(state, "invalid deploy output count");
   if (
