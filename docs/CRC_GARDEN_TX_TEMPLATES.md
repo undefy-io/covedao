@@ -1,9 +1,8 @@
 # CRC.garden Transaction Templates
 
-> Derived **ON_CHAIN_VERIFIED** from the decoded mainnet transactions (see
-> `CRC_GARDEN_FORENSICS.md`). Field names are taken from the observed OP_RETURN
-> JSON. These are **discovery/signaling envelopes**, not an
-> indexer-authoritative balance ledger.
+> Historical two-transaction sample. The [full 1,950-transaction corpus](../artifacts/crc-garden/COMPATIBILITY.md)
+> supersedes layout generalizations here. Field names below are taken from the
+> observed OP_RETURN JSON; the sample does not establish indexer rules.
 
 ## Protocol discriminants
 - `{"p":"crc-20", …}` — CRC-20 protocol.
@@ -47,7 +46,7 @@ Observed envelope shapes (field names verbatim):
 - MINT: `op`, `tick`.
 - TRANSFER (`ico-20`): `op`, `tick`, `amt`.
 
-## TRANSFER (`ico-20` `op:"transfer"`)
+## ICO-20 payment transfer within the LEAF-funded mint
 
 Observed as `output 0` of `394bdb53…`:
 `{"p":"ico-20","op":"transfer","tick":"LEAF","amt":"163000"}` — a zero-value
@@ -55,8 +54,9 @@ OP_RETURN carrying `amt` in (integer) token units.
 
 ## Layout observations (facts, not claims)
 
-1. OP_RETURN envelope is always **output 0** and **0 sats** (matches PRECOP's
-   documented "Command-First" topology).
+1. This sample has an ICO-20 OP_RETURN at output 0 and a CRC-20 OP_RETURN at
+   output 2. Across the full corpus, CRC-20 transfer markers occur at output 0
+   or 1, and mint markers at output 0 or 2.
 2. The CRC actor spends via **key-path P2TR** (single Schnorr witness), not a
    revealed MAST/script path.
 3. A persistent P2TR `5120bf39…c79f` appears as deploy input and again as the

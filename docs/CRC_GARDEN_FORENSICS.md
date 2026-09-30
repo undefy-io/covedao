@@ -1,5 +1,11 @@
 # CRC.garden / PRECOP — Forensic Reference Freeze
 
+> This is a historical three-transaction research freeze. A public activity API
+> was subsequently found and all 1,950 events in the 2026-09-30 snapshot were
+> matched to full mainnet transactions. See the [current corpus comparison](../artifacts/crc-garden/COMPATIBILITY.md)
+> for observed mint and transfer layouts. The limited-corpus statements below
+> should not be read as current completeness claims.
+
 > This document records what is **actually verifiable** from primary evidence
 > (on-chain data, source repositories, whitepaper/yellowpaper), not what is
 > claimed in prose. Every conclusion is tagged with exactly one evidence class:
