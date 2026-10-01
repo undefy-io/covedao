@@ -14,8 +14,8 @@ The new Cove profile targets the observed CRC marker fields and recipient
 adjacency for Cove-issued assets. Cove's curve, fees, vault and UTXO-bound token
 ownership remain Cove rules. An asset is identified by `(network, deploy txid)`
 in Cove's registered deployment table; the ticker alone is never an asset key.
-Existing Cove v2 deployments retain their v2 interpretation. The new profile
-requires a fresh deployment.
+The earlier Cove CRC format is retired. Existing signet CRC data must be reset
+and a fresh deployment created; old transactions are not reinterpreted.
 
 ## Marker bytes and output layout
 
@@ -66,7 +66,6 @@ script, with the exact remainder. No JSON `ch` field is needed. If the full
 input allocation is transferred, no token change allocation exists even if an
 ordinary BTC change output has the same script.
 
-The old v2 marker dialect (`amt`, `id`, `v`, optional `ch`) remains scoped to
-old v2 deployments. A fresh signet and mainnet deployment selects this wire
-profile through its deploy marker. Existing v2 balances are not silently
-remapped to the new profile.
+A fresh signet and mainnet deployment selects this wire profile through its
+deploy marker. The old CRC dialect (`amt`, `id`, `v`, optional `ch`) is not
+accepted by the current indexer or Guardian.
