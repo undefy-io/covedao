@@ -97,6 +97,7 @@ services:
       NODE_ENV: production
       COVE_PROTOCOL_MODE: crc20
       COVE_CRC_TRADING_ACTIVE: "true"
+      COVE_CRC_MARKET_TESTING_ENABLED: "true"
       COVE_TEST_ONLY_PROFILE_PATH: /app/signet-crc-profile.toml
       COVE_GUARDIAN_ENDPOINT: http://guardian:4391
       COVE_GUARDIAN_AUTH_TOKEN: ${COVE_GUARDIAN_AUTH_TOKEN:?set COVE_GUARDIAN_AUTH_TOKEN}

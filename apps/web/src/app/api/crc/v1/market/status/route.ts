@@ -1,7 +1,9 @@
 import { ok } from "@/lib/api";
+import { isCrcMarketReleased } from "@/lib/crc-market-availability";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return ok({ active: false, reason: "CRC marketplace is awaiting v2 token outpoint release tests" });
+  const active = isCrcMarketReleased();
+  return ok({ active, reason: active ? null : "CRC marketplace is awaiting token outpoint release tests" });
 }

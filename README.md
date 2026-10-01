@@ -195,6 +195,7 @@ docker compose --env-file .env.signet.local -f docker-compose.signet.yml stop we
 docker compose --env-file .env.signet.local -f docker-compose.signet.yml up -d --no-build --wait
 # App: http://127.0.0.1:3000
 curl http://127.0.0.1:3000/api/crc/v1/trading/status
+curl http://127.0.0.1:3000/api/crc/v1/market/status
 ```
 
 The production image builds the application once, then the web starts with
@@ -204,8 +205,16 @@ development-time route compilation. Rebuild the image to apply source changes;
 the build uses the network and public Sentry settings from `.env.signet.local`.
 Before the first authorized CRC launch, the token catalog reports that its
 index is not ready. After that launch is registered and confirmed, the CRC
-worker indexes from the configured activation height. Marketplace listing
-and fill endpoints remain paused during this local launch and curve-trade test.
+worker indexes from the configured activation height. The Compose web service
+sets `COVE_CRC_MARKET_TESTING_ENABLED=true`, which opens marketplace listing
+and fill endpoints on signet for wallet testing. This switch cannot open
+mainnet or testnet. To test a sale, connect a funded signet seller wallet,
+create and buy a Cove token, and list one whole token output on `/crc/market`.
+Connect a second funded signet wallet to reserve and sign the buy, then return
+to the seller wallet to review, sign, and broadcast. After confirmation, check
+the buyer's token balance and the seller's BTC payout. Mainnet marketplace
+activation still requires the live wallet canary and release gate tracked in
+Beads.
 
 To stop signet without deleting its database, run
 `docker compose -f docker-compose.signet.yml stop`. After that,

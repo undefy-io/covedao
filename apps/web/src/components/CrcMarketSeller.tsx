@@ -303,7 +303,7 @@ export function CrcMarketSeller() {
         </div>)}
       </div>}
     </>}
-    {!active && <p className="text-sm text-bone-dim">Marketplace signing is paused until the v2 sale tests pass.</p>}
+    {!active && <p className="text-sm text-bone-dim">Marketplace trading is currently paused.</p>}
     {error && <p role="alert" className="text-sm text-danger">{error}</p>}
     {success && <p role="status" className="break-all text-sm text-signal">{success}</p>}
   </section>;

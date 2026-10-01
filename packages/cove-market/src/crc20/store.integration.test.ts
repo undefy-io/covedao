@@ -45,7 +45,7 @@ maybe("CRC market SQL concurrency", () => {
     await expect(createCrcListing(db, listing, auth, core, 750n)).rejects.toThrow("registered Cove");
     try {
       await db.execute(sql`INSERT INTO cove_crc_assets (network, deploy_txid, ticker, deploy_height, deploy_block_hash, launch_salt_hex, creator_script_hex, protocol_script_hex, protocol_version, burned_atoms)
-        VALUES ('regtest', ${deployTxid}, 'TSTX', 10, ${"a".repeat(64)}, ${"e".repeat(64)}, ${sellerScript}, ${buyerScript}, 2, 0)`);
+        VALUES ('regtest', ${deployTxid}, 'TSTX', 10, ${"a".repeat(64)}, ${"e".repeat(64)}, ${sellerScript}, ${buyerScript}, 3, 0)`);
       await db.execute(sql`INSERT INTO cove_crc_vaults (network, deploy_txid, txid, vout, script_hex, btc_sats, minted_atoms, inventory_atoms, availability)
         VALUES ('regtest', ${deployTxid}, ${"c".repeat(64)}, 1, ${vaultScript}, 10000, 100000000000, 0, 'active')`);
       await db.execute(sql`INSERT INTO cove_crc_balances (network, deploy_txid, script_hex, atoms)
