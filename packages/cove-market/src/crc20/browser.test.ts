@@ -20,7 +20,7 @@ const listing = {
   protocolFeeSats: 1_000, expiresAtHeight: 200n,
 };
 const asset = { network: "regtest" as const, deployTxid, ticker: "COVE",
-  protocolVersion: 2, tokenOutpoint: `${listing.sellerAnchorTxid}:0`,
+  protocolVersion: 3, tokenOutpoint: `${listing.sellerAnchorTxid}:0`,
   tokenScriptHex: sellerScript, tokenAtoms: listing.amountAtoms,
   protocolScriptHex: protocolScript, vaultScriptHex: `5120${"f".repeat(64)}` };
 const sellerFunding = { txid: listing.sellerAnchorTxid, vout: 0,

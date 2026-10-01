@@ -30,7 +30,7 @@ const listing = {
   protocolFeeSats: 600,
   expiresAtHeight: 200n,
 };
-const asset = { network: "regtest" as const, deployTxid, ticker: "COVE", protocolVersion: 2 as const,
+const asset = { network: "regtest" as const, deployTxid, ticker: "COVE", protocolVersion: 3 as const,
   tokenOutpoint: `${listing.sellerAnchorTxid}:0`, tokenScriptHex: sellerScript, tokenAtoms: listing.amountAtoms,
   protocolScriptHex: protocolScript, vaultScriptHex: vaultScript };
 const sellerFunding = { txid: listing.sellerAnchorTxid, vout: 0, valueSats: 10_000, scriptHex: sellerScript,
@@ -39,7 +39,7 @@ const buyerFunding = { txid: "c".repeat(64), vout: 1, valueSats: 10_000, scriptH
 const options = { listing, asset, sellerFunding, buyerFunding: [buyerFunding], buyerScriptHex: buyerScript, protocolScriptHex: protocolScript, recipientSats: 1_000, minerFeeSats: 400, currentHeight: 100n };
 
 describe("Cove CRC marketplace exact fill", () => {
-  it("accepts a registered Cove v2 asset with the exact indexed token outpoint", () => {
+  it("accepts a registered Cove asset with the exact indexed token outpoint", () => {
     expect(() => validateCrcListing(listing, asset, 100n)).not.toThrow();
     const signed = signBip322P2wpkh(Buffer.alloc(32, 0x32), Buffer.from(sellerScript, "hex"), crcListingMessage(listing));
     expect(() => verifyCrcListingAuthorization(listing, signed)).not.toThrow();
@@ -53,6 +53,7 @@ describe("Cove CRC marketplace exact fill", () => {
     expect(() => validateCrcListing(listing, { ...asset, deployTxid: "d".repeat(64) }, 100n)).toThrow();
     expect(() => validateCrcListing(listing, { ...asset, network: "signet" }, 100n)).toThrow();
     expect(() => validateCrcListing(listing, { ...asset, protocolVersion: 1 }, 100n)).toThrow();
+    expect(() => validateCrcListing(listing, { ...asset, protocolVersion: 2 }, 100n)).toThrow();
     expect(() => validateCrcListing(listing, { ...asset, tokenAtoms: 0n }, 100n)).toThrow();
     expect(() => validateCrcListing(listing, { ...asset, tokenOutpoint: `${"f".repeat(64)}:0` }, 100n)).toThrow();
     expect(() => validateCrcListing(listing, { ...asset, tokenScriptHex: buyerScript }, 100n)).toThrow();
@@ -69,11 +70,12 @@ describe("Cove CRC marketplace exact fill", () => {
     const fill = createCrcFill(options);
     const tx = bitcoin.Transaction.fromBuffer(fill.psbt.data.globalMap.unsignedTx.toBuffer());
     expect(Buffer.from(tx.ins[0]!.hash).reverse().toString("hex")).toBe(listing.sellerAnchorTxid);
-    expect(tx.outs[1]!.script.toString("hex")).toBe(buyerScript);
-    expect(tx.outs[2]!.value).toBe(15_000);
-    expect(tx.outs[2]!.script.toString("hex")).toBe(sellerScript);
+    expect(tx.outs[0]!.value).toBe(15_000);
+    expect(tx.outs[0]!.script.toString("hex")).toBe(sellerScript);
+    expect(tx.outs[2]!.script.toString("hex")).toBe(buyerScript);
     expect(tx.outs[3]!.value).toBe(600);
-    expect(tx.outs[0]!.script.toString("hex")).toContain(Buffer.from('"v":2').toString("hex"));
+    expect(tx.outs[1]!.script.toString("hex")).toContain(Buffer.from(
+      '{"p":"crc-20","op":"transfer","tick":"COVE","amt":"100000000000"}').toString("hex"));
     expect(() => verifyCrcFillTransaction(fill.psbt, options)).not.toThrow();
   });
 
@@ -83,7 +85,7 @@ describe("Cove CRC marketplace exact fill", () => {
       buyerFundingScriptHex: buyerScript };
     const fill = createCrcFill(terms);
     const tx = bitcoin.Transaction.fromBuffer(fill.psbt.data.globalMap.unsignedTx.toBuffer());
-    expect(tx.outs[1]!.script.toString("hex")).toBe(ordinalsScript);
+    expect(tx.outs[2]!.script.toString("hex")).toBe(ordinalsScript);
     expect(tx.outs[4]!.script.toString("hex")).toBe(buyerScript);
     expect(() => verifyCrcFillTransaction(fill.psbt, terms)).not.toThrow();
     expect(() => verifyCrcFillTransaction(fill.psbt,
@@ -99,7 +101,7 @@ describe("Cove CRC marketplace exact fill", () => {
         scriptHex: nestedScript, publicKeyHex: buyer.publicKey.toString("hex") }] };
     const fill = createCrcFill(terms);
     const tx = bitcoin.Transaction.fromBuffer(fill.psbt.data.globalMap.unsignedTx.toBuffer());
-    expect(tx.outs[1]!.script.toString("hex")).toBe(ordinalsScript);
+    expect(tx.outs[2]!.script.toString("hex")).toBe(ordinalsScript);
     expect(tx.outs[4]!.script.toString("hex")).toBe(nestedScript);
     expect(fill.psbt.data.inputs[1]!.redeemScript?.toString("hex")).toBe(nested.redeem?.output?.toString("hex"));
     expect(() => verifyCrcFillTransaction(fill.psbt, terms)).not.toThrow();

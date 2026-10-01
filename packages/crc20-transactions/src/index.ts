@@ -81,9 +81,12 @@ function template(
   following: readonly TxOutput[],
   requiredFundingSats: number,
   previousVaultOutpoint?: string,
+  markerVout = 0,
 ): TxTemplate {
   const encoded = marker(payload);
-  const outputs = [encoded.output, ...following];
+  if (markerVout < 0 || markerVout > following.length) throw new Error("invalid marker output index");
+  const outputs = [...following];
+  outputs.splice(markerVout, 0, encoded.output);
   for (const output of following) {
     checkScript(output.scriptHex);
     if (!Number.isSafeInteger(output.valueSats) ||
@@ -530,6 +533,84 @@ export function buildCurveSellV2(params: {
   return v2Template("transfer", v2Payload("transfer", params.ticker, quote.amountAtoms,
     params.deploymentTxid, remainder > 0n ? 4 : undefined), outputs,
     [params.vaultInput, ...params.sellerTokenInputs], params.deploymentTxid, remainder, params.state.vaultOutpoint);
+}
+
+function v3TransferPayload(ticker: string, amountAtoms: bigint): Record<string, string> {
+  if (amountAtoms <= 0n) throw new Error("token amount must be positive");
+  return { p: "crc-20", op: "transfer", tick: ticker, amt: amountAtoms.toString() };
+}
+
+function v3FromV2(
+  source: TxTemplate,
+  payload: Record<string, string>,
+  following: readonly TxOutput[],
+  markerVout = 0,
+): TxTemplate {
+  const built = template(source.operation, payload, following, source.requiredFundingSats,
+    source.previousVaultOutpoint, markerVout);
+  return {
+    ...built,
+    requiredInputs: source.requiredInputs,
+    v2DeploymentTxid: source.v2DeploymentTxid,
+    tokenChangeAtoms: source.tokenChangeAtoms,
+  };
+}
+
+export function buildCurveDeployV3(params: Parameters<typeof buildCurveDeployV2>[0]): TxTemplate {
+  if (params.maxAtoms !== COVE_V1_MAX_ATOMS) throw new Error("invalid maximum supply for Cove v3");
+  return template("deploy", { p: "crc-20", op: "deploy", tick: params.ticker,
+    type: "bonding", max: COVE_V1_MAX_ATOMS, cv: "cove-curve-v3" }, [
+    { valueSats: params.vaultAnchorSats, scriptHex: params.scripts.vault },
+    { valueSats: COVE_V1_CREATOR_RECORD_SATS, scriptHex: params.scripts.creator },
+    { valueSats: COVE_V1_LAUNCH_FEE_SATS, scriptHex: params.scripts.protocol },
+    ...finalChange(params.changeSats, params.changeScriptHex),
+  ], params.vaultAnchorSats + COVE_V1_CREATOR_RECORD_SATS + COVE_V1_LAUNCH_FEE_SATS + (params.changeSats ?? 0));
+}
+
+export function buildCoveDeployWithVaultV3(params: Parameters<typeof buildCoveDeployWithVaultV2>[0]): {
+  template: TxTemplate;
+  vault: CoveVault;
+} {
+  const deployPayload = { p: "crc-20", op: "deploy", tick: params.ticker, type: "bonding",
+    max: COVE_V1_MAX_ATOMS, cv: "cove-curve-v3" };
+  const vault = buildCrc20AssetVault({
+    asset: { deploymentTag: crc20DeploymentTag(Buffer.from(JSON.stringify(deployPayload), "utf8")), launchSalt: params.launchSalt },
+    guardianXOnly: params.guardianXOnly,
+    recoveryProfile: params.recoveryProfile,
+    network: params.network,
+  });
+  return { vault, template: buildCurveDeployV3({ ticker: params.ticker, maxAtoms: COVE_V1_MAX_ATOMS,
+    scripts: { vault: vault.scriptPubKey.toString("hex"), creator: params.creatorScriptHex,
+      protocol: params.protocolScriptHex }, vaultAnchorSats: params.vaultAnchorSats,
+    changeSats: params.changeSats, changeScriptHex: params.changeScriptHex }) };
+}
+
+export function buildCoveV3Transfer(params: Parameters<typeof buildCoveV2Transfer>[0]): TxTemplate {
+  const source = buildCoveV2Transfer(params);
+  return v3FromV2(source, v3TransferPayload(params.ticker, params.amountAtoms), source.outputs.slice(1));
+}
+
+export function buildCoveV3MarketFill(params: Parameters<typeof buildCoveV2MarketFill>[0]): TxTemplate {
+  const source = buildCoveV2MarketFill(params);
+  const following = [source.outputs[2]!, source.outputs[1]!, ...source.outputs.slice(3)];
+  return v3FromV2(source, v3TransferPayload(params.ticker, params.listedInput.tokenAtoms), following, 1);
+}
+
+export function buildCurveBuyV3(params: Parameters<typeof buildCurveBuyV2>[0]): TxTemplate {
+  const source = buildCurveBuyV2(params);
+  const quote = quoteBuy(params.state, params.amountTokens);
+  const payload = quote.operation === "mint"
+    ? { p: "crc-20", op: "mint", tick: params.ticker }
+    : v3TransferPayload(params.ticker, quote.amountAtoms);
+  return v3FromV2(source, payload, source.outputs.slice(1));
+}
+
+export function buildCurveSellV3(params: Parameters<typeof buildCurveSellV2>[0]): TxTemplate {
+  const source = buildCurveSellV2(params);
+  const payoutScript = params.sellerPayoutScriptHex ?? params.scripts.seller;
+  const quote = quoteSell(params.state, params.amountTokens,
+    dustThreshold(Buffer.from(payoutScript, "hex")));
+  return v3FromV2(source, v3TransferPayload(params.ticker, quote.amountAtoms), source.outputs.slice(1));
 }
 
 export function buildUnsignedPsbt(

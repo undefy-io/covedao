@@ -1,7 +1,7 @@
 import * as bitcoin from "bitcoinjs-lib";
 import { checkSpendSignature } from "@crclaunch/bitcoin/spend";
 import type { CoreRpcProvider } from "@crclaunch/bitcoin";
-import { buildCoveV2MarketFill, buildUnsignedPsbt, type CoveV2Input } from "@crclaunch/crc20-transactions";
+import { buildCoveV3MarketFill, buildUnsignedPsbt, type CoveV2Input } from "@crclaunch/crc20-transactions";
 import { deterministicFee } from "@crclaunch/cove-economics";
 import { verifyBip322 } from "../order/signature.js";
 
@@ -71,7 +71,7 @@ export function validateCrcListing(listing: CrcListing, asset: IndexedCrcAsset, 
   assert(/^[0-9a-f]{64}$/.test(listing.deployTxid), "invalid deployment id");
   assert(listing.network === asset.network && listing.deployTxid === asset.deployTxid,
     "deployment is not a registered Cove asset on this network");
-  assert(asset.protocolVersion === 2 && asset.ticker === listing.ticker, "Cove v2 asset is unavailable");
+  assert(asset.protocolVersion === 3 && asset.ticker === listing.ticker, "Cove CRC asset is unavailable");
   assert(listing.amountAtoms > 0n && asset.tokenAtoms === listing.amountAtoms &&
     asset.tokenOutpoint === `${listing.sellerAnchorTxid}:${listing.sellerAnchorVout}` &&
     asset.tokenScriptHex?.toLowerCase() === listing.sellerScriptHex.toLowerCase(),
@@ -98,7 +98,7 @@ export function validateCrcListing(listing: CrcListing, asset: IndexedCrcAsset, 
 }
 
 export function crcListingMessage(listing: CrcListing): string {
-  return `Cove CRC marketplace listing v2\n${JSON.stringify({
+  return `Cove CRC marketplace listing v3\n${JSON.stringify({
     id: listing.id,
     network: listing.network,
     deployTxid: listing.deployTxid,
@@ -121,7 +121,7 @@ export function verifyCrcListingAuthorization(listing: CrcListing, signatureB64:
 }
 
 export function crcCancelMessage(listing: CrcListing): string {
-  return `Cove CRC marketplace cancellation v2\n${listing.network}:${listing.deployTxid}:${listing.id}:${listing.sellerScriptHex}`;
+  return `Cove CRC marketplace cancellation v3\n${listing.network}:${listing.deployTxid}:${listing.id}:${listing.sellerScriptHex}`;
 }
 
 export function verifyCrcCancellation(listing: CrcListing, signatureB64: string): void {
@@ -165,7 +165,7 @@ function expectedFill(options: CrcFillOptions): bitcoin.Psbt {
   assert(inputSats >= requiredSats, "funding is insufficient");
   const change = inputSats - requiredSats;
   assert(change <= BigInt(Number.MAX_SAFE_INTEGER), "change exceeds safe range");
-  const template = buildCoveV2MarketFill({
+  const template = buildCoveV3MarketFill({
     ticker: listing.ticker,
     deploymentTxid: listing.deployTxid,
     listedInput: sellerFunding,

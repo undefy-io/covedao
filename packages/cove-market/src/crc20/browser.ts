@@ -45,7 +45,7 @@ export function crcMarketFee(priceSats: number, feeBps: bigint, minFeeSats: bigi
 }
 
 export function crcListingMessage(listing: CrcListing): string {
-  return `Cove CRC marketplace listing v2\n${JSON.stringify({
+  return `Cove CRC marketplace listing v3\n${JSON.stringify({
     id: listing.id, network: listing.network, deployTxid: listing.deployTxid,
     ticker: listing.ticker, sellerScriptHex: listing.sellerScriptHex,
     sellerPayoutScriptHex: listing.sellerPayoutScriptHex,
@@ -57,14 +57,14 @@ export function crcListingMessage(listing: CrcListing): string {
 }
 
 export function crcCancelMessage(listing: CrcListing): string {
-  return `Cove CRC marketplace cancellation v2\n${listing.network}:${listing.deployTxid}:${listing.id}:${listing.sellerScriptHex}`;
+  return `Cove CRC marketplace cancellation v3\n${listing.network}:${listing.deployTxid}:${listing.id}:${listing.sellerScriptHex}`;
 }
 
 export function validateCrcListing(listing: CrcListing, asset: IndexedCrcAsset, height: bigint): void {
   assert(/^[0-9a-f]{64}$/.test(listing.deployTxid), "invalid deployment id");
   assert(listing.network === asset.network && listing.deployTxid === asset.deployTxid,
     "deployment is not a registered Cove asset on this network");
-  assert(asset.protocolVersion === 2 && asset.ticker === listing.ticker, "Cove v2 asset is unavailable");
+  assert(asset.protocolVersion === 3 && asset.ticker === listing.ticker, "Cove CRC asset is unavailable");
   assert(listing.amountAtoms > 0n && asset.tokenAtoms === listing.amountAtoms &&
     asset.tokenOutpoint === `${listing.sellerAnchorTxid}:${listing.sellerAnchorVout}` &&
     asset.tokenScriptHex?.toLowerCase() === listing.sellerScriptHex.toLowerCase(),
@@ -158,12 +158,11 @@ export function verifyCrcFillTransaction(psbt: bitcoin.Psbt, options: CrcFillOpt
   });
   const marker = bitcoin.script.compile([bitcoin.opcodes.OP_RETURN!, Buffer.from(JSON.stringify({
     p: "crc-20", op: "transfer", tick: listing.ticker, amt: listing.amountAtoms.toString(),
-    id: listing.deployTxid, v: 2,
   }), "utf8")]);
   const expectedOutputs = [
+    { value: listing.sellerAnchorSats + listing.priceSats, script: script(listing.sellerScriptHex) },
     { value: 0, script: marker },
     { value: options.recipientSats, script: script(options.buyerScriptHex) },
-    { value: listing.sellerAnchorSats + listing.priceSats, script: script(listing.sellerScriptHex) },
     { value: listing.protocolFeeSats, script: script(asset.protocolScriptHex) },
     ...(change > 0n ? [{ value: Number(change), script: script(fundingScript) }] : []),
   ];
