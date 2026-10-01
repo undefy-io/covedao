@@ -71,27 +71,11 @@ Transfer layouts vary:
 Examples: [marker at vout 0](https://mempool.space/tx/e0b7e317a6311432bd3f03e9f8536b4dfed0625ddf5b96f5b1c6bc25bdb8ee2f)
 and [marker at vout 1](https://mempool.space/tx/74f40f8732201bd8dbdfe6c5868cce993438f43a482f7953e760103aedc0b8a7).
 
-## Comparison with Cove V3
+## Cove comparison
 
-Cove currently places its **authoritative binary** OP_RETURN at vout 0 and an
-advisory CRC-20 JSON OP_RETURN **last**. Its indexer reads the binary output;
-the Guardian checks the JSON for contradictions but does not use it for token
-state. Mint carries the token at vout 2, before its JSON marker. Transfer token
-carriers likewise precede the trailing JSON. Cove's deploy JSON has only `p`,
-`op`, and `tick`, unlike the observed LEAF deploy fields.
-
-Therefore Cove matches the **JSON labels** for mint and transfer, and its
-transfer `amt` uses the same atom unit, but its output topology does **not**
-match the LEAF corpus. In particular, there is no spendable recipient output
-after Cove's trailing marker. The LEAF indexer is not public here, so the corpus
-cannot prove whether that indexer would ignore a Cove transaction, but it gives
-no basis to claim that Cove tokens will be recognized or transferable there.
-Adding `amt` to mint JSON, or splitting JSON into a second transaction, would
-not resolve this output-binding difference.
-
-Interoperability requires a published or reproducible CRC-20 indexing rule for
-non-LEAF tickers, a deploy format that the target indexer accepts, and a replay
-test where both indexers assign the same token amount to the same spendable
-outpoint. Changing Cove's output order would also require coordinated wire,
-builder, Guardian, indexer, and market changes; it should not be inferred from
-one LEAF transaction template.
+The current Cove transaction profile is specified in
+[COVE_CRC20_GARDEN_WIRE.md](../../docs/COVE_CRC20_GARDEN_WIRE.md). The regression
+tests compare raw Garden mint and sale transactions with generated Cove
+transactions for marker fields, position, and recipient adjacency. Cove's
+deployment marker has different launchpad fields, and acceptance by an
+independent Garden indexer remains unverified.
