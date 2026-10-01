@@ -1,6 +1,5 @@
-import React from "react";
-import { CrcTokenDetail } from "@/components/CrcTokenDetail";
+import { redirect } from "next/navigation";
 
-export default async function CrcTokenPage({ params }: { params: Promise<{ assetId: string }> }) {
-  return <CrcTokenDetail assetId={decodeURIComponent((await params).assetId)} />;
+export default async function Page({ params }: { params: Promise<{ assetId: string }> }) {
+  redirect(`/token/${encodeURIComponent(decodeURIComponent((await params).assetId))}`);
 }

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { sql } from "drizzle-orm";
 import { createDb } from "@crclaunch/db";
-import { listCrcAssets, readCrcActivity, readCrcAsset, readCrcBalance, readCrcQuoteAsset, readCrcRecentActivity, readCrcTokenUtxo, readCrcTokenUtxos, readCrcWalletBalances } from "./crc-read";
+import { listCrcAssets, readCrcActivity, readCrcAsset, readCrcBalance, readCrcQuoteAsset, readCrcRecentActivity, readCrcTokenUtxo, readCrcTokenUtxos, readCrcTrades, readCrcWalletBalances } from "./crc-read";
 import { quoteCrcBuy, quoteCrcSell } from "./crc-quote";
 
 const url = process.env.CRC_READ_TEST_DATABASE_URL;
@@ -14,11 +14,15 @@ const db = isolated ? createDb(url!) : undefined;
 const first = "e".repeat(64);
 const second = "f".repeat(64);
 const owner = "0014" + "1".repeat(40);
+const marketListingId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const marketFillId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 
 describe.skipIf(!isolated)("Cove CRC database reads", () => {
   beforeAll(async () => {
     for (const network of ["signet", "regtest"]) {
-      await db!.execute(sql`delete from cove_crc_events where network = ${network} and txid in (${"1".repeat(64)}, ${"2".repeat(64)}, ${"3".repeat(64)})`);
+      await db!.execute(sql`delete from cove_crc_market_fills where id = ${marketFillId}`);
+      await db!.execute(sql`delete from cove_crc_market_listings where id = ${marketListingId}`);
+      await db!.execute(sql`delete from cove_crc_events where network = ${network} and txid in (${"1".repeat(64)}, ${"2".repeat(64)}, ${"3".repeat(64)}, ${"4".repeat(64)})`);
       await db!.execute(sql`delete from cove_crc_token_utxos where network = ${network} and deploy_txid in (${first}, ${second})`);
       await db!.execute(sql`delete from cove_crc_balances where network = ${network} and deploy_txid in (${first}, ${second})`);
       await db!.execute(sql`delete from cove_crc_vaults where network = ${network} and deploy_txid in (${first}, ${second})`);
@@ -50,15 +54,24 @@ describe.skipIf(!isolated)("Cove CRC database reads", () => {
         ('signet',${second},${"b".repeat(64)},1,${owner},25000000000,13,${"c".repeat(64)}),
         ('signet',${second},${second},1,${`0014${second.slice(0, 40)}`},100000000000,12,${"b".repeat(64)})`);
     await db!.execute(sql`insert into cove_crc_events
-      (network,txid,block_height,block_hash,tx_index,operation,status,valid,deploy_txid,amount_atoms)
-      values ('signet',${"1".repeat(64)},11,${first},0,'deploy','applied',true,${first},null),
-        ('signet',${"2".repeat(64)},12,${second},1,'transfer','applied',true,${second},100000000000),
-        ('regtest',${"3".repeat(64)},13,${first},0,'transfer','applied',true,${first},200000000000)`);
+      (network,txid,block_height,block_hash,tx_index,operation,status,valid,deploy_txid,amount_atoms,trade_side,trade_atoms,trade_gross_sats,confirmed_time)
+      values ('signet',${"1".repeat(64)},11,${first},0,'deploy','applied',true,${first},null,null,null,null,null),
+        ('signet',${"2".repeat(64)},12,${second},1,'transfer','applied',true,${second},100000000000,null,null,null,null),
+        ('regtest',${"3".repeat(64)},13,${first},0,'transfer','applied',true,${first},200000000000,'buy',200000000000,27,1700000000),
+        ('regtest',${"4".repeat(64)},14,${first},0,'transfer','applied',true,${first},100000000000,null,null,null,1700000600)`);
+    await db!.execute(sql`insert into cove_crc_market_listings
+      (id,network,deploy_txid,ticker,seller_script_hex,seller_payout_script_hex,seller_anchor_txid,seller_anchor_vout,seller_anchor_sats,amount_atoms,price_sats,protocol_fee_sats,expires_at_height,status)
+      values (${marketListingId},'regtest',${first},'SAME',${owner},${owner},${"d".repeat(64)},1,330,100000000000,1000,100,1000,'FILLED')`);
+    await db!.execute(sql`insert into cove_crc_market_fills
+      (id,network,listing_id,buyer_script_hex,unsigned_tx_digest,psbt_base64,txid,status)
+      values (${marketFillId},'regtest',${marketListingId},${owner},'hash','psbt',${"4".repeat(64)},'CONFIRMED')`);
   });
 
   afterAll(async () => {
     for (const network of ["signet", "regtest"]) {
-      await db!.execute(sql`delete from cove_crc_events where network = ${network} and txid in (${"1".repeat(64)}, ${"2".repeat(64)}, ${"3".repeat(64)})`);
+      await db!.execute(sql`delete from cove_crc_market_fills where id = ${marketFillId}`);
+      await db!.execute(sql`delete from cove_crc_market_listings where id = ${marketListingId}`);
+      await db!.execute(sql`delete from cove_crc_events where network = ${network} and txid in (${"1".repeat(64)}, ${"2".repeat(64)}, ${"3".repeat(64)}, ${"4".repeat(64)})`);
       await db!.execute(sql`delete from cove_crc_token_utxos where network = ${network} and deploy_txid in (${first}, ${second})`);
       await db!.execute(sql`delete from cove_crc_balances where network = ${network} and deploy_txid in (${first}, ${second})`);
       await db!.execute(sql`delete from cove_crc_vaults where network = ${network} and deploy_txid in (${first}, ${second})`);
@@ -84,6 +97,15 @@ describe.skipIf(!isolated)("Cove CRC database reads", () => {
     expect((await readCrcActivity(db!, "signet", first)).map((event) => event.txid)).toEqual(["1".repeat(64)]);
     expect((await readCrcRecentActivity(db!, "signet")).filter((event) => ["1".repeat(64), "2".repeat(64)].includes(event.txid)).map((event) => event.txid)).toEqual(["2".repeat(64), "1".repeat(64)]);
     expect((await readCrcRecentActivity(db!, "regtest")).some((event) => event.txid === "3".repeat(64))).toBe(true);
+  });
+
+  it("reads only confirmed priced trades for the requested token and network", async () => {
+    expect(await readCrcTrades(db!, "signet", first)).toEqual([]);
+    expect(await readCrcTrades(db!, "regtest", second)).toEqual([]);
+    expect(await readCrcTrades(db!, "regtest", first)).toEqual([
+      { txid: "3".repeat(64), blockHeight: "13", side: "buy", amountAtoms: "200000000000", totalPriceSats: "27", timestamp: 1_700_000_000_000 },
+      { txid: "4".repeat(64), blockHeight: "14", side: "market", amountAtoms: "100000000000", totalPriceSats: "1100", timestamp: 1_700_000_600_000 },
+    ]);
   });
 
   it("reads only balances for the requested network and verified script", async () => {

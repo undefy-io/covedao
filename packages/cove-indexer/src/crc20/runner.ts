@@ -54,11 +54,12 @@ export async function syncCrcTip(params: {
   for (let height = firstCrcHeight(snapshot.cursor?.height ?? null, params.activationHeight); height <= info.blocks; height++) {
     const hash = await provider.getBlockHash(height);
     const block = await provider.getBlock(hash);
-    if (block.hash !== hash || block.height !== height || block.txids.length !== block.rawTxs.length) throw new Error("Core CRC block metadata mismatch");
+    if (block.hash !== hash || block.height !== height || block.txids.length !== block.rawTxs.length ||
+      !Number.isSafeInteger(block.timestamp) || !block.timestamp || block.timestamp < 1) throw new Error("Core CRC block metadata mismatch");
     const expectedParent = snapshot.cursor?.hash ?? await provider.getBlockHash(height - 1);
     if (block.previousBlockHash !== expectedParent) throw new Error("Core changed branches during CRC replay");
     const registrations = await loadAuthorizedCrcRegistrations(db, network, params.protocolScriptHex, block.txids);
-    const rawBlock = { network, height, hash, parentHash: expectedParent, rawTxs: block.rawTxs };
+    const rawBlock = { network, height, hash, parentHash: expectedParent, rawTxs: block.rawTxs, timestamp: block.timestamp };
     const nextState = await persistConfirmedCrcBlock(db, snapshot.state, snapshot.projection, rawBlock, registrations, provider);
     const nextProjection = projectionFromCoveLedger(nextState, snapshot.projection, rawBlock, registrations);
     snapshot = { state: nextState, projection: nextProjection, cursor: { height, hash, parentHash: expectedParent } };

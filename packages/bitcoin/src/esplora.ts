@@ -151,7 +151,7 @@ export class EsploraChainProvider {
 
   async getBlock(hash: string): Promise<BitcoinBlock> {
     const txids = await this.get<string[]>(`/block/${hash}/txids`);
-    const meta = await this.get<{ id: string; height: number; previousblockhash?: string; merkle_root?: string }>(`/block/${hash}`);
+    const meta = await this.get<{ id: string; height: number; timestamp?: number; previousblockhash?: string; merkle_root?: string }>(`/block/${hash}`);
     // Verify the host actually returned the requested block (B-3: mirror Core's
     // provider.getBlock hash + merkle verification).
     if (meta.id !== hash) {
@@ -178,7 +178,7 @@ export class EsploraChainProvider {
         throw new Error("Esplora block merkle root mismatch");
       }
     }
-    return { hash, height: meta.height, previousBlockHash: meta.previousblockhash ?? "", txids, rawTxs };
+    return { hash, height: meta.height, timestamp: meta.timestamp, previousBlockHash: meta.previousblockhash ?? "", txids, rawTxs };
   }
 
   async getRawTransaction(txid: string): Promise<string> {

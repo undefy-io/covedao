@@ -1,5 +1,3 @@
-import { CrcExplore } from "@/components/CrcExplore";
+import { redirect } from "next/navigation";
 
-export default function CrcExplorePage() {
-  return <CrcExplore />;
-}
+export default function Page() { redirect("/explore"); }

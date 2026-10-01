@@ -736,6 +736,10 @@ export const coveCrcEvents = pgTable("cove_crc_events", {
   reason: text("reason"),
   deployTxid: text("deploy_txid"),
   amountAtoms: atoms("amount_atoms"),
+  tradeSide: text("trade_side"),
+  tradeAtoms: atoms("trade_atoms"),
+  tradeGrossSats: atoms("trade_gross_sats"),
+  confirmedTime: atoms("confirmed_time"),
 }, (t) => [primaryKey({ columns: [t.network, t.txid] }), index("cove_crc_events_asset_idx").on(t.network, t.deployTxid, t.blockHeight), index("cove_crc_events_recent_idx").on(t.network, t.blockHeight, t.txIndex)]);
 
 export const coveCrcCursor = pgTable("cove_crc_cursor", {

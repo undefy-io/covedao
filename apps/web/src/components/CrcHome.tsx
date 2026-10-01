@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { TokenImage } from "./TokenImage";
 import { Tile } from "./Tile";
+import { Sparkline } from "./Sparkline";
 import { useT } from "@/i18n/LanguageProvider";
 
 const capAtoms = 2_100_000_000_000_000n;
@@ -65,8 +66,8 @@ export function CrcHome() {
         </h1>
         <p className="mt-6 max-w-xl text-sm leading-relaxed text-bone-dim">{t("crc.home.pitch")}</p>
         <div className="mt-9 flex flex-wrap gap-3">
-          <Link href="/crc/launch" className="btn">{t("home.ctaLaunch")}</Link>
-          <Link href="/crc/explore" className="btn-ghost">{t("home.ctaExplore")}</Link>
+          <Link href="/launch" className="btn">{t("home.ctaLaunch")}</Link>
+          <Link href="/explore" className="btn-ghost">{t("home.ctaExplore")}</Link>
         </div>
       </section>
 
@@ -85,7 +86,7 @@ export function CrcHome() {
           <p className="eyebrow">{t("home.recent")}</p>
           <div className="flex flex-wrap items-baseline gap-4">
             {tip && <span className="text-label uppercase tracking-label text-bone-dim">{t("crc.home.indexed", { height: tip.height })}</span>}
-            <Link href="/crc/explore" className="text-label uppercase tracking-label text-bone-dim hover:text-signal">{t("home.viewAll")}</Link>
+            <Link href="/explore" className="text-label uppercase tracking-label text-bone-dim hover:text-signal">{t("home.viewAll")}</Link>
           </div>
         </div>
         <div className="mt-5">
@@ -130,34 +131,37 @@ export function CrcTokenCard({ token }: { token: CrcToken }) {
   const minted = BigInt(token.mintedAtoms);
   const pct = Number(minted * 100n / capAtoms);
   return (
-    <Link href={`/crc/token/${encodeURIComponent(token.assetId)}`} className="group block min-w-0 border border-rule bg-ink-3 px-5 py-5 transition-colors hover:bg-ink-2">
+    <Link href={`/token/${encodeURIComponent(token.assetId)}`} className="group block min-w-0 bg-ink-3 px-5 py-5 transition-colors hover:bg-ink-2">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 items-start gap-3">
           <TokenImage tokenId={token.assetId} ticker={token.ticker} />
           <div className="min-w-0">
             <div className="truncate text-sm text-bone group-hover:text-signal">{token.ticker}</div>
-            <div className="mt-0.5 text-xs text-bone-dim">{t("crc.home.block", { height: token.deployHeight })}</div>
+            <div className="mt-0.5 truncate text-xs text-bone-dim">{t("crc.home.block", { height: token.deployHeight })}</div>
           </div>
         </div>
         <span className={token.availability === "active" ? "chip chip-verified shrink-0" : "chip chip-pending shrink-0"}>
           {token.availability === "active" ? t("common.open") : t("crc.home.unavailable")}
         </span>
       </div>
-      <div className="mt-6 flex items-end justify-between gap-3">
+      <div className="mt-4 flex items-end justify-between gap-3">
         <div>
-          <div className="text-label uppercase tracking-label text-bone-dim">{t("crc.home.circulating")}</div>
-          <div className="mt-1 text-lg tabular-nums text-bone">{formatAtoms(token.circulatingAtoms)}</div>
+          <div className="text-label uppercase tracking-label text-bone-dim">{t("card.last")}</div>
+          <div className="mt-1 text-lg tabular-nums text-bone">—</div>
         </div>
-        <div className="text-right">
-          <div className="text-label uppercase tracking-label text-bone-dim">{t("crc.home.vault")}</div>
-          <div className="mt-1 text-sm tabular-nums text-bone">{formatVaultSats(token.vault.btcSats)}</div>
+        <Sparkline values={[]} label={t("common.recentPrice", { ticker: token.ticker })} />
+      </div>
+      <div className="mt-4">
+        <div className="h-1 w-full bg-rule"><div className="h-1 bg-signal" style={{ width: `${Math.min(pct, 100)}%` }} /></div>
+        <div className="mt-2 flex justify-between text-label uppercase tracking-label text-bone-dim">
+          <span>{formatAtoms(token.mintedAtoms)}</span><span>21M</span>
         </div>
       </div>
-      <div className="mt-4 h-1 w-full bg-rule"><div className="h-1 bg-signal" style={{ width: `${Math.min(pct, 100)}%` }} /></div>
-      <div className="mt-2 flex justify-between text-label uppercase tracking-label text-bone-dim">
-        <span>{formatAtoms(token.mintedAtoms)}</span><span>21M</span>
-      </div>
-      <div className="hex mt-4 truncate border-t border-rule pt-3">{token.assetId}</div>
+      <dl className="mt-4 space-y-1.5 text-xs">
+        <div className="flex justify-between gap-3"><dt className="text-bone-dim">{t("card.backing")}</dt><dd className="tabular-nums text-bone-2">{formatVaultSats(token.vault.btcSats)}</dd></div>
+        <div className="flex justify-between gap-3"><dt className="text-bone-dim">{t("crc.home.circulating")}</dt><dd className="tabular-nums text-bone-2">{formatAtoms(token.circulatingAtoms)}</dd></div>
+      </dl>
+      <div className="hex mt-4 truncate border-t border-rule pt-3">{token.assetId.slice(0, 24)}…</div>
     </Link>
   );
 }

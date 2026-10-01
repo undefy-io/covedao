@@ -2,14 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import type { Interval, OhlcCandle } from "@/lib/ohlc";
 import type { CrcMarketListing } from "@/lib/crc-market-client";
 import { formatAtoms, formatVaultSats } from "./CrcHome";
 import { Tile } from "./Tile";
+import { TokenChart } from "./TokenChart";
 
-export function CrcTokenMarket({ assetId }: { assetId: string }) {
+export function CrcTokenMarket({ assetId, ticker }: { assetId: string; ticker: string }) {
   const [curveSats, setCurveSats] = useState<string | null>(null);
   const [totalSats, setTotalSats] = useState<string | null>(null);
   const [listings, setListings] = useState<CrcMarketListing[]>([]);
+  const [interval, setInterval] = useState<Interval>("1h");
+  const [candles, setCandles] = useState<OhlcCandle[]>([]);
+  const [chartLoading, setChartLoading] = useState(true);
 
   useEffect(() => {
     let live = true;
@@ -33,32 +38,57 @@ export function CrcTokenMarket({ assetId }: { assetId: string }) {
     return () => { live = false; };
   }, [assetId]);
 
-  const lowest = listings.reduce<bigint | null>((price, row) => {
-    const unit = (BigInt(row.priceSats) * 100_000_000_000n + BigInt(row.amountAtoms) - 1n) / BigInt(row.amountAtoms);
-    return price === null || unit < price ? unit : price;
-  }, null);
+  useEffect(() => {
+    let live = true;
+    setChartLoading(true);
+    void fetch(`/api/crc/v1/tokens/${encodeURIComponent(assetId)}/candles?interval=${interval}`, { cache: "no-store" })
+      .then((response) => response.json())
+      .then((body) => {
+        if (!live) return;
+        setCandles(body.ok && Array.isArray(body.data?.candles) ? body.data.candles as OhlcCandle[] : []);
+      })
+      .catch(() => { if (live) setCandles([]); })
+      .finally(() => { if (live) setChartLoading(false); });
+    return () => { live = false; };
+  }, [assetId, interval]);
+
+  const asks = listings.map((row) => ({
+    ...row,
+    unitSats: (BigInt(row.priceSats) * 100_000_000_000n + BigInt(row.amountAtoms) - 1n) / BigInt(row.amountAtoms),
+  })).sort((a, b) => a.unitSats < b.unitSats ? -1 : a.unitSats > b.unitSats ? 1 : 0);
+  const maxAtoms = asks.reduce((largest, row) => BigInt(row.amountAtoms) > largest ? BigInt(row.amountAtoms) : largest, 1n);
+
   return <section className="panel px-6 py-8 sm:px-10">
     <div className="flex flex-wrap items-baseline justify-between gap-3">
       <p className="eyebrow">Market</p>
-      <Link href="/crc/market" className="text-label uppercase tracking-label text-bone-dim hover:text-signal">View all orders →</Link>
+      <Link href="/market" className="text-label uppercase tracking-label text-bone-dim hover:text-signal">View all orders →</Link>
     </div>
-    <div className="mt-5 grid grid-cols-1 gap-px bg-rule sm:grid-cols-3">
-      <Tile size="md" value={curveSats ? formatVaultSats(curveSats) : "—"} label="Curve backing · 1,000 tokens" />
-      <Tile size="md" value={totalSats ? formatVaultSats(totalSats) : "—"} label="Buy total · before miner fee" />
-      <Tile size="md" value={lowest === null ? "—" : `${lowest.toLocaleString()} sats`} label="Lowest ask · per 1,000" />
+    <div className="mt-5 grid grid-cols-2 gap-px bg-rule sm:grid-cols-5">
+      <Tile value={curveSats ? formatVaultSats(curveSats) : "—"} label="Curve price · 1,000" />
+      <Tile value={totalSats ? formatVaultSats(totalSats) : "—"} label="Buy total · 1,000" />
+      <Tile value={asks.length ? `${asks[0]!.unitSats.toLocaleString()} sats` : "—"} label="Lowest ask · 1,000" />
+      <Tile value={String(asks.length)} label="Open asks" />
+      <Tile value={candles.length ? `${candles.at(-1)!.close.toLocaleString()} sats` : "—"} label="Last trade · 1,000" />
     </div>
-    <div className="mt-6 flex items-baseline justify-between gap-3">
-      <p className="eyebrow">Open holder asks</p>
-      <span className="text-label uppercase tracking-label text-bone-dim">{listings.length} listed</span>
+    <div className="mt-5 grid gap-px bg-rule lg:grid-cols-[1.9fr_1fr]">
+      {candles.length ? <div className="min-w-0"><TokenChart ticker={ticker} candles={candles} interval={interval} onIntervalChange={setInterval} loading={chartLoading} className="border-0" /></div> : <div className="flex min-h-[420px] min-w-0 items-center justify-center border border-dashed border-rule bg-ink-3 px-6 text-center">
+        <div>
+          <p className="text-sm text-bone">No indexed price history yet</p>
+          <p className="mt-2 max-w-xs text-xs leading-relaxed text-bone-dim">The chart appears when confirmed trades with a recorded BTC value are indexed.</p>
+        </div>
+      </div>}
+      <div className="bg-ink-3 px-5 py-4">
+        <div className="flex items-center justify-between gap-3"><p className="eyebrow">Ask ladder</p><span className="text-label uppercase tracking-label text-bone-dim">{asks.length} listed</span></div>
+        {asks.length === 0 ? <p className="mt-5 text-xs leading-relaxed text-bone-dim">No holder asks yet.</p> : <div className="mt-4 space-y-px">
+          {asks.slice(0, 10).map((row) => <Link href="/market" key={row.id} className="group relative block overflow-hidden bg-ink-2 px-3 py-2.5 hover:bg-ink">
+            <div className="absolute inset-y-0 right-0 bg-signal/10" style={{ width: `${Number(BigInt(row.amountAtoms) * 100n / maxAtoms)}%` }} />
+            <div className="relative flex items-center justify-between gap-3 text-xs">
+              <span className="tabular-nums text-bone">{row.unitSats.toLocaleString()} sats / 1,000</span>
+              <span className="tabular-nums text-bone-dim">{formatAtoms(row.amountAtoms)}</span>
+            </div>
+          </Link>)}
+        </div>}
+      </div>
     </div>
-    {listings.length === 0 ? <p className="mt-4 border border-dashed border-rule px-6 py-8 text-center text-sm text-bone-dim">No holder asks yet. Curve trading is available below.</p>
-      : <div className="mt-4 overflow-x-auto"><table className="ledger-table min-w-[32rem]"><thead><tr>
-        <th>Seller</th><th className="text-right">Tokens</th><th className="text-right">Ask</th><th className="text-right">Action</th>
-      </tr></thead><tbody>{listings.slice(0, 8).map((row) => <tr key={row.id}>
-        <td className="hex">{row.sellerAnchorTxid.slice(0, 12)}…</td>
-        <td className="text-right tabular-nums">{formatAtoms(row.amountAtoms)}</td>
-        <td className="text-right tabular-nums">{formatVaultSats(String(row.priceSats))}</td>
-        <td className="text-right"><Link href="/crc/market" className="text-signal hover:underline">Review →</Link></td>
-      </tr>)}</tbody></table></div>}
   </section>;
 }

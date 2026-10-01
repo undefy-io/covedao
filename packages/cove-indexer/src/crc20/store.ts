@@ -13,6 +13,10 @@ export type CrcEvent = {
   reason?: string | null;
   deployTxid?: string | null;
   amountAtoms?: string | null;
+  tradeSide?: "buy" | "sell" | null;
+  tradeAtoms?: string | null;
+  tradeGrossSats?: string | null;
+  confirmedTime?: number | null;
 };
 
 const txidPattern = /^[0-9a-f]{64}$/;
@@ -157,7 +161,11 @@ export async function persistCrcBlock(db: Database, network: string, block: CrcB
   const beforeRoot = crcProjectionRoot(before);
   const afterRoot = crcProjectionRoot(after);
   for (const event of events) {
-    if (!txidPattern.test(event.txid) || !Number.isSafeInteger(event.txIndex) || event.txIndex < 0 || (event.deployTxid && !txidPattern.test(event.deployTxid)) || (event.amountAtoms && !/^[1-9][0-9]*$/.test(event.amountAtoms))) throw new Error("invalid CRC event");
+    if (!txidPattern.test(event.txid) || !Number.isSafeInteger(event.txIndex) || event.txIndex < 0 || (event.deployTxid && !txidPattern.test(event.deployTxid)) || (event.amountAtoms && !/^[1-9][0-9]*$/.test(event.amountAtoms)) ||
+      (event.tradeSide && !["buy", "sell"].includes(event.tradeSide)) ||
+      (event.tradeAtoms && !/^[1-9][0-9]*$/.test(event.tradeAtoms)) ||
+      (event.tradeGrossSats && !/^[1-9][0-9]*$/.test(event.tradeGrossSats)) ||
+      (event.confirmedTime !== undefined && event.confirmedTime !== null && (!Number.isSafeInteger(event.confirmedTime) || event.confirmedTime < 0))) throw new Error("invalid CRC event");
   }
   return db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`cove-crc:${network}`}))`);
@@ -170,7 +178,7 @@ export async function persistCrcBlock(db: Database, network: string, block: CrcB
     }
     await writeDelta(tx, network, after, undo);
     await tx.insert(schema.coveCrcBlocks).values({ network, height: BigInt(block.height), hash: block.hash, parentHash: block.parentHash, stateRoot: afterRoot });
-    if (events.length) await tx.insert(schema.coveCrcEvents).values(events.map((event) => ({ network, txid: event.txid, blockHeight: BigInt(block.height), blockHash: block.hash, txIndex: event.txIndex, operation: event.operation, status: event.status, valid: event.valid, reason: event.reason ?? null, deployTxid: event.deployTxid ?? null, amountAtoms: event.amountAtoms ? BigInt(event.amountAtoms) : null })));
+    if (events.length) await tx.insert(schema.coveCrcEvents).values(events.map((event) => ({ network, txid: event.txid, blockHeight: BigInt(block.height), blockHash: block.hash, txIndex: event.txIndex, operation: event.operation, status: event.status, valid: event.valid, reason: event.reason ?? null, deployTxid: event.deployTxid ?? null, amountAtoms: event.amountAtoms ? BigInt(event.amountAtoms) : null, tradeSide: event.tradeSide ?? null, tradeAtoms: event.tradeAtoms ? BigInt(event.tradeAtoms) : null, tradeGrossSats: event.tradeGrossSats ? BigInt(event.tradeGrossSats) : null, confirmedTime: event.confirmedTime ? BigInt(event.confirmedTime) : null })));
     await tx.insert(schema.coveCrcUndo).values({ network, height: BigInt(block.height), blockHash: block.hash, priorHeight: cursor?.height ?? null, priorHash: cursor?.blockHash ?? null, priorRoot: beforeRoot, undoJson: undo });
     await tx.insert(schema.coveCrcCursor).values({ network, height: BigInt(block.height), blockHash: block.hash, stateRoot: afterRoot }).onConflictDoUpdate({ target: schema.coveCrcCursor.network, set: { height: BigInt(block.height), blockHash: block.hash, stateRoot: afterRoot } });
     return true;

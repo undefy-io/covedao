@@ -30,7 +30,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <WalletProvider protocolMode={protocolMode}>
             {/* Installs nothing unless the regtest-only dev wallet is enabled. */}
             {protocolMode === "legacy" && <DevWallet />}
-            <Header protocolMode={protocolMode} />
+            <Header />
             <main className="mx-auto w-full max-w-6xl px-4 pb-24 pt-px sm:px-6">{children}</main>
             {protocolMode === "legacy" && <StatusBar />}
             {protocolMode !== "legacy" && <footer className="border-t border-rule bg-bg/90">

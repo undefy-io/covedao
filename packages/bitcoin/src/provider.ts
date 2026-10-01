@@ -19,6 +19,7 @@ export function withRpcDeadline<T>(signal: AbortSignal, work: () => Promise<T>):
 export interface BitcoinBlock {
   hash: string;
   height: number;
+  timestamp?: number;
   previousBlockHash: string;
   txids: string[];
   /** Raw transaction hexes, in canonical Bitcoin block order. */
@@ -312,6 +313,7 @@ export class CoreRpcProvider implements BitcoinChainProvider {
     return {
       hash,
       height: header.height,
+      timestamp: block.timestamp,
       previousBlockHash: header.previousblockhash ?? "",
       txids,
       rawTxs,

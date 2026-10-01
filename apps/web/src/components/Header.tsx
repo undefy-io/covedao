@@ -15,18 +15,11 @@ const nav: { href: string; label: MessageKey }[] = [
   { href: "/wallet", label: "nav.wallet" },
 ];
 
-export function Header({ protocolMode = "legacy" }: { protocolMode?: "legacy" | "crc-read-only" }) {
+export function Header() {
   const pathname = usePathname();
   const { connected, address, adapterId, connect, disconnect } = useWallet();
   const t = useT();
   const { lang, setLang } = useLang();
-  const links = protocolMode === "legacy" ? nav : [
-    { href: "/crc/explore", label: "nav.explore" as MessageKey },
-    { href: "/crc/launch", label: "nav.launch" as MessageKey },
-    { href: "/crc/market", label: "nav.market" as MessageKey },
-    { href: "/crc/activity", label: "nav.activity" as MessageKey },
-    { href: "/crc/wallet", label: "nav.wallet" as MessageKey },
-  ];
 
   return (
     <header className="sticky top-0 z-40 border-b border-rule bg-ink/95 backdrop-blur">
@@ -70,7 +63,7 @@ export function Header({ protocolMode = "legacy" }: { protocolMode?: "legacy" | 
         </div>
 
         <nav className="order-last -mx-2 flex w-full items-center gap-0.5 overflow-x-auto sm:order-none sm:mx-0 sm:ml-auto sm:w-auto sm:overflow-visible">
-          {links.map((item) => {
+          {nav.map((item) => {
             const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             return (
               <Link

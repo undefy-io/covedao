@@ -143,55 +143,55 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
     return () => { active = false; };
   }, []);
 
-  if (error) return <section className="panel px-6 py-16 text-center sm:px-10"><p role="alert" className="text-danger">{error}</p><Link href="/crc/explore" className="btn-ghost mt-4 inline-block">Back to tokens</Link></section>;
+  if (error) return <section className="panel px-6 py-16 text-center sm:px-10"><p role="alert" className="text-danger">{error}</p><Link href="/explore" className="btn-ghost mt-4 inline-block">Back to tokens</Link></section>;
   if (!token) return <section className="panel px-6 py-16 text-center text-sm text-bone-dim sm:px-10">Reading indexed token state…</section>;
 
   const minted = BigInt(token.mintedAtoms);
-  const pct = Number(minted * 100n / 2_100_000_000_000_000n);
+  const cap = 2_100_000_000_000_000n;
+  const pct = Number(minted * 10_000n / cap) / 100;
+  const graduated = minted >= cap;
 
   return (
     <div className="space-y-px">
       <section className="panel px-6 py-8 sm:px-10">
-        <Link href="/crc/explore" className="text-label uppercase tracking-label text-signal hover:text-bone">← All tokens</Link>
-        <div className="mt-6 flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-4">
             <TokenImage tokenId={token.assetId} ticker={token.ticker} size="lg" />
             <div>
-              <p className="eyebrow">Cove CRC-20 · {token.network}</p>
+              <p className="eyebrow">Cove CRC-20 token</p>
               <h1 className="mt-3 text-4xl text-bone">{token.ticker}</h1>
-              <p className="mt-2 text-xs text-bone-dim">Confirmed at block {token.deployHeight} · indexed through {indexedHeight}</p>
+              <p className="mt-1 text-sm text-bone-dim">Confirmed at block {token.deployHeight}</p>
             </div>
           </div>
-          <span className={token.availability === "active" ? "chip chip-verified" : "chip chip-pending"}>
-            {token.availability === "active" ? "Open" : "Unavailable"}
+          <span className={graduated ? "chip chip-signal" : token.availability === "active" ? "chip chip-verified" : "chip chip-pending"}>
+            {graduated ? "Minted out" : token.availability === "active" ? "Open" : "Unavailable"}
           </span>
         </div>
-        <p className="hex mt-6">{token.assetId}</p>
         <div className="mt-8">
-          <div className="flex justify-between text-label uppercase tracking-label text-bone-dim">
-            <span>Lifetime minted</span><span>{pct}% of 21M</span>
+          <div className="flex items-baseline justify-between text-label uppercase tracking-label text-bone-dim">
+            <span>{pct.toFixed(1)}% minted</span><span>{formatAtoms(token.circulatingAtoms)} circulating</span>
           </div>
           <div className="mt-2 h-1.5 w-full bg-rule"><div className="h-1.5 bg-signal" style={{ width: `${Math.min(pct, 100)}%` }} /></div>
+          <div className="mt-2 flex items-baseline justify-between text-xs tabular-nums"><span className="text-bone">{formatAtoms(token.mintedAtoms)} <span className="text-bone-dim">({pct.toFixed(1)}%)</span></span><span className="text-bone-dim">21M cap</span></div>
         </div>
         <div className="mt-8 grid grid-cols-2 gap-px bg-rule sm:grid-cols-4">
           <Tile size="md" label="Vault BTC" value={formatVaultSats(token.vault.btcSats)} />
-          <Tile size="md" label="Circulating" value={formatAtoms(token.circulatingAtoms)} />
+          <Tile size="md" label="Remaining" value={formatAtoms((cap - minted).toString())} />
           <Tile size="md" label="Vault inventory" value={formatAtoms(token.inventoryAtoms)} />
           <Tile size="md" label="Burned" value={formatAtoms(token.burnedAtoms ?? "0")} />
         </div>
       </section>
-      <CrcTokenMarket assetId={assetId} />
+      <CrcTokenMarket assetId={assetId} ticker={token.ticker} />
       <CrcTokenActivity assetId={assetId} network={token.network} />
       <section className="panel px-6 py-8 sm:px-10">
-        <p className="eyebrow">Trade on the curve</p>
-        <h2 className="mt-3 text-2xl text-bone">Buy and sell</h2>
-        <p className="mt-2 text-sm text-bone-dim">Preview exact amounts from the indexed vault before signing.</p>
-        <div className="mt-6 grid gap-px bg-rule lg:grid-cols-[1fr_1.1fr]">
-        <div className="bg-ink-3 px-5 py-5">
-        <div className="flex gap-2">
-          <button type="button" onClick={() => { setSide("buy"); setQuote(null); }} className={side === "buy" ? "btn" : "btn-ghost"}>Buy</button>
-          <button type="button" onClick={() => { setSide("sell"); setQuote(null); }} className={side === "sell" ? "btn" : "btn-ghost"}>Sell</button>
+        <p className="eyebrow">Trade</p>
+        <div className="mt-5 grid gap-px bg-rule lg:grid-cols-[1fr_1.1fr]">
+        <div className="min-w-0 bg-ink-3 px-5 py-5">
+        <div className="flex flex-wrap">
+          <button type="button" onClick={() => { setSide("buy"); setQuote(null); }} className={side === "buy" ? "border border-signal bg-signal px-3 py-1.5 text-label uppercase tracking-label text-ink" : "border border-rule px-3 py-1.5 text-label uppercase tracking-label text-bone-dim transition-colors hover:text-bone"}>Buy</button>
+          <button type="button" onClick={() => { setSide("sell"); setQuote(null); }} className={side === "sell" ? "border border-signal bg-signal px-3 py-1.5 text-label uppercase tracking-label text-ink" : "border border-rule px-3 py-1.5 text-label uppercase tracking-label text-bone-dim transition-colors hover:text-bone"}>Sell</button>
         </div>
+        <p className="mt-4 text-xs leading-relaxed text-bone-dim">{side === "buy" ? "Buy tokens from the BTC-backed curve." : "Sell tokens back to the BTC-backed vault."}</p>
         <label className="mt-4 block text-sm text-bone-dim">
           Tokens ({side})
           <input value={quantity} onChange={(event) => { setQuantity(event.target.value); setQuote(null); }} inputMode="numeric" className="field mt-2" />
@@ -200,8 +200,10 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
         <button type="button" disabled={quoting || token.availability !== "active"} onClick={() => void preview()} className="btn mt-4 block disabled:opacity-50">{quoting ? "Calculating…" : "Preview quote"}</button>
         {quoteError && <p role="alert" className="mt-3 text-sm text-danger">{quoteError}</p>}
         </div>
-        <div className="bg-ink-3 px-5 py-5">
-        <p className="eyebrow">Transaction preview</p>
+        <div className="min-w-0 bg-ink-3 px-5 py-5">
+        <p className="eyebrow">On-chain facts</p>
+        <dl className="mt-4 space-y-3 text-xs"><div className="flex justify-between gap-3"><dt className="text-bone-dim">Deploy transaction</dt><dd className="hex max-w-[60%] truncate text-bone">{token.deployTxid}</dd></div><div className="flex justify-between gap-3"><dt className="text-bone-dim">Deploy height</dt><dd className="tabular-nums text-bone">{Number(token.deployHeight).toLocaleString()}</dd></div><div className="flex justify-between gap-3"><dt className="text-bone-dim">Vault outpoint</dt><dd className="hex max-w-[60%] truncate text-bone">{token.vault.txid}:{token.vault.vout}</dd></div><div className="flex justify-between gap-3"><dt className="text-bone-dim">Indexed through</dt><dd className="tabular-nums text-bone">{indexedHeight}</dd></div><div className="flex justify-between gap-3"><dt className="text-bone-dim">Token ID</dt><dd className="hex max-w-[60%] truncate text-bone">{token.assetId}</dd></div></dl>
+        <p className="eyebrow mt-8">Transaction preview</p>
         {quote ? <div className="mt-4 space-y-2 text-sm text-bone-dim">
           <p>Backing: {quote.grossSats} sats</p>
           <p>Protocol fee: {quote.protocolFeeSats} sats</p>

@@ -185,6 +185,14 @@ async function main(): Promise<void> {
       synced = await syncCrcTip({ db, provider, network: "regtest", activationHeight, protocolScriptHex: protocol.scriptHex, snapshot: synced.snapshot });
       requireEqual(synced.snapshot.cursor?.hash, lastBlockHash, `trade ${index} cursor`);
       requireEqual(synced.snapshot.state.assets[assetId]?.status, "live", `trade ${index} status`);
+      const [tradeEvent] = await db.select({ side: schema.coveCrcEvents.tradeSide,
+        atoms: schema.coveCrcEvents.tradeAtoms, grossSats: schema.coveCrcEvents.tradeGrossSats,
+        confirmedTime: schema.coveCrcEvents.confirmedTime })
+        .from(schema.coveCrcEvents).where(eq(schema.coveCrcEvents.txid, trade.txid)).limit(1);
+      requireEqual(tradeEvent?.side, operation.side, `trade ${index} recorded side`);
+      requireEqual(tradeEvent?.atoms, operation.tokens * 100_000_000n, `trade ${index} recorded amount`);
+      requireEqual(tradeEvent?.grossSats, buyQuote?.grossSats ?? sellQuote!.grossSats, `trade ${index} recorded BTC value`);
+      if (!tradeEvent?.confirmedTime || tradeEvent.confirmedTime <= 0n) throw new Error(`trade ${index} confirmation time missing`);
       const hydrated = await hydrateCrcLedger(db, "regtest");
       requireEqual(hydrated.state.assets[assetId]?.curve.vaultOutpoint, `${trade.txid}:${operation.side === "buy" ? 2 : 1}`, `trade ${index} vault outpoint`);
       requireEqual(hydrated.state.assets[assetId]?.curve.vaultSats, buyQuote ? curve.vaultSats + buyQuote.grossSats : curve.vaultSats - sellQuote!.grossSats, `trade ${index} reserve`);

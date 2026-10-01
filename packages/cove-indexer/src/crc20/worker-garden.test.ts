@@ -44,7 +44,7 @@ describe("Garden-shaped Cove block replay", () => {
       vaultAnchorSats: 330, launchSaltHex: "ab".repeat(32),
       rawSha256: createHash("sha256").update(Buffer.from(deploy.rawHex, "hex")).digest("hex") };
     const provider = { getRawTransaction: vi.fn(async () => { throw new Error("unexpected Core lookup"); }) };
-    const block = { network: "regtest" as const, height: 100, hash: "aa".repeat(32), parentHash: "bb".repeat(32),
+    const block = { network: "regtest" as const, height: 100, timestamp: 1_700_000_000, hash: "aa".repeat(32), parentHash: "bb".repeat(32),
       rawTxs: [launchFunding.rawHex, deploy.rawHex, payment.rawHex, mint.rawHex, transfer.rawHex] };
     const replay = await replayCrcBlock(createCoveLedger(), block, [registration], provider);
     expect(provider.getRawTransaction).not.toHaveBeenCalled();
@@ -53,6 +53,8 @@ describe("Garden-shaped Cove block replay", () => {
       { operation: "mint", status: "applied", amountAtoms: "100000000000" },
       { operation: "transfer", status: "applied", amountAtoms: "100000000000" },
     ]);
+    expect(replay.events[1]).toMatchObject({ tradeSide: "buy", tradeAtoms: "100000000000", tradeGrossSats: "27", confirmedTime: 1_700_000_000 });
+    expect(replay.events[2]).toMatchObject({ tradeSide: null, tradeAtoms: null, tradeGrossSats: null });
     const assetId = `regtest:${deploy.txid}`;
     expect(replay.state.assets[assetId]?.tokenUtxos?.[`${transfer.txid}:1`]).toEqual({ scriptHex: buyer, atoms: "100000000000" });
     const projection = projectionFromCoveLedger(replay.state, { assets: {}, vaults: {}, balances: {} }, block, [registration]);

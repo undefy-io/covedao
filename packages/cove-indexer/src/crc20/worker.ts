@@ -11,7 +11,7 @@ import { persistCrcBlock, readCrcProjectionInTransaction, type CrcBlock, type Cr
 import type { CrcProjection, CrcTokenUtxo } from "./persistence.js";
 import { prepareCrcLaunchIntent } from "./intents.js";
 
-export type CrcRawBlock = CrcBlock & { network: BitcoinNetwork; rawTxs: readonly string[] };
+export type CrcRawBlock = CrcBlock & { network: BitcoinNetwork; rawTxs: readonly string[]; timestamp?: number };
 export type CrcReplayEvent = CrcEvent & { blockHeight: number };
 export type ParentProvider = Pick<{ getRawTransaction(txid: string): Promise<string> }, "getRawTransaction">;
 export type RegisteredCoveDeployment = Readonly<{ network: BitcoinNetwork; txid: string; vaultScriptHex: string; creatorScriptHex: string; protocolScriptHex: string; vaultAnchorSats: number; launchSaltHex: string; rawSha256: string }>;
@@ -124,6 +124,12 @@ export async function replayCrcBlock(
       const routedId = spentVaults[0]?.assetId.split(":")[1] ?? [...spentTokenAssets][0]?.split(":")[1] ?? null;
       const routedAsset = routedId ? state.assets[`${block.network}:${routedId}`] : null;
       const priorAsset = routedId ? previousState.assets[`${block.network}:${routedId}`] : null;
+      const beforeCurve = priorAsset?.status === "live" ? priorAsset.curve : null;
+      const afterCurve = routedAsset?.status === "live" ? routedAsset.curve : null;
+      const atomDelta = beforeCurve && afterCurve ? afterCurve.circulatingAtoms - beforeCurve.circulatingAtoms : 0n;
+      const satsDelta = beforeCurve && afterCurve ? afterCurve.vaultSats - beforeCurve.vaultSats : 0n;
+      const isTrade = result.status === "applied" && spentVaults.length === 1 && atomDelta !== 0n &&
+        satsDelta !== 0n && (atomDelta > 0n) === (satsDelta > 0n);
       const brokenId = result.status === "broken" ? Object.entries(state.assets).find(([, asset]) => asset.status === "broken" && tx.ins.some((input) => asset.curve.vaultOutpoint === outpoint(input)))?.[0]?.split(":")[1] : undefined;
       events.push({
         txid, blockHeight: block.height, txIndex: index,
@@ -133,6 +139,10 @@ export async function replayCrcBlock(
         amountAtoms: result.status === "applied" && parsed.status === "valid" && parsed.envelope.kind === "mint" && routedAsset?.protocolVersion === 3 && priorAsset
           ? (routedAsset.curve.mintedAtoms - priorAsset.curve.mintedAtoms).toString()
           : parsed.status === "valid" && parsed.envelope.kind !== "deploy" && typeof parsed.envelope.payload.amt === "string" && /^[1-9][0-9]*$/.test(parsed.envelope.payload.amt) ? parsed.envelope.payload.amt : null,
+        tradeSide: isTrade ? atomDelta > 0n ? "buy" : "sell" : null,
+        tradeAtoms: isTrade ? (atomDelta > 0n ? atomDelta : -atomDelta).toString() : null,
+        tradeGrossSats: isTrade ? (satsDelta > 0n ? satsDelta : -satsDelta).toString() : null,
+        confirmedTime: result.status === "applied" && block.timestamp !== undefined ? block.timestamp : null,
       });
     }
     seen.set(txid, rawHex);

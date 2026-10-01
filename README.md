@@ -209,16 +209,17 @@ indexes from the configured activation height. The Compose web service
 sets `COVE_CRC_MARKET_TESTING_ENABLED=true`, which opens marketplace listing
 and fill endpoints on signet for wallet testing. This switch cannot open
 mainnet or testnet. To test a sale, connect a funded signet seller wallet,
-create and buy a Cove token, and list one whole token output on `/crc/market`.
-Connect a second funded signet wallet to reserve and sign the buy, then return
+create and buy a Cove token, and list one whole token output on `/wallet`.
+Connect a second funded signet wallet on `/market` to reserve and sign the buy, then return
 to the seller wallet to review, sign, and broadcast. After confirmation, check
 the buyer's token balance and the seller's BTC payout. Mainnet marketplace
 activation still requires the live wallet canary and release gate tracked in
 Beads.
 
 With at least one confirmed Cove token on the local signet stack, run
-`pnpm test:e2e:crc` to check the live catalog, token history, quote preview,
-and navigation in desktop and mobile Chromium. This browser check is read-only.
+`pnpm test:e2e:crc` to check the live catalog, token history, indexed price chart,
+quote preview, canonical page URLs, and navigation in desktop and mobile Chromium.
+The `/crc/...` pages redirect to the original page URLs. This browser check is read-only.
 The CRC buy submission integration test covers wallet and Guardian signatures,
 PSBT finalization, and broadcast against the isolated test database; set
 `CRC_READ_TEST_DATABASE_URL` to that database before running the web tests.

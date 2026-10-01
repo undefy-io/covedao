@@ -1,5 +1,3 @@
-import { CrcWalletBalances } from "@/components/CrcWalletBalances";
+import { redirect } from "next/navigation";
 
-export default function CrcWalletPage() {
-  return <CrcWalletBalances />;
-}
+export default function Page() { redirect("/wallet"); }

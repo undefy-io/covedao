@@ -246,6 +246,13 @@
       "when": 1790856000000,
       "tag": "0034_crc_activity_index",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1790857000000,
+      "tag": "0035_crc_trade_prices",
+      "breakpoints": true
     }
   ]
 }

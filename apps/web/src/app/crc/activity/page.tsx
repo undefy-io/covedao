@@ -1,5 +1,3 @@
-import { CrcActivity } from "@/components/CrcActivity";
+import { redirect } from "next/navigation";
 
-export default function CrcActivityPage() {
-  return <CrcActivity />;
-}
+export default function Page() { redirect("/activity"); }

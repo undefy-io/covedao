@@ -1,3 +1,3 @@
-import { CrcLaunchForm } from "@/components/CrcLaunchForm";
+import { redirect } from "next/navigation";
 
-export default function CrcLaunchPage() { return <CrcLaunchForm />; }
+export default function Page() { redirect("/launch"); }

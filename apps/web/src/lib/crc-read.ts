@@ -168,6 +168,33 @@ export async function readCrcActivity(db: Database, network: CrcNetwork, deployT
   }));
 }
 
+export async function readCrcTrades(db: Database, network: CrcNetwork, deployTxid: string, limit = 500) {
+  const result = await db.execute(sql`SELECT e.txid, e.block_height, e.tx_index, e.confirmed_time,
+      COALESCE(e.trade_side, CASE WHEN l.id IS NOT NULL THEN 'market' END) AS side,
+      COALESCE(e.trade_atoms, l.amount_atoms) AS atoms,
+      COALESCE(e.trade_gross_sats, l.price_sats + l.protocol_fee_sats) AS gross_sats
+    FROM cove_crc_events e
+    LEFT JOIN cove_crc_market_fills f ON f.network = e.network AND f.txid = e.txid
+    LEFT JOIN cove_crc_market_listings l ON l.id = f.listing_id AND l.network = e.network
+      AND l.deploy_txid = e.deploy_txid AND l.amount_atoms = e.amount_atoms
+    WHERE e.network = ${network} AND e.deploy_txid = ${deployTxid} AND e.status = 'applied'
+      AND e.valid = true AND e.confirmed_time IS NOT NULL
+      AND (e.trade_gross_sats IS NOT NULL OR l.id IS NOT NULL)
+    ORDER BY e.block_height DESC, e.tx_index DESC LIMIT ${limit}`);
+  return result.rows.map((raw) => {
+    const row = raw as Record<string, unknown>;
+    const side = String(row.side);
+    const atoms = BigInt(String(row.atoms));
+    const gross = BigInt(String(row.gross_sats));
+    const time = Number(row.confirmed_time);
+    if (!["buy", "sell", "market"].includes(side) || atoms <= 0n || gross <= 0n || !Number.isSafeInteger(time) || time <= 0) {
+      throw new Error("inconsistent confirmed CRC trade projection");
+    }
+    return { txid: String(row.txid), blockHeight: String(row.block_height), side: side as "buy" | "sell" | "market",
+      amountAtoms: atoms.toString(), totalPriceSats: gross.toString(), timestamp: time * 1000 };
+  }).reverse();
+}
+
 export async function readCrcRecentActivity(db: Database, network: CrcNetwork, limit = 100) {
   const rows = await db.select({
     txid: schema.coveCrcEvents.txid,
