@@ -103,6 +103,7 @@ describe.skipIf(!isolated)("Cove CRC database reads", () => {
 
   it("shows only confirmed events for the requested token and network in chain order", async () => {
     expect((await readCrcActivity(db!, "signet", first)).map((event) => event.txid)).toEqual(["1".repeat(64)]);
+    expect((await readCrcActivity(db!, "regtest", first)).find((event) => event.txid === "3".repeat(64))?.tradeSide).toBe("buy");
     expect((await readCrcRecentActivity(db!, "signet")).filter((event) => ["1".repeat(64), "2".repeat(64)].includes(event.txid)).map((event) => event.txid)).toEqual(["2".repeat(64), "1".repeat(64)]);
     expect((await readCrcRecentActivity(db!, "regtest")).some((event) => event.txid === "3".repeat(64))).toBe(true);
   });

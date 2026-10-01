@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { formatAtoms } from "./CrcHome";
+import { crcActivityLabel } from "../lib/crc-activity-label";
 
 type Event = {
   txid: string;
   blockHeight: string;
   operation: string | null;
+  tradeSide: string | null;
   valid: boolean;
   deployTxid: string | null;
   amountAtoms: string | null;
@@ -42,7 +44,7 @@ export function CrcActivity() {
     {!loading && !error && events.length === 0 && <p className="text-sm text-bone-dim">No confirmed activity yet.</p>}
     <div className="space-y-2">{events.slice(0, shown).map((event) => <div key={event.txid} className="flex flex-wrap items-center justify-between gap-3 border border-rule bg-ink-2 p-3 text-sm">
       <div className="min-w-0">
-        <span className={event.valid ? "text-bone" : "text-rejected"}>{event.operation?.toUpperCase() ?? "—"}</span>
+        <span className={event.valid ? "text-bone" : "text-rejected"}>{crcActivityLabel(event)}</span>
         {event.deployTxid && <Link href={`/token/${encodeURIComponent(`${network}:${event.deployTxid}`)}`} className="hex ml-2 hover:text-signal">{event.deployTxid.slice(0, 12)}…</Link>}
         {event.amountAtoms && <span className="ml-2 text-xs tabular-nums text-bone-dim">{formatAtoms(event.amountAtoms)} tokens</span>}
       </div>

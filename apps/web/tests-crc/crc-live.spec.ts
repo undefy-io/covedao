@@ -1,5 +1,27 @@
 import { expect, test } from "@playwright/test";
 
+test("curve sells appear as Sell in token and global activity", async ({ page, request }) => {
+  const catalog = await (await request.get("/api/crc/v1/tokens?limit=1")).json();
+  const token = catalog.data.tokens[0] as { assetId: string };
+  const deployTxid = token.assetId.split(":")[1];
+  const sell = {
+    txid: "f".repeat(64), blockHeight: "123", txIndex: 1,
+    operation: "transfer", tradeSide: "sell", valid: true,
+    deployTxid, amountAtoms: "100000000000", reason: null,
+  };
+  await page.route("**/api/crc/v1/tokens/*/activity", (route) => route.fulfill({ json: {
+    ok: true, data: { rows: [sell] },
+  } }));
+  await page.route("**/api/crc/v1/activity", (route) => route.fulfill({ json: {
+    ok: true, data: { network: token.assetId.split(":")[0], rows: [sell] },
+  } }));
+
+  await page.goto(`/token/${encodeURIComponent(token.assetId)}`);
+  await expect(page.locator(".ledger-table tbody tr").first()).toContainText("SELL");
+  await page.goto("/activity");
+  await expect(page.getByText("SELL", { exact: true })).toBeVisible();
+});
+
 test("live CRC catalog, token history, and curve quote work in the browser", async ({ page, request }) => {
   const catalogResponse = await request.get("/api/crc/v1/tokens?limit=1");
   expect(catalogResponse.ok()).toBe(true);
@@ -58,7 +80,7 @@ test("sell shortcuts use the connected wallet's indexed balance", async ({ page,
   await page.getByRole("button", { name: "Connect wallet to preview sell" }).click();
   await expect(page.getByText(`You hold 9,500 ${token.ticker}.`)).toBeVisible();
   const amount = page.getByRole("textbox", { name: "Tokens to sell" });
-  for (const [button, expected] of [["25%", "2000"], ["50%", "4000"], ["All", "9000"]]) {
+  for (const [button, expected] of [["25%", "2000"], ["50%", "4000"], ["All", "9000"]] as const) {
     await page.getByRole("button", { name: button, exact: true }).click();
     await expect(amount).toHaveValue(expected);
   }

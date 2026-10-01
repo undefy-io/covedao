@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { formatAtoms } from "./CrcHome";
+import { crcActivityLabel } from "../lib/crc-activity-label";
 
 type Row = {
   txid: string;
   blockHeight: string;
   operation: string | null;
+  tradeSide: string | null;
   valid: boolean;
   reason: string | null;
   amountAtoms: string | null;
@@ -46,7 +48,7 @@ export function CrcTokenActivity({ assetId, network }: { assetId: string; networ
         </tr></thead>
         <tbody>{rows.slice(0, shown).map((row) => <tr key={row.txid}>
           <td className="text-right text-bone-dim">{Number(row.blockHeight).toLocaleString()}</td>
-          <td className={row.valid ? "text-bone" : "text-rejected"}>{row.operation?.toUpperCase() ?? "—"}{!row.valid && <span className="ml-2 text-label">Rejected</span>}</td>
+          <td className={row.valid ? "text-bone" : "text-rejected"}>{crcActivityLabel(row)}{!row.valid && <span className="ml-2 text-label">Rejected</span>}</td>
           <td className="text-right tabular-nums">{row.amountAtoms ? formatAtoms(row.amountAtoms) : "—"}</td>
           <td className="text-right"><a href={`${explorer}/tx/${row.txid}`} target="_blank" rel="noreferrer noopener" className="hex hover:text-signal">{row.txid.slice(0, 12)}…</a></td>
         </tr>)}</tbody>
