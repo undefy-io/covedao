@@ -12,6 +12,7 @@ const db = isolated ? createDb(url!) : undefined;
 const idempotencyKey = `crc-build-test-${randomUUID()}`;
 const walletScriptHex = "0014" + "5".repeat(40);
 const txid = "b".repeat(64);
+const dustTxid = "c".repeat(64);
 
 describe.skipIf(!isolated)("CRC launch build from observed wallet funding", () => {
   afterAll(async () => {
@@ -20,11 +21,14 @@ describe.skipIf(!isolated)("CRC launch build from observed wallet funding", () =
   });
 
   it("builds a canonical deploy PSBT and persists one immutable session", async () => {
-    await saveWalletFundingSnapshot(db!, "regtest", walletScriptHex, [{ txid, vout: 0, valueSats: "10000", confirmations: 1 }]);
+    await saveWalletFundingSnapshot(db!, "regtest", walletScriptHex, [
+      { txid: dustTxid, vout: 0, valueSats: "546", confirmations: 1 },
+      { txid, vout: 0, valueSats: "10000", confirmations: 1 },
+    ]);
     const params = {
       db: db!, network: "regtest" as const, ticker: "TEST", walletScriptHex,
       tokenScriptHex: walletScriptHex, walletPublicKeyHex: undefined,
-      funding: [{ txid, vout: 0 }], minerFeeSats: 1000,
+      funding: [{ txid: dustTxid, vout: 0 }, { txid, vout: 0 }], minerFeeSats: 1000,
       idempotencyKey,
       feeScriptHex: "0014" + "2".repeat(40),
       guardianXOnly: Buffer.from("eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619", "hex"),
@@ -33,9 +37,25 @@ describe.skipIf(!isolated)("CRC launch build from observed wallet funding", () =
     };
     const built = await buildCrcLaunchSession(params);
     const psbt = bitcoin.Psbt.fromBase64(built.psbtBase64, { network: bitcoin.networks.regtest });
+    expect(psbt.inputCount).toBe(1);
     expect(psbt.txOutputs.map((output) => output.value)).toEqual([0, 330, 1000, 7000, 670]);
-    expect(psbt.txOutputs[0]!.script.toString("utf8")).toContain("cove-curve-v3");
+    expect(psbt.txOutputs[0]!.script.toString("utf8")).toContain('"p":"crc-20","op":"deploy"');
     expect(built.intent.vaultScriptHex).toMatch(/^5120[0-9a-f]{64}$/);
     expect((await buildCrcLaunchSession(params)).sessionId).toBe(built.sessionId);
+  });
+
+  it("reports insufficient BTC as a client error when only small outputs remain", async () => {
+    await saveWalletFundingSnapshot(db!, "regtest", walletScriptHex, [
+      { txid: dustTxid, vout: 0, valueSats: "546", confirmations: 1 },
+    ]);
+    await expect(buildCrcLaunchSession({
+      db: db!, network: "regtest", bitcoinNetwork: bitcoin.networks.regtest,
+      ticker: "TEST", walletScriptHex, tokenScriptHex: walletScriptHex,
+      funding: [{ txid: dustTxid, vout: 0 }], minerFeeSats: 1000,
+      idempotencyKey: `${idempotencyKey}-insufficient`,
+      feeScriptHex: "0014" + "2".repeat(40),
+      guardianXOnly: Buffer.from("eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619", "hex"),
+      recoveryProfile: dev1RecoveryProfile(Buffer.from("24653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1c", "hex")),
+    })).rejects.toMatchObject({ code: "INSUFFICIENT_BTC" });
   });
 });

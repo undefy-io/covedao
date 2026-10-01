@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import type * as bitcoin from "bitcoinjs-lib";
-import { unsignedTxDigest } from "@crclaunch/cove-app";
+import { AppError, unsignedTxDigest } from "@crclaunch/cove-app";
 import { buildCoveDeployWithVaultV3, buildCurveBuyV3, buildCurveSellV3, buildUnsignedPsbt, selectCrcFunding, type CoveTokenInput } from "@crclaunch/crc20-transactions";
 import type { VaultRecoveryProfile } from "@crclaunch/cove-vault";
 import type { Database } from "@crclaunch/db";
@@ -8,6 +8,17 @@ import { loadCrcFundingCandidates, type CrcFundingOutpoint } from "./crc-funding
 import { createCrcBuildSession } from "./crc-session";
 import { crcCurveStateFromAsset, quoteCrcBuy, quoteCrcSell, type CrcQuoteAsset } from "./crc-quote";
 import { readCrcTokenUtxo } from "./crc-read";
+
+function selectObservedFunding(params: Parameters<typeof selectCrcFunding>[0]) {
+  try {
+    return selectCrcFunding(params);
+  } catch (error) {
+    if (error instanceof Error && error.message === "insufficient CRC wallet funding") {
+      throw new AppError("INSUFFICIENT_BTC", error.message);
+    }
+    throw error;
+  }
+}
 
 export async function buildCrcLaunchSession(params: {
   db: Database;
@@ -40,7 +51,7 @@ export async function buildCrcLaunchSession(params: {
   const candidates = await loadCrcFundingCandidates(params.db, params.network, params.walletScriptHex, params.funding, {
     publicKeyHex: params.walletPublicKeyHex,
   });
-  const selected = selectCrcFunding({
+  const selected = selectObservedFunding({
     mandatoryInputs: [], candidates,
     outputsSats: first.template.outputs.reduce((sum, output) => sum + output.valueSats, 0),
     minerFeeSats: params.minerFeeSats,
@@ -193,7 +204,7 @@ export async function buildCrcTradeSession(params: {
       ...(sellerInputs.reduce((sum, input) => sum + input.tokenAtoms, 0n) > params.amountAtoms ? { tokenChangeSats: 1_000 } : {}),
       sellerPayoutScriptHex: params.tokenScriptHex, changeSats, changeScriptHex: params.walletScriptHex });
   const base = makeTemplate();
-  const selected = selectCrcFunding({
+  const selected = selectObservedFunding({
     mandatoryInputs: [vaultInput, ...sellerInputs], candidates: btcCandidates,
     outputsSats: base.outputs.reduce((sum, output) => sum + output.valueSats, 0),
     minerFeeSats: params.minerFeeSats, changeScriptHex: params.walletScriptHex,

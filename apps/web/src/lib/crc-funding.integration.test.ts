@@ -11,6 +11,7 @@ const network = "signet";
 const scriptHex = "0014" + randomUUID().replaceAll("-", "").slice(0, 40).padEnd(40, "0");
 const txid = randomUUID().replaceAll("-", "").padEnd(64, "a");
 const ordinaryTxid = randomUUID().replaceAll("-", "").padEnd(64, "c");
+const dustTxid = randomUUID().replaceAll("-", "").padEnd(64, "d");
 const deployTxid = randomUUID().replaceAll("-", "").padEnd(64, "b");
 
 describe.skipIf(!isolated)("CRC wallet funding from server observation", () => {
@@ -27,6 +28,19 @@ describe.skipIf(!isolated)("CRC wallet funding from server observation", () => {
     }]);
     await expect(loadCrcFundingCandidates(db!, network, scriptHex, [{ txid, vout: 2 }])).rejects.toThrow(/observed/i);
     await expect(loadCrcFundingCandidates(db!, network, scriptHex, [{ txid, vout: 1 }, { txid, vout: 1 }])).rejects.toThrow(/duplicate/i);
+  });
+
+  it("keeps usable funding when the wallet also supplies small ordinary outputs", async () => {
+    await saveWalletFundingSnapshot(db!, network, scriptHex, [
+      { txid: dustTxid, vout: 0, valueSats: "546", confirmations: 2 },
+      { txid: dustTxid, vout: 1, valueSats: "1000", confirmations: 2 },
+      { txid: ordinaryTxid, vout: 0, valueSats: "1870921", confirmations: 2 },
+    ]);
+    expect(await loadCrcFundingCandidates(db!, network, scriptHex, [
+      { txid: dustTxid, vout: 0 },
+      { txid: dustTxid, vout: 1 },
+      { txid: ordinaryTxid, vout: 0 },
+    ])).toEqual([{ txid: ordinaryTxid, vout: 0, valueSats: 1870921, scriptHex }]);
   });
 
   it("does not select a live token-bearing output as ordinary BTC funding", async () => {
