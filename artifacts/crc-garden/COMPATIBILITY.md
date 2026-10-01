@@ -28,7 +28,7 @@ The [LEAF deploy transaction](https://mempool.space/tx/546cc042d0f396a0d8ad67b69
 puts JSON at vout 0:
 
 ```json
-{"p":"crc-20","op":"deploy","tick":"LEAF","type":"bonding","max":"100000000","lim":"2100000000","leaf":"1","ordi":"286","btc":"3333333"}
+{"p":"crc-20","op":"deploy","tick":"LEAF","type":"bonding","max":"1000000000","lim":"2100000000","leaf":"1","ordi":"286","btc":"3333333"}
 ```
 
 This single example establishes LEAF's on-chain shape, not which fields another
