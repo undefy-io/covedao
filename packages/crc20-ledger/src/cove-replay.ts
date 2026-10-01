@@ -3,7 +3,6 @@ import { crc20AssetId, parseCrc20Transaction, type BitcoinNetwork, type TxOutput
 import { applyBuy, applySell, createCurveState, quoteBuy, quoteSell, type CurveState } from "@crclaunch/crc20-curve";
 import { dustThreshold } from "@crclaunch/cove-economics";
 import { applyRegisteredCoveDeploy, validateCoveOperation, type RegisteredCoveDeployment } from "./cove.js";
-import { createLedger } from "./index.js";
 
 const ATOMS_PER_TOKEN = 100_000_000n;
 
@@ -20,7 +19,7 @@ export type CoveObservation = Readonly<{
 export type CoveAsset = Readonly<{
   ticker: string;
   status: "live" | "broken";
-  protocolVersion?: 1 | 2;
+  protocolVersion: 3;
   tokenUtxos?: Record<string, { scriptHex: string; atoms: string }>;
   burnedAtoms?: string;
   vaultScriptHex: string;
@@ -111,41 +110,24 @@ function spendableScript(scriptHex: string): boolean {
     (script.length === 23 && script[0] === 0xa9 && script[1] === 0x14 && script[22] === 0x87);
 }
 
-function balance(asset: CoveAsset, scriptHex: string): bigint {
-  return BigInt(asset.balances[scriptHex.toLowerCase()] ?? "0");
-}
-
-function putBalance(balances: Record<string, string>, scriptHex: string, value: bigint): void {
-  balances[scriptHex.toLowerCase()] = value.toString();
-}
-
 function validBalances(asset: CoveAsset): boolean {
-  if (asset.protocolVersion === 2) {
-    if (!asset.tokenUtxos || !/^(0|[1-9][0-9]*)$/.test(asset.burnedAtoms ?? "")) return false;
-    const derived: Record<string, bigint> = {};
-    let total = BigInt(asset.burnedAtoms!);
-    for (const [outpoint, coin] of Object.entries(asset.tokenUtxos)) {
-      if (!/^[0-9a-f]{64}:[0-9]+$/.test(outpoint) || !spendableScript(coin.scriptHex) ||
-        !/^[1-9][0-9]*$/.test(coin.atoms)) return false;
-      const atoms = BigInt(coin.atoms);
-      total += atoms;
-      derived[coin.scriptHex.toLowerCase()] = (derived[coin.scriptHex.toLowerCase()] ?? 0n) + atoms;
-    }
-    if (total !== asset.curve.mintedAtoms) return false;
-    if (asset.status === "live" &&
-      BigInt(asset.tokenUtxos[asset.curve.vaultOutpoint]?.atoms ?? "0") !== asset.curve.vaultAtoms) return false;
-    for (const [scriptHex, amount] of Object.entries(asset.balances)) {
-      if (!/^(0|[1-9][0-9]*)$/.test(amount) || BigInt(amount) !== (derived[scriptHex.toLowerCase()] ?? 0n)) return false;
-    }
-    return Object.keys(derived).every((scriptHex) => BigInt(asset.balances[scriptHex] ?? "-1") === derived[scriptHex]);
+  if (!asset.tokenUtxos || !/^(0|[1-9][0-9]*)$/.test(asset.burnedAtoms ?? "")) return false;
+  const derived: Record<string, bigint> = {};
+  let total = BigInt(asset.burnedAtoms!);
+  for (const [outpoint, coin] of Object.entries(asset.tokenUtxos)) {
+    if (!/^[0-9a-f]{64}:[0-9]+$/.test(outpoint) || !spendableScript(coin.scriptHex) ||
+      !/^[1-9][0-9]*$/.test(coin.atoms)) return false;
+    const atoms = BigInt(coin.atoms);
+    total += atoms;
+    derived[coin.scriptHex.toLowerCase()] = (derived[coin.scriptHex.toLowerCase()] ?? 0n) + atoms;
   }
-  let total = 0n;
-  for (const [scriptHex, atoms] of Object.entries(asset.balances)) {
-    if (!/^(?:[0-9a-f]{2})+$/.test(scriptHex) || !/^(0|[1-9][0-9]*)$/.test(atoms)) return false;
-    total += BigInt(atoms);
+  if (total !== asset.curve.mintedAtoms) return false;
+  if (asset.status === "live" &&
+    BigInt(asset.tokenUtxos[asset.curve.vaultOutpoint]?.atoms ?? "0") !== asset.curve.vaultAtoms) return false;
+  for (const [scriptHex, amount] of Object.entries(asset.balances)) {
+    if (!/^(0|[1-9][0-9]*)$/.test(amount) || BigInt(amount) !== (derived[scriptHex.toLowerCase()] ?? 0n)) return false;
   }
-  return total === asset.curve.mintedAtoms &&
-    BigInt(asset.balances[asset.vaultScriptHex] ?? "0") === asset.curve.vaultAtoms;
+  return Object.keys(derived).every((scriptHex) => BigInt(asset.balances[scriptHex] ?? "-1") === derived[scriptHex]);
 }
 
 function derivedBalances(coins: Record<string, { scriptHex: string; atoms: string }>, prior: Record<string, string>): Record<string, string> {
@@ -157,26 +139,19 @@ function derivedBalances(coins: Record<string, { scriptHex: string; atoms: strin
   return result;
 }
 
-function spentV2Assets(state: CoveLedgerState, inputs: readonly VerifiedInput[]): string[] {
+function spentTrackedAssets(state: CoveLedgerState, inputs: readonly VerifiedInput[]): string[] {
   return Object.keys(state.assets).filter((id) => {
     const asset = state.assets[id]!;
-    return asset.protocolVersion === 2 && inputs.some((input) => !!asset.tokenUtxos?.[input.outpoint]);
+    return inputs.some((input) => !!asset.tokenUtxos?.[input.outpoint]);
   });
 }
 
-function burnV2Inputs(state: CoveLedgerState, observation: CoveObservation, txid: string,
+function burnTrackedInputs(state: CoveLedgerState, observation: CoveObservation, txid: string,
   inputs: readonly VerifiedInput[], reason: string): CoveReplayResult {
   const next = stamped(state, observation, txid);
   let broken = false;
   for (const assetId of Object.keys(state.assets)) {
     const asset = state.assets[assetId]!;
-    if (asset.protocolVersion !== 2) {
-      if (asset.status === "live" && inputs.some((input) => input.outpoint === asset.curve.vaultOutpoint)) {
-        next.assets[assetId] = { ...asset, status: "broken" };
-        broken = true;
-      }
-      continue;
-    }
     const coins = { ...asset.tokenUtxos };
     let burned = BigInt(asset.burnedAtoms ?? "0");
     for (const input of inputs) {
@@ -195,22 +170,46 @@ function burnV2Inputs(state: CoveLedgerState, observation: CoveObservation, txid
   return outcome(next, broken ? "broken" : "invalid", reason);
 }
 
-function applyV2Operation(state: CoveLedgerState, observation: CoveObservation, txid: string,
+function inferMintAmount(curve: CurveState, deltaSats: bigint): bigint {
+  if (deltaSats <= 0n || curve.vaultAtoms !== 0n) throw new Error("mint requires positive backing and no vault inventory");
+  const maxLots = (2_100_000_000_000_000n - curve.mintedAtoms) / (1_000n * ATOMS_PER_TOKEN);
+  let low = 1n;
+  let high = maxLots;
+  while (low <= high) {
+    const middle = (low + high) / 2n;
+    const quote = quoteBuy(curve, middle * 1_000n);
+    if (quote.grossSats < deltaSats) low = middle + 1n;
+    else if (quote.grossSats > deltaSats) high = middle - 1n;
+    else {
+      if (middle > 1n && quoteBuy(curve, (middle - 1n) * 1_000n).grossSats === deltaSats) {
+        throw new Error("ambiguous mint backing delta");
+      }
+      if (middle < maxLots && quoteBuy(curve, (middle + 1n) * 1_000n).grossSats === deltaSats) {
+        throw new Error("ambiguous mint backing delta");
+      }
+      return quote.amountAtoms;
+    }
+  }
+  throw new Error("mint backing delta does not identify a legal amount");
+}
+
+function applyCoveOperation(state: CoveLedgerState, observation: CoveObservation, txid: string,
   assetId: string, inputs: readonly VerifiedInput[], outputs: readonly TxOutput[]): CoveReplayResult {
   const asset = state.assets[assetId]!;
-  const fail = (reason: string) => burnV2Inputs(state, observation, txid, inputs, reason);
+  const fail = (reason: string) => burnTrackedInputs(state, observation, txid, inputs, reason);
   if (!validBalances(asset)) return fail("stored Cove token UTXOs are inconsistent");
-  const formatted = validateCoveOperation(outputs, { txid: assetId.split(":")[1]!, ticker: asset.ticker }, 2);
+  const formatted = validateCoveOperation(outputs, { txid: assetId.split(":")[1]!, ticker: asset.ticker });
   if (formatted.status !== "valid") return fail(formatted.reason);
-  const otherAssets = spentV2Assets(state, inputs).filter((id) => id !== assetId);
+  const otherAssets = spentTrackedAssets(state, inputs).filter((id) => id !== assetId);
   if (otherAssets.length) return fail("input contains another Cove token asset");
   if (Object.entries(state.assets).some(([id, other]) => id !== assetId && other.status === "live" &&
     inputs.some((input) => input.outpoint === other.curve.vaultOutpoint))) {
     return fail("input spends another Cove asset vault");
   }
-  const amountAtoms = formatted.amountAtoms;
+  let amountAtoms = formatted.amountAtoms;
   const coins = { ...asset.tokenUtxos! };
-  const recipientScript = outputs[1]!.scriptHex.toLowerCase();
+  const recipientVout = formatted.recipientVout;
+  const recipientScript = outputs[recipientVout]!.scriptHex.toLowerCase();
   const vaultInput = inputs[0]?.outpoint === asset.curve.vaultOutpoint;
   const spentVault = inputs.some((input) => input.outpoint === asset.curve.vaultOutpoint);
   let curve = asset.curve;
@@ -223,8 +222,11 @@ function applyV2Operation(state: CoveLedgerState, observation: CoveObservation, 
       }
       if (!inputs[1]) throw new Error("missing buyer or seller input");
       if (formatted.kind === "mint" || recipientScript !== asset.vaultScriptHex) {
-        if (formatted.changeVout !== undefined || inputs.slice(1).some((input) => !!coins[input.outpoint])) {
+        if (inputs.slice(1).some((input) => !!coins[input.outpoint])) {
           throw new Error("buy funding contains tokens or token change");
+        }
+        if (formatted.inferredAmount) {
+          amountAtoms = inferMintAmount(curve, BigInt(outputs[2]?.valueSats ?? 0) - curve.vaultSats);
         }
         const quote = quoteBuy(curve, amountAtoms / ATOMS_PER_TOKEN);
         if (formatted.kind !== quote.operation || outputs.length < 5 || outputs.length > 6 ||
@@ -269,13 +271,13 @@ function applyV2Operation(state: CoveLedgerState, observation: CoveObservation, 
           !exact(outputs[3], quote.protocolFeeSats, asset.protocolScriptHex)) throw new Error("sell backing, fee, or payout mismatch");
         const remainder = sellerAtoms - amountAtoms;
         if (remainder > 0n) {
-          if (formatted.changeVout !== 4 || !outputs[4] || outputs[4].scriptHex.toLowerCase() !== sellerScript ||
+          if (!outputs[4] || outputs[4].scriptHex.toLowerCase() !== sellerScript ||
             BigInt(outputs[4].valueSats) < dustThreshold(Buffer.from(sellerScript, "hex")) ||
             !ordinaryChange(outputs, 5, [sellerScript, ...inputs.slice(cursor).map((input) => input.scriptHex)])) {
             throw new Error("seller token change layout mismatch");
           }
           coins[`${txid}:4`] = { scriptHex: sellerScript, atoms: remainder.toString() };
-        } else if (formatted.changeVout !== undefined || !ordinaryChange(outputs, 4, inputs.slice(1).map((input) => input.scriptHex))) {
+        } else if (!ordinaryChange(outputs, 4, inputs.slice(1).map((input) => input.scriptHex))) {
           throw new Error("unexpected seller token change");
         }
         const inventory = BigInt(coins[curve.vaultOutpoint]?.atoms ?? "0");
@@ -308,17 +310,17 @@ function applyV2Operation(state: CoveLedgerState, observation: CoveObservation, 
         throw new Error("peer token inputs are incomplete");
       }
       const remainder = inputAtoms - amountAtoms;
+      const market = recipientVout === 2;
       if (remainder > 0n) {
-        if (formatted.changeVout !== 2 || !outputs[2] || outputs[2].scriptHex.toLowerCase() !== senderScript ||
+        if (market || !outputs[2] || outputs[2].scriptHex.toLowerCase() !== senderScript ||
           BigInt(outputs[2].valueSats) < dustThreshold(Buffer.from(senderScript, "hex")) ||
           !ordinaryChange(outputs, 3, [senderScript, recipientScript, ...inputs.map((input) => input.scriptHex)])) throw new Error("peer token change layout mismatch");
         coins[`${txid}:2`] = { scriptHex: senderScript, atoms: remainder.toString() };
-      } else if (formatted.changeVout !== undefined) {
-        throw new Error("unexpected peer token change");
-      } else if (outputs.length >= 4) {
-        if (cursor !== 1 || !inputs[1] || !outputs[2] || !outputs[3] ||
-          outputs[2].scriptHex.toLowerCase() !== senderScript ||
-          BigInt(outputs[2].valueSats) < dustThreshold(Buffer.from(senderScript, "hex")) ||
+      } else if (market) {
+        const payout = outputs[0];
+        if (cursor !== 1 || !inputs[1] || !payout || !outputs[3] ||
+          payout.scriptHex.toLowerCase() !== senderScript ||
+          BigInt(payout.valueSats) < dustThreshold(Buffer.from(senderScript, "hex")) ||
           outputs[3].scriptHex.toLowerCase() !== asset.protocolScriptHex ||
           BigInt(outputs[3].valueSats) < dustThreshold(Buffer.from(asset.protocolScriptHex, "hex")) ||
           !ordinaryChange(outputs, 4, [recipientScript, ...inputs.slice(1).map((input) => input.scriptHex)])) {
@@ -327,10 +329,10 @@ function applyV2Operation(state: CoveLedgerState, observation: CoveObservation, 
       } else if (!ordinaryChange(outputs, 2, [recipientScript, ...inputs.map((input) => input.scriptHex)])) {
         throw new Error("unexpected peer output layout");
       }
-      coins[`${txid}:1`] = { scriptHex: recipientScript, atoms: amountAtoms.toString() };
+      coins[`${txid}:${recipientVout}`] = { scriptHex: recipientScript, atoms: amountAtoms.toString() };
     }
   } catch (error) {
-    return fail(error instanceof Error ? error.message : "invalid Cove v2 transaction");
+    return fail(error instanceof Error ? error.message : "invalid Cove transaction");
   }
   const next = stamped(state, observation, txid);
   const nextAsset = { ...asset, curve, tokenUtxos: coins, balances: derivedBalances(coins, asset.balances) };
@@ -372,21 +374,19 @@ export function applyCoveConfirmed(
   const spentAssetIds = Object.keys(state.assets).filter((assetId) =>
     state.assets[assetId]?.status === "live" && inputs.some((input) => input.outpoint === state.assets[assetId]?.curve.vaultOutpoint));
   const spentAssetId = spentAssetIds[0];
-  const spentV2 = spentV2Assets(state, inputs);
+  const spentTracked = spentTrackedAssets(state, inputs);
   const parsed = parseCrc20Transaction(outputs);
   if (parsed.status !== "valid") {
-    if (spentV2.length || spentAssetIds.some((id) => state.assets[id]?.protocolVersion === 2)) {
-      return burnV2Inputs(state, observation, txid, inputs, "confirmed spend without valid Cove v2 marker");
+    if (spentTracked.length || spentAssetIds.length) {
+      return burnTrackedInputs(state, observation, txid, inputs, "confirmed spend without valid Cove marker");
     }
     if (spentAssetId) return breakVault(state, observation, txid, spentAssetIds, "confirmed invalid vault spend");
     return outcome(state, parsed.status === "none" ? "ignored" : "invalid", parsed.status === "none" ? "no CRC marker" : parsed.reason);
   }
   if (parsed.envelope.kind === "deploy") {
-    if (spentV2.length) return burnV2Inputs(state, observation, txid, inputs, "token UTXO spent in deploy transaction");
+    if (spentTracked.length) return burnTrackedInputs(state, observation, txid, inputs, "token UTXO spent in deploy transaction");
     if (spentAssetId) return breakVault(state, observation, txid, spentAssetIds, "vault spent in deploy transaction");
-    const registered = applyRegisteredCoveDeploy(createLedger(), {
-      network: observation.network, txid, height: observation.height, index: observation.index, outputs,
-    }, registrations);
+    const registered = applyRegisteredCoveDeploy({ network: observation.network, txid, outputs }, registrations);
     if (registered.status !== "applied") return outcome(state, registered.status === "ignored" ? "ignored" : "invalid", registered.reason);
     const launch = registrations.find((entry) => entry.network === observation.network && entry.txid === txid)!;
     const next = stamped(state, observation, txid);
@@ -394,9 +394,7 @@ export function applyCoveConfirmed(
     if (next.assets[id]) return outcome(state, "invalid", "duplicate Cove deployment");
     next.assets[id] = {
       ticker: parsed.envelope.ticker, status: "live",
-      ...(parsed.envelope.payload.cv === "cove-curve-v2" ? {
-        protocolVersion: 2 as const, tokenUtxos: {}, burnedAtoms: "0",
-      } : {}),
+      protocolVersion: 3, tokenUtxos: {}, burnedAtoms: "0",
       vaultScriptHex: launch.vaultScriptHex.toLowerCase(),
       creatorScriptHex: launch.creatorScriptHex.toLowerCase(),
       protocolScriptHex: launch.protocolScriptHex.toLowerCase(),
@@ -406,110 +404,12 @@ export function applyCoveConfirmed(
     return outcome(next, "applied", "registered Cove deployment");
   }
 
-  const markerId = parsed.envelope.payload.id;
-  if (typeof markerId !== "string" || !/^[0-9a-f]{64}$/.test(markerId)) {
-    if (spentV2.length) return burnV2Inputs(state, observation, txid, inputs, "token UTXO spent with missing asset id");
-    if (spentAssetId) return breakVault(state, observation, txid, spentAssetIds, "vault spent with missing asset id");
-    return outcome(state, "invalid", "missing Cove deployment id");
+  const trackedIds = new Set([...spentTracked, ...spentAssetIds]);
+  if (trackedIds.size === 1) {
+    return applyCoveOperation(state, observation, txid, [...trackedIds][0]!, inputs, outputs);
   }
-  const assetId = crc20AssetId(observation.network, markerId);
-  const asset = state.assets[assetId];
-  if (!asset) {
-    if (spentV2.length) return burnV2Inputs(state, observation, txid, inputs, "token UTXO spent for unknown asset id");
-    if (spentAssetId) return breakVault(state, observation, txid, spentAssetIds, "vault spent for unknown asset id");
-    return outcome(state, "ignored", "external deployment");
-  }
-  if (asset.protocolVersion === 2) return applyV2Operation(state, observation, txid, assetId, inputs, outputs);
-  if (spentV2.length) return burnV2Inputs(state, observation, txid, inputs, "v1 operation spent v2 token UTXO");
-  if (asset.status !== "live") return outcome(state, "invalid", "asset is unavailable");
-  if (!validBalances(asset)) return outcome(state, "invalid", "stored Cove token balances are inconsistent");
-  const formatted = validateCoveOperation(outputs, { txid: markerId, ticker: asset.ticker });
-  if (formatted.status !== "valid") {
-    if (spentAssetId) return breakVault(state, observation, txid, spentAssetIds, formatted.reason);
-    return outcome(state, "invalid", formatted.reason);
-  }
-  if (spentAssetId && (spentAssetIds.length !== 1 || spentAssetId !== assetId)) return breakVault(state, observation, txid, spentAssetIds, "wrong or multiple asset vaults spent");
-  const amountAtoms = formatted.amountAtoms;
-  const recipientScript = outputs[1]!.scriptHex.toLowerCase();
-  const vaultIsInputZero = inputs[0]?.outpoint === asset.curve.vaultOutpoint;
-  if (spentAssetId && !vaultIsInputZero) return breakVault(state, observation, txid, spentAssetIds, "vault must be input zero");
-  const next = stamped(state, observation, txid);
-  const balances = { ...asset.balances };
-  let curve = asset.curve;
-  try {
-    if (vaultIsInputZero) {
-      if (inputs[0]!.scriptHex.toLowerCase() !== asset.vaultScriptHex || BigInt(inputs[0]!.valueSats) !== curve.vaultSats) {
-        throw new Error("vault prevout does not match current state");
-      }
-      const payer = inputs[1];
-      if (!payer) throw new Error("missing buyer or seller input");
-      if (formatted.kind === "mint" || recipientScript !== asset.vaultScriptHex) {
-        const quote = quoteBuy(curve, amountAtoms / ATOMS_PER_TOKEN);
-        if (formatted.kind !== quote.operation || outputs.length < 5 || outputs.length > 6 ||
-          !exact(outputs[2], curve.vaultSats + quote.grossSats, asset.vaultScriptHex) ||
-          !exact(outputs[3], quote.protocolFeeSats, asset.protocolScriptHex) ||
-          !exact(outputs[4], quote.creatorFeeSats, asset.creatorScriptHex) ||
-          !ordinaryChange(outputs, 5, [payer.scriptHex])) throw new Error("buy backing, fee, or recipient layout mismatch");
-        curve = applyBuy(curve, {
-          amountAtoms, previousVaultOutpoint: curve.vaultOutpoint, nextVaultOutpoint: `${txid}:2`,
-          nextVaultSats: BigInt(outputs[2]!.valueSats), protocolFeeSats: BigInt(outputs[3]!.valueSats),
-          creatorFeeSats: BigInt(outputs[4]!.valueSats),
-        });
-        if (quote.operation === "transfer") {
-          const inventory = balance(asset, asset.vaultScriptHex);
-          if (inventory < amountAtoms) throw new Error("vault token inventory is insufficient");
-          putBalance(balances, asset.vaultScriptHex, inventory - amountAtoms);
-        }
-        putBalance(balances, recipientScript, balance(asset, recipientScript) + amountAtoms);
-      } else {
-        const payoutScript = outputs[2]?.scriptHex.toLowerCase();
-        const sellerScripts = inputs.slice(1).map((input) => input.scriptHex);
-        if (formatted.kind !== "transfer" || outputs.length < 4 || outputs.length > 5 ||
-          !payoutScript || !spendableScript(payoutScript) || payoutScript === asset.vaultScriptHex ||
-          !sellerScripts.some((script) => script.toLowerCase() === payoutScript)) throw new Error("seller payout recipient mismatch");
-        const dust = dustThreshold(Buffer.from(payoutScript, "hex"));
-        const quote = quoteSell(curve, amountAtoms / ATOMS_PER_TOKEN, dust);
-        if (!exact(outputs[1], curve.vaultSats - quote.grossSats, asset.vaultScriptHex) ||
-          !exact(outputs[2], quote.sellerPayoutSats, payoutScript) ||
-          !exact(outputs[3], quote.protocolFeeSats, asset.protocolScriptHex) ||
-          !ordinaryChange(outputs, 4, sellerScripts)) throw new Error("sell backing, fee, or payout mismatch");
-        if (balance(asset, payer.scriptHex) < amountAtoms) throw new Error("seller token balance is insufficient");
-        curve = applySell(curve, {
-          amountAtoms, previousVaultOutpoint: curve.vaultOutpoint, nextVaultOutpoint: `${txid}:1`,
-          nextVaultSats: BigInt(outputs[1]!.valueSats), protocolFeeSats: BigInt(outputs[3]!.valueSats),
-          sellerPayoutSats: BigInt(outputs[2]!.valueSats), walletTopUpSats: quote.walletTopUpSats,
-          payoutDustSats: dust,
-        });
-        putBalance(balances, payer.scriptHex, balance(asset, payer.scriptHex) - amountAtoms);
-        putBalance(balances, asset.vaultScriptHex, balance(asset, asset.vaultScriptHex) + amountAtoms);
-      }
-    } else {
-      if (formatted.kind !== "transfer" || !inputs[0] || inputs[0].scriptHex.toLowerCase() === asset.vaultScriptHex) {
-        throw new Error("peer transfer requires sender input zero");
-      }
-      if (recipientScript === asset.vaultScriptHex) {
-        throw new Error("vault inventory requires a validated vault trade");
-      }
-      const sender = inputs[0].scriptHex;
-      if (balance(asset, sender) < amountAtoms) throw new Error("sender token balance is insufficient");
-      if (sender.toLowerCase() !== recipientScript) {
-        putBalance(balances, sender, balance(asset, sender) - amountAtoms);
-        putBalance(balances, recipientScript, balance(asset, recipientScript) + amountAtoms);
-      }
-    }
-    if (BigInt(balances[asset.vaultScriptHex] ?? "0") !== curve.vaultAtoms) {
-      throw new Error("vault token inventory does not match curve state");
-    }
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : "invalid Cove transaction";
-    if (spentAssetId) return breakVault(state, observation, txid, spentAssetIds, reason);
-    return outcome(state, "invalid", reason);
-  }
-  const nextAsset = { ...asset, curve, balances };
-  if (!validBalances(nextAsset)) {
-    if (spentAssetId) return breakVault(state, observation, txid, spentAssetIds, "Cove token balances do not conserve supply");
-    return outcome(state, "invalid", "Cove token balances do not conserve supply");
-  }
-  next.assets[assetId] = nextAsset;
-  return outcome(next, "applied", `${formatted.kind} indexed`);
+  if (spentTracked.length) return burnTrackedInputs(state, observation, txid, inputs,
+    trackedIds.size > 1 ? "input contains multiple Cove token assets" : "token UTXO spent without unique asset input");
+  if (spentAssetId) return breakVault(state, observation, txid, spentAssetIds, "vault spent without unique asset input");
+  return outcome(state, "invalid", "unrouted Cove operation without token or vault input");
 }

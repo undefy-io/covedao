@@ -1,6 +1,8 @@
 import { parseCrc20Transaction, type BitcoinNetwork, type TxOutput } from "@crclaunch/crc20-base";
 import { dustThreshold } from "@crclaunch/cove-economics";
-import { applyTransaction, type ApplyResult, type LedgerState, type LedgerTransaction } from "./index.js";
+
+export type CoveDeployTransaction = Readonly<{ network: BitcoinNetwork; txid: string; outputs: readonly TxOutput[] }>;
+export type CoveDeployResult = Readonly<{ status: "applied" | "invalid" | "ignored"; reason: string }>;
 
 export type RegisteredCoveDeployment = Readonly<{
   network: BitcoinNetwork;
@@ -15,8 +17,8 @@ function sameOutput(output: TxOutput | undefined, valueSats: number, scriptHex: 
   return output?.valueSats === valueSats && output.scriptHex.toLowerCase() === scriptHex.toLowerCase();
 }
 
-function invalid(state: LedgerState, reason: string): ApplyResult {
-  return { status: "invalid", reason, state };
+function invalid(reason: string): CoveDeployResult {
+  return { status: "invalid", reason };
 }
 
 function markerPayloadLength(scriptHex: string): number {
@@ -29,91 +31,84 @@ function markerPayloadLength(scriptHex: string): number {
 }
 
 export type CoveOperationResult =
-  | { status: "valid"; kind: "mint" | "transfer"; amountAtoms: bigint; changeVout?: number }
+  | { status: "valid"; kind: "mint" | "transfer"; amountAtoms: bigint; recipientVout: number; inferredAmount?: boolean }
   | { status: "invalid"; reason: string };
 
 export function validateCoveOperation(
   outputs: readonly TxOutput[],
   asset: Readonly<{ txid: string; ticker: string }>,
-  version: 1 | 2 = 1,
 ): CoveOperationResult {
-  if (!outputs[0] || outputs[0].scriptHex.length > 520 ||
-    (version === 2 && markerPayloadLength(outputs[0].scriptHex) > 256)) {
+  const parsed = parseCrc20Transaction(outputs);
+  const markerVout = parsed.status === "valid" ? parsed.envelope.markerVout : 0;
+  if (!outputs[markerVout] || outputs[markerVout].scriptHex.length > 520 ||
+    markerPayloadLength(outputs[markerVout].scriptHex) > 256) {
     return { status: "invalid", reason: "Cove marker exceeds 256-byte payload limit" };
   }
-  const parsed = parseCrc20Transaction(outputs);
   if (parsed.status !== "valid" || parsed.envelope.kind === "deploy") {
     return { status: "invalid", reason: parsed.status === "invalid" ? parsed.reason : "not a Cove operation" };
   }
   const { envelope } = parsed;
   const payload = envelope.payload;
   const keys = Object.keys(payload).sort().join(",");
-  const v2Keys = payload.ch === undefined ? "amt,id,op,p,tick,v" : "amt,ch,id,op,p,tick,v";
-  if (
-    envelope.markerVout !== 0 ||
-    keys !== (version === 1 ? "amt,id,op,p,tick" : v2Keys) ||
-    (version === 2 && payload.v !== 2) ||
-    payload.p !== "crc-20" ||
-    payload.op !== envelope.kind ||
-    payload.tick !== asset.ticker ||
-    payload.id !== asset.txid ||
-    !/^[0-9a-f]{64}$/.test(asset.txid) ||
-    typeof payload.amt !== "string" ||
-    !/^[1-9][0-9]*$/.test(payload.amt)
-  ) return { status: "invalid", reason: "invalid Cove operation marker or asset id" };
-  if (version === 2 && payload.ch !== undefined &&
-    (!Number.isSafeInteger(payload.ch) || Number(payload.ch) < 2 || Number(payload.ch) >= outputs.length)) {
-    return { status: "invalid", reason: "invalid Cove token change index" };
-  }
-  const recipient = outputs[1];
-  const script = recipient && Buffer.from(recipient.scriptHex, "hex");
-  const supported = script && (
-    (script.length === 22 && script[0] === 0 && script[1] === 0x14) ||
-    (script.length === 34 && script[0] === 0 && script[1] === 0x20) ||
-    (script.length === 34 && script[0] === 0x51 && script[1] === 0x20) ||
-    (script.length === 25 && script[0] === 0x76 && script[1] === 0xa9 && script[2] === 0x14 && script[23] === 0x88 && script[24] === 0xac) ||
-    (script.length === 23 && script[0] === 0xa9 && script[1] === 0x14 && script[22] === 0x87)
-  );
-  if (!recipient || !Number.isSafeInteger(recipient.valueSats) || recipient.valueSats <= 0 || !supported ||
-    BigInt(recipient.valueSats) < dustThreshold(script) ||
-    outputs.slice(1).some((output) => output.scriptHex.toLowerCase().startsWith("6a"))) {
-    return { status: "invalid", reason: "invalid or ambiguous Cove recipient output" };
-  }
-  return { status: "valid", kind: envelope.kind, amountAtoms: BigInt(payload.amt),
-    ...(version === 2 && payload.ch !== undefined ? { changeVout: Number(payload.ch) } : {}) };
+  const market = envelope.kind === "transfer" && envelope.markerVout === 1;
+    if ((market && (outputs[0]?.scriptHex.toLowerCase().startsWith("6a") || !outputs[0]?.valueSats)) ||
+      (!market && envelope.markerVout !== 0) ||
+      keys !== (envelope.kind === "mint" ? "op,p,tick" : "amt,op,p,tick") ||
+      payload.p !== "crc-20" || payload.op !== envelope.kind || payload.tick !== asset.ticker ||
+      !/^[0-9a-f]{64}$/.test(asset.txid)) {
+      return { status: "invalid", reason: "invalid Cove v3 operation marker or ticker" };
+    }
+    const recipientVout = market ? 2 : 1;
+    const recipient = outputs[recipientVout];
+    const recipientScript = recipient && Buffer.from(recipient.scriptHex, "hex");
+    const supported = recipientScript && (
+      (recipientScript.length === 22 && recipientScript[0] === 0 && recipientScript[1] === 0x14) ||
+      (recipientScript.length === 34 && recipientScript[0] === 0 && recipientScript[1] === 0x20) ||
+      (recipientScript.length === 34 && recipientScript[0] === 0x51 && recipientScript[1] === 0x20) ||
+      (recipientScript.length === 25 && recipientScript[0] === 0x76 && recipientScript[1] === 0xa9 &&
+        recipientScript[2] === 0x14 && recipientScript[23] === 0x88 && recipientScript[24] === 0xac) ||
+      (recipientScript.length === 23 && recipientScript[0] === 0xa9 && recipientScript[1] === 0x14 && recipientScript[22] === 0x87)
+    );
+    if (!recipient || !recipientScript || !supported || !recipient.valueSats ||
+      BigInt(recipient.valueSats) < dustThreshold(recipientScript) ||
+      outputs.some((output, index) => index !== envelope.markerVout && output.scriptHex.toLowerCase().startsWith("6a"))) {
+      return { status: "invalid", reason: "invalid or ambiguous Cove recipient output" };
+    }
+    return { status: "valid", kind: envelope.kind, recipientVout,
+      amountAtoms: envelope.kind === "mint" ? 0n : BigInt(payload.amt as string),
+      ...(envelope.kind === "mint" ? { inferredAmount: true } : {}) };
 }
 
 export function applyRegisteredCoveDeploy(
-  state: LedgerState,
-  transaction: LedgerTransaction,
+  transaction: CoveDeployTransaction,
   registrations: readonly RegisteredCoveDeployment[],
-): ApplyResult {
+): CoveDeployResult {
   const registration = registrations.find(
     (entry) => entry.network === transaction.network && entry.txid === transaction.txid,
   );
-  if (!registration) return { status: "ignored", reason: "deployment is not registered by Cove", state };
+  if (!registration) return { status: "ignored", reason: "deployment is not registered by Cove" };
   if (registrations.some((entry) => entry.network === transaction.network &&
     entry.txid !== transaction.txid &&
     entry.vaultScriptHex.toLowerCase() === registration.vaultScriptHex.toLowerCase())) {
-    return invalid(state, "Cove vault script must be unique per asset");
+    return invalid("Cove vault script must be unique per asset");
   }
   if (!transaction.outputs[0] || transaction.outputs[0].scriptHex.length > 520 ||
     markerPayloadLength(transaction.outputs[0].scriptHex) > 256) {
-    return invalid(state, "Cove marker exceeds 256-byte payload limit");
+    return invalid("Cove marker exceeds 256-byte payload limit");
   }
   const parsed = parseCrc20Transaction(transaction.outputs);
   if (parsed.status !== "valid" || parsed.envelope.kind !== "deploy") {
-    return invalid(state, parsed.status === "invalid" ? parsed.reason : "registered transaction is not a deploy");
+    return invalid(parsed.status === "invalid" ? parsed.reason : "registered transaction is not a deploy");
   }
   const payload = parsed.envelope.payload;
   if (
     Object.keys(payload).sort().join(",") !== "cv,max,op,p,tick,type" ||
     payload.p !== "crc-20" || payload.op !== "deploy" ||
-    payload.type !== "bonding" || (payload.cv !== "cove-curve-v1" && payload.cv !== "cove-curve-v2") ||
+    payload.type !== "bonding" || (payload.cv !== "cove-curve-v3") ||
     payload.max !== "2100000000000000"
-  ) return invalid(state, "invalid Cove deploy marker");
+  ) return invalid("invalid Cove deploy marker");
   const outputs = transaction.outputs;
-  if (outputs.length !== 4 && outputs.length !== 5) return invalid(state, "invalid deploy output count");
+  if (outputs.length !== 4 && outputs.length !== 5) return invalid("invalid deploy output count");
   if (
     !Number.isSafeInteger(registration.vaultAnchorSats) || registration.vaultAnchorSats < 0 ||
     BigInt(registration.vaultAnchorSats) < dustThreshold(Buffer.from(registration.vaultScriptHex, "hex")) ||
@@ -122,9 +117,9 @@ export function applyRegisteredCoveDeploy(
     !sameOutput(outputs[1], registration.vaultAnchorSats, registration.vaultScriptHex) ||
     !sameOutput(outputs[2], 1_000, registration.creatorScriptHex) ||
     !sameOutput(outputs[3], 7_000, registration.protocolScriptHex)
-  ) return invalid(state, "Cove deploy anchor, creator, or protocol output mismatch");
+  ) return invalid("Cove deploy anchor, creator, or protocol output mismatch");
   if (outputs.length === 5 && (!outputs[4] || outputs[4].valueSats < 330 || outputs[4].scriptHex.startsWith("6a"))) {
-    return invalid(state, "invalid deploy change output");
+    return invalid("invalid deploy change output");
   }
-  return applyTransaction(state, transaction);
+  return { status: "applied", reason: "registered Cove deployment" };
 }

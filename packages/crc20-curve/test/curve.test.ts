@@ -7,7 +7,7 @@ import {
   isCoveCurveDeploy,
   quoteBuy,
   quoteSell,
-  requiredBackingV1,
+  requiredBacking,
   type CurveState,
 } from "../src/index.js";
 
@@ -45,11 +45,12 @@ describe("CRC-first Cove curve state", () => {
       false,
     );
     expect(
-      isCoveCurveDeploy({ p: "crc-20", op: "deploy", tick: "COVE", cv: "cove-curve-v1" }),
+      isCoveCurveDeploy({ p: "crc-20", op: "deploy", tick: "COVE", cv: "cove-curve-v3" }),
     ).toBe(false);
-    expect(isCoveCurveDeploy({ p: "crc-20", op: "deploy", tick: "COVE", type: "bonding", max: "2100000000000000", cv: "cove-curve-v1" })).toBe(true);
-    expect(isCoveCurveDeploy({ p: "crc-20", op: "deploy", tick: "COVE", type: "bonding", max: "2100000000000001", cv: "cove-curve-v1" })).toBe(false);
-    expect(isCoveCurveDeploy({ p: "crc-20", op: "mint", tick: "COVE", cv: "cove-curve-v1" })).toBe(
+    expect(isCoveCurveDeploy({ p: "crc-20", op: "deploy", tick: "COVE", type: "bonding", max: "2100000000000000", cv: "cove-curve-v3" })).toBe(true);
+    expect(isCoveCurveDeploy({ p: "crc-20", op: "deploy", tick: "COVE", type: "bonding", max: "2100000000000000", cv: "cove-curve-v1" })).toBe(false);
+    expect(isCoveCurveDeploy({ p: "crc-20", op: "deploy", tick: "COVE", type: "bonding", max: "2100000000000001", cv: "cove-curve-v3" })).toBe(false);
+    expect(isCoveCurveDeploy({ p: "crc-20", op: "mint", tick: "COVE", cv: "cove-curve-v3" })).toBe(
       false,
     );
   });
@@ -71,7 +72,7 @@ describe("CRC-first Cove curve state", () => {
     expect(next.vaultSats).toBe(3_030n);
   });
 
-  it("pins the Cove v1 price step and fee schedule at a stage boundary", () => {
+  it("pins the Cove price step and fee schedule at a stage boundary", () => {
     const initial = createCurveState("deploy:1", 330n);
     const first = buy(initial, 100_000n, "first:1");
     expect(first.vaultSats).toBe(3_030n);
@@ -85,11 +86,11 @@ describe("CRC-first Cove curve state", () => {
     expect(quoteSell(second, 1_000n)).toMatchObject({ grossSats: 54n, protocolFeeSats: 1_000n });
   });
 
-  it("matches the original reserve at every stage boundary while freezing v1 constants", () => {
+  it("matches the reserve at every stage boundary", () => {
     for (let stage = 0n; stage <= 210n; stage++) {
       const supply = stage * 100_000n;
-      expect(requiredBackingV1(supply)).toBe(requiredBackingSats(supply));
-      if (stage < 210n) expect(requiredBackingV1(supply + 1_000n)).toBe(requiredBackingSats(supply + 1_000n));
+      expect(requiredBacking(supply)).toBe(requiredBackingSats(supply));
+      if (stage < 210n) expect(requiredBacking(supply + 1_000n)).toBe(requiredBackingSats(supply + 1_000n));
     }
   });
 
