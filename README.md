@@ -4,23 +4,20 @@
 
 > covs.trade — a Bitcoin token launchpad under active CRC-20 cutover.
 
-## CRC-20 v1 release status
+## CRC-20 release status
 
 The new Cove-issued CRC-20 path is selected with `COVE_PROTOCOL_MODE=crc20`.
 It uses CRC-20 JSON markers, a Cove-specific curve, a confirmed-block indexer,
 and a separate Guardian service. Launch, buy, and sell are implemented behind
 `COVE_CRC_TRADING_ACTIVE` and have passed a real Bitcoin Core regtest cycle,
 including Guardian-signed buy and sell, repeated trades, and reorg rollback.
-See [the v1 transaction rules](docs/COVE_CRC20_V1.md) for exact layouts and
-custody assumptions.
+New deployments use [the v2 token-outpoint rules](docs/COVE_CRC20_V2_UTXO_AUTHORITY.md).
 
 **This is not a public mainnet release yet.** The mainnet profile still needs
-operator public parameters, a canary has not reconciled, and the current
-marketplace fill is disabled. Script-based token balances do not make a
-seller's listed Bitcoin UTXO exclusive token authority, so a signed fill
-could pay the seller without a valid token transfer. The market API fails
-closed while confirmed per-listing escrow is built (Beads `covedao-rrf`).
-The `COVE_CRC_TRADING_ACTIVE` flag does not enable marketplace fills.
+operator public parameters and a live signet marketplace canary has not
+reconciled. The v2 marketplace is implemented but its fill routes remain
+disabled until that release gate passes. `COVE_CRC_TRADING_ACTIVE` enables
+launch and curve trades only.
 
 The remaining sections describe the earlier V3 implementation, which stays
 available under `COVE_PROTOCOL_MODE=legacy`. Its binary `CV` envelope and
@@ -178,25 +175,25 @@ use its signet URL and put its key in `COVE_BITCOIN_RPC_API_KEY`. The key is
 sent in the `x-api-key` header. `scripts/signet-up.sh` starts its own Bitcoin
 Core node and does not use either hosted RPC.
 
-For the local Docker signet stack, keep `.env.signet.local` (gitignored) with
+For the local Docker signet CRC stack, keep `.env.signet.local` (gitignored) with
 one of the RPC settings above, `COVE_DATABASE_URL` and `DATABASE_URL` both set to
 `postgres://cove:cove@postgres:5432/cove_signet`, signet-only
 `COVE_GUARDIAN_PRIVATE_KEY_HEX`, `COVE_RECOVERY_PRIVATE_KEY_HEX`, and
 `COVE_FEE_PRIVATE_KEY_HEX`, plus `COVE_ACTIVATION_HEIGHT`, `SENTRY_DSN`, and
-`SENTRY_ENVIRONMENT=dev`. Set the activation height to the signet tip before
-the first Cove transaction and keep it and the keys fixed on restarts. The
-signet app uses its local Guardian signer; the separate Guardian service is
-used on mainnet. This Compose stack creates its own Postgres volume and runs
-migrations automatically:
+`SENTRY_ENVIRONMENT=dev`. Set `COVE_GUARDIAN_AUTH_TOKEN` to a random local
+secret. Set the activation height before the first Cove transaction and keep
+it and the keys fixed on restarts. The CRC stack builds the separate Guardian
+repository at `../guardian`. Generate the local public profile from those
+existing signet keys before building. This Compose stack creates its own
+Postgres volume and runs migrations automatically:
 
 ```bash
-docker compose --profile guardian --profile app stop
+node scripts/signet-crc-profile.mjs
 docker compose --env-file .env.signet.local -f docker-compose.signet.yml build
-# Drain the previous application before migrating; Postgres stays running.
 docker compose --env-file .env.signet.local -f docker-compose.signet.yml stop web worker
 docker compose --env-file .env.signet.local -f docker-compose.signet.yml up -d --no-build --wait
 # App: http://127.0.0.1:3000
-curl http://127.0.0.1:3000/api/v3/status
+curl http://127.0.0.1:3000/api/crc/v1/trading/status
 ```
 
 The production image builds the application once, then the web starts with
@@ -204,6 +201,10 @@ The production image builds the application once, then the web starts with
 Allow about a minute for the image build. This gives stable request timings without
 development-time route compilation. Rebuild the image to apply source changes;
 the build uses the network and public Sentry settings from `.env.signet.local`.
+Before the first authorized CRC launch, the token catalog reports that its
+index is not ready. After that launch is registered and confirmed, the CRC
+worker indexes from the configured activation height. Marketplace listing
+and fill endpoints remain paused during this local launch and curve-trade test.
 
 To stop signet without deleting its database, run
 `docker compose -f docker-compose.signet.yml stop`. After that,

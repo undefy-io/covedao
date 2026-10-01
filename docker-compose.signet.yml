@@ -43,14 +43,40 @@ services:
         SENTRY_DSN: ${SENTRY_DSN:-}
         SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-dev}
     working_dir: /app/apps/worker
-    command: ["pnpm", "start"]
+    command: ["pnpm", "start:crc"]
     env_file: .env.signet.local
+    environment:
+      COVE_CRC_WORKER_ENABLED: "true"
+      COVE_TEST_ONLY_PROFILE_PATH: /app/signet-crc-profile.toml
+    volumes:
+      - ./.local/signet-crc-profile.toml:/app/signet-crc-profile.toml:ro
     depends_on:
       migrate: { condition: service_completed_successfully }
     restart: unless-stopped
 
+  guardian:
+    build:
+      context: ../guardian
+    env_file: .env.signet.local
+    environment:
+      COVE_NETWORK: signet
+      COVE_TEST_ONLY_PROFILE_PATH: /app/signet-crc-profile.toml
+      COVE_CRC_SIGNING_ACTIVE: "true"
+      GUARDIAN_KEY_HEX: ${COVE_GUARDIAN_PRIVATE_KEY_HEX:?set COVE_GUARDIAN_PRIVATE_KEY_HEX}
+      GUARDIAN_AUTH_TOKEN: ${COVE_GUARDIAN_AUTH_TOKEN:?set COVE_GUARDIAN_AUTH_TOKEN}
+    volumes:
+      - ./.local/signet-crc-profile.toml:/app/signet-crc-profile.toml:ro
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4391:4391"
     healthcheck:
-      test: ["CMD", "node", "src/health.mjs"]
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:4391/health',{headers:{authorization:'Bearer '+process.env.GUARDIAN_AUTH_TOKEN}}).then(r=>r.json()).then(h=>process.exit(h.reachable&&h.auditHealthy&&h.signingJournalHealthy&&h.custodyBackendReady?0:1)).catch(()=>process.exit(1))"
       interval: 5s
       timeout: 5s
       retries: 24
@@ -69,9 +95,17 @@ services:
     command: ["pnpm", "exec", "next", "start", "--hostname", "0.0.0.0"]
     environment:
       NODE_ENV: production
+      COVE_PROTOCOL_MODE: crc20
+      COVE_CRC_TRADING_ACTIVE: "true"
+      COVE_TEST_ONLY_PROFILE_PATH: /app/signet-crc-profile.toml
+      COVE_GUARDIAN_ENDPOINT: http://guardian:4391
+      COVE_GUARDIAN_AUTH_TOKEN: ${COVE_GUARDIAN_AUTH_TOKEN:?set COVE_GUARDIAN_AUTH_TOKEN}
     env_file: .env.signet.local
+    volumes:
+      - ./.local/signet-crc-profile.toml:/app/signet-crc-profile.toml:ro
     depends_on:
-      worker: { condition: service_healthy }
+      worker: { condition: service_started }
+      guardian: { condition: service_healthy }
     restart: unless-stopped
     ports:
       - "127.0.0.1:3000:3000"
@@ -80,7 +114,7 @@ services:
         - CMD
         - node
         - -e
-        - "fetch('http://127.0.0.1:3000/api/v3/status').then(r=>r.json()).then(j=>process.exit(j.ok&&j.data?.core?.reachable&&j.data?.indexer?.health==='HEALTHY'?0:1)).catch(()=>process.exit(1))"
+        - "fetch('http://127.0.0.1:3000/api/crc/v1/trading/status').then(r=>r.json()).then(j=>process.exit(j.ok&&j.data?.tradingActive?0:1)).catch(()=>process.exit(1))"
       interval: 20s
       timeout: 10s
       retries: 12
