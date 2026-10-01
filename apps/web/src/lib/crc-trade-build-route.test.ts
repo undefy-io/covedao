@@ -2,8 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   cursor: vi.fn(), asset: vi.fn(), balance: vi.fn(), tokenCoin: vi.fn(),
-  getTxout: vi.fn(), build: vi.fn(),
+  getTxout: vi.fn(), build: vi.fn(), feeObservation: vi.fn(),
 }));
+vi.mock("@crclaunch/cove-app", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return { ...actual, readFeeObservation: mocks.feeObservation };
+});
 vi.mock("./crc-mutation", () => ({ getCrcMutationServices: () => ({
   db: {}, config: { network: "signet", maxMinerFeeSats: 20_000n },
   crcVaultConfig: { feeScriptHex: "0014" + "3".repeat(40) }, provider: { getTxout: mocks.getTxout },
@@ -27,7 +31,7 @@ const body = {
   assetId: `signet:${txid}`, amountAtoms: "100000000000", walletAddress,
   ordinalsAddress: walletAddress, paymentFunding: [],
   sellerFunding: [{ txid: sellerTxid, vout: 1 }],
-  minerFeeSats: "1000", idempotencyKey: "sell-test",
+  feeTier: "standard", idempotencyKey: "sell-test",
 };
 const request = (value: object) => new Request("http://localhost/api/crc/v1/backing/sell/build", {
   method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(value),
@@ -40,6 +44,10 @@ beforeEach(() => {
   mocks.tokenCoin.mockReset().mockResolvedValue({ scriptHex: walletScriptHex, atoms: 100000000000n });
   mocks.getTxout.mockReset().mockResolvedValue({ confirmations: 2, scriptPubKeyHex: walletScriptHex, valueSats: 1000n });
   mocks.build.mockReset().mockResolvedValue({ sessionId: "session", psbtBase64: "psbt", intent: {} });
+  mocks.feeObservation.mockReset().mockResolvedValue({
+    floorSatPerVb: 1n, ceilingSatPerVb: 100n,
+    tiers: [{ key: "eco", satPerVb: 2n }, { key: "standard", satPerVb: 5n }, { key: "priority", satPerVb: 10n }],
+  });
 });
 
 describe("CRC sell build authority", () => {
@@ -56,6 +64,7 @@ describe("CRC sell build authority", () => {
     const response = await crcTradeBuildRoute(request(body), "sell");
     expect(response.status).toBe(200);
     expect(mocks.build).toHaveBeenCalledWith(expect.objectContaining({
+      feeTier: "standard", feeRateSatPerVb: 5,
       verifiedSellerInputs: [expect.objectContaining({
         txid: sellerTxid, vout: 1, tokenAtoms: 100000000000n,
         tokenDeploymentTxid: txid, scriptHex: walletScriptHex, valueSats: 1000,

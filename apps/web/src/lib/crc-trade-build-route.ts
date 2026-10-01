@@ -1,5 +1,6 @@
 import * as bitcoin from "bitcoinjs-lib";
 import type { CoveTokenInput } from "@crclaunch/crc20-transactions";
+import { readFeeObservation } from "@crclaunch/cove-app";
 import { addressToScript } from "./address";
 import { bigintField, fail, handleError, ok, readJson, strField } from "./api";
 import { buildCrcTradeSession } from "./crc-build";
@@ -28,10 +29,11 @@ export async function crcTradeBuildRoute(req: Request, operation: "buy" | "sell"
     if (operation === "sell" && amountAtoms > await readCrcBalance(db, config.network, identity.deployTxid, tokenScriptHex)) {
       return fail("INSUFFICIENT_BALANCE", "Sell amount exceeds indexed wallet balance", 400);
     }
-    const minerFeeSats = bigintField(body, "minerFeeSats", 0n);
-    if (minerFeeSats < 1n || minerFeeSats > config.maxMinerFeeSats || minerFeeSats > 20_000n) {
-      return fail("MINER_FEE_TOO_HIGH", "Choose a miner fee from 1 to 20,000 sats", 400);
-    }
+    const feeTier = strField(body, "feeTier");
+    if (feeTier !== "eco" && feeTier !== "standard" && feeTier !== "priority") return fail("BAD_REQUEST", "Choose a mining speed", 400);
+    const rates = await readFeeObservation(db, config.network);
+    const rate = rates.tiers.find((tier) => tier.key === feeTier)?.satPerVb;
+    if (!rate || rate > rates.ceilingSatPerVb || rate < rates.floorSatPerVb) return fail("BAD_REQUEST", "Mining speed is unavailable", 400);
     const paymentFunding = body.paymentFunding;
     if (!Array.isArray(paymentFunding)) return fail("FUNDING_INPUT_INVALID", "Payment funding candidates are required", 400);
     const sellerFunding = body.sellerFunding;
@@ -82,7 +84,7 @@ export async function crcTradeBuildRoute(req: Request, operation: "buy" | "sell"
       sellerFunding: operation === "sell" ? sellerFunding as { txid: string; vout: number }[] : undefined,
       verifiedSellerInputs,
       paymentFunding: paymentFunding as { txid: string; vout: number }[],
-      minerFeeSats: Number(minerFeeSats), idempotencyKey,
+      feeRateSatPerVb: Number(rate), feeTier, idempotencyKey,
       feeScriptHex: crcVaultConfig.feeScriptHex,
     });
     return ok({ ...built, indexedTip });

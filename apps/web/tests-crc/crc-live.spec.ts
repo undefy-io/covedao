@@ -6,7 +6,7 @@ test("live CRC catalog, token history, and curve quote work in the browser", asy
   const catalog = await catalogResponse.json();
   expect(catalog.ok).toBe(true);
   expect(catalog.data.tokens.length).toBeGreaterThan(0);
-  const token = catalog.data.tokens[0] as { assetId: string; ticker: string };
+  const token = catalog.data.tokens[0] as { assetId: string; ticker: string; metadata?: { displayName?: string } };
 
   await page.goto("/explore");
   await expect(page.getByRole("heading", { name: "Explore tokens" })).toBeVisible();
@@ -15,15 +15,19 @@ test("live CRC catalog, token history, and curve quote work in the browser", asy
   await expect(card).toBeVisible();
   await card.click();
 
-  await expect(page.getByRole("heading", { name: token.ticker, exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: token.metadata?.displayName || token.ticker, exact: true })).toBeVisible();
   await expect(page.getByText("Confirmed on Bitcoin")).toBeVisible();
   const candlesResponse = await request.get(`/api/crc/v1/tokens/${encodeURIComponent(token.assetId)}/candles?interval=1h`);
   expect(candlesResponse.ok()).toBe(true);
   const candles = await candlesResponse.json();
   expect(candles.ok).toBe(true);
   if (candles.data.tradeCount > 0) await expect(page.getByRole("button", { name: "1H" })).toBeVisible();
-  await page.getByRole("button", { name: "Preview quote" }).click();
-  await expect(page.getByText("Total before miner fee:")).toBeVisible();
+  await page.getByRole("button", { name: "Review buy" }).click();
+  await expect(page.getByText("Curve price")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Eco/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Standard/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Priority/i })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Miner fee (sats)" })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 

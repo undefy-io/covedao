@@ -9,6 +9,7 @@ import { CrcTokenActivity } from "./CrcTokenActivity";
 import { CrcTokenMarket } from "./CrcTokenMarket";
 import { useWallet } from "./WalletProvider";
 import { parseCrcTokenQuantity } from "@/lib/crc-client";
+import { affordableFeeTier, FeePicker, type FeeRatesResponse, type FeeTier } from "./FeePicker";
 
 type Token = {
   assetId: string;
@@ -26,6 +27,19 @@ type Token = {
   metadata: { displayName: string; description: string; websiteUrl: string | null; xUrl: string | null; imageUrl: string | null };
 };
 
+type TradeQuote = Record<string, string> & {
+  amountAtoms: string; vaultOutpoint: string; grossSats: string; protocolFeeSats: string;
+  creatorFeeSats: string; buyerTotalSats: string; sellerPayoutSats: string;
+  walletTopUpSats: string; sellerNetSats: string;
+};
+type BuiltTrade = { sessionId: string; psbtBase64: string; intent: {
+  assetId: string; amountAtoms: string; vaultOutpoint: string; feeTier: FeeTier["key"]; minerFeeSats: number;
+} };
+
+function CostLine({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+  return <div className="flex items-baseline justify-between gap-4"><dt className={strong ? "text-bone" : "text-bone-dim"}>{label}</dt><dd className={`tabular-nums text-right ${strong ? "text-base text-bone" : "text-bone-2"}`}>{value}</dd></div>;
+}
+
 export function CrcTokenDetail({ assetId }: { assetId: string }) {
   const { connected, address, publicKey, ordinalsAddress, ordinalsPublicKey,
     connect, getUtxos, signPsbt } = useWallet();
@@ -34,11 +48,14 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
   const [error, setError] = useState("");
   const [quantity, setQuantity] = useState("1000");
   const [side, setSide] = useState<"buy" | "sell">("buy");
-  const [quote, setQuote] = useState<Record<string, string> | null>(null);
+  const [quote, setQuote] = useState<TradeQuote | null>(null);
   const [quoteError, setQuoteError] = useState("");
   const [quoting, setQuoting] = useState(false);
   const [tradingActive, setTradingActive] = useState(false);
-  const [minerFeeSats, setMinerFeeSats] = useState("1000");
+  const [rates, setRates] = useState<FeeRatesResponse | null>(null);
+  const [feeError, setFeeError] = useState("");
+  const [feeTier, setFeeTier] = useState<FeeTier["key"]>("standard");
+  const [builtTrade, setBuiltTrade] = useState<BuiltTrade | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submittedTxid, setSubmittedTxid] = useState("");
 
@@ -49,8 +66,21 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
     try {
       const amountAtoms = parseCrcTokenQuantity(quantity);
       if (quote.amountAtoms !== amountAtoms) throw new Error("Preview the latest amount before signing");
-      if (!/^[1-9]\d{0,4}$/.test(minerFeeSats) || Number(minerFeeSats) > 20_000) {
-        throw new Error("Miner fee must be 1 to 20,000 sats");
+      if (!rates || !affordableFeeTier(rates, feeTier) || feeError) throw new Error("Mining speeds are unavailable. Retry shortly");
+      if (builtTrade) {
+        if (builtTrade.intent.feeTier !== feeTier || builtTrade.intent.amountAtoms !== amountAtoms ||
+          builtTrade.intent.vaultOutpoint !== quote.vaultOutpoint) throw new Error("Trade changed. Review a new quote");
+        const signedPsbtBase64 = await signPsbt(builtTrade.psbtBase64, side === "buy" ? "CRC_BUY" : "CRC_SELL");
+        const submitResponse = await fetch(`/api/crc/v1/backing/${side}/submit`, {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ sessionId: builtTrade.sessionId, signedPsbtBase64 }),
+        });
+        const submitted = await submitResponse.json();
+        if (!submitResponse.ok || !submitted.ok) throw new Error(submitted.error?.detail || submitted.error?.message || "Trade was not submitted");
+        setSubmittedTxid(submitted.data.txid);
+        setBuiltTrade(null);
+        setQuote(null);
+        return;
       }
       const paymentFunding = (await getUtxos(true)).slice(0, 40);
       let sellerFunding: { txid: string; vout: number }[] | undefined;
@@ -75,24 +105,16 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
         body: JSON.stringify({
           assetId, amountAtoms, walletAddress: address, ordinalsAddress: ordinalsAddress || address,
           walletPublicKey: publicKey, ordinalsPublicKey, paymentFunding, sellerFunding,
-          minerFeeSats, idempotencyKey: crypto.randomUUID(),
+          feeTier, idempotencyKey: crypto.randomUUID(),
         }),
       });
       const built = await buildResponse.json();
       if (!buildResponse.ok || !built.ok) throw new Error(built.error?.detail || built.error?.message || "Could not build trade");
       if (built.data.intent?.amountAtoms !== amountAtoms || built.data.intent?.assetId !== assetId ||
-        built.data.intent?.vaultOutpoint !== quote.vaultOutpoint) {
+        built.data.intent?.vaultOutpoint !== quote.vaultOutpoint || built.data.intent?.feeTier !== feeTier) {
         throw new Error("Trade state changed. Preview a new quote before signing");
       }
-      const signedPsbtBase64 = await signPsbt(built.data.psbtBase64, side === "buy" ? "CRC_BUY" : "CRC_SELL");
-      const submitResponse = await fetch(`/api/crc/v1/backing/${side}/submit`, {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sessionId: built.data.sessionId, signedPsbtBase64 }),
-      });
-      const submitted = await submitResponse.json();
-      if (!submitResponse.ok || !submitted.ok) throw new Error(submitted.error?.detail || submitted.error?.message || "Trade was not submitted");
-      setSubmittedTxid(submitted.data.txid);
-      setQuote(null);
+      setBuiltTrade(built.data as BuiltTrade);
     } catch (cause) {
       setQuoteError(cause instanceof Error ? cause.message : "Could not submit trade");
     } finally {
@@ -102,6 +124,7 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
 
   async function preview() {
     setQuote(null);
+    setBuiltTrade(null);
     setQuoteError("");
     setQuoting(true);
     try {
@@ -113,7 +136,7 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
       });
       const body = await response.json();
       if (!body.ok) throw new Error(body.error?.message ?? "Could not quote trade");
-      setQuote(body.data.quote as Record<string, string>);
+      setQuote(body.data.quote as TradeQuote);
     } catch (cause) {
       setQuoteError(cause instanceof Error ? cause.message : "Could not quote trade");
     } finally {
@@ -144,6 +167,18 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/crc/v1/fees", { cache: "no-store" })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok || !body.ok) throw new Error(body.error?.message || "Mining speeds are unavailable");
+        if (active) { setRates(body.data as FeeRatesResponse); setFeeError(""); }
+      })
+      .catch((cause) => { if (active) setFeeError(cause instanceof Error ? cause.message : "Mining speeds are unavailable"); });
+    return () => { active = false; };
+  }, []);
+
   if (error) return <section className="panel px-6 py-16 text-center sm:px-10"><p role="alert" className="text-danger">{error}</p><Link href="/explore" className="btn-ghost mt-4 inline-block">Back to tokens</Link></section>;
   if (!token) return <section className="panel px-6 py-16 text-center text-sm text-bone-dim sm:px-10">Reading indexed token state…</section>;
 
@@ -151,6 +186,14 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
   const cap = 2_100_000_000_000_000n;
   const pct = Number(minted * 10_000n / cap) / 100;
   const graduated = minted >= cap;
+  const estimatedMinerFee = rates
+    ? BigInt(rates.tiers.find((tier) => tier.key === feeTier)?.satPerVb ?? "0") * BigInt(rates.typicalVsize[side === "buy" ? "BACKING_BUY" : "REDEEM"])
+    : null;
+  const reviewMinerFee = builtTrade ? BigInt(builtTrade.intent.minerFeeSats) : estimatedMinerFee;
+  const reviewTotal = quote && reviewMinerFee !== null
+    ? side === "buy" ? BigInt(quote.buyerTotalSats) + 1_000n + reviewMinerFee
+      : BigInt(quote.sellerNetSats) - reviewMinerFee
+    : null;
 
   return (
     <div className="space-y-px">
@@ -194,41 +237,53 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
         <p className="eyebrow">Trade</p>
         <div className="mt-5 grid gap-px bg-rule lg:grid-cols-[1fr_1.1fr]">
         <div className="min-w-0 bg-ink-3 px-5 py-5">
-        <div className="flex flex-wrap">
-          <button type="button" onClick={() => { setSide("buy"); setQuote(null); }} className={side === "buy" ? "border border-signal bg-signal px-3 py-1.5 text-label uppercase tracking-label text-ink" : "border border-rule px-3 py-1.5 text-label uppercase tracking-label text-bone-dim transition-colors hover:text-bone"}>Buy</button>
-          <button type="button" onClick={() => { setSide("sell"); setQuote(null); }} className={side === "sell" ? "border border-signal bg-signal px-3 py-1.5 text-label uppercase tracking-label text-ink" : "border border-rule px-3 py-1.5 text-label uppercase tracking-label text-bone-dim transition-colors hover:text-bone"}>Sell</button>
-        </div>
-        <p className="mt-4 text-xs leading-relaxed text-bone-dim">{side === "buy" ? "Buy tokens from the BTC-backed curve." : "Sell tokens back to the BTC-backed vault."}</p>
-        <label className="mt-4 block text-sm text-bone-dim">
-          Tokens ({side})
-          <input value={quantity} onChange={(event) => { setQuantity(event.target.value); setQuote(null); }} inputMode="numeric" className="field mt-2" />
-        </label>
-        {side === "sell" && !connected && <button type="button" onClick={() => void connect()} className="btn-ghost mt-3">Connect wallet to preview sell</button>}
-        <button type="button" disabled={quoting || token.availability !== "active"} onClick={() => void preview()} className="btn mt-4 block disabled:opacity-50">{quoting ? "Calculating…" : "Preview quote"}</button>
+        {!quote ? <>
+          <div className="flex flex-wrap">
+            <button type="button" onClick={() => { setSide("buy"); setQuoteError(""); }} className={side === "buy" ? "border border-signal bg-signal px-3 py-1.5 text-label uppercase tracking-label text-ink" : "border border-rule px-3 py-1.5 text-label uppercase tracking-label text-bone-dim transition-colors hover:text-bone"}>Buy</button>
+            <button type="button" onClick={() => { setSide("sell"); setQuoteError(""); }} className={side === "sell" ? "border border-signal bg-signal px-3 py-1.5 text-label uppercase tracking-label text-ink" : "border border-rule px-3 py-1.5 text-label uppercase tracking-label text-bone-dim transition-colors hover:text-bone"}>Sell</button>
+          </div>
+          <p className="mt-4 text-xs leading-relaxed text-bone-dim">{side === "buy" ? "Buy tokens from the BTC-backed curve." : "Sell tokens back to the BTC-backed vault."}</p>
+          <label className="mt-4 block text-sm text-bone-dim">Tokens to {side}
+            <input value={quantity} onChange={(event) => { setQuantity(event.target.value); setQuoteError(""); }} inputMode="numeric" className="field mt-2" />
+          </label>
+          {side === "sell" && !connected && <button type="button" onClick={() => void connect()} className="btn-ghost mt-3">Connect wallet to preview sell</button>}
+          <button type="button" disabled={quoting || token.availability !== "active"} onClick={() => void preview()} className="btn mt-4 block disabled:opacity-50">{quoting ? "Calculating…" : `Review ${side}`}</button>
+        </> : <div className="space-y-4">
+          <div className="border border-signal/40 bg-signal/5 px-4 py-4">
+            <p className="eyebrow">You {side === "buy" ? "buy" : "sell"}</p>
+            <p className="mt-2 text-2xl tabular-nums text-bone">{quantity} <span className="text-base text-bone-dim">{token.ticker}</span></p>
+          </div>
+          <dl className="space-y-2 text-sm">
+            <CostLine label="Curve price" value={`${BigInt(quote.grossSats).toLocaleString()} sats`} />
+            <CostLine label="Protocol fee" value={`${side === "buy" ? "+" : "−"}${BigInt(quote.protocolFeeSats).toLocaleString()} sats`} />
+            {side === "buy" ? <>
+              <CostLine label="Creator fee" value={`+${BigInt(quote.creatorFeeSats).toLocaleString()} sats`} />
+              <CostLine label="Token output" value="+1,000 sats" />
+            </> : <>
+              <CostLine label="Wallet top-up" value={`${BigInt(quote.walletTopUpSats).toLocaleString()} sats`} />
+              <CostLine label="Curve payout" value={`${BigInt(quote.sellerPayoutSats).toLocaleString()} sats`} />
+            </>}
+            <CostLine label="Network fee" value={reviewMinerFee === null ? "Reading…" : `${builtTrade ? "" : "≈"}${reviewMinerFee.toLocaleString()} sats`} />
+            <div className="border-t border-rule-bright pt-2">
+              <CostLine label={side === "buy" || (reviewTotal !== null && reviewTotal < 0n) ? "You pay" : "You receive"} value={reviewTotal === null ? "Reading…" : `${builtTrade ? "" : "≈"}${(reviewTotal < 0n ? -reviewTotal : reviewTotal).toLocaleString()} sats`} strong />
+            </div>
+          </dl>
+          <FeePicker rates={rates} selected={feeTier} onSelect={(tier) => { setFeeTier(tier); setBuiltTrade(null); }} vsizeHint={rates?.typicalVsize[side === "buy" ? "BACKING_BUY" : "REDEEM"]} />
+          {feeError && <p role="alert" className="text-sm text-danger">{feeError}</p>}
+          {builtTrade && <p className="text-xs text-bone-dim">Exact network fee: {builtTrade.intent.minerFeeSats.toLocaleString()} sats. Review it before signing.</p>}
+          <div className="grid grid-cols-2 gap-px bg-rule">
+            <button type="button" disabled={submitting} onClick={() => { setQuote(null); setBuiltTrade(null); setQuoteError(""); }} className="btn-ghost w-full border-0">Back</button>
+            {!connected ? <button type="button" onClick={() => void connect()} className="btn w-full">Connect wallet</button>
+              : <button type="button" disabled={submitting || !tradingActive || !rates || !!feeError || !affordableFeeTier(rates, feeTier)} onClick={() => void trade()} className="btn w-full disabled:opacity-50">{submitting ? "Working…" : builtTrade ? `Sign ${side}` : "Build trade"}</button>}
+          </div>
+        </div>}
         {quoteError && <p role="alert" className="mt-3 text-sm text-danger">{quoteError}</p>}
+        {submittedTxid && <p className="mt-4 break-all text-sm text-signal">Submitted: {submittedTxid}</p>}
+        {token.availability === "unavailable" && <p className="mt-2 text-sm text-danger">This asset’s vault is unavailable.</p>}
         </div>
         <div className="min-w-0 bg-ink-3 px-5 py-5">
         <p className="eyebrow">On-chain facts</p>
         <dl className="mt-4 space-y-3 text-xs"><div className="flex justify-between gap-3"><dt className="text-bone-dim">Deploy transaction</dt><dd className="hex max-w-[60%] truncate text-bone">{token.deployTxid}</dd></div><div className="flex justify-between gap-3"><dt className="text-bone-dim">Deploy height</dt><dd className="tabular-nums text-bone">{Number(token.deployHeight).toLocaleString()}</dd></div><div className="flex justify-between gap-3"><dt className="text-bone-dim">Vault outpoint</dt><dd className="hex max-w-[60%] truncate text-bone">{token.vault.txid}:{token.vault.vout}</dd></div><div className="flex justify-between gap-3"><dt className="text-bone-dim">Indexed through</dt><dd className="tabular-nums text-bone">{indexedHeight}</dd></div><div className="flex justify-between gap-3"><dt className="text-bone-dim">Token ID</dt><dd className="hex max-w-[60%] truncate text-bone">{token.assetId}</dd></div></dl>
-        <p className="eyebrow mt-8">Transaction preview</p>
-        {quote ? <div className="mt-4 space-y-2 text-sm text-bone-dim">
-          <p>Backing: {quote.grossSats} sats</p>
-          <p>Protocol fee: {quote.protocolFeeSats} sats</p>
-          {side === "buy" ? <><p>Creator fee: {quote.creatorFeeSats} sats</p><p className="text-bone">Total before miner fee: {quote.buyerTotalSats} sats</p></> : <><p>Curve payout: {quote.sellerPayoutSats} sats</p><p>Wallet top-up: {quote.walletTopUpSats} sats</p><p className="text-bone">Net before miner fee: {quote.sellerNetSats} sats</p></>}
-          {side === "sell" && <><p className="break-all">BTC payout address: {ordinalsAddress || address}</p><p>Your token output’s BTC is returned in the payout in addition to the curve amount.</p></>}
-          <p className="text-xs">Miner fee is separate. The vault may change before signing.</p>
-        </div> : <p className="mt-4 text-sm text-bone-dim">Choose an amount to see the curve price and fees.</p>}
-        {quote && tradingActive && <div className="mt-4">
-          <label className="block text-sm text-bone-dim">Miner fee (sats)
-            <input value={minerFeeSats} onChange={(event) => setMinerFeeSats(event.target.value)} inputMode="numeric"
-              className="field mt-2" />
-          </label>
-          {connected ? <button type="button" disabled={submitting} onClick={() => void trade()}
-            className="btn mt-4 disabled:opacity-50">{submitting ? "Signing and submitting…" : `Sign ${side}`}</button>
-            : <button type="button" onClick={() => void connect()} className="btn mt-4">Connect wallet to {side}</button>}
-        </div>}
-        {submittedTxid && <p className="mt-4 break-all text-sm text-signal">Submitted: {submittedTxid}</p>}
-        {token.availability === "unavailable" && <p className="mt-2 text-sm text-danger">This asset’s vault is unavailable.</p>}
         </div>
         </div>
       </section>

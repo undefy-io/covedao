@@ -165,11 +165,17 @@ export async function buildCrcTradeSession(params: {
   sellerFunding?: CrcFundingOutpoint[];
   verifiedSellerInputs?: CoveTokenInput[];
   paymentFunding: CrcFundingOutpoint[];
-  minerFeeSats: number;
+  minerFeeSats?: number;
+  feeRateSatPerVb?: number;
+  feeTier?: "eco" | "standard" | "priority";
   idempotencyKey: string;
   feeScriptHex: string;
 }) {
   const { asset } = params;
+  if ((params.minerFeeSats === undefined) === (params.feeRateSatPerVb === undefined)) throw new Error("select one CRC miner fee method");
+  if (params.feeRateSatPerVb !== undefined && (!Number.isSafeInteger(params.feeRateSatPerVb) || params.feeRateSatPerVb < 1 || params.feeRateSatPerVb > 500)) {
+    throw new AppError("MINER_FEE_TOO_HIGH", "invalid CRC mining speed");
+  }
   if (asset.protocolVersion !== 3) throw new Error("unsupported Cove CRC asset");
   if (asset.network !== params.network || asset.assetId !== `${params.network}:${asset.deployTxid}` ||
     asset.vault.scriptHex !== asset.registeredVaultScriptHex ||
@@ -235,12 +241,29 @@ export async function buildCrcTradeSession(params: {
       ...(sellerInputs.reduce((sum, input) => sum + input.tokenAtoms, 0n) > params.amountAtoms ? { tokenChangeSats: 1_000 } : {}),
       sellerPayoutScriptHex: params.tokenScriptHex, changeSats, changeScriptHex: params.walletScriptHex });
   const base = makeTemplate();
-  const selected = selectObservedFunding({
-    mandatoryInputs: [vaultInput, ...sellerInputs], candidates: btcCandidates,
-    outputsSats: base.outputs.reduce((sum, output) => sum + output.valueSats, 0),
-    minerFeeSats: params.minerFeeSats, changeScriptHex: params.walletScriptHex,
+  const mandatoryInputs = [vaultInput, ...sellerInputs];
+  const outputsSats = base.outputs.reduce((sum, output) => sum + output.valueSats, 0);
+  const estimatedVsize = (inputs: readonly { scriptHex: string }[], outputs: typeof base.outputs) => estimateVsize({
+    vaultInputs: 1,
+    p2wpkhInputs: inputs.slice(1).filter((input) => input.scriptHex.startsWith("0014") && input.scriptHex.length === 44).length,
+    p2trInputs: inputs.slice(1).filter((input) => input.scriptHex.startsWith("5120") && input.scriptHex.length === 68).length,
+    p2shP2wpkhInputs: inputs.slice(1).filter((input) => input.scriptHex.startsWith("a914") && input.scriptHex.endsWith("87") && input.scriptHex.length === 46).length,
+    outputScriptBytes: outputs.map((output) => output.scriptHex.length / 2),
   });
-  const built = makeTemplate(selected.changeSats);
+  let targetFee = params.minerFeeSats ?? params.feeRateSatPerVb! * estimatedVsize(mandatoryInputs, base.outputs);
+  let selected: ReturnType<typeof selectCrcFunding> | undefined;
+  let built: typeof base | undefined;
+  for (let attempt = 0; attempt < 42; attempt++) {
+    if (targetFee > 20_000) throw new AppError("MINER_FEE_TOO_HIGH", "selected mining speed exceeds the 20,000-sat cap");
+    selected = selectObservedFunding({ mandatoryInputs, candidates: btcCandidates, outputsSats,
+      minerFeeSats: targetFee, changeScriptHex: params.walletScriptHex });
+    built = makeTemplate(selected.changeSats);
+    if (params.feeRateSatPerVb === undefined) break;
+    const required = params.feeRateSatPerVb * estimatedVsize(selected.inputs, built.outputs);
+    if (selected.minerFeeSats >= required) break;
+    targetFee = required;
+  }
+  if (!selected || !built || selected.minerFeeSats < targetFee) throw new Error("CRC trade fee sizing did not converge");
   const psbt = buildUnsignedPsbt(built, selected.inputs, selected.minerFeeSats, params.bitcoinNetwork);
   const psbtBase64 = psbt.toBase64();
   const digest = unsignedTxDigest(psbt);
@@ -249,7 +272,8 @@ export async function buildCrcTradeSession(params: {
     operation: params.operation, amountAtoms: params.amountAtoms.toString(),
     walletScriptHex: params.walletScriptHex, tokenScriptHex: params.tokenScriptHex,
     sellerFunding: params.sellerFunding, paymentFunding: params.paymentFunding,
-    minerFeeSats: params.minerFeeSats, feeScriptHex: params.feeScriptHex,
+    minerFeeSats: params.minerFeeSats, feeRateSatPerVb: params.feeRateSatPerVb, feeTier: params.feeTier,
+    feeScriptHex: params.feeScriptHex,
   })).digest("hex");
   const sessionOperation = params.operation === "sell" ? "sell"
     : quote.operation === "mint" ? "mint-buy" : "inventory-buy";
@@ -261,6 +285,8 @@ export async function buildCrcTradeSession(params: {
     walletScriptHex: params.walletScriptHex,
     tokenScriptHex: params.tokenScriptHex,
     minerFeeSats: selected.minerFeeSats,
+    feeRateSatPerVb: params.feeRateSatPerVb ?? null,
+    feeTier: params.feeTier ?? null,
     changeSats: selected.changeSats,
     unsignedTxDigest: digest,
     quote,

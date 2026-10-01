@@ -3,6 +3,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { sql } from "drizzle-orm";
 import * as bitcoin from "bitcoinjs-lib";
 import { createDb, saveWalletFundingSnapshot } from "@crclaunch/db";
+import { estimateVsize } from "@crclaunch/bitcoin";
 import { buildCrcTradeSession } from "./crc-build";
 
 const url = process.env.CRC_READ_TEST_DATABASE_URL;
@@ -51,6 +52,14 @@ describe.skipIf(!isolated)("CRC trade build from DB-observed inputs", () => {
     expect(psbt.txOutputs.at(-1)!.script.toString("hex")).toBe(buyer);
     expect((await buildCrcTradeSession(input)).sessionId).toBe(built.sessionId);
     await expect(buildCrcTradeSession({ ...input, amountAtoms: 20_000_000_000_000n })).rejects.toThrow(/idempotency/i);
+    const rated = await buildCrcTradeSession({ ...input, minerFeeSats: undefined,
+      feeRateSatPerVb: 2, feeTier: "eco", idempotencyKey: key + "-rated-buy" });
+    const ratedPsbt = bitcoin.Psbt.fromBase64(rated.psbtBase64, { network: bitcoin.networks.regtest });
+    expect(rated.intent.feeTier).toBe("eco");
+    expect(rated.intent.minerFeeSats).toBe(2 * estimateVsize({
+      vaultInputs: 1, p2wpkhInputs: ratedPsbt.txInputs.length - 1,
+      outputScriptBytes: ratedPsbt.txOutputs.map((output) => output.script.length),
+    }));
   });
 
   it("uses only an indexed seller token output as input one and pays its owner", async () => {
@@ -84,5 +93,21 @@ describe.skipIf(!isolated)("CRC trade build from DB-observed inputs", () => {
     expect(Buffer.from(psbt.txInputs[1]!.hash).reverse().toString("hex")).toBe(sellerTxid);
     expect(Buffer.from(psbt.txInputs[2]!.hash).reverse().toString("hex")).toBe(secondSellerTxid);
     expect(psbt.txOutputs[2]!.script.toString("hex")).toBe(seller);
+    const rated = await buildCrcTradeSession({
+      db: db!, network, bitcoinNetwork: bitcoin.networks.regtest, asset, operation: "sell",
+      amountAtoms: 10_000_000_000_000n, walletScriptHex: buyer, tokenScriptHex: seller,
+      sellerFunding: [{ txid: sellerTxid, vout: 1 }, { txid: secondSellerTxid, vout: 1 }],
+      verifiedSellerInputs: [{ txid: sellerTxid, vout: 1, valueSats: 1000, scriptHex: seller,
+        tokenAtoms: 5_000_000_000_000n, tokenDeploymentTxid: deployTxid },
+      { txid: secondSellerTxid, vout: 1, valueSats: 1000, scriptHex: seller,
+        tokenAtoms: 5_000_000_000_000n, tokenDeploymentTxid: deployTxid }],
+      paymentFunding: [{ txid: paymentTxid, vout: 0 }],
+      feeRateSatPerVb: 2, feeTier: "eco", idempotencyKey: key + "-rated-sell", feeScriptHex: fee,
+    });
+    const ratedPsbt = bitcoin.Psbt.fromBase64(rated.psbtBase64, { network: bitcoin.networks.regtest });
+    expect(rated.intent.minerFeeSats).toBe(2 * estimateVsize({
+      vaultInputs: 1, p2wpkhInputs: ratedPsbt.txInputs.length - 1,
+      outputScriptBytes: ratedPsbt.txOutputs.map((output) => output.script.length),
+    }));
   });
 });
