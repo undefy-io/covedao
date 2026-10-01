@@ -8,7 +8,7 @@ import { TokenImage } from "./TokenImage";
 import { CrcTokenActivity } from "./CrcTokenActivity";
 import { CrcTokenMarket } from "./CrcTokenMarket";
 import { useWallet } from "./WalletProvider";
-import { parseCrcTokenQuantity } from "@/lib/crc-client";
+import { fetchAllCrcWalletBalances, parseCrcTokenQuantity, sellPresetQuantity } from "@/lib/crc-client";
 import { affordableFeeTier, FeePicker, type FeeRatesResponse, type FeeTier } from "./FeePicker";
 
 type Token = {
@@ -58,6 +58,8 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
   const [builtTrade, setBuiltTrade] = useState<BuiltTrade | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submittedTxid, setSubmittedTxid] = useState("");
+  const [heldAtoms, setHeldAtoms] = useState<bigint | null>(null);
+  const [balanceError, setBalanceError] = useState("");
 
   async function trade() {
     if (!quote || !tradingActive || !connected) return;
@@ -179,6 +181,22 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    setHeldAtoms(null);
+    setBalanceError("");
+    if (side === "sell" && connected && (ordinalsAddress || address)) {
+      void fetchAllCrcWalletBalances(ordinalsAddress || address)
+        .then((balances) => {
+          if (active) setHeldAtoms(BigInt(balances.find((balance) => balance.assetId === assetId)?.atoms ?? "0"));
+        })
+        .catch((cause) => {
+          if (active) setBalanceError(cause instanceof Error ? cause.message : "Could not read token balance");
+        });
+    }
+    return () => { active = false; };
+  }, [address, assetId, connected, ordinalsAddress, side]);
+
   if (error) return <section className="panel px-6 py-16 text-center sm:px-10"><p role="alert" className="text-danger">{error}</p><Link href="/explore" className="btn-ghost mt-4 inline-block">Back to tokens</Link></section>;
   if (!token) return <section className="panel px-6 py-16 text-center text-sm text-bone-dim sm:px-10">Reading indexed token state…</section>;
 
@@ -246,6 +264,21 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
           <label className="mt-4 block text-sm text-bone-dim">Tokens to {side}
             <input value={quantity} onChange={(event) => { setQuantity(event.target.value); setQuoteError(""); }} inputMode="numeric" className="field mt-2" />
           </label>
+          {side === "sell" && <>
+            <div className="mt-3 grid grid-cols-3 gap-px bg-rule">
+              {([25, 50, 100] as const).map((percent) => {
+                const preset = heldAtoms === null ? "0" : sellPresetQuantity(heldAtoms, percent);
+                return <button key={percent} type="button" disabled={preset === "0"} onClick={() => { setQuantity(preset); setQuoteError(""); }}
+                  className="bg-ink-2 py-2 text-xs text-bone-2 transition-colors hover:text-bone disabled:opacity-40">
+                  {percent === 100 ? "All" : `${percent}%`}
+                </button>;
+              })}
+            </div>
+            {heldAtoms !== null && <p className="mt-3 text-xs text-bone-dim">You hold {formatAtoms(heldAtoms.toString())} {token.ticker}.</p>}
+            {connected && heldAtoms === null && !balanceError && <p className="mt-3 text-xs text-bone-dim">Reading indexed token balance…</p>}
+            {heldAtoms !== null && heldAtoms % 100_000_000_000n !== 0n && <p className="mt-1 text-xs text-bone-dim">Sell amounts round down to 1,000-token lots.</p>}
+            {balanceError && <p role="alert" className="mt-3 text-xs text-danger">{balanceError}</p>}
+          </>}
           {side === "sell" && !connected && <button type="button" onClick={() => void connect()} className="btn-ghost mt-3">Connect wallet to preview sell</button>}
           <button type="button" disabled={quoting || token.availability !== "active"} onClick={() => void preview()} className="btn mt-4 block disabled:opacity-50">{quoting ? "Calculating…" : `Review ${side}`}</button>
         </> : <div className="space-y-4">

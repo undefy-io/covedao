@@ -9,6 +9,11 @@ export function parseCrcTokenQuantity(value: string): string {
   return (tokens * 100_000_000n).toString();
 }
 
+export function sellPresetQuantity(heldAtoms: bigint, percent: 25 | 50 | 100): string {
+  const tokens = heldAtoms * BigInt(percent) / 100n / 100_000_000n;
+  return (tokens / 1_000n * 1_000n).toString();
+}
+
 export async function fetchAllCrcWalletBalances(
   address: string,
   fetcher: (input: string, init?: RequestInit) => Promise<Response> = fetch,

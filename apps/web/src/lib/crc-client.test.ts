@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { fetchAllCrcWalletBalances, parseCrcTokenQuantity } from "./crc-client";
+import { fetchAllCrcWalletBalances, parseCrcTokenQuantity, sellPresetQuantity } from "./crc-client";
 
 function response(balances: unknown[], nextCursor: string | null) {
   return new Response(JSON.stringify({ ok: true, data: { balances, nextCursor } }));
@@ -30,5 +30,16 @@ describe("CRC token quantity", () => {
     for (const invalid of ["999", "1001", "0", "-1000", "1.5", "01000", "21001000"]) {
       expect(() => parseCrcTokenQuantity(invalid)).toThrow();
     }
+  });
+});
+
+describe("CRC sell shortcuts", () => {
+  it("rounds each balance percentage down to a sellable 1,000-token lot", () => {
+    const heldAtoms = 9_500n * 100_000_000n;
+    expect(sellPresetQuantity(heldAtoms, 25)).toBe("2000");
+    expect(sellPresetQuantity(heldAtoms, 50)).toBe("4000");
+    expect(sellPresetQuantity(heldAtoms, 100)).toBe("9000");
+    expect(sellPresetQuantity(999n * 100_000_000n, 100)).toBe("0");
+    expect(parseCrcTokenQuantity(sellPresetQuantity(heldAtoms, 100))).toBe("900000000000");
   });
 });

@@ -22,6 +22,11 @@ test("live CRC catalog, token history, and curve quote work in the browser", asy
   const candles = await candlesResponse.json();
   expect(candles.ok).toBe(true);
   if (candles.data.tradeCount > 0) await expect(page.getByRole("button", { name: "1H" })).toBeVisible();
+  await page.getByRole("button", { name: "Sell", exact: true }).click();
+  for (const label of ["25%", "50%", "All"]) {
+    await expect(page.getByRole("button", { name: label, exact: true })).toBeVisible();
+  }
+  await page.getByRole("button", { name: "Buy", exact: true }).click();
   await page.getByRole("button", { name: "Review buy" }).click();
   await expect(page.getByText("Curve price")).toBeVisible();
   await expect(page.getByRole("button", { name: /Eco/i })).toBeVisible();
@@ -29,6 +34,34 @@ test("live CRC catalog, token history, and curve quote work in the browser", asy
   await expect(page.getByRole("button", { name: /Priority/i })).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Miner fee (sats)" })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test("sell shortcuts use the connected wallet's indexed balance", async ({ page, request }) => {
+  const catalog = await (await request.get("/api/crc/v1/tokens?limit=1")).json();
+  const token = catalog.data.tokens[0] as { assetId: string; ticker: string };
+  await page.addInitScript(() => {
+    (window as unknown as { __COVE_TEST_WALLET__: unknown }).__COVE_TEST_WALLET__ = {
+      id: "crc-e2e-wallet",
+      connect: async () => ({
+        adapterId: "crc-e2e-wallet", paymentAddress: "tb1qg358gsla30dtx228u3za8253zncpzdwkrl6eem",
+        paymentScript: "0014" + "1".repeat(40), network: "signet", capabilities: {},
+      }),
+    };
+  });
+  await page.route("**/api/crc/v1/wallet/*/balances?*", async (route) => {
+    await route.fulfill({ json: { ok: true, data: {
+      balances: [{ assetId: token.assetId, ticker: token.ticker, atoms: "950000000000" }], nextCursor: null,
+    } } });
+  });
+  await page.goto(`/token/${encodeURIComponent(token.assetId)}`);
+  await page.getByRole("button", { name: "Sell", exact: true }).click();
+  await page.getByRole("button", { name: "Connect wallet to preview sell" }).click();
+  await expect(page.getByText(`You hold 9,500 ${token.ticker}.`)).toBeVisible();
+  const amount = page.getByRole("textbox", { name: "Tokens to sell" });
+  for (const [button, expected] of [["25%", "2000"], ["50%", "4000"], ["All", "9000"]]) {
+    await page.getByRole("button", { name: button, exact: true }).click();
+    await expect(amount).toHaveValue(expected);
+  }
 });
 
 test("CRC navigation keeps launch, market, activity, and wallet pages available", async ({ page }) => {
