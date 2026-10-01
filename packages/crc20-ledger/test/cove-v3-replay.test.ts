@@ -204,6 +204,44 @@ describe("Garden-shaped Cove v3 ledger replay", () => {
     expect(result.state.assets[`signet:${deploy.txid}`]?.tokenUtxos?.[`${sale.txid}:2`]).toEqual({ scriptHex: buyer, atoms: "100000000000" });
   });
 
+  it("keeps a listed token output saleable after another same-address output is spent", () => {
+    const { deploy, mint, minted, registration } = setup();
+    const assetId = `signet:${deploy.txid}`;
+    const extra = fund(330, seller);
+    const original = minted.state.assets[assetId]!;
+    const state = { ...minted.state, assets: { ...minted.state.assets,
+      [assetId]: { ...original,
+        tokenUtxos: { ...original.tokenUtxos,
+          [`${extra.txid}:0`]: { scriptHex: seller, atoms: "100000000000" } },
+        balances: { ...original.balances, [seller]: "200000000000" },
+        curve: { ...original.curve, mintedAtoms: original.curve.mintedAtoms + 100000000000n,
+          circulatingAtoms: original.curve.circulatingAtoms + 100000000000n },
+      },
+    } };
+    const invalidOtherSpend = tx([{ rawHex: extra.rawHex, vout: 0 }], [
+      marker({ p: "crc-20", op: "transfer", tick: "COVE", amt: "200000000000" }),
+      { valueSats: 330, scriptHex: buyer },
+    ]);
+    const afterOtherSpend = applyCoveConfirmed(state, observe(invalidOtherSpend, [extra], 2), [registration]);
+    expect(afterOtherSpend.status).toBe("invalid");
+    expect(afterOtherSpend.state.assets[assetId]?.balances[seller]).toBe("100000000000");
+    expect(afterOtherSpend.state.assets[assetId]?.tokenUtxos?.[`${mint.txid}:1`]?.atoms).toBe("100000000000");
+
+    const payment = fund(10_000, buyer);
+    const sale = tx([{ rawHex: mint.rawHex, vout: 1 }, { rawHex: payment.rawHex, vout: 0 }], [
+      { valueSats: 5_000, scriptHex: seller },
+      marker({ p: "crc-20", op: "transfer", tick: "COVE", amt: "100000000000" }),
+      { valueSats: 330, scriptHex: script("6") },
+      { valueSats: 1_000, scriptHex: protocol },
+      { valueSats: 2_000, scriptHex: buyer },
+    ]);
+    const filled = applyCoveConfirmed(afterOtherSpend.state, observe(sale, [mint, payment], 3), [registration]);
+    expect(filled.status, filled.reason).toBe("applied");
+    expect(filled.state.assets[assetId]?.tokenUtxos?.[`${sale.txid}:2`]).toEqual({
+      scriptHex: script("6"), atoms: "100000000000",
+    });
+  });
+
   it("accepts only three mint fields and four transfer fields", () => {
     const asset = { txid: "aa".repeat(32), ticker: "COVE" };
     expect(validateCoveOperation([marker({ p: "crc-20", op: "mint", tick: "COVE" }), { valueSats: 330, scriptHex: buyer }], asset)).toMatchObject({ status: "valid", kind: "mint", inferredAmount: true });
