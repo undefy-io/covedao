@@ -4,11 +4,16 @@
 
 The archived 1,950 confirmed Garden LEAF transactions in
 `packages/crc20-base/test/fixtures/leaf-mainnet.json` show one CRC-20 JSON
-marker per transaction. Their Bitcoin transaction IDs, marker fields, marker
-positions, recipient adjacency, and payment outputs are checked by
-`garden-wire-golden.test.ts`. This evidence describes the observed LEAF wire
-shape. It does not disclose Garden's general ticker registration, mint pricing,
-or balance validation rules, so acceptance by Garden's indexer is unproven.
+marker per transaction. The parser tests check every raw transaction ID,
+operation, transfer amount, and transfer recipient. The transaction tests use
+the archived SQLite event and output tables to compare Cove's layout with all
+159 BTC-paid mints and 743 payment-first transfers; they also check the site's
+reported recipient and BTC payment against the corresponding Bitcoin outputs.
+Run `pnpm test:garden-corpus` to verify the focused fixtures still match the
+SQLite archive and rerun the transaction comparisons. This evidence describes
+the observed LEAF wire shape. It does not disclose Garden's general ticker
+registration, mint pricing, or balance validation rules, so acceptance by
+Garden's indexer is unproven.
 
 The new Cove profile targets the observed CRC marker fields and recipient
 adjacency for Cove-issued assets. Cove's curve, fees, vault and UTXO-bound token

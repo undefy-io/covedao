@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { Transaction } from "bitcoinjs-lib";
+import { address, networks, Transaction } from "bitcoinjs-lib";
 import { describe, expect, it } from "vitest";
 import { parseCrc20Transaction } from "@crclaunch/crc20-base";
 import { createCurveState } from "@crclaunch/crc20-curve";
@@ -12,6 +12,13 @@ type Output = { valueSats: number; scriptHex: string };
 const fixtures = JSON.parse(readFileSync(fileURLToPath(new URL(
   "../../crc20-base/test/fixtures/leaf-mainnet.json", import.meta.url,
 )), "utf8")) as Fixture[];
+const btcMints = JSON.parse(readFileSync(fileURLToPath(new URL(
+  "./fixtures/garden-btc-mints.json", import.meta.url,
+)), "utf8")) as { txid: string; recipient: string; paymentSats: number }[];
+const paymentTransfers = JSON.parse(readFileSync(fileURLToPath(new URL(
+  "./fixtures/garden-payment-transfers.json", import.meta.url,
+)), "utf8")) as { txid: string; sender: string; recipient: string;
+  amountAtoms: string; paymentSats: number }[];
 
 function observed(txid: string): Output[] {
   const fixture = fixtures.find((item) => item.txid === txid);
@@ -42,6 +49,10 @@ function shape(outputs: readonly Output[]) {
   };
 }
 
+function outputAddress(output: Output): string {
+  return address.fromOutputScript(Buffer.from(output.scriptHex, "hex"), networks.bitcoin);
+}
+
 const id = "99".repeat(32);
 const seller = `0014${"11".repeat(20)}`;
 const buyer = `5120${"22".repeat(32)}`;
@@ -50,6 +61,24 @@ const protocol = `5120${"44".repeat(32)}`;
 const creator = `5120${"55".repeat(32)}`;
 
 describe("Cove transactions against captured Garden mainnet transactions", () => {
+  it("matches the output layout of every archived BTC-paid Garden mint", () => {
+    const state = createCurveState(`${"aa".repeat(32)}:1`, 330n);
+    const built = buildCurveBuyV3({
+      ticker: "COVE", deploymentTxid: id, state, amountTokens: 1_000n,
+      scripts: { seller, buyer, vault, protocol, creator }, recipientSats: 330,
+      vaultInput: { txid: "aa".repeat(32), vout: 1, valueSats: 330,
+        scriptHex: vault, tokenAtoms: 0n },
+    });
+    const expected = shape(built.outputs);
+    expect(btcMints).toHaveLength(159);
+    for (const mint of btcMints) {
+      const outputs = observed(mint.txid);
+      expect(shape(outputs), mint.txid).toEqual(expected);
+      expect(outputs[2]?.valueSats, mint.txid).toBe(mint.paymentSats);
+      expect(outputAddress(outputs[1]!), mint.txid).toBe(mint.recipient);
+    }
+  });
+
   it("matches the Garden mint envelope, marker position, and recipient adjacency", () => {
     const state = createCurveState(`${"aa".repeat(32)}:1`, 330n);
     const built = buildCurveBuyV3({
@@ -74,6 +103,25 @@ describe("Cove transactions against captured Garden mainnet transactions", () =>
     expect(shape(built.outputs)).toEqual(garden);
     expect(built.outputs[0]?.valueSats).toBe(434_500);
     expect(built.outputs[2]?.valueSats).toBe(1_000);
+  });
+
+  it("matches all archived payment-first transfer layouts", () => {
+    const built = buildCoveV3MarketFill({
+      ticker: "COVE", deploymentTxid: id,
+      listedInput: { txid: "aa".repeat(32), vout: 0, valueSats: 670,
+        scriptHex: seller, tokenAtoms: 1_000n, tokenDeploymentTxid: id },
+      buyerScriptHex: buyer, recipientSats: 1_000, sellerNetPriceSats: 10_000,
+      protocolScriptHex: protocol, protocolFeeSats: 1_000,
+    });
+    const expected = shape(built.outputs);
+    expect(paymentTransfers).toHaveLength(743);
+    for (const transfer of paymentTransfers) {
+      const outputs = observed(transfer.txid);
+      expect(shape(outputs), transfer.txid).toEqual(expected);
+      expect(outputs[0]?.valueSats, transfer.txid).toBe(transfer.paymentSats);
+      expect(outputAddress(outputs[0]!), transfer.txid).toBe(transfer.sender);
+      expect(outputAddress(outputs[2]!), transfer.txid).toBe(transfer.recipient);
+    }
   });
 
   it("records the deployment fields that remain specific to each launchpad", () => {
