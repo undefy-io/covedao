@@ -24,7 +24,7 @@ function observe(transaction: ReturnType<typeof tx>, parents: readonly { rawHex:
 function setup() {
   const funding = fund(10_000);
   const deploy = tx([{ rawHex: funding.rawHex, vout: 0 }], [
-    marker({ p: "crc-20", op: "deploy", tick: "COVE", type: "bonding", max: "2100000000000000", cv: "cove-curve-v3" }),
+    marker({ p: "crc-20", op: "deploy", tick: "COVE", type: "bonding", max: "2100000000000000", lim: "2100000000000000", leaf: "0", ordi: "0", btc: "1" }),
     { valueSats: 330, scriptHex: vault }, { valueSats: 1_000, scriptHex: creator }, { valueSats: 7_000, scriptHex: protocol },
     { valueSats: 1_670, scriptHex: seller },
   ]);
@@ -212,10 +212,10 @@ describe("Garden-shaped Cove v3 ledger replay", () => {
     expect(validateCoveOperation([marker({ p: "crc-20", op: "transfer", tick: "COVE", amt: "100000000000", id: asset.txid, v: 2 }), { valueSats: 330, scriptHex: buyer }], asset).status).toBe("invalid");
   });
 
-  it("rejects old Cove curve deployments", () => {
+  it("rejects a deploy marker with different payment fields", () => {
     const { deploy, registration } = setup();
     const old = [
-      marker({ p: "crc-20", op: "deploy", tick: "COVE", type: "bonding", max: "2100000000000000", cv: "cove-curve-v2" }),
+      marker({ p: "crc-20", op: "deploy", tick: "COVE", type: "bonding", max: "2100000000000000", lim: "2100000000000000", leaf: "0", ordi: "0", btc: "2" }),
       { valueSats: 330, scriptHex: vault }, { valueSats: 1_000, scriptHex: creator }, { valueSats: 7_000, scriptHex: protocol },
     ];
     expect(applyRegisteredCoveDeploy({ network: "signet", txid: deploy.txid, outputs: old }, [registration]).status).toBe("invalid");

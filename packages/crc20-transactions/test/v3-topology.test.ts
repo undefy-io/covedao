@@ -35,7 +35,10 @@ const payload = (outputs: readonly { valueSats: number; scriptHex: string }[]) =
 describe("CRC token UTXO transaction topology", () => {
   it("writes the Cove curve deploy", () => {
     const deploy = buildCurveDeployV3({ ticker: "COVE", maxAtoms: "2100000000000000", scripts, vaultAnchorSats: 330 });
-    expect(payload(deploy.outputs)).toMatchObject({ cv: "cove-curve-v3" });
+    expect(payload(deploy.outputs)).toMatchObject({
+      type: "bonding", max: "2100000000000000", lim: "2100000000000000",
+      leaf: "0", ordi: "0", btc: "1",
+    });
     expect(deploy.outputs[1]).toEqual({ valueSats: 330, scriptHex: vault });
   });
 

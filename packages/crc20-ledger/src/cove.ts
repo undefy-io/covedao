@@ -1,5 +1,6 @@
 import { parseCrc20Transaction, type BitcoinNetwork, type TxOutput } from "@crclaunch/crc20-base";
 import { dustThreshold } from "@crclaunch/cove-economics";
+import { isCoveCurveDeploy } from "@crclaunch/crc20-curve";
 
 export type CoveDeployTransaction = Readonly<{ network: BitcoinNetwork; txid: string; outputs: readonly TxOutput[] }>;
 export type CoveDeployResult = Readonly<{ status: "applied" | "invalid" | "ignored"; reason: string }>;
@@ -101,12 +102,7 @@ export function applyRegisteredCoveDeploy(
     return invalid(parsed.status === "invalid" ? parsed.reason : "registered transaction is not a deploy");
   }
   const payload = parsed.envelope.payload;
-  if (
-    Object.keys(payload).sort().join(",") !== "cv,max,op,p,tick,type" ||
-    payload.p !== "crc-20" || payload.op !== "deploy" ||
-    payload.type !== "bonding" || (payload.cv !== "cove-curve-v3") ||
-    payload.max !== "2100000000000000"
-  ) return invalid("invalid Cove deploy marker");
+  if (!isCoveCurveDeploy(payload)) return invalid("invalid Cove deploy marker");
   const outputs = transaction.outputs;
   if (outputs.length !== 4 && outputs.length !== 5) return invalid("invalid deploy output count");
   if (

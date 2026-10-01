@@ -24,7 +24,7 @@
     "test": "turbo run test",
     "test:unit": "turbo run test --filter=!@crclaunch/web --filter=!@crclaunch/worker",
     "test:e2e": "turbo run test:e2e",
-    "test:garden-corpus": "python3 scripts/research/export-garden-compat-fixtures.py --check && pnpm --filter @crclaunch/crc20-transactions test",
+    "test:garden-corpus": "python3 scripts/research/export-garden-compat-fixtures.py --check && python3 scripts/research/verify-garden-ledger-observations.py && pnpm --filter @crclaunch/crc20-transactions test",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
     "db:generate": "pnpm --filter @crclaunch/db db:generate",

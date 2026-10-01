@@ -23,11 +23,19 @@ export function requiredBacking(supplyTokens: bigint): bigint {
 }
 
 export function isCoveCurveDeploy(payload: Record<string, unknown>): boolean {
-  return Object.keys(payload).sort().join(",") === "cv,max,op,p,tick,type" &&
+  return Object.keys(payload).sort().join(",") === "btc,leaf,lim,max,op,ordi,p,tick,type" &&
     payload.p === "crc-20" && payload.op === "deploy" &&
     typeof payload.tick === "string" && /^[A-Za-z0-9]{1,16}$/.test(payload.tick) &&
     payload.type === "bonding" && payload.max === CAP_ATOMS.toString() &&
-    payload.cv === "cove-curve-v3";
+    payload.lim === CAP_ATOMS.toString() && payload.leaf === "0" &&
+    payload.ordi === "0" && payload.btc === "1";
+}
+
+export function coveCurveDeployPayload(ticker: string) {
+  if (!/^[A-Za-z0-9]{1,16}$/.test(ticker)) throw new Error("invalid CRC ticker");
+  return { p: "crc-20", op: "deploy", tick: ticker, type: "bonding",
+    max: CAP_ATOMS.toString(), lim: CAP_ATOMS.toString(),
+    leaf: "0", ordi: "0", btc: "1" } as const;
 }
 
 export type CurveState = Readonly<{

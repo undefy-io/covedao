@@ -47,9 +47,12 @@ describe("CRC-first Cove curve state", () => {
     expect(
       isCoveCurveDeploy({ p: "crc-20", op: "deploy", tick: "COVE", cv: "cove-curve-v3" }),
     ).toBe(false);
-    expect(isCoveCurveDeploy({ p: "crc-20", op: "deploy", tick: "COVE", type: "bonding", max: "2100000000000000", cv: "cove-curve-v3" })).toBe(true);
-    expect(isCoveCurveDeploy({ p: "crc-20", op: "deploy", tick: "COVE", type: "bonding", max: "2100000000000000", cv: "cove-curve-v1" })).toBe(false);
-    expect(isCoveCurveDeploy({ p: "crc-20", op: "deploy", tick: "COVE", type: "bonding", max: "2100000000000001", cv: "cove-curve-v3" })).toBe(false);
+    const deploy = { p: "crc-20", op: "deploy", tick: "COVE", type: "bonding",
+      max: "2100000000000000", lim: "2100000000000000", leaf: "0", ordi: "0", btc: "1" };
+    expect(isCoveCurveDeploy(deploy)).toBe(true);
+    expect(isCoveCurveDeploy({ ...deploy, cv: "cove-curve-v3" })).toBe(false);
+    expect(isCoveCurveDeploy({ ...deploy, max: "2100000000000001" })).toBe(false);
+    expect(isCoveCurveDeploy({ ...deploy, btc: "2" })).toBe(false);
     expect(isCoveCurveDeploy({ p: "crc-20", op: "mint", tick: "COVE", cv: "cove-curve-v3" })).toBe(
       false,
     );

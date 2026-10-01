@@ -1,6 +1,6 @@
 import * as bitcoin from "bitcoinjs-lib";
 import { parseCrc20Transaction, type TxOutput } from "@crclaunch/crc20-base";
-import { quoteBuy, quoteSell, type CurveState } from "@crclaunch/crc20-curve";
+import { coveCurveDeployPayload, quoteBuy, quoteSell, type CurveState } from "@crclaunch/crc20-curve";
 import { dustThreshold } from "@crclaunch/cove-economics";
 import {
   buildCrc20AssetVault,
@@ -190,8 +190,7 @@ export function buildCurveDeployV3(params: {
   changeScriptHex?: string;
 }): TxTemplate {
   if (params.maxAtoms !== COVE_MAX_ATOMS) throw new Error("invalid maximum supply for Cove curve");
-  return template("deploy", { p: "crc-20", op: "deploy", tick: params.ticker, type: "bonding",
-    max: COVE_MAX_ATOMS, cv: "cove-curve-v3" }, [
+  return template("deploy", coveCurveDeployPayload(params.ticker), [
     { valueSats: params.vaultAnchorSats, scriptHex: params.scripts.vault },
     { valueSats: COVE_CREATOR_RECORD_SATS, scriptHex: params.scripts.creator },
     { valueSats: COVE_LAUNCH_FEE_SATS, scriptHex: params.scripts.protocol },
@@ -211,8 +210,7 @@ export function buildCoveDeployWithVaultV3(params: {
   changeScriptHex?: string;
   network?: bitcoin.networks.Network;
 }): { template: TxTemplate; vault: CoveVault } {
-  const deployPayload = { p: "crc-20", op: "deploy", tick: params.ticker, type: "bonding",
-    max: COVE_MAX_ATOMS, cv: "cove-curve-v3" };
+  const deployPayload = coveCurveDeployPayload(params.ticker);
   const vault = buildCrc20AssetVault({
     asset: { deploymentTag: crc20DeploymentTag(Buffer.from(JSON.stringify(deployPayload), "utf8")), launchSalt: params.launchSalt },
     guardianXOnly: params.guardianXOnly,

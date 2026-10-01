@@ -3,6 +3,7 @@ import { Transaction } from "bitcoinjs-lib";
 import { and, eq, inArray } from "drizzle-orm";
 import { parseCrc20Transaction, type BitcoinNetwork } from "@crclaunch/crc20-base";
 import { dustThreshold } from "@crclaunch/cove-economics";
+import { isCoveCurveDeploy } from "@crclaunch/crc20-curve";
 import { schema, type Database } from "@crclaunch/db";
 
 export type TrustedCrcLaunch = Readonly<{
@@ -48,10 +49,7 @@ export function prepareCrcLaunchIntent(network: BitcoinNetwork, signedRawHex: st
   const outputs = tx.outs.map((output) => ({ valueSats: output.value, scriptHex: output.script.toString("hex") }));
   const parsed = parseCrc20Transaction(outputs);
   if (parsed.status !== "valid" || parsed.envelope.kind !== "deploy" ||
-    Object.keys(parsed.envelope.payload).sort().join(",") !== "cv,max,op,p,tick,type" ||
-    parsed.envelope.payload.p !== "crc-20" || parsed.envelope.payload.op !== "deploy" ||
-    parsed.envelope.payload.type !== "bonding" || parsed.envelope.payload.max !== "2100000000000000" ||
-    parsed.envelope.payload.cv !== "cove-curve-v3" ||
+    !isCoveCurveDeploy(parsed.envelope.payload) ||
     tx.outs[0]!.script.length > 260) {
     throw new Error("invalid Cove deployment marker");
   }

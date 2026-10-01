@@ -77,5 +77,6 @@ The current Cove transaction profile is specified in
 [COVE_CRC20_GARDEN_WIRE.md](../../docs/COVE_CRC20_GARDEN_WIRE.md). The regression
 tests compare raw Garden mint and sale transactions with generated Cove
 transactions for marker fields, position, and recipient adjacency. Cove's
-deployment marker has different launchpad fields, and acceptance by an
-independent Garden indexer remains unverified.
+deployment now uses the same nine field names and ordering, with Cove-specific
+values. The Cove indexer and Guardian apply Cove's registered-asset and curve
+rules; this corpus is a wire-format reference, not an external ledger oracle.

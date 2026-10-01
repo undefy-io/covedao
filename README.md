@@ -11,13 +11,14 @@ It uses CRC-20 JSON markers, a Cove-specific curve, a confirmed-block indexer,
 and a separate Guardian service. Launch, buy, and sell are implemented behind
 `COVE_CRC_TRADING_ACTIVE` and have passed a real Bitcoin Core regtest cycle,
 including Guardian-signed buy and sell, repeated trades, and reorg rollback.
-New deployments use [the v2 token-outpoint rules](docs/COVE_CRC20_V2_UTXO_AUTHORITY.md).
+New deployments use the single [Garden-shaped CRC wire profile](docs/COVE_CRC20_GARDEN_WIRE.md)
+with Cove token authority bound to spendable outputs.
 
 **This is not a public mainnet release yet.** The mainnet profile still needs
 operator public parameters and a live signet marketplace canary has not
-reconciled. The v2 marketplace is implemented but its fill routes remain
-disabled until that release gate passes. `COVE_CRC_TRADING_ACTIVE` enables
-launch and curve trades only.
+reconciled. Market fills spend the exact listed token output and require
+complete-transaction signatures. Activation remains controlled by the release
+configuration.
 
 The remaining sections describe the earlier V3 implementation, which stays
 available under `COVE_PROTOCOL_MODE=legacy`. Its binary `CV` envelope and

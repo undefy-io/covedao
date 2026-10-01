@@ -8,7 +8,7 @@ The unique escrow script does not bind a script-account token balance to the dep
 
 An unrelated confirmed invalid spend of the asset vault currently marks the whole asset broken. A market fill spending the untouched escrow outpoint remains Bitcoin-valid, but CRC replay rejects it because the asset is unavailable. A reorg can also place the seller's transfer from an independent UTXO before the escrow deposit, then mine the Bitcoin-valid deposit and child fill in the same replacement chain. The deposit and fill lose CRC validity while buyer BTC still pays. `packages/crc20-ledger/test/escrow-threat.test.ts` characterizes all three failures.
 
-Strict safety requires token authority bound to exact spendable UTXOs across issuance, transfers, redemption, and market fills, plus a decision that circulating token transfers do not fail solely because the backing vault is broken. `docs/COVE_CRC20_V2_UTXO_AUTHORITY.md` specifies that replacement. The rest of this file is retained only as rejected design history; none of its proposed activation rules is sufficient to open the marketplace.
+Strict safety requires token authority bound to exact spendable UTXOs across issuance, transfers, redemption, and market fills, plus a decision that circulating token transfers do not fail solely because the backing vault is broken. [COVE_CRC20_GARDEN_WIRE.md](COVE_CRC20_GARDEN_WIRE.md) specifies the current replacement. The rest of this file is retained only as rejected design history; none of its proposed activation rules is sufficient to open the marketplace.
 
 ## Why the ordinary listing anchor fails
 

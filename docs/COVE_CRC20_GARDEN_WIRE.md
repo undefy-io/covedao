@@ -11,9 +11,9 @@ the archived SQLite event and output tables to compare Cove's layout with all
 reported recipient and BTC payment against the corresponding Bitcoin outputs.
 Run `pnpm test:garden-corpus` to verify the focused fixtures still match the
 SQLite archive and rerun the transaction comparisons. This evidence describes
-the observed LEAF wire shape. It does not disclose Garden's general ticker
-registration, mint pricing, or balance validation rules, so acceptance by
-Garden's indexer is unproven.
+the observed LEAF wire shape. Cove uses it for Cove-issued deploy, mint, and
+transfer transactions. Garden's ticker registration, mint pricing, and balance
+rules do not define Cove's curve or ownership model.
 
 The new Cove profile targets the observed CRC marker fields and recipient
 adjacency for Cove-issued assets. Cove's curve, fees, vault and UTXO-bound token
@@ -30,7 +30,7 @@ markers. All amounts are canonical positive decimal atom strings.
 
 | Operation | JSON | Required outputs |
 | --- | --- | --- |
-| Cove deploy | `{"p":"crc-20","op":"deploy","tick":"TICK","type":"bonding","max":"2100000000000000","cv":"cove-curve-v3"}` | Marker vout 0; registered vault anchor vout 1; creator and protocol outputs follow. The `cv` field selects Cove's curve and ownership profile. Garden's acceptance of this deploy is unknown. |
+| Cove deploy | `{"p":"crc-20","op":"deploy","tick":"TICK","type":"bonding","max":"2100000000000000","lim":"2100000000000000","leaf":"0","ordi":"0","btc":"1"}` | Marker vout 0; registered vault anchor vout 1; creator and protocol outputs follow. The nine field names and order match the observed Garden deployment. The values define Cove's BTC-only profile; the registered vault selects Cove's curve and ownership rules. |
 | Curve mint | `{"p":"crc-20","op":"mint","tick":"TICK"}` | Marker vout 0; recipient token carrier vout 1; successor vault vout 2; protocol fee vout 3; creator fee vout 4; optional BTC change follows. |
 | Inventory buy | `{"p":"crc-20","op":"transfer","tick":"TICK","amt":"ATOMS"}` | Marker vout 0; buyer token carrier vout 1; successor vault vout 2; fees and change follow. |
 | Curve sell | Same four-field transfer marker | Marker vout 0; successor vault token carrier vout 1; seller BTC payout vout 2; fee vout 3; optional token change at the fixed vout 4 and BTC change follow. |
@@ -72,5 +72,6 @@ input allocation is transferred, no token change allocation exists even if an
 ordinary BTC change output has the same script.
 
 A fresh signet and mainnet deployment selects this wire profile through its
-deploy marker. The old CRC dialect (`amt`, `id`, `v`, optional `ch`) is not
-accepted by the current indexer or Guardian.
+deploy marker. Mint and transfer markers have the exact three and four fields
+seen in the Garden corpus. Old Cove marker fields are rejected by the indexer
+and Guardian.

@@ -124,13 +124,14 @@ describe("Cove transactions against captured Garden mainnet transactions", () =>
     }
   });
 
-  it("records the deployment fields that remain specific to each launchpad", () => {
+  it("emits the observed Garden deploy field set in the observed order", () => {
     const built = buildCurveDeployV3({ ticker: "COVE", maxAtoms: "2100000000000000",
       scripts: { vault, creator, protocol }, vaultAnchorSats: 330 });
     const garden = shape(observed("546cc042d0f396a0d8ad67b6987d9d5c09619e6962738347ca1611a1d1841b67"));
     const cove = shape(built.outputs);
     expect(garden.fields).toEqual(["p", "op", "tick", "type", "max", "lim", "leaf", "ordi", "btc"]);
-    expect(cove.fields).toEqual(["p", "op", "tick", "type", "max", "cv"]);
-    expect(cove.fields.slice(0, 5)).toEqual(garden.fields.slice(0, 5));
+    expect(cove.fields).toEqual(garden.fields);
+    expect(cove.markerVout).toBe(garden.markerVout);
+    expect(cove.markerValue).toBe(garden.markerValue);
   });
 });

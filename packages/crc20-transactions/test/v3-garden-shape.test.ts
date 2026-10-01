@@ -33,9 +33,8 @@ describe("Cove v3 Garden wire shape", () => {
   it("identifies the Cove curve deployment", () => {
     const deploy = buildCurveDeployV3({ ticker: "COVE", maxAtoms: "2100000000000000",
       scripts, vaultAnchorSats: 330 });
-    expect(JSON.parse(markerJson(deploy.outputs[0]!.scriptHex))).toMatchObject({
-      p: "crc-20", op: "deploy", tick: "COVE", cv: "cove-curve-v3",
-    });
+    expect(markerJson(deploy.outputs[0]!.scriptHex)).toBe(
+      '{"p":"crc-20","op":"deploy","tick":"COVE","type":"bonding","max":"2100000000000000","lim":"2100000000000000","leaf":"0","ordi":"0","btc":"1"}');
   });
 
   it("uses the Garden amountless mint marker with recipient immediately after it", () => {

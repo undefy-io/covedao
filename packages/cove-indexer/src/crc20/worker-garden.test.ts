@@ -24,7 +24,7 @@ describe("Garden-shaped Cove block replay", () => {
   it("indexes amountless mint and its same-block transfer from exact token outpoints", async () => {
     const launchFunding = transaction([], [{ scriptHex: seller, valueSats: 10_000 }]);
     const deploy = transaction([{ txid: launchFunding.txid, vout: 0 }], [
-      { scriptHex: marker({ p: "crc-20", op: "deploy", tick: "COVE", type: "bonding", max: "2100000000000000", cv: "cove-curve-v3" }), valueSats: 0 },
+      { scriptHex: marker({ p: "crc-20", op: "deploy", tick: "COVE", type: "bonding", max: "2100000000000000", lim: "2100000000000000", leaf: "0", ordi: "0", btc: "1" }), valueSats: 0 },
       { scriptHex: vault, valueSats: 330 }, { scriptHex: creator, valueSats: 1_000 },
       { scriptHex: protocol, valueSats: 7_000 }, { scriptHex: seller, valueSats: 1_670 },
     ]);
