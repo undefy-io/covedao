@@ -216,6 +216,13 @@ the buyer's token balance and the seller's BTC payout. Mainnet marketplace
 activation still requires the live wallet canary and release gate tracked in
 Beads.
 
+With at least one confirmed Cove token on the local signet stack, run
+`pnpm test:e2e:crc` to check the live catalog, token history, quote preview,
+and navigation in desktop and mobile Chromium. This browser check is read-only.
+The CRC buy submission integration test covers wallet and Guardian signatures,
+PSBT finalization, and broadcast against the isolated test database; set
+`CRC_READ_TEST_DATABASE_URL` to that database before running the web tests.
+
 To stop signet without deleting its database, run
 `docker compose -f docker-compose.signet.yml stop`. After that,
 `pnpm dev:stack` starts the retained regtest stack again.

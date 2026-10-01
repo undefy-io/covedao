@@ -239,6 +239,13 @@
       "when": 1790800000000,
       "tag": "0033_crc_garden_wire",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1790856000000,
+      "tag": "0034_crc_activity_index",
+      "breakpoints": true
     }
   ]
 }

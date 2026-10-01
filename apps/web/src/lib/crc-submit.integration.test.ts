@@ -1,11 +1,14 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { sql } from "drizzle-orm";
 import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import { ECPairFactory } from "ecpair";
 import { createDb, saveWalletFundingSnapshot } from "@crclaunch/db";
 import { dev1RecoveryProfile } from "@crclaunch/cove-vault";
+import { buildCrc20AssetVault } from "@crclaunch/cove-vault";
+import { createCurveState } from "@crclaunch/crc20-curve";
+import { buildCurveBuyV3, buildUnsignedPsbt } from "@crclaunch/crc20-transactions";
 import { buildCrcLaunchSession } from "./crc-build";
 import { createCrcBuildSession } from "./crc-session";
 import { submitCrcSession } from "./crc-submit";
@@ -79,5 +82,72 @@ describe.skipIf(!isolated)("CRC submission boundary", () => {
     expect(broadcasts).toBe(1);
     expect(await submitCrcSession(input)).toEqual(first);
     expect(broadcasts).toBe(1);
+  });
+
+  it("submits a wallet-and-Guardian-signed buy with a finalized vault witness", async () => {
+    const guardianKey = ECPairFactory(ecc).fromPrivateKey(Buffer.alloc(32, 0x41));
+    const recoveryKey = ECPairFactory(ecc).fromPrivateKey(Buffer.alloc(32, 0x43));
+    const vault = buildCrc20AssetVault({
+      asset: { deploymentTag: Buffer.alloc(32, 0x44), launchSalt: Buffer.alloc(32, 0x45) },
+      guardianXOnly: guardianKey.publicKey.subarray(1),
+      recoveryProfile: dev1RecoveryProfile(recoveryKey.publicKey.subarray(1)),
+    });
+    const vaultInput = {
+      txid: "a".repeat(64), vout: 1, valueSats: 330,
+      scriptHex: vault.scriptPubKey.toString("hex"), tokenAtoms: 0n,
+    };
+    const template = buildCurveBuyV3({
+      ticker: "SUBMITTEST", deploymentTxid: "9".repeat(64),
+      state: createCurveState(`${"aa".repeat(32)}:1`, 330n), amountTokens: 1_000n,
+      scripts: { buyer: walletScript, seller: walletScript, vault: vaultInput.scriptHex,
+        protocol: "5120" + "3".repeat(64), creator: "5120" + "4".repeat(64) },
+      recipientSats: 330, vaultInput,
+    });
+    const unsigned = buildUnsignedPsbt(template, [vaultInput, {
+      txid: "b".repeat(64), vout: 0, valueSats: template.requiredFundingSats + 1_000,
+      scriptHex: walletScript, tokenAtoms: 0n,
+    }], 1_000, bitcoin.networks.regtest);
+    const walletSigned = bitcoin.Psbt.fromBase64(unsigned.toBase64(), { network: bitcoin.networks.regtest });
+    walletSigned.signInput(1, walletKey);
+    const guardianSigned = bitcoin.Psbt.fromBase64(walletSigned.toBase64(), { network: bitcoin.networks.regtest });
+    guardianSigned.updateInput(0, {
+      tapInternalKey: vault.numsKey, tapMerkleRoot: vault.merkleRoot,
+      tapLeafScript: [{ leafVersion: 0xc0, script: vault.executionLeaf.script,
+        controlBlock: vault.executionControlBlock }],
+    });
+    guardianSigned.signTaprootInput(0, guardianKey, vault.executionLeaf.tapleafHash, [bitcoin.Transaction.SIGHASH_ALL]);
+    const signature = guardianSigned.data.inputs[0]!.tapScriptSig![0]!.signature;
+    const leaf = vault.executionLeaf.script;
+    const items = [signature, leaf.subarray(1, 33), leaf, vault.executionControlBlock];
+    guardianSigned.updateInput(0, {
+      finalScriptWitness: Buffer.concat([Buffer.from([4]), ...items.flatMap((item) => [Buffer.from([item.length]), item])]),
+    });
+    const session = await createCrcBuildSession(db!, {
+      network: "regtest", operation: "mint-buy", deploymentTxid: "9".repeat(64),
+      idempotencyKey: key + "-buy", requestHash: "f".repeat(64),
+      unsignedTxDigest: (await import("@crclaunch/cove-app")).unsignedTxDigest(unsigned),
+      psbtBase64: unsigned.toBase64(), walletScriptHex: walletScript, tokenScriptHex: walletScript,
+      trustedJson: {},
+    });
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      ok: true, signedPsbtBase64: guardianSigned.toBase64(), unsignedTxDigest: session.unsignedTxDigest,
+    }), { status: 200 }));
+    let broadcasts = 0;
+    try {
+      const submitted = await submitCrcSession({
+        db: db!, network: "regtest", sessionId: session.id, expectedOperation: "buy",
+        signedPsbtBase64: walletSigned.toBase64(), guardianEndpoint: "http://guardian.test",
+        guardianAuthToken: "test", provider: {
+          getBlockchainInfo: async () => ({ chain: "regtest" }),
+          testMempoolAccept: async () => ({ allowed: true }),
+          broadcastTransaction: async (raw: string) => { broadcasts++; return bitcoin.Transaction.fromHex(raw).getId(); },
+        } as never,
+      });
+      expect(submitted.status).toBe("BROADCAST");
+      expect(broadcasts).toBe(1);
+      expect(fetchMock).toHaveBeenCalledOnce();
+    } finally {
+      fetchMock.mockRestore();
+    }
   });
 });

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type * as bitcoin from "bitcoinjs-lib";
 import { broadcastRecordedTransaction, type CoreRpcProvider } from "@crclaunch/bitcoin";
 import { AppError } from "@crclaunch/cove-app";
 import { saveAuthorizedCrcLaunchIntent } from "@crclaunch/cove-indexer/crc20";
@@ -53,6 +54,14 @@ function launchTrust(value: Record<string, unknown>) {
     typeof creatorScriptHex !== "string" || typeof protocolScriptHex !== "string" ||
     typeof vaultAnchorSats !== "number") throw new AppError("CLIENT_INTENT_MISMATCH", "CRC launch trust record is incomplete");
   return { launchSaltHex, vaultScriptHex, creatorScriptHex, protocolScriptHex, vaultAnchorSats };
+}
+
+export function finalizeCrcPsbt(psbt: bitcoin.Psbt): bitcoin.Transaction {
+  for (let index = 0; index < psbt.inputCount; index++) {
+    const input = psbt.data.inputs[index]!;
+    if (!input.finalScriptSig && !input.finalScriptWitness) psbt.finalizeInput(index);
+  }
+  return psbt.extractTransaction();
 }
 
 export async function submitCrcSession(params: SubmitParams): Promise<{ txid: string; status: "BROADCAST" }> {
@@ -111,8 +120,7 @@ export async function submitCrcSession(params: SubmitParams): Promise<{ txid: st
       throw new AppError("GUARDIAN_REJECTED", error instanceof Error ? error.message : "CRC Guardian signature is invalid");
     }
   }
-  psbt.finalizeAllInputs();
-  const tx = psbt.extractTransaction();
+  const tx = finalizeCrcPsbt(psbt);
   const signedRawHex = tx.toHex();
   const txid = tx.getId();
   if (isDeploy) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useWallet } from "./WalletProvider";
-import { formatAtoms } from "./CrcHome";
+import { formatAtoms, formatVaultSats } from "./CrcHome";
 import { buyCrcMarketListing, type CrcMarketListing } from "@/lib/crc-market-client";
 
 export function CrcMarketBuyer() {
@@ -50,21 +50,22 @@ export function CrcMarketBuyer() {
     }
   }
 
-  return <section className="space-y-4 border border-rule bg-ink-2 p-6">
-    <h2 className="text-lg text-bone">Buy from a holder</h2>
+  return <section>
+    <div className="flex flex-wrap items-baseline justify-between gap-3"><p className="eyebrow">Open orders</p><span className="text-label uppercase tracking-label text-bone-dim">{listings.filter((row) => row.status === "OPEN").length} listed</span></div>
     {loading && <p className="text-sm text-bone-dim">Loading listings…</p>}
-    {!loading && !listings.some((listing) => listing.status === "OPEN") && <p className="text-sm text-bone-dim">No open listings yet.</p>}
-    {listings.filter((listing) => listing.status === "OPEN").map((listing) => <div key={listing.id} className="flex flex-wrap items-center justify-between gap-4 border-t border-rule py-4">
-      <div>
-        <p className="text-bone">${listing.ticker} · {formatAtoms(listing.amountAtoms)} tokens</p>
-        <p className="mt-1 text-sm text-bone-dim">Seller receives {listing.priceSats.toLocaleString()} sats · protocol fee {listing.protocolFeeSats.toLocaleString()} sats</p>
-        <p className="mt-1 break-all font-mono text-xs text-bone-dim">{listing.sellerAnchorTxid}:{listing.sellerAnchorVout}</p>
-      </div>
-      <button type="button" className="btn disabled:opacity-50" disabled={!active || !!pending}
-        onClick={() => void buy(listing)}>{pending === listing.id ? "Reviewing…" : connected ? "Buy" : "Connect wallet"}</button>
-    </div>)}
+    {!loading && !listings.some((listing) => listing.status === "OPEN") && <p className="mt-5 border border-dashed border-rule px-6 py-10 text-center text-sm text-bone-dim">No open listings yet.</p>}
+    {listings.some((listing) => listing.status === "OPEN") && <div className="mt-5 overflow-x-auto"><table className="ledger-table min-w-[42rem]"><thead><tr>
+      <th>Token</th><th className="text-right">Tokens</th><th className="text-right">Seller ask</th><th className="text-right">Protocol fee</th><th className="text-right">Action</th>
+    </tr></thead><tbody>{listings.filter((listing) => listing.status === "OPEN").map((listing) => <tr key={listing.id}>
+      <td><span className="text-bone">${listing.ticker}</span><span className="hex block">{listing.sellerAnchorTxid.slice(0, 12)}:{listing.sellerAnchorVout}</span></td>
+      <td className="text-right tabular-nums">{formatAtoms(listing.amountAtoms)}</td>
+      <td className="text-right tabular-nums">{formatVaultSats(String(listing.priceSats))}</td>
+      <td className="text-right tabular-nums">{formatVaultSats(String(listing.protocolFeeSats))}</td>
+      <td className="text-right"><button type="button" className="text-signal hover:underline disabled:opacity-50" disabled={!active || !!pending}
+        onClick={() => void buy(listing)}>{pending === listing.id ? "Reviewing…" : connected ? "Review" : "Connect"}</button></td>
+    </tr>)}</tbody></table></div>}
     {active && listings.some((listing) => listing.status === "OPEN") && <label className="block text-sm text-bone-dim">Miner fee (sats)
-      <input className="mt-2 block w-full border border-rule bg-ink px-3 py-2 text-bone outline-none focus:border-signal"
+      <input className="field mt-2 max-w-xs"
         inputMode="numeric" value={minerFee} onChange={(event) => setMinerFee(event.target.value)} />
     </label>}
     {error && <p role="alert" className="text-sm text-danger">{error}</p>}

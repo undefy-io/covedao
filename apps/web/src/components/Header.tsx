@@ -21,9 +21,10 @@ export function Header({ protocolMode = "legacy" }: { protocolMode?: "legacy" | 
   const t = useT();
   const { lang, setLang } = useLang();
   const links = protocolMode === "legacy" ? nav : [
-    { href: "/", label: "nav.explore" as MessageKey },
+    { href: "/crc/explore", label: "nav.explore" as MessageKey },
     { href: "/crc/launch", label: "nav.launch" as MessageKey },
     { href: "/crc/market", label: "nav.market" as MessageKey },
+    { href: "/crc/activity", label: "nav.activity" as MessageKey },
     { href: "/crc/wallet", label: "nav.wallet" as MessageKey },
   ];
 

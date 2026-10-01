@@ -9,7 +9,7 @@ import { useT } from "@/i18n/LanguageProvider";
 
 const capAtoms = 2_100_000_000_000_000n;
 
-type CrcToken = {
+export type CrcToken = {
   assetId: string;
   ticker: string;
   deployHeight: string;
@@ -66,7 +66,7 @@ export function CrcHome() {
         <p className="mt-6 max-w-xl text-sm leading-relaxed text-bone-dim">{t("crc.home.pitch")}</p>
         <div className="mt-9 flex flex-wrap gap-3">
           <Link href="/crc/launch" className="btn">{t("home.ctaLaunch")}</Link>
-          <Link href="#tokens" className="btn-ghost">{t("home.ctaExplore")}</Link>
+          <Link href="/crc/explore" className="btn-ghost">{t("home.ctaExplore")}</Link>
         </div>
       </section>
 
@@ -83,7 +83,10 @@ export function CrcHome() {
       <section id="tokens" className="panel scroll-mt-20 px-6 py-8 sm:px-10">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <p className="eyebrow">{t("home.recent")}</p>
-          {tip && <span className="text-label uppercase tracking-label text-bone-dim">{t("crc.home.indexed", { height: tip.height })}</span>}
+          <div className="flex flex-wrap items-baseline gap-4">
+            {tip && <span className="text-label uppercase tracking-label text-bone-dim">{t("crc.home.indexed", { height: tip.height })}</span>}
+            <Link href="/crc/explore" className="text-label uppercase tracking-label text-bone-dim hover:text-signal">{t("home.viewAll")}</Link>
+          </div>
         </div>
         <div className="mt-5">
           {error && <p role="alert" className="border border-rejected/40 px-5 py-4 text-sm text-rejected">{error}</p>}
@@ -122,7 +125,7 @@ export function CrcHome() {
   );
 }
 
-function CrcTokenCard({ token }: { token: CrcToken }) {
+export function CrcTokenCard({ token }: { token: CrcToken }) {
   const t = useT();
   const minted = BigInt(token.mintedAtoms);
   const pct = Number(minted * 100n / capAtoms);

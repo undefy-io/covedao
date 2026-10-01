@@ -15,6 +15,8 @@ export async function GET(req: Request) {
     const rawCursor = query.get("before");
     const before = rawCursor === null ? undefined : parseCrcPageCursor(rawCursor);
     if (rawCursor !== null && !before) return fail("INVALID_PAGINATION", "Invalid catalog cursor", 400);
+    const search = query.get("search")?.trim() ?? "";
+    if (search && !/^[a-zA-Z0-9]{1,64}$/.test(search)) return fail("BAD_REQUEST", "Search must be letters or digits", 400);
     const { db, network } = getCrcReadServices();
     const indexedTip = await readCrcCursor(db, network);
     if (!indexedTip) {
@@ -23,7 +25,7 @@ export async function GET(req: Request) {
       }
       return fail("INDEXER_REBUILDING", "Cove CRC index is not ready", 503, true);
     }
-    const rows = await listCrcAssets(db, network, limit + 1, before ?? undefined);
+    const rows = await listCrcAssets(db, network, limit + 1, before ?? undefined, search || undefined);
     const tokens = rows.slice(0, limit);
     const last = tokens.at(-1);
     return ok({

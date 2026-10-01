@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { formatAtoms, formatVaultSats } from "./CrcHome";
 import { Tile } from "./Tile";
 import { TokenImage } from "./TokenImage";
+import { CrcTokenActivity } from "./CrcTokenActivity";
+import { CrcTokenMarket } from "./CrcTokenMarket";
 import { useWallet } from "./WalletProvider";
 import { parseCrcTokenQuantity } from "@/lib/crc-client";
 
@@ -141,7 +143,7 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
     return () => { active = false; };
   }, []);
 
-  if (error) return <section className="panel px-6 py-16 text-center sm:px-10"><p role="alert" className="text-danger">{error}</p><Link href="/" className="btn-ghost mt-4 inline-block">Back to tokens</Link></section>;
+  if (error) return <section className="panel px-6 py-16 text-center sm:px-10"><p role="alert" className="text-danger">{error}</p><Link href="/crc/explore" className="btn-ghost mt-4 inline-block">Back to tokens</Link></section>;
   if (!token) return <section className="panel px-6 py-16 text-center text-sm text-bone-dim sm:px-10">Reading indexed token state…</section>;
 
   const minted = BigInt(token.mintedAtoms);
@@ -150,7 +152,7 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
   return (
     <div className="space-y-px">
       <section className="panel px-6 py-8 sm:px-10">
-        <Link href="/" className="text-label uppercase tracking-label text-signal hover:text-bone">← All tokens</Link>
+        <Link href="/crc/explore" className="text-label uppercase tracking-label text-signal hover:text-bone">← All tokens</Link>
         <div className="mt-6 flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-4">
             <TokenImage tokenId={token.assetId} ticker={token.ticker} size="lg" />
@@ -178,6 +180,8 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
           <Tile size="md" label="Burned" value={formatAtoms(token.burnedAtoms ?? "0")} />
         </div>
       </section>
+      <CrcTokenMarket assetId={assetId} />
+      <CrcTokenActivity assetId={assetId} network={token.network} />
       <section className="panel px-6 py-8 sm:px-10">
         <p className="eyebrow">Trade on the curve</p>
         <h2 className="mt-3 text-2xl text-bone">Buy and sell</h2>

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { sql } from "drizzle-orm";
 import { createDb } from "@crclaunch/db";
-import { listCrcAssets, readCrcAsset, readCrcBalance, readCrcQuoteAsset, readCrcTokenUtxo, readCrcTokenUtxos, readCrcWalletBalances } from "./crc-read";
+import { listCrcAssets, readCrcActivity, readCrcAsset, readCrcBalance, readCrcQuoteAsset, readCrcRecentActivity, readCrcTokenUtxo, readCrcTokenUtxos, readCrcWalletBalances } from "./crc-read";
 import { quoteCrcBuy, quoteCrcSell } from "./crc-quote";
 
 const url = process.env.CRC_READ_TEST_DATABASE_URL;
@@ -18,6 +18,7 @@ const owner = "0014" + "1".repeat(40);
 describe.skipIf(!isolated)("Cove CRC database reads", () => {
   beforeAll(async () => {
     for (const network of ["signet", "regtest"]) {
+      await db!.execute(sql`delete from cove_crc_events where network = ${network} and txid in (${"1".repeat(64)}, ${"2".repeat(64)}, ${"3".repeat(64)})`);
       await db!.execute(sql`delete from cove_crc_token_utxos where network = ${network} and deploy_txid in (${first}, ${second})`);
       await db!.execute(sql`delete from cove_crc_balances where network = ${network} and deploy_txid in (${first}, ${second})`);
       await db!.execute(sql`delete from cove_crc_vaults where network = ${network} and deploy_txid in (${first}, ${second})`);
@@ -48,10 +49,16 @@ describe.skipIf(!isolated)("Cove CRC database reads", () => {
         ('signet',${second},${"a".repeat(64)},1,${owner},25000000000,12,${"b".repeat(64)}),
         ('signet',${second},${"b".repeat(64)},1,${owner},25000000000,13,${"c".repeat(64)}),
         ('signet',${second},${second},1,${`0014${second.slice(0, 40)}`},100000000000,12,${"b".repeat(64)})`);
+    await db!.execute(sql`insert into cove_crc_events
+      (network,txid,block_height,block_hash,tx_index,operation,status,valid,deploy_txid,amount_atoms)
+      values ('signet',${"1".repeat(64)},11,${first},0,'deploy','applied',true,${first},null),
+        ('signet',${"2".repeat(64)},12,${second},1,'transfer','applied',true,${second},100000000000),
+        ('regtest',${"3".repeat(64)},13,${first},0,'transfer','applied',true,${first},200000000000)`);
   });
 
   afterAll(async () => {
     for (const network of ["signet", "regtest"]) {
+      await db!.execute(sql`delete from cove_crc_events where network = ${network} and txid in (${"1".repeat(64)}, ${"2".repeat(64)}, ${"3".repeat(64)})`);
       await db!.execute(sql`delete from cove_crc_token_utxos where network = ${network} and deploy_txid in (${first}, ${second})`);
       await db!.execute(sql`delete from cove_crc_balances where network = ${network} and deploy_txid in (${first}, ${second})`);
       await db!.execute(sql`delete from cove_crc_vaults where network = ${network} and deploy_txid in (${first}, ${second})`);
@@ -69,6 +76,14 @@ describe.skipIf(!isolated)("Cove CRC database reads", () => {
     expect(older.some((asset) => asset.deployTxid === second)).toBe(false);
     expect((await readCrcAsset(db!, "regtest", first))?.assetId).toBe(`regtest:${first}`);
     expect(await readCrcAsset(db!, "regtest", second)).toBeNull();
+    expect((await listCrcAssets(db!, "signet", 100, undefined, "sam")).filter((asset) => [first, second].includes(asset.deployTxid))).toHaveLength(2);
+    expect((await listCrcAssets(db!, "signet", 100, undefined, first.slice(0, 12))).some((asset) => asset.deployTxid === first)).toBe(true);
+  });
+
+  it("shows only confirmed events for the requested token and network in chain order", async () => {
+    expect((await readCrcActivity(db!, "signet", first)).map((event) => event.txid)).toEqual(["1".repeat(64)]);
+    expect((await readCrcRecentActivity(db!, "signet")).filter((event) => ["1".repeat(64), "2".repeat(64)].includes(event.txid)).map((event) => event.txid)).toEqual(["2".repeat(64), "1".repeat(64)]);
+    expect((await readCrcRecentActivity(db!, "regtest")).some((event) => event.txid === "3".repeat(64))).toBe(true);
   });
 
   it("reads only balances for the requested network and verified script", async () => {

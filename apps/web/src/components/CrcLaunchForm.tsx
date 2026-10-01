@@ -58,16 +58,12 @@ export function CrcLaunchForm() {
     finally { setBusy(false); }
   }
 
-  return <div className="space-y-px">
-    <section className="panel px-6 py-10 sm:px-10 sm:py-14">
-      <p className="eyebrow">Cove CRC-20 · Bitcoin L1</p>
-      <h1 className="mt-4 text-display text-bone">Launch a token.</h1>
-      <p className="mt-5 max-w-xl text-sm leading-relaxed text-bone-dim">Create a CRC-20 token with a BTC-backed curve. Review the transaction before your wallet signs it.</p>
-    </section>
-    <section className="panel px-6 py-8 sm:px-10">
-    <div className="max-w-xl">
-    <p className="eyebrow">01 / Token setup</p>
-    {active ? <div className="mt-6 space-y-5">
+  return <div className="mx-auto max-w-xl space-y-6 py-8">
+    <div>
+      <h1 className="text-2xl text-bone">Launch a token</h1>
+      <p className="mt-1 text-sm text-bone-dim">Create a CRC-20 token with a BTC-backed curve. Review the transaction before signing.</p>
+    </div>
+    {active ? <div className="space-y-5">
       <label className="block text-sm text-bone-dim">Ticker
         <input value={ticker} onChange={(event) => { setTicker(event.target.value.toUpperCase()); setBuilt(null); }} maxLength={16}
           className="field mt-2" />
@@ -76,27 +72,24 @@ export function CrcLaunchForm() {
         <input value={minerFeeSats} onChange={(event) => { setMinerFeeSats(event.target.value); setBuilt(null); }} inputMode="numeric"
           className="field mt-2" />
       </label>
-      {connected ? <button type="button" className="btn disabled:opacity-50" disabled={busy} onClick={() => void review()}>
+      {connected ? <button type="button" className="btn w-full disabled:opacity-50" disabled={busy} onClick={() => void review()}>
         {busy && !built ? "Preparing…" : "Review launch"}
-      </button> : <button type="button" className="btn" onClick={() => void connect()}>Connect wallet</button>}
-      {built && <div className="border-t border-rule pt-5 text-sm text-bone-dim">
-        <p className="eyebrow">02 / Review transaction</p>
-        <p className="mt-3 text-xl text-bone">${built.intent.ticker}</p>
+      </button> : <button type="button" className="btn w-full" onClick={() => void connect()}>Connect wallet</button>}
+      {built && <div className="border border-rule bg-ink-2 p-5 text-sm text-bone-dim">
+        <h2 className="text-bone">Review transaction · ${built.intent.ticker}</h2>
         <dl className="mt-4 space-y-2">
           <div className="flex justify-between gap-3"><dt>Vault anchor</dt><dd className="tabular-nums text-bone">{built.intent.vaultAnchorSats} sats</dd></div>
           <div className="flex justify-between gap-3"><dt>Creator record</dt><dd className="tabular-nums text-bone">{built.intent.creatorRecordSats} sats</dd></div>
           <div className="flex justify-between gap-3"><dt>Launch fee</dt><dd className="tabular-nums text-bone">{built.intent.launchFeeSats} sats</dd></div>
           <div className="flex justify-between gap-3 border-t border-rule pt-2"><dt>Miner fee</dt><dd className="tabular-nums text-bone">{built.intent.minerFeeSats} sats</dd></div>
         </dl>
-        <button type="button" className="btn mt-4 disabled:opacity-50" disabled={busy} onClick={() => void submit()}>
+        <button type="button" className="btn mt-5 w-full disabled:opacity-50" disabled={busy} onClick={() => void submit()}>
           {busy ? "Signing and submitting…" : "Sign and broadcast launch"}
         </button>
       </div>}
-    </div> : <p className="mt-6 text-sm text-bone-dim">Token launches are paused on this server.</p>}
+    </div> : <p className="text-sm text-bone-dim">Token launches are paused on this server.</p>}
     {error && <p role="alert" className="text-sm text-danger">{error}</p>}
     {txid && <p className="break-all text-sm text-signal">Submitted: {txid}</p>}
-    <Link href="/" className="btn-ghost mt-6 inline-block">Browse confirmed tokens</Link>
-    </div>
-    </section>
+    <Link href="/" className="text-sm text-signal hover:underline">Browse confirmed tokens →</Link>
   </div>;
 }

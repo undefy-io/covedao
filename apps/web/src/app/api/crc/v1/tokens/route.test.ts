@@ -33,7 +33,7 @@ describe("CRC catalog route", () => {
       ok: true,
       data: { network: "signet", nextCursor: `100:${txid}`, tokens: [{ assetId: `signet:${txid}` }] },
     });
-    expect(mocks.list).toHaveBeenCalledWith({}, "signet", 2, undefined);
+    expect(mocks.list).toHaveBeenCalledWith({}, "signet", 2, undefined, undefined);
   });
 
   it("rejects malformed cursors and missing indexed tips", async () => {
@@ -55,5 +55,13 @@ describe("CRC catalog route", () => {
       network: "signet", indexedTip: null, tokens: [], nextCursor: null,
     });
     expect(mocks.list).not.toHaveBeenCalled();
+  });
+
+  it("passes a bounded ticker search to the database", async () => {
+    const response = await GET(new Request("http://localhost/api/crc/v1/tokens?search=TEST&limit=24"));
+    expect(response.status).toBe(200);
+    expect(mocks.list).toHaveBeenCalledWith({}, "signet", 25, undefined, "TEST");
+    const invalid = await GET(new Request("http://localhost/api/crc/v1/tokens?search=%25"));
+    expect(invalid.status).toBe(400);
   });
 });

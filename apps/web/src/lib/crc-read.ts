@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, like, lt, or, sql } from "drizzle-orm";
 import { schema, type Database } from "@crclaunch/db";
 
 export type CrcNetwork = "regtest" | "signet" | "testnet" | "mainnet";
@@ -114,6 +114,7 @@ export async function hasCrcLaunchIntent(db: Database, network: CrcNetwork): Pro
 export async function listCrcAssets(
   db: Database, network: CrcNetwork, limit: number,
   before?: { height: bigint; deployTxid: string },
+  search?: string,
 ) {
   const rows = await db.select(assetColumns).from(schema.coveCrcAssets)
     .innerJoin(schema.coveCrcVaults, and(
@@ -122,6 +123,10 @@ export async function listCrcAssets(
     ))
     .where(and(
       eq(schema.coveCrcAssets.network, network),
+      search ? or(
+        like(schema.coveCrcAssets.ticker, `${search.toUpperCase()}%`),
+        like(schema.coveCrcAssets.deployTxid, `${search.toLowerCase()}%`),
+      ) : undefined,
       before ? or(
         lt(schema.coveCrcAssets.deployHeight, before.height),
         and(eq(schema.coveCrcAssets.deployHeight, before.height), lt(schema.coveCrcAssets.deployTxid, before.deployTxid)),
@@ -141,6 +146,46 @@ export async function readCrcAsset(db: Database, network: CrcNetwork, deployTxid
     .where(and(eq(schema.coveCrcAssets.network, network), eq(schema.coveCrcAssets.deployTxid, deployTxid)))
     .limit(1);
   return row ? projectCrcAsset(row) : null;
+}
+
+export async function readCrcActivity(db: Database, network: CrcNetwork, deployTxid: string, limit = 50) {
+  const rows = await db.select({
+    txid: schema.coveCrcEvents.txid,
+    blockHeight: schema.coveCrcEvents.blockHeight,
+    txIndex: schema.coveCrcEvents.txIndex,
+    operation: schema.coveCrcEvents.operation,
+    valid: schema.coveCrcEvents.valid,
+    reason: schema.coveCrcEvents.reason,
+    amountAtoms: schema.coveCrcEvents.amountAtoms,
+  }).from(schema.coveCrcEvents)
+    .where(and(eq(schema.coveCrcEvents.network, network), eq(schema.coveCrcEvents.deployTxid, deployTxid)))
+    .orderBy(desc(schema.coveCrcEvents.blockHeight), desc(schema.coveCrcEvents.txIndex))
+    .limit(limit);
+  return rows.map((row) => ({
+    ...row,
+    blockHeight: row.blockHeight.toString(),
+    amountAtoms: row.amountAtoms?.toString() ?? null,
+  }));
+}
+
+export async function readCrcRecentActivity(db: Database, network: CrcNetwork, limit = 100) {
+  const rows = await db.select({
+    txid: schema.coveCrcEvents.txid,
+    blockHeight: schema.coveCrcEvents.blockHeight,
+    txIndex: schema.coveCrcEvents.txIndex,
+    operation: schema.coveCrcEvents.operation,
+    valid: schema.coveCrcEvents.valid,
+    deployTxid: schema.coveCrcEvents.deployTxid,
+    amountAtoms: schema.coveCrcEvents.amountAtoms,
+  }).from(schema.coveCrcEvents)
+    .where(eq(schema.coveCrcEvents.network, network))
+    .orderBy(desc(schema.coveCrcEvents.blockHeight), desc(schema.coveCrcEvents.txIndex))
+    .limit(limit);
+  return rows.map((row) => ({
+    ...row,
+    blockHeight: row.blockHeight.toString(),
+    amountAtoms: row.amountAtoms?.toString() ?? null,
+  }));
 }
 
 export async function readCrcQuoteAsset(db: Database, network: CrcNetwork, deployTxid: string) {
