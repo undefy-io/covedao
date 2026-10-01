@@ -3,11 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   cursor: vi.fn(),
   list: vi.fn(),
+  hasIntent: vi.fn(),
 }));
 vi.mock("@/lib/crc-server", () => ({ getCrcReadServices: () => ({ db: {}, network: "signet" }) }));
 vi.mock("@/lib/crc-read", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
-  return { ...actual, readCrcCursor: mocks.cursor, listCrcAssets: mocks.list };
+  return { ...actual, readCrcCursor: mocks.cursor, listCrcAssets: mocks.list,
+    hasCrcLaunchIntent: mocks.hasIntent };
 });
 
 import { GET } from "./route";
@@ -15,6 +17,7 @@ import { GET } from "./route";
 beforeEach(() => {
   mocks.cursor.mockReset().mockResolvedValue({ height: "100", blockHash: "a".repeat(64) });
   mocks.list.mockReset().mockResolvedValue([]);
+  mocks.hasIntent.mockReset().mockResolvedValue(true);
 });
 
 describe("CRC catalog route", () => {
@@ -41,5 +44,16 @@ describe("CRC catalog route", () => {
     const unavailable = await GET(new Request("http://localhost/api/crc/v1/tokens"));
     expect(unavailable.status).toBe(503);
     expect((await unavailable.json()).error.code).toBe("INDEXER_REBUILDING");
+  });
+
+  it("returns an empty catalog before the first authorized launch", async () => {
+    mocks.cursor.mockResolvedValue(null);
+    mocks.hasIntent.mockResolvedValue(false);
+    const response = await GET(new Request("http://localhost/api/crc/v1/tokens?limit=24"));
+    expect(response.status).toBe(200);
+    expect((await response.json()).data).toEqual({
+      network: "signet", indexedTip: null, tokens: [], nextCursor: null,
+    });
+    expect(mocks.list).not.toHaveBeenCalled();
   });
 });

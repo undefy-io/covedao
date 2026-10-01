@@ -203,9 +203,9 @@ The production image builds the application once, then the web starts with
 Allow about a minute for the image build. This gives stable request timings without
 development-time route compilation. Rebuild the image to apply source changes;
 the build uses the network and public Sentry settings from `.env.signet.local`.
-Before the first authorized CRC launch, the token catalog reports that its
-index is not ready. After that launch is registered and confirmed, the CRC
-worker indexes from the configured activation height. The Compose web service
+Before the first authorized CRC launch, the token catalog and wallet balances
+are empty. After that launch is registered and confirmed, the CRC worker
+indexes from the configured activation height. The Compose web service
 sets `COVE_CRC_MARKET_TESTING_ENABLED=true`, which opens marketplace listing
 and fill endpoints on signet for wallet testing. This switch cannot open
 mainnet or testnet. To test a sale, connect a funded signet seller wallet,

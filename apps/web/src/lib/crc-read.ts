@@ -104,6 +104,13 @@ export async function readCrcCursor(db: Database, network: CrcNetwork) {
   return cursor ? { height: cursor.height.toString(), blockHash: cursor.blockHash } : null;
 }
 
+export async function hasCrcLaunchIntent(db: Database, network: CrcNetwork): Promise<boolean> {
+  const rows = await db.select({ txid: schema.coveCrcLaunchIntents.txid })
+    .from(schema.coveCrcLaunchIntents)
+    .where(eq(schema.coveCrcLaunchIntents.network, network)).limit(1);
+  return rows.length > 0;
+}
+
 export async function listCrcAssets(
   db: Database, network: CrcNetwork, limit: number,
   before?: { height: bigint; deployTxid: string },

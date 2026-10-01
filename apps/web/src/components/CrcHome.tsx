@@ -13,7 +13,7 @@ type CrcToken = {
 
 type Catalog = {
   network: string;
-  indexedTip: { height: string; blockHash: string };
+  indexedTip: { height: string; blockHash: string } | null;
   tokens: CrcToken[];
   nextCursor: string | null;
 };
@@ -53,7 +53,7 @@ export function CrcHome() {
         <p className="eyebrow">Cove CRC-20</p>
         <h1 className="mt-3 text-3xl text-bone">Cove tokens</h1>
         <p className="mt-3 max-w-2xl text-sm text-bone-dim">
-          Confirmed Cove-issued tokens indexed from Bitcoin. Trading and launches will appear after transaction signing is enabled.
+          Confirmed Cove-issued tokens indexed from Bitcoin. New tokens appear here after their launch transaction confirms.
         </p>
         {tip && <p className="mt-4 text-xs text-bone-dim">Indexed block {tip.height}</p>}
       </section>

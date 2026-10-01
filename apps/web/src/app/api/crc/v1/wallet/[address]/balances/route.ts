@@ -1,6 +1,6 @@
 import { fail, handleError, ok } from "@/lib/api";
 import { addressToScript } from "@/lib/address";
-import { parseCrcWalletCursor, readCrcCursor, readCrcWalletBalances } from "@/lib/crc-read";
+import { hasCrcLaunchIntent, parseCrcWalletCursor, readCrcCursor, readCrcWalletBalances } from "@/lib/crc-read";
 import { getCrcReadServices } from "@/lib/crc-server";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ address:
     const { db, network } = getCrcReadServices();
     const scriptHex = addressToScript((await params).address, network);
     const indexedTip = await readCrcCursor(db, network);
-    if (!indexedTip) return fail("INDEXER_REBUILDING", "Cove CRC index is not ready", 503, true);
+    if (!indexedTip) {
+      if (!(await hasCrcLaunchIntent(db, network))) {
+        return ok({ network, indexedTip: null, address: (await params).address,
+          balances: [], nextCursor: null });
+      }
+      return fail("INDEXER_REBUILDING", "Cove CRC index is not ready", 503, true);
+    }
     const rows = await readCrcWalletBalances(db, network, scriptHex, limit + 1, before ?? undefined);
     const balances = rows.slice(0, limit);
     const last = balances.at(-1);

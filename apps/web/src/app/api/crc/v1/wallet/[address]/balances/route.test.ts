@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ cursor: vi.fn(), balances: vi.fn() }));
+const mocks = vi.hoisted(() => ({ cursor: vi.fn(), balances: vi.fn(), hasIntent: vi.fn() }));
 vi.mock("@/lib/crc-server", () => ({ getCrcReadServices: () => ({ db: {}, network: "signet" }) }));
 vi.mock("@/lib/crc-read", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
-  return { ...actual, readCrcCursor: mocks.cursor, readCrcWalletBalances: mocks.balances };
+  return { ...actual, readCrcCursor: mocks.cursor, readCrcWalletBalances: mocks.balances,
+    hasCrcLaunchIntent: mocks.hasIntent };
 });
 
 import { GET } from "./route";
@@ -12,6 +13,7 @@ import { GET } from "./route";
 beforeEach(() => {
   mocks.cursor.mockReset().mockResolvedValue({ height: "100", blockHash: "a".repeat(64) });
   mocks.balances.mockReset().mockResolvedValue([]);
+  mocks.hasIntent.mockReset().mockResolvedValue(true);
 });
 
 describe("CRC wallet balances route", () => {
@@ -27,6 +29,19 @@ describe("CRC wallet balances route", () => {
       params: Promise.resolve({ address: "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080" }),
     });
     expect(response.status).toBe(403);
+    expect(mocks.balances).not.toHaveBeenCalled();
+  });
+
+  it("returns empty balances before the first authorized launch", async () => {
+    mocks.cursor.mockResolvedValue(null);
+    mocks.hasIntent.mockResolvedValue(false);
+    const address = "tb1qg358gsla30dtx228u3za8253zncpzdwkrl6eem";
+    const response = await GET(new Request(`http://localhost/api/crc/v1/wallet/${address}/balances`),
+      { params: Promise.resolve({ address }) });
+    expect(response.status).toBe(200);
+    expect((await response.json()).data).toEqual({
+      network: "signet", indexedTip: null, address, balances: [], nextCursor: null,
+    });
     expect(mocks.balances).not.toHaveBeenCalled();
   });
 });
