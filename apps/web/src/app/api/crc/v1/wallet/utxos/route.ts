@@ -1,4 +1,3 @@
-import { sql } from "drizzle-orm";
 import { AddressLookupBusy, AddressUtxoCache, type ChainUtxo } from "@crclaunch/bitcoin";
 import { PostgresRpcBudget, providerAccount, saveWalletFundingSnapshot } from "@crclaunch/db";
 import { addressToScript } from "@/lib/address";
@@ -30,14 +29,10 @@ export async function GET(req: Request) {
     }
     const esplora = config.settings.esploraUrl;
     if (!esplora) return fail("ADDRESS_INDEX_UNAVAILABLE", "Wallet address index is unavailable", 503, true);
-    const generation = async () => {
-      const result = await db.execute(sql`select block_hash from cove_crc_cursor where network = ${config.network}`);
-      return String(result.rows[0]?.block_hash ?? "");
-    };
     let found: ChainUtxo[];
     try {
       found = await cache.read(
-        esplora, config.network, address, await generation(), generation,
+        esplora, config.network, address, "", async () => "",
         new PostgresRpcBudget(db, providerAccount({ url: esplora }), "public", serverEnv.COVE_RPC_REQUESTS_PER_SECOND),
       );
     } catch (error) {
