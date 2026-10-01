@@ -35,6 +35,9 @@ test("CRC navigation keeps launch, market, activity, and wallet pages available"
   await page.goto("/");
   await page.getByRole("link", { name: "Launch", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Launch a token" })).toBeVisible();
+  for (const label of ["Name", "Ticker", "Description", "Website URL", "X URL", "Image URL", "Miner fee (sats)"]) {
+    await expect(page.getByRole("textbox", { name: label, exact: true })).toBeVisible();
+  }
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByRole("link", { name: "Market", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Market", exact: true })).toBeVisible();
@@ -49,8 +52,9 @@ test("CRC navigation keeps launch, market, activity, and wallet pages available"
   expect(legacyRequests).toEqual([]);
 });
 
-test("previous CRC links lead to the canonical pages", async ({ page }) => {
-  await page.goto("/crc/launch");
-  await expect(page).toHaveURL(/\/launch$/);
-  await expect(page.getByRole("heading", { name: "Launch a token" })).toBeVisible();
+test("removed CRC page routes are unavailable", async ({ request }) => {
+  for (const path of ["/crc/launch", "/crc/market", "/crc/activity", "/crc/wallet", "/crc/explore", "/crc/token/signet%3A" + "a".repeat(64)]) {
+    const response = await request.get(path);
+    expect(response.status(), path).toBe(404);
+  }
 });

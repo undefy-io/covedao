@@ -18,6 +18,7 @@ export type CrcToken = {
   circulatingAtoms: string;
   availability: "active" | "unavailable";
   vault: { btcSats: string };
+  metadata: { displayName: string; description: string; websiteUrl: string | null; xUrl: string | null; imageUrl: string | null };
 };
 
 type Catalog = {
@@ -134,9 +135,9 @@ export function CrcTokenCard({ token }: { token: CrcToken }) {
     <Link href={`/token/${encodeURIComponent(token.assetId)}`} className="group block min-w-0 bg-ink-3 px-5 py-5 transition-colors hover:bg-ink-2">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          <TokenImage tokenId={token.assetId} ticker={token.ticker} />
+          <TokenImage tokenId={token.assetId} ticker={token.ticker} imageUrl={token.metadata?.imageUrl} />
           <div className="min-w-0">
-            <div className="truncate text-sm text-bone group-hover:text-signal">{token.ticker}</div>
+            <div className="truncate text-sm text-bone group-hover:text-signal">{token.metadata?.displayName ?? token.ticker} <span className="text-bone-dim">${token.ticker}</span></div>
             <div className="mt-0.5 truncate text-xs text-bone-dim">{t("crc.home.block", { height: token.deployHeight })}</div>
           </div>
         </div>

@@ -20,6 +20,7 @@ const marketFillId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 describe.skipIf(!isolated)("Cove CRC database reads", () => {
   beforeAll(async () => {
     for (const network of ["signet", "regtest"]) {
+      await db!.execute(sql`delete from cove_crc_token_metadata where network = ${network} and deploy_txid in (${first}, ${second})`);
       await db!.execute(sql`delete from cove_crc_market_fills where id = ${marketFillId}`);
       await db!.execute(sql`delete from cove_crc_market_listings where id = ${marketListingId}`);
       await db!.execute(sql`delete from cove_crc_events where network = ${network} and txid in (${"1".repeat(64)}, ${"2".repeat(64)}, ${"3".repeat(64)}, ${"4".repeat(64)})`);
@@ -53,6 +54,9 @@ describe.skipIf(!isolated)("Cove CRC database reads", () => {
         ('signet',${second},${"a".repeat(64)},1,${owner},25000000000,12,${"b".repeat(64)}),
         ('signet',${second},${"b".repeat(64)},1,${owner},25000000000,13,${"c".repeat(64)}),
         ('signet',${second},${second},1,${`0014${second.slice(0, 40)}`},100000000000,12,${"b".repeat(64)})`);
+    await db!.execute(sql`insert into cove_crc_token_metadata
+      (network,deploy_txid,display_name,description,website_url,x_url,image_url,submitted_by_script)
+      values ('signet',${first},'First Coin','First description','https://example.com',null,'https://example.com/image.png',${owner})`);
     await db!.execute(sql`insert into cove_crc_events
       (network,txid,block_height,block_hash,tx_index,operation,status,valid,deploy_txid,amount_atoms,trade_side,trade_atoms,trade_gross_sats,confirmed_time)
       values ('signet',${"1".repeat(64)},11,${first},0,'deploy','applied',true,${first},null,null,null,null,null),
@@ -69,6 +73,7 @@ describe.skipIf(!isolated)("Cove CRC database reads", () => {
 
   afterAll(async () => {
     for (const network of ["signet", "regtest"]) {
+      await db!.execute(sql`delete from cove_crc_token_metadata where network = ${network} and deploy_txid in (${first}, ${second})`);
       await db!.execute(sql`delete from cove_crc_market_fills where id = ${marketFillId}`);
       await db!.execute(sql`delete from cove_crc_market_listings where id = ${marketListingId}`);
       await db!.execute(sql`delete from cove_crc_events where network = ${network} and txid in (${"1".repeat(64)}, ${"2".repeat(64)}, ${"3".repeat(64)}, ${"4".repeat(64)})`);
@@ -88,6 +93,9 @@ describe.skipIf(!isolated)("Cove CRC database reads", () => {
     expect(older.some((asset) => asset.deployTxid === first)).toBe(true);
     expect(older.some((asset) => asset.deployTxid === second)).toBe(false);
     expect((await readCrcAsset(db!, "regtest", first))?.assetId).toBe(`regtest:${first}`);
+    expect((await readCrcAsset(db!, "regtest", first))?.metadata.displayName).toBe("SAME");
+    expect((await readCrcAsset(db!, "signet", first))?.metadata).toMatchObject({ displayName: "First Coin", description: "First description" });
+    expect((await listCrcAssets(db!, "signet", 100, undefined, "first"))[0]?.deployTxid).toBe(first);
     expect(await readCrcAsset(db!, "regtest", second)).toBeNull();
     expect((await listCrcAssets(db!, "signet", 100, undefined, "sam")).filter((asset) => [first, second].includes(asset.deployTxid))).toHaveLength(2);
     expect((await listCrcAssets(db!, "signet", 100, undefined, first.slice(0, 12))).some((asset) => asset.deployTxid === first)).toBe(true);

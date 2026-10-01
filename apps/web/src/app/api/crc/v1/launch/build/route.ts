@@ -5,6 +5,7 @@ import { buildCrcLaunchSession } from "@/lib/crc-build";
 import { getCrcMutationServices } from "@/lib/crc-mutation";
 import { checkCrcRateLimit } from "@/lib/crc-rate-limit";
 import { normalizeCrcWalletPublicKey } from "@/lib/crc-wallet-key";
+import { parseCrcLaunchMetadata } from "@/lib/crc-metadata";
 
 export const dynamic = "force-dynamic";
 
@@ -28,9 +29,11 @@ export async function POST(req: Request) {
     const idempotencyKey = strField(body, "idempotencyKey");
     if (!idempotencyKey || idempotencyKey.length > 128) return fail("BAD_REQUEST", "Idempotency key is required", 400);
     const bitcoinNetwork = config.network === "mainnet" ? bitcoin.networks.bitcoin : config.network === "regtest" ? bitcoin.networks.regtest : bitcoin.networks.testnet;
+    const ticker = strField(body, "ticker").toUpperCase();
+    const metadata = parseCrcLaunchMetadata(body.metadata, ticker);
     const built = await buildCrcLaunchSession({
       db, network: config.network, bitcoinNetwork,
-      ticker: strField(body, "ticker").toUpperCase(),
+      ticker, metadata,
       walletScriptHex, tokenScriptHex,
       walletPublicKeyHex: normalizeCrcWalletPublicKey(walletScriptHex, strField(body, "walletPublicKey") || undefined),
       funding: funding as { txid: string; vout: number }[],

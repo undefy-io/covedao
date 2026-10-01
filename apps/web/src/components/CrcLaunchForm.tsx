@@ -6,12 +6,18 @@ import { useWallet } from "./WalletProvider";
 
 type LaunchBuild = { sessionId: string; psbtBase64: string; intent: {
   ticker: string; vaultAnchorSats: number; creatorRecordSats: number; launchFeeSats: number; minerFeeSats: number;
+  metadata: { displayName: string; description: string; websiteUrl: string | null; xUrl: string | null; imageUrl: string | null };
 } };
 
 export function CrcLaunchForm() {
   const { connected, connect, address, ordinalsAddress, publicKey, getUtxos, signPsbt } = useWallet();
   const [active, setActive] = useState(false);
   const [ticker, setTicker] = useState("");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [xUrl, setXUrl] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const [minerFeeSats, setMinerFeeSats] = useState("1000");
   const [built, setBuilt] = useState<LaunchBuild | null>(null);
   const [busy, setBusy] = useState(false);
@@ -31,14 +37,16 @@ export function CrcLaunchForm() {
     try {
       const normalized = ticker.trim().toUpperCase();
       if (!/^[A-Z0-9]{1,16}$/.test(normalized)) throw new Error("Ticker must be 1 to 16 letters or digits");
+      if (!name.trim()) throw new Error("Token name is required");
       if (!/^[1-9]\d{0,4}$/.test(minerFeeSats) || Number(minerFeeSats) > 20_000) throw new Error("Miner fee must be 1 to 20,000 sats");
       const funding = (await getUtxos(true)).slice(0, 40);
       const response = await fetch("/api/crc/v1/launch/build", { method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ticker: normalized, walletAddress: address, ordinalsAddress: ordinalsAddress || address,
+        body: JSON.stringify({ ticker: normalized, metadata: { displayName: name, description, websiteUrl, xUrl, imageUrl }, walletAddress: address, ordinalsAddress: ordinalsAddress || address,
           walletPublicKey: publicKey, funding, minerFeeSats, idempotencyKey: crypto.randomUUID() }) });
       const body = await response.json();
       if (!response.ok || !body.ok) throw new Error(body.error?.detail || body.error?.message || "Could not prepare launch");
       if (body.data.intent?.ticker !== normalized) throw new Error("Launch ticker changed. Review again");
+      if (body.data.intent?.metadata?.displayName !== name.trim()) throw new Error("Launch name changed. Review again");
       setBuilt(body.data as LaunchBuild);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not prepare launch"); }
     finally { setBusy(false); }
@@ -64,10 +72,34 @@ export function CrcLaunchForm() {
       <p className="mt-1 text-sm text-bone-dim">Create a CRC-20 token with a BTC-backed curve. Review the transaction before signing.</p>
     </div>
     {active ? <div className="space-y-5">
+      <label className="block text-sm text-bone-dim">Name
+        <input value={name} onChange={(event) => { setName(event.target.value); setBuilt(null); }} maxLength={80}
+          placeholder="Frog Coin" className="field mt-2" />
+      </label>
       <label className="block text-sm text-bone-dim">Ticker
         <input value={ticker} onChange={(event) => { setTicker(event.target.value.toUpperCase()); setBuilt(null); }} maxLength={16}
-          className="field mt-2" />
+          placeholder="FROG" className="field mt-2" />
       </label>
+      <label className="block text-sm text-bone-dim">Description
+        <textarea value={description} onChange={(event) => { setDescription(event.target.value); setBuilt(null); }} maxLength={2000}
+          placeholder="What is this token?" rows={4} className="field mt-2" />
+      </label>
+      <label className="block text-sm text-bone-dim">Website URL
+        <input value={websiteUrl} onChange={(event) => { setWebsiteUrl(event.target.value); setBuilt(null); }} maxLength={512}
+          type="url" placeholder="https://example.com" className="field mt-2" />
+      </label>
+      <label className="block text-sm text-bone-dim">X URL
+        <input value={xUrl} onChange={(event) => { setXUrl(event.target.value); setBuilt(null); }} maxLength={512}
+          type="url" placeholder="https://x.com/example" className="field mt-2" />
+      </label>
+      <label className="block text-sm text-bone-dim">Image URL
+        <input value={imageUrl} onChange={(event) => { setImageUrl(event.target.value); setBuilt(null); }} maxLength={512}
+          type="url" placeholder="https://example.com/token.png" className="field mt-2" />
+      </label>
+      {imageUrl && <div className="flex items-center gap-3 border border-rule bg-ink-2 px-4 py-3">
+        <img src={imageUrl} alt="Token preview" referrerPolicy="no-referrer" className="h-12 w-12 border border-rule object-cover" />
+        <span className="text-xs text-bone-dim">Off-chain token image</span>
+      </div>}
       <label className="block text-sm text-bone-dim">Miner fee (sats)
         <input value={minerFeeSats} onChange={(event) => { setMinerFeeSats(event.target.value); setBuilt(null); }} inputMode="numeric"
           className="field mt-2" />
@@ -78,6 +110,8 @@ export function CrcLaunchForm() {
       {built && <div className="border border-rule bg-ink-2 p-5 text-sm text-bone-dim">
         <h2 className="text-bone">Review transaction · ${built.intent.ticker}</h2>
         <dl className="mt-4 space-y-2">
+          <div className="flex justify-between gap-3"><dt>Name</dt><dd className="text-right text-bone">{built.intent.metadata.displayName}</dd></div>
+          <div className="flex justify-between gap-3"><dt>Metadata</dt><dd className="text-right text-bone">Saved by Cove after signing; ticker stays on Bitcoin</dd></div>
           <div className="flex justify-between gap-3"><dt>Vault anchor</dt><dd className="tabular-nums text-bone">{built.intent.vaultAnchorSats} sats</dd></div>
           <div className="flex justify-between gap-3"><dt>Creator record</dt><dd className="tabular-nums text-bone">{built.intent.creatorRecordSats} sats</dd></div>
           <div className="flex justify-between gap-3"><dt>Launch fee</dt><dd className="tabular-nums text-bone">{built.intent.launchFeeSats} sats</dd></div>

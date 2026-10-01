@@ -23,6 +23,7 @@ const fundingTxid = "e".repeat(64);
 
 describe.skipIf(!isolated)("CRC submission boundary", () => {
   afterAll(async () => {
+    await db!.execute(sql`delete from cove_crc_token_metadata where network = 'regtest' and display_name = 'Signed Frog Coin'`);
     await db!.execute(sql`delete from cove_crc_build_sessions where network = 'regtest' and idempotency_key like ${key + "%"}`);
     await db!.execute(sql`delete from cove_wallet_funding where network = 'regtest' and wallet_script = ${walletScript}`);
     await db!.execute(sql`delete from cove_crc_launch_intents where network = 'regtest' and ticker = 'SUBMITTEST'`);
@@ -53,6 +54,7 @@ describe.skipIf(!isolated)("CRC submission boundary", () => {
     const built = await buildCrcLaunchSession({
       db: db!, network: "regtest", bitcoinNetwork: bitcoin.networks.regtest,
       ticker: "SUBMITTEST", walletScriptHex: walletScript, tokenScriptHex: walletScript,
+      metadata: { displayName: "Signed Frog Coin", description: "A signed deploy", websiteUrl: "https://example.com", xUrl: null, imageUrl: null },
       walletPublicKeyHex: Buffer.from(walletKey.publicKey).toString("hex"),
       funding: [{ txid: fundingTxid, vout: 0 }], minerFeeSats: 1000,
       idempotencyKey: key + "-live", feeScriptHex: "0014" + "9".repeat(40),
@@ -71,6 +73,8 @@ describe.skipIf(!isolated)("CRC submission boundary", () => {
         const txid = bitcoin.Transaction.fromHex(raw).getId();
         const rows = await db!.execute(sql`select txid from cove_crc_launch_intents where network = 'regtest' and txid = ${txid}`);
         expect(rows.rows).toHaveLength(1);
+        const metadata = await db!.execute(sql`select display_name, submitted_by_script from cove_crc_token_metadata where network = 'regtest' and deploy_txid = ${txid}`);
+        expect(metadata.rows).toMatchObject([{ display_name: "Signed Frog Coin", submitted_by_script: walletScript }]);
         return txid;
       },
     };

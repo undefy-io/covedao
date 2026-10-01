@@ -23,6 +23,7 @@ type Token = {
   circulatingAtoms: string;
   availability: "active" | "unavailable";
   vault: { txid: string; vout: number; btcSats: string };
+  metadata: { displayName: string; description: string; websiteUrl: string | null; xUrl: string | null; imageUrl: string | null };
 };
 
 export function CrcTokenDetail({ assetId }: { assetId: string }) {
@@ -156,10 +157,11 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
       <section className="panel px-6 py-8 sm:px-10">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-4">
-            <TokenImage tokenId={token.assetId} ticker={token.ticker} size="lg" />
+            <TokenImage tokenId={token.assetId} ticker={token.ticker} imageUrl={token.metadata?.imageUrl} size="lg" />
             <div>
               <p className="eyebrow">Cove CRC-20 token</p>
-              <h1 className="mt-3 text-4xl text-bone">{token.ticker}</h1>
+              <h1 className="mt-3 text-4xl text-bone">{token.metadata?.displayName ?? token.ticker}</h1>
+              {token.metadata?.displayName && token.metadata.displayName !== token.ticker && <p className="mt-1 text-sm text-signal">${token.ticker}</p>}
               <p className="mt-1 text-sm text-bone-dim">Confirmed at block {token.deployHeight}</p>
             </div>
           </div>
@@ -167,6 +169,11 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
             {graduated ? "Minted out" : token.availability === "active" ? "Open" : "Unavailable"}
           </span>
         </div>
+        {token.metadata?.description && <p className="mt-5 max-w-2xl whitespace-pre-wrap text-sm leading-relaxed text-bone-dim">{token.metadata.description}</p>}
+        {(token.metadata?.websiteUrl || token.metadata?.xUrl) && <div className="mt-3 flex flex-wrap gap-4 text-sm text-signal">
+          {token.metadata.websiteUrl && <a href={token.metadata.websiteUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">Website ↗</a>}
+          {token.metadata.xUrl && <a href={token.metadata.xUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">X ↗</a>}
+        </div>}
         <div className="mt-8">
           <div className="flex items-baseline justify-between text-label uppercase tracking-label text-bone-dim">
             <span>{pct.toFixed(1)}% minted</span><span>{formatAtoms(token.circulatingAtoms)} circulating</span>

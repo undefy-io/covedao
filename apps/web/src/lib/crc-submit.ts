@@ -7,6 +7,7 @@ import { verifyCrcGuardianSignedPsbt, verifyCrcWalletSignedPsbt } from "@crclaun
 import type { Database } from "@crclaunch/db";
 import { claimCrcBuildSession, getCrcBuildSession, markCrcBuildBroadcast, markCrcBuildReady } from "./crc-session";
 import type { CrcNetwork } from "./crc-read";
+import { parseCrcLaunchMetadata, saveCrcLaunchMetadata } from "./crc-metadata";
 
 type SubmitParams = {
   db: Database;
@@ -126,6 +127,9 @@ export async function submitCrcSession(params: SubmitParams): Promise<{ txid: st
   if (isDeploy) {
     await saveAuthorizedCrcLaunchIntent(params.db, params.network, signedRawHex,
       launchTrust(session.trustedJson as Record<string, unknown>));
+    const ticker = String((session.trustedJson as Record<string, unknown>).ticker ?? "");
+    await saveCrcLaunchMetadata(params.db, params.network, txid, session.walletScriptHex,
+      parseCrcLaunchMetadata((session.trustedJson as Record<string, unknown>).metadata, ticker));
   }
   await markCrcBuildReady(params.db, params.network, params.sessionId, signedRawHex, txid);
   return broadcastReady(params, signedRawHex, txid);

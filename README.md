@@ -219,7 +219,12 @@ Beads.
 With at least one confirmed Cove token on the local signet stack, run
 `pnpm test:e2e:crc` to check the live catalog, token history, indexed price chart,
 quote preview, canonical page URLs, and navigation in desktop and mobile Chromium.
-The `/crc/...` pages redirect to the original page URLs. This browser check is read-only.
+The old `/crc/...` page routes are removed. Use `/explore`, `/launch`, `/market`,
+`/activity`, `/wallet`, and `/token/{assetId}`. This browser check is read-only.
+The launch form saves name, description, website, X, and image URL as Cove display
+metadata after the wallet signs the deploy. The CRC-20 transaction keeps the
+Garden-compatible ticker and wire format; existing tokens without display
+metadata show their ticker as the name.
 The CRC buy submission integration test covers wallet and Guardian signatures,
 PSBT finalization, and broadcast against the isolated test database; set
 `CRC_READ_TEST_DATABASE_URL` to that database before running the web tests.

@@ -42,6 +42,8 @@ describe.skipIf(!isolated)("CRC launch build from observed wallet funding", () =
     expect(psbt.txOutputs[0]!.script.toString("utf8")).toContain('"p":"crc-20","op":"deploy"');
     expect(built.intent.vaultScriptHex).toMatch(/^5120[0-9a-f]{64}$/);
     expect((await buildCrcLaunchSession(params)).sessionId).toBe(built.sessionId);
+    await expect(buildCrcLaunchSession({ ...params, metadata: { displayName: "Different name", description: "" } }))
+      .rejects.toThrow(/idempotency conflict/);
   });
 
   it("reports insufficient BTC as a client error when only small outputs remain", async () => {

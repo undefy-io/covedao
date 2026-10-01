@@ -8,6 +8,7 @@ import { loadCrcFundingCandidates, type CrcFundingOutpoint } from "./crc-funding
 import { createCrcBuildSession } from "./crc-session";
 import { crcCurveStateFromAsset, quoteCrcBuy, quoteCrcSell, type CrcQuoteAsset } from "./crc-quote";
 import { readCrcTokenUtxo } from "./crc-read";
+import { parseCrcLaunchMetadata, type CrcLaunchMetadata } from "./crc-metadata";
 
 function selectObservedFunding(params: Parameters<typeof selectCrcFunding>[0]) {
   try {
@@ -25,6 +26,7 @@ export async function buildCrcLaunchSession(params: {
   network: "regtest" | "signet" | "testnet" | "mainnet";
   bitcoinNetwork: bitcoin.networks.Network;
   ticker: string;
+  metadata?: CrcLaunchMetadata;
   walletScriptHex: string;
   tokenScriptHex: string;
   walletPublicKeyHex?: string;
@@ -36,6 +38,7 @@ export async function buildCrcLaunchSession(params: {
   recoveryProfile: VaultRecoveryProfile;
 }) {
   if (!/^[A-Z0-9]{1,16}$/.test(params.ticker)) throw new Error("ticker must be 1-16 uppercase letters or digits");
+  const metadata = parseCrcLaunchMetadata(params.metadata, params.ticker);
   const launchSalt = randomBytes(32);
   const base = {
     ticker: params.ticker,
@@ -66,7 +69,7 @@ export async function buildCrcLaunchSession(params: {
   const psbtBase64 = psbt.toBase64();
   const digest = unsignedTxDigest(psbt);
   const requestHash = createHash("sha256").update(JSON.stringify({
-    network: params.network, ticker: params.ticker, walletScriptHex: params.walletScriptHex,
+    network: params.network, ticker: params.ticker, metadata, walletScriptHex: params.walletScriptHex,
     tokenScriptHex: params.tokenScriptHex, funding: params.funding,
     minerFeeSats: params.minerFeeSats, feeScriptHex: params.feeScriptHex,
     guardianXOnly: params.guardianXOnly.toString("hex"),
@@ -80,6 +83,7 @@ export async function buildCrcLaunchSession(params: {
   const intent = {
     operation: "deploy" as const,
     ticker: params.ticker,
+    metadata,
     vaultScriptHex: built.vault.scriptPubKey.toString("hex"),
     creatorScriptHex: params.walletScriptHex,
     protocolScriptHex: params.feeScriptHex,
@@ -100,7 +104,7 @@ export async function buildCrcLaunchSession(params: {
     psbtBase64,
     walletScriptHex: params.walletScriptHex,
     tokenScriptHex: params.tokenScriptHex,
-    trustedJson: { ...intent, launchSaltHex: launchSalt.toString("hex") },
+    trustedJson: { ...intent, metadata, launchSaltHex: launchSalt.toString("hex") },
   });
   return {
     sessionId: session.id,

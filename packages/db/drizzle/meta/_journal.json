@@ -253,6 +253,13 @@
       "when": 1790857000000,
       "tag": "0035_crc_trade_prices",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790858000000,
+      "tag": "0036_crc_token_metadata",
+      "breakpoints": true
     }
   ]
 }

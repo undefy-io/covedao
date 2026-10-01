@@ -749,6 +749,18 @@ export const coveCrcCursor = pgTable("cove_crc_cursor", {
   stateRoot: text("state_root").notNull(),
 });
 
+export const coveCrcTokenMetadata = pgTable("cove_crc_token_metadata", {
+  network: text("network").notNull(),
+  deployTxid: text("deploy_txid").notNull(),
+  displayName: text("display_name").notNull(),
+  description: text("description").notNull().default(""),
+  websiteUrl: text("website_url"),
+  xUrl: text("x_url"),
+  imageUrl: text("image_url"),
+  submittedByScript: text("submitted_by_script").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [primaryKey({ columns: [t.network, t.deployTxid] })]);
+
 export const coveCrcTokenUtxos = pgTable("cove_crc_token_utxos", {
   network: text("network").notNull(),
   deployTxid: text("deploy_txid").notNull(),

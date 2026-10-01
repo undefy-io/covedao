@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, like, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, like, lt, or, sql } from "drizzle-orm";
 import { schema, type Database } from "@crclaunch/db";
 
 export type CrcNetwork = "regtest" | "signet" | "testnet" | "mainnet";
@@ -45,6 +45,11 @@ type AssetRow = {
   mintedAtoms: bigint;
   inventoryAtoms: bigint;
   availability: string;
+  displayName?: string | null;
+  description?: string | null;
+  websiteUrl?: string | null;
+  xUrl?: string | null;
+  imageUrl?: string | null;
 };
 
 export function projectCrcAsset(row: AssetRow) {
@@ -60,6 +65,13 @@ export function projectCrcAsset(row: AssetRow) {
     network: row.network,
     deployTxid: row.deployTxid,
     ticker: row.ticker,
+    metadata: {
+      displayName: row.displayName ?? row.ticker,
+      description: row.description ?? "",
+      websiteUrl: row.websiteUrl ?? null,
+      xUrl: row.xUrl ?? null,
+      imageUrl: row.imageUrl ?? null,
+    },
     deployHeight: row.deployHeight.toString(),
     deployBlockHash: row.deployBlockHash,
     creatorScriptHex: row.creatorScriptHex,
@@ -98,6 +110,14 @@ const assetColumns = {
   availability: schema.coveCrcVaults.availability,
 };
 
+const metadataColumns = {
+  displayName: schema.coveCrcTokenMetadata.displayName,
+  description: schema.coveCrcTokenMetadata.description,
+  websiteUrl: schema.coveCrcTokenMetadata.websiteUrl,
+  xUrl: schema.coveCrcTokenMetadata.xUrl,
+  imageUrl: schema.coveCrcTokenMetadata.imageUrl,
+};
+
 export async function readCrcCursor(db: Database, network: CrcNetwork) {
   const [cursor] = await db.select({ height: schema.coveCrcCursor.height, blockHash: schema.coveCrcCursor.blockHash })
     .from(schema.coveCrcCursor).where(eq(schema.coveCrcCursor.network, network)).limit(1);
@@ -116,16 +136,21 @@ export async function listCrcAssets(
   before?: { height: bigint; deployTxid: string },
   search?: string,
 ) {
-  const rows = await db.select(assetColumns).from(schema.coveCrcAssets)
+  const rows = await db.select({ ...assetColumns, ...metadataColumns }).from(schema.coveCrcAssets)
     .innerJoin(schema.coveCrcVaults, and(
       eq(schema.coveCrcAssets.network, schema.coveCrcVaults.network),
       eq(schema.coveCrcAssets.deployTxid, schema.coveCrcVaults.deployTxid),
+    ))
+    .leftJoin(schema.coveCrcTokenMetadata, and(
+      eq(schema.coveCrcAssets.network, schema.coveCrcTokenMetadata.network),
+      eq(schema.coveCrcAssets.deployTxid, schema.coveCrcTokenMetadata.deployTxid),
     ))
     .where(and(
       eq(schema.coveCrcAssets.network, network),
       search ? or(
         like(schema.coveCrcAssets.ticker, `${search.toUpperCase()}%`),
         like(schema.coveCrcAssets.deployTxid, `${search.toLowerCase()}%`),
+        ilike(schema.coveCrcTokenMetadata.displayName, `${search}%`),
       ) : undefined,
       before ? or(
         lt(schema.coveCrcAssets.deployHeight, before.height),
@@ -138,10 +163,14 @@ export async function listCrcAssets(
 }
 
 export async function readCrcAsset(db: Database, network: CrcNetwork, deployTxid: string) {
-  const [row] = await db.select(assetColumns).from(schema.coveCrcAssets)
+  const [row] = await db.select({ ...assetColumns, ...metadataColumns }).from(schema.coveCrcAssets)
     .innerJoin(schema.coveCrcVaults, and(
       eq(schema.coveCrcAssets.network, schema.coveCrcVaults.network),
       eq(schema.coveCrcAssets.deployTxid, schema.coveCrcVaults.deployTxid),
+    ))
+    .leftJoin(schema.coveCrcTokenMetadata, and(
+      eq(schema.coveCrcAssets.network, schema.coveCrcTokenMetadata.network),
+      eq(schema.coveCrcAssets.deployTxid, schema.coveCrcTokenMetadata.deployTxid),
     ))
     .where(and(eq(schema.coveCrcAssets.network, network), eq(schema.coveCrcAssets.deployTxid, deployTxid)))
     .limit(1);
