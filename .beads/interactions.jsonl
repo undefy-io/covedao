@@ -110,3 +110,5 @@
 {"id":"int-98881e9e","kind":"field_change","created_at":"2026-10-01T11:05:08.76869563Z","actor":"andefy","issue_id":"covedao-bwa","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Closed"}}
 {"id":"int-5e98df5c","kind":"field_change","created_at":"2026-10-01T11:43:34.008371821Z","actor":"andefy","issue_id":"covedao-0h9","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Closed"}}
 {"id":"int-a3a35420","kind":"field_change","created_at":"2026-10-01T11:43:34.136677629Z","actor":"andefy","issue_id":"covedao-h97","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Closed"}}
+{"id":"int-8efa0d5e","kind":"field_change","created_at":"2026-10-01T13:20:30.080640082Z","actor":"andefy","issue_id":"covedao-txw","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Closed"}}
+{"id":"int-cebef6fe","kind":"field_change","created_at":"2026-10-01T13:20:30.221215597Z","actor":"andefy","issue_id":"covedao-61s","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Closed"}}
