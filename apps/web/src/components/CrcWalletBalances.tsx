@@ -32,21 +32,27 @@ export function CrcWalletBalances() {
   }, [connected, address, ordinalsAddress]);
 
   return (
-    <div className="space-y-5 py-8">
-      <p className="eyebrow">Cove CRC-20</p>
-      <h1 className="text-2xl text-bone">Wallet balances</h1>
+    <div className="space-y-px">
+      <section className="panel px-6 py-10 sm:px-10 sm:py-14">
+        <p className="eyebrow">Cove CRC-20 · Bitcoin L1</p>
+        <h1 className="mt-4 text-display text-bone">Your tokens.</h1>
+        <p className="mt-5 max-w-xl text-sm leading-relaxed text-bone-dim">Confirmed token balances held by your connected wallet addresses.</p>
+      </section>
+      <section className="panel px-6 py-8 sm:px-10">
+      <p className="eyebrow">Wallet balances</p>
       {!connected && <button className="btn" onClick={() => void connect()}>Connect wallet</button>}
       {loading && <p className="text-sm text-bone-dim">Reading indexed balances…</p>}
       {error && <p role="alert" className="text-sm text-danger">{error}</p>}
       {connected && !loading && !error && balances.length === 0 && <p className="text-sm text-bone-dim">No confirmed Cove token balance.</p>}
-      <div className="space-y-2">
+      <div className="mt-5 divide-y divide-rule border-y border-rule">
         {balances.map((balance) => (
-          <Link key={balance.assetId} href={`/crc/token/${encodeURIComponent(balance.assetId)}`} className="flex justify-between gap-4 border border-rule bg-ink-2 p-4 hover:border-signal">
-            <span className="min-w-0"><span className="text-bone">${balance.ticker}</span><span className="block truncate text-xs text-bone-dim">{balance.assetId}</span></span>
-            <span className="shrink-0 text-right text-bone">{formatAtoms(balance.atoms)}</span>
+          <Link key={balance.assetId} href={`/crc/token/${encodeURIComponent(balance.assetId)}`} className="group flex justify-between gap-4 px-4 py-4 transition-colors hover:bg-ink-3">
+            <span className="min-w-0"><span className="text-bone group-hover:text-signal">${balance.ticker}</span><span className="hex block truncate">{balance.assetId}</span></span>
+            <span className="shrink-0 text-right tabular-nums text-bone">{formatAtoms(balance.atoms)}</span>
           </Link>
         ))}
       </div>
+      </section>
     </div>
   );
 }

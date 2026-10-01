@@ -33,6 +33,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Header protocolMode={protocolMode} />
             <main className="mx-auto w-full max-w-6xl px-4 pb-24 pt-px sm:px-6">{children}</main>
             {protocolMode === "legacy" && <StatusBar />}
+            {protocolMode !== "legacy" && <footer className="border-t border-rule bg-bg/90">
+              <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 text-xs text-bone-dim sm:px-6">
+                <span>covs.trade · CRC-20 · {process.env.COVE_NETWORK}</span>
+                <a href={lang === "zh" ? "/docs/zh-Hans/index.html" : "/docs/index.html"} className="hover:text-signal">{translate(lang, "footer.docs")}</a>
+              </div>
+            </footer>}
             <WalletPicker />
           </WalletProvider>
         </LanguageProvider>

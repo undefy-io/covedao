@@ -23,6 +23,7 @@ export function Header({ protocolMode = "legacy" }: { protocolMode?: "legacy" | 
   const links = protocolMode === "legacy" ? nav : [
     { href: "/", label: "nav.explore" as MessageKey },
     { href: "/crc/launch", label: "nav.launch" as MessageKey },
+    { href: "/crc/market", label: "nav.market" as MessageKey },
     { href: "/crc/wallet", label: "nav.wallet" as MessageKey },
   ];
 
