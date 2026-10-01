@@ -6,7 +6,7 @@ export type CrcAsset = {
   launchSaltHex: string;
   creatorScriptHex: string;
   protocolScriptHex: string;
-  protocolVersion?: 1 | 2;
+  protocolVersion: 3;
   burnedAtoms?: string;
 };
 
@@ -56,15 +56,11 @@ function validate(projection: CrcProjection, network: string): void {
       throw new Error(`invalid CRC asset ${key}`);
     }
     if (!projection.vaults[key]) throw new Error(`CRC asset ${key} has no vault`);
-    if (asset.protocolVersion !== undefined && asset.protocolVersion !== 1 && asset.protocolVersion !== 2) {
+    if (asset.protocolVersion !== 3) {
       throw new Error(`invalid CRC protocol version ${key}`);
     }
-    if (asset.protocolVersion === 2) {
-      if (!amount.test(asset.burnedAtoms ?? "") || !projection.tokenUtxos?.[key]) {
-        throw new Error(`v2 CRC token UTXO state is missing for ${key}`);
-      }
-    } else if (asset.burnedAtoms !== undefined || projection.tokenUtxos?.[key]) {
-      throw new Error(`v1 CRC asset has v2 token state ${key}`);
+    if (!amount.test(asset.burnedAtoms ?? "") || !projection.tokenUtxos?.[key]) {
+      throw new Error(`CRC token UTXO state is missing for ${key}`);
     }
   }
   for (const [key, vault] of Object.entries(projection.vaults)) {
@@ -88,7 +84,7 @@ function validate(projection: CrcProjection, network: string): void {
   for (const [key, coins] of Object.entries(projection.tokenUtxos ?? {})) {
     const asset = projection.assets[key];
     const vault = projection.vaults[key];
-    if (!asset || asset.protocolVersion !== 2 || !vault) throw new Error(`token UTXOs for unknown v2 CRC asset ${key}`);
+    if (!asset || asset.protocolVersion !== 3 || !vault) throw new Error(`token UTXOs for unknown Cove CRC asset ${key}`);
     const derived: Record<string, bigint> = {};
     let liveAtoms = 0n;
     const vaultOutpoint = `${vault.txid}:${vault.vout}`;
@@ -180,7 +176,7 @@ export function rollbackCrcBlock(current: CrcProjection, undo: CrcUndo): CrcProj
       if (prior === null) delete restoredCoins[point];
       else restoredCoins[point] = prior;
     }
-    if (restored.assets[asset]?.protocolVersion === 2) (restored.tokenUtxos ??= {})[asset] = restoredCoins;
+    if (restored.assets[asset]?.protocolVersion === 3) (restored.tokenUtxos ??= {})[asset] = restoredCoins;
     else if (restored.tokenUtxos) delete restored.tokenUtxos[asset];
   }
   if (undo.hadTokenUtxos === false && restored.tokenUtxos && !Object.keys(restored.tokenUtxos).length) delete restored.tokenUtxos;

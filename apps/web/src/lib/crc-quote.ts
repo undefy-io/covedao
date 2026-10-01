@@ -1,5 +1,5 @@
 import { dustThreshold } from "@crclaunch/bitcoin";
-import { CurveTransitionError, quoteBuy, quoteSell, requiredBackingV1, type CurveState } from "@crclaunch/crc20-curve";
+import { CurveTransitionError, quoteBuy, quoteSell, requiredBacking, type CurveState } from "@crclaunch/crc20-curve";
 
 const ATOMS_PER_TOKEN = 100_000_000n;
 
@@ -31,7 +31,7 @@ export function crcCurveStateFromAsset(asset: CrcQuoteAsset): CurveState {
   }
   let reserveSats: bigint;
   try {
-    reserveSats = requiredBackingV1(circulatingAtoms / ATOMS_PER_TOKEN);
+    reserveSats = requiredBacking(circulatingAtoms / ATOMS_PER_TOKEN);
   } catch (error) {
     if (error instanceof CurveTransitionError) throw new CrcQuoteError("INVALID_STATE", "Cove CRC supply is inconsistent");
     throw error;
@@ -41,7 +41,7 @@ export function crcCurveStateFromAsset(asset: CrcQuoteAsset): CurveState {
     throw new CrcQuoteError("INVALID_STATE", "Cove CRC backing does not match its registered anchor");
   }
   return {
-    version: "cove-curve-v1",
+    version: "cove-curve-v3",
     mintedAtoms,
     vaultAtoms,
     circulatingAtoms,

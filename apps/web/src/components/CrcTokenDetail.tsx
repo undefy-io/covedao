@@ -12,7 +12,7 @@ type Token = {
   network: string;
   deployTxid: string;
   deployHeight: string;
-  protocolVersion: 1 | 2;
+  protocolVersion: 3;
   burnedAtoms: string | null;
   mintedAtoms: string;
   inventoryAtoms: string;
@@ -150,14 +150,13 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
         <h1 className="mt-3 text-3xl text-bone">${token.ticker}</h1>
         <p className="mt-2 break-all font-mono text-xs text-bone-dim">{token.assetId}</p>
         <p className="mt-3 text-xs text-bone-dim">Confirmed at block {token.deployHeight} · indexed through {indexedHeight}</p>
-        {token.protocolVersion === 1 && <p className="mt-3 text-sm text-bone-dim">Legacy Cove v1 token · view only. New trading uses Cove v2 deployments.</p>}
       </section>
       <section className="grid gap-3 sm:grid-cols-2">
         <Metric name="Circulating" value={`${formatAtoms(token.circulatingAtoms)} tokens`} />
         <Metric name="Vault inventory" value={`${formatAtoms(token.inventoryAtoms)} tokens`} />
         <Metric name="Lifetime minted" value={`${formatAtoms(token.mintedAtoms)} tokens`} />
         <Metric name="Vault BTC" value={`${token.vault.btcSats} sats`} />
-        {token.protocolVersion === 2 && <Metric name="Burned" value={`${formatAtoms(token.burnedAtoms ?? "0")} tokens`} />}
+        <Metric name="Burned" value={`${formatAtoms(token.burnedAtoms ?? "0")} tokens`} />
       </section>
       <section className="border border-rule bg-ink-2 p-6">
         <h2 className="text-lg text-bone">Buy and sell</h2>
@@ -171,7 +170,7 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
           <input value={quantity} onChange={(event) => { setQuantity(event.target.value); setQuote(null); }} inputMode="numeric" className="mt-2 block w-full border border-rule bg-ink px-3 py-2 text-bone outline-none focus:border-signal" />
         </label>
         {side === "sell" && !connected && <button type="button" onClick={() => void connect()} className="btn-ghost mt-3">Connect wallet to preview sell</button>}
-        <button type="button" disabled={quoting || token.availability !== "active" || token.protocolVersion !== 2} onClick={() => void preview()} className="btn mt-4 block disabled:opacity-50">{quoting ? "Calculating…" : "Preview quote"}</button>
+        <button type="button" disabled={quoting || token.availability !== "active"} onClick={() => void preview()} className="btn mt-4 block disabled:opacity-50">{quoting ? "Calculating…" : "Preview quote"}</button>
         {quoteError && <p role="alert" className="mt-3 text-sm text-danger">{quoteError}</p>}
         {quote && <div className="mt-4 space-y-1 border-t border-rule pt-4 text-sm text-bone-dim">
           <p>Backing: {quote.grossSats} sats</p>

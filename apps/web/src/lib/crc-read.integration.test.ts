@@ -28,23 +28,24 @@ describe.skipIf(!isolated)("Cove CRC database reads", () => {
       ["signet", first, 11], ["signet", second, 12], ["regtest", first, 13],
     ] as const) {
       const vaultScript = `0014${deployTxid.slice(0, 40)}`;
+      const burnedAtoms = network === "signet" && deployTxid === second ? 50000000000n : 0n;
+      const inventoryAtoms = network === "regtest" ? 0n : 100000000000n;
+      const backingSats = network === "regtest" ? 1027n : 1000n;
       await db!.execute(sql`insert into cove_crc_assets
-        (network,deploy_txid,ticker,deploy_height,deploy_block_hash,launch_salt_hex,creator_script_hex,protocol_script_hex)
-        values (${network},${deployTxid},'SAME',${height},'block',${deployTxid},${owner},${owner})`);
+        (network,deploy_txid,ticker,deploy_height,deploy_block_hash,launch_salt_hex,creator_script_hex,protocol_script_hex,protocol_version,burned_atoms)
+        values (${network},${deployTxid},'SAME',${height},${deployTxid},${deployTxid},${owner},${owner},3,${burnedAtoms})`);
       await db!.execute(sql`insert into cove_crc_vaults
         (network,deploy_txid,txid,vout,script_hex,btc_sats,minted_atoms,inventory_atoms,availability)
-        values (${network},${deployTxid},${deployTxid},1,${vaultScript},1000,200000000000,100000000000,'active')`);
+        values (${network},${deployTxid},${deployTxid},1,${vaultScript},${backingSats},200000000000,${inventoryAtoms},'active')`);
       await db!.execute(sql`insert into cove_crc_launch_intents
         (network,txid,ticker,signed_raw_hex,raw_sha256,launch_salt_hex,vault_script_hex,creator_script_hex,protocol_script_hex,vault_anchor_sats)
         values (${network},${deployTxid},'SAME','00','hash',${deployTxid},${vaultScript},${owner},${owner},973)`);
     }
-    await db!.execute(sql`insert into cove_crc_balances (network,deploy_txid,script_hex,atoms)
-      values ('signet',${first},${owner},100000000000),('signet',${second},${owner},50000000000),('regtest',${first},${owner},200000000000)`);
-    await db!.execute(sql`update cove_crc_assets set protocol_version = 2, burned_atoms = 50000000000
-      where network = 'signet' and deploy_txid = ${second}`);
     await db!.execute(sql`insert into cove_crc_token_utxos
       (network,deploy_txid,txid,vout,script_hex,atoms,created_height,created_block_hash)
-      values ('signet',${second},${"a".repeat(64)},1,${owner},25000000000,12,${"b".repeat(64)}),
+      values ('signet',${first},${"c".repeat(64)},1,${owner},100000000000,11,${"a".repeat(64)}),
+        ('regtest',${first},${"d".repeat(64)},1,${owner},200000000000,13,${"a".repeat(64)}),
+        ('signet',${second},${"a".repeat(64)},1,${owner},25000000000,12,${"b".repeat(64)}),
         ('signet',${second},${"b".repeat(64)},1,${owner},25000000000,13,${"c".repeat(64)}),
         ('signet',${second},${second},1,${`0014${second.slice(0, 40)}`},100000000000,12,${"b".repeat(64)})`);
   });
@@ -87,9 +88,9 @@ describe.skipIf(!isolated)("Cove CRC database reads", () => {
     expect(nextPage[0]?.assetId).toBe(`signet:${second}`);
   });
 
-  it("uses only live indexed v2 coins for wallet balances and seller authority", async () => {
-    await db!.execute(sql`update cove_crc_balances set atoms = 999000000000
-      where network = 'signet' and deploy_txid = ${second} and script_hex = ${owner}`);
+  it("uses only indexed token outpoints for wallet balances and seller authority", async () => {
+    await db!.execute(sql`insert into cove_crc_balances (network,deploy_txid,script_hex,atoms)
+      values ('signet',${second},${owner},999000000000)`);
     try {
       expect(await readCrcBalance(db!, "signet", second, owner)).toBe(50000000000n);
       expect(await readCrcWalletBalances(db!, "signet", owner, 100)).toContainEqual({
@@ -105,7 +106,7 @@ describe.skipIf(!isolated)("Cove CRC database reads", () => {
       expect(await readCrcTokenUtxo(db!, "regtest", second, "a".repeat(64), 1)).toBeNull();
       expect(await readCrcTokenUtxo(db!, "signet", first, "a".repeat(64), 1)).toBeNull();
     } finally {
-      await db!.execute(sql`update cove_crc_balances set atoms = 50000000000
+      await db!.execute(sql`delete from cove_crc_balances
         where network = 'signet' and deploy_txid = ${second} and script_hex = ${owner}`);
     }
   });

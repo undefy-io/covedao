@@ -53,7 +53,7 @@ export function makeCrcSellerListing(options: {
   if (tokenCoin.scriptHex.toLowerCase() !== options.sellerScriptHex.toLowerCase()) {
     throw new Error("Selected token output does not belong to the connected wallet");
   }
-  if (options.asset.protocolVersion !== 2 || options.asset.network !== listing.network ||
+  if (options.asset.protocolVersion !== 3 || options.asset.network !== listing.network ||
     options.asset.deployTxid !== listing.deployTxid || options.asset.ticker !== listing.ticker ||
     options.asset.tokenOutpoint !== `${listing.sellerAnchorTxid}:${listing.sellerAnchorVout}` ||
     options.asset.tokenAtoms !== listing.amountAtoms ||
@@ -62,7 +62,7 @@ export function makeCrcSellerListing(options: {
     listing.sellerPayoutScriptHex.toLowerCase() !== listing.sellerScriptHex.toLowerCase() ||
     listing.expiresAtHeight <= options.currentHeight || !Number.isSafeInteger(listing.priceSats) ||
     listing.priceSats <= 0) {
-    throw new Error("Listing does not match the current indexed Cove v2 token output");
+    throw new Error("Listing does not match the current indexed Cove CRC token output");
   }
   return listing;
 }
@@ -104,7 +104,7 @@ export function sellerFillTermsFromPsbt(
         tapKey ? { publicKeyHex: tapKey.toString("hex") } : {}),
     };
   });
-  const recipient = transaction.outs[1]!;
+  const recipient = transaction.outs[2]!;
   const buyerScriptHex = recipient.script.toString("hex");
   const buyerFundingScriptHex = funding[1]!.scriptHex;
   if (funding.slice(1).some((coin) => coin.scriptHex !== buyerFundingScriptHex)) {

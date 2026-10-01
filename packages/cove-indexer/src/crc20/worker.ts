@@ -1,7 +1,7 @@
 import { Transaction } from "bitcoinjs-lib";
 import { createHash } from "node:crypto";
 import { parseCrc20Transaction } from "@crclaunch/crc20-base";
-import { requiredBackingV1 } from "@crclaunch/crc20-curve";
+import { requiredBacking } from "@crclaunch/crc20-curve";
 import { applyCoveConfirmed, type CoveAsset, type CoveLedgerState } from "@crclaunch/crc20-ledger/cove-replay";
 import type { BitcoinNetwork } from "@crclaunch/crc20-base";
 import type { Database } from "@crclaunch/db";
@@ -23,15 +23,14 @@ function outpoint(input: Transaction["ins"][number]): string {
   return `${Buffer.from(input.hash).reverse().toString("hex")}:${input.index}`;
 }
 
-function relevant(tx: Transaction, txid: string, network: BitcoinNetwork, state: CoveLedgerState, registeredTxids: ReadonlySet<string>, liveVaults: ReadonlyMap<string, string>, liveTokenOutpoints: ReadonlyMap<string, string>): boolean {
+function relevant(tx: Transaction, txid: string, registeredTxids: ReadonlySet<string>, liveVaults: ReadonlyMap<string, string>, liveTokenOutpoints: ReadonlyMap<string, string>): boolean {
   if (tx.ins.length === 1 && tx.ins[0]!.index === 0xffffffff && tx.ins[0]!.hash.equals(Buffer.alloc(32))) return false;
   if (tx.ins.some((input) => liveVaults.has(outpoint(input)))) return true;
   if (tx.ins.some((input) => liveTokenOutpoints.has(outpoint(input)))) return true;
   const parsed = parseCrc20Transaction(tx.outs.map((output) => ({ scriptHex: output.script.toString("hex"), valueSats: output.value })));
   if (parsed.status !== "valid") return false;
   if (parsed.envelope.kind === "deploy") return registeredTxids.has(txid);
-  const id = parsed.envelope.payload.id;
-  return typeof id === "string" && !!state.assets[`${network}:${id}`];
+  return false;
 }
 
 export async function replayCrcBlock(
@@ -51,7 +50,7 @@ export async function replayCrcBlock(
   const tokenKeysByAsset = new Map<string, Set<string>>();
   for (const [assetId, asset] of Object.entries(initial.assets)) if (asset.status === "live") liveVaults.set(asset.curve.vaultOutpoint, assetId);
   for (const [assetId, asset] of Object.entries(initial.assets)) {
-    if (asset.protocolVersion !== 2) continue;
+    if (asset.protocolVersion !== 3) continue;
     const keys = new Set(Object.keys(asset.tokenUtxos ?? {}));
     tokenKeysByAsset.set(assetId, keys);
     for (const point of keys) {
@@ -65,7 +64,7 @@ export async function replayCrcBlock(
     const tx = txs[index]!;
     const txid = txids[index]!;
     const rawHex = block.rawTxs[index]!;
-    if (relevant(tx, txid, block.network, state, registeredTxids, liveVaults, liveTokenOutpoints)) {
+    if (relevant(tx, txid, registeredTxids, liveVaults, liveTokenOutpoints)) {
       const spentVaults = tx.ins.map((input) => ({ point: outpoint(input), assetId: liveVaults.get(outpoint(input)) })).filter((item): item is { point: string; assetId: string } => !!item.assetId);
       const spentTokenAssets = new Set(tx.ins.map((input) => liveTokenOutpoints.get(outpoint(input))).filter((assetId): assetId is string => !!assetId));
       const marker = parseCrc20Transaction(tx.outs.map((output) => ({ scriptHex: output.script.toString("hex"), valueSats: output.value })));
@@ -92,17 +91,17 @@ export async function replayCrcBlock(
       }
       const outputs = tx.outs.map((output) => ({ scriptHex: output.script.toString("hex"), valueSats: output.value }));
       const parsed = parseCrc20Transaction(outputs);
+      const previousState = state;
       const result = applyCoveConfirmed(state, {
         network: block.network, rawHex, parentRawHexes: parents, blockHash: block.hash,
         blockTxids: txids, height: block.height, index,
       }, registrations);
       if (result.status === "invalid" && result.reason === "parent transaction does not match raw input outpoint") throw new Error(result.reason);
       state = result.state;
-      const touchedTokenAssets = new Set(spentTokenAssets);
-      if (parsed.status === "valid") {
-        const markerAssetId = parsed.envelope.kind === "deploy" ? `${block.network}:${txid}`
-          : typeof parsed.envelope.payload.id === "string" ? `${block.network}:${parsed.envelope.payload.id}` : null;
-        if (markerAssetId && state.assets[markerAssetId]?.protocolVersion === 2) touchedTokenAssets.add(markerAssetId);
+      const touchedTokenAssets = new Set([...spentTokenAssets, ...spentVaults.map((item) => item.assetId)]);
+      if (parsed.status === "valid" && parsed.envelope.kind === "deploy") {
+        const markerAssetId = `${block.network}:${txid}`;
+        if (state.assets[markerAssetId]?.protocolVersion === 3) touchedTokenAssets.add(markerAssetId);
       }
       for (const assetId of touchedTokenAssets) {
         for (const point of tokenKeysByAsset.get(assetId) ?? []) liveTokenOutpoints.delete(point);
@@ -122,14 +121,18 @@ export async function replayCrcBlock(
         const deployed = state.assets[`${block.network}:${txid}`];
         if (deployed?.status === "live") liveVaults.set(deployed.curve.vaultOutpoint, `${block.network}:${txid}`);
       }
-      const markerId = parsed.status === "valid" && parsed.envelope.kind !== "deploy" ? parsed.envelope.payload.id : null;
+      const routedId = spentVaults[0]?.assetId.split(":")[1] ?? [...spentTokenAssets][0]?.split(":")[1] ?? null;
+      const routedAsset = routedId ? state.assets[`${block.network}:${routedId}`] : null;
+      const priorAsset = routedId ? previousState.assets[`${block.network}:${routedId}`] : null;
       const brokenId = result.status === "broken" ? Object.entries(state.assets).find(([, asset]) => asset.status === "broken" && tx.ins.some((input) => asset.curve.vaultOutpoint === outpoint(input)))?.[0]?.split(":")[1] : undefined;
       events.push({
         txid, blockHeight: block.height, txIndex: index,
         operation: parsed.status === "valid" ? parsed.envelope.kind : null,
         status: result.status, valid: result.status === "applied", reason: result.reason,
-        deployTxid: parsed.status === "valid" && parsed.envelope.kind === "deploy" ? txid : typeof markerId === "string" && txidPattern.test(markerId) ? markerId : brokenId ?? [...spentTokenAssets][0]?.split(":")[1] ?? null,
-        amountAtoms: parsed.status === "valid" && parsed.envelope.kind !== "deploy" && typeof parsed.envelope.payload.amt === "string" && /^[1-9][0-9]*$/.test(parsed.envelope.payload.amt) ? parsed.envelope.payload.amt : null,
+        deployTxid: parsed.status === "valid" && parsed.envelope.kind === "deploy" ? txid : routedId ?? brokenId ?? null,
+        amountAtoms: result.status === "applied" && parsed.status === "valid" && parsed.envelope.kind === "mint" && routedAsset?.protocolVersion === 3 && priorAsset
+          ? (routedAsset.curve.mintedAtoms - priorAsset.curve.mintedAtoms).toString()
+          : parsed.status === "valid" && parsed.envelope.kind !== "deploy" && typeof parsed.envelope.payload.amt === "string" && /^[1-9][0-9]*$/.test(parsed.envelope.payload.amt) ? parsed.envelope.payload.amt : null,
       });
     }
     seen.set(txid, rawHex);
@@ -150,7 +153,7 @@ export function projectionFromCoveLedger(state: CoveLedgerState, before: CrcProj
       launchSaltHex: registration!.launchSaltHex,
       creatorScriptHex: asset.creatorScriptHex, protocolScriptHex: asset.protocolScriptHex,
       }),
-      ...(asset.protocolVersion === 2 ? { protocolVersion: 2, burnedAtoms: asset.burnedAtoms ?? "0" } : {}),
+      protocolVersion: 3, burnedAtoms: asset.burnedAtoms ?? "0",
     };
     const split = asset.curve.vaultOutpoint.lastIndexOf(":");
     const vaultTxid = asset.curve.vaultOutpoint.slice(0, split);
@@ -163,7 +166,7 @@ export function projectionFromCoveLedger(state: CoveLedgerState, before: CrcProj
     for (const [script, atoms] of Object.entries(asset.balances)) {
       if (atoms !== "0") (projection.balances[key] ??= {})[script] = atoms;
     }
-    if (asset.protocolVersion === 2) {
+    if (asset.protocolVersion === 3) {
       const coins: Record<string, CrcTokenUtxo> = (projection.tokenUtxos ??= {})[key] = {};
       for (const [point, coin] of Object.entries(asset.tokenUtxos ?? {})) {
         const previous = before.tokenUtxos?.[key]?.[point];
@@ -188,16 +191,14 @@ export function coveLedgerFromProjection(projection: CrcProjection, events: read
     if (circulatingAtoms < 0n || circulatingAtoms % 100_000_000n !== 0n) throw new Error("invalid CRC circulating supply");
     const vaultSats = BigInt(vault.btcSats);
     const vaultAnchorSats = trustedAnchors[key];
-    if (vaultAnchorSats === undefined || vaultAnchorSats < 0n || vaultSats !== vaultAnchorSats + requiredBackingV1(circulatingAtoms / 100_000_000n)) throw new Error("CRC vault backing does not match trusted launch anchor");
+    if (vaultAnchorSats === undefined || vaultAnchorSats < 0n || vaultSats !== vaultAnchorSats + requiredBacking(circulatingAtoms / 100_000_000n)) throw new Error("CRC vault backing does not match trusted launch anchor");
     assets[key] = {
       ticker: meta.ticker, status: vault.availability === "active" ? "live" : "broken",
-      ...(meta.protocolVersion === 2 ? {
-        protocolVersion: 2 as const, burnedAtoms: meta.burnedAtoms,
-        tokenUtxos: Object.fromEntries(Object.entries(projection.tokenUtxos?.[key] ?? {}).map(([point, coin]) =>
-          [point, { scriptHex: coin.scriptHex, atoms: coin.atoms }])),
-      } : {}),
+      protocolVersion: 3, burnedAtoms: meta.burnedAtoms,
+      tokenUtxos: Object.fromEntries(Object.entries(projection.tokenUtxos?.[key] ?? {}).map(([point, coin]) =>
+        [point, { scriptHex: coin.scriptHex, atoms: coin.atoms }])),
       vaultScriptHex: vault.scriptHex, creatorScriptHex: meta.creatorScriptHex, protocolScriptHex: meta.protocolScriptHex,
-      curve: { version: "cove-curve-v1", mintedAtoms, vaultAtoms, circulatingAtoms, vaultSats, vaultAnchorSats, vaultOutpoint: `${vault.txid}:${vault.vout}` },
+      curve: { version: "cove-curve-v3", mintedAtoms, vaultAtoms, circulatingAtoms, vaultSats, vaultAnchorSats, vaultOutpoint: `${vault.txid}:${vault.vout}` },
       balances: { ...projection.balances[key] },
     };
   }

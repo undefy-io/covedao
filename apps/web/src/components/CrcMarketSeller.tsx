@@ -105,7 +105,7 @@ export function CrcMarketSeller() {
     ]).then(([detail, tokenOutputs, bitcoinOutputs]) => {
       if (!alive) return;
       if (tokenOutputs.truncated) throw new Error("This address has more than 100 token outputs. Consolidate before listing.");
-      if (detail.token.protocolVersion !== 2 || detail.token.network !== network) throw new Error("Only Cove v2 token outputs can be listed");
+      if (detail.token.protocolVersion !== 3 || detail.token.network !== network) throw new Error("Only Cove CRC token outputs can be listed");
       setToken(detail.token);
       setHeight(decimal(detail.indexedTip.height, "indexed height"));
       setCoins(tokenOutputs.utxos);

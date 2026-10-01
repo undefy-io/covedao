@@ -21,7 +21,7 @@ export async function crcQuoteRoute(req: Request, operation: "buy" | "sell"): Pr
         ? fail("INVALID_STATE", "Trusted launch state is unavailable", 503, true)
         : fail("TOKEN_NOT_FOUND", "Token not found", 404);
     }
-    if (token.protocolVersion !== 2) return fail("CRC_V1_READ_ONLY", "This legacy token is read-only; launch a new Cove v2 token to trade", 409);
+    if (token.protocolVersion !== 3) return fail("CRC_UNSUPPORTED", "This token uses an unsupported CRC format", 409);
     if (token.availability !== "active") return fail("ASSET_UNAVAILABLE", "This token's vault is unavailable", 503, true);
 
     if (operation === "buy") return ok({ indexedTip, quote: quoteCrcBuy(token, amountAtoms) });

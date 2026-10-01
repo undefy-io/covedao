@@ -51,9 +51,8 @@ export function projectCrcAsset(row: AssetRow) {
   if (
     row.mintedAtoms < 0n || row.inventoryAtoms < 0n || row.inventoryAtoms > row.mintedAtoms ||
     row.btcSats < 0n || row.deployHeight < 0n || row.vout < 0 ||
-    (row.protocolVersion !== 1 && row.protocolVersion !== 2) ||
-    (row.protocolVersion === 1 && row.burnedAtoms !== null) ||
-    (row.protocolVersion === 2 && (row.burnedAtoms === null || row.burnedAtoms < 0n || row.burnedAtoms > row.mintedAtoms)) ||
+    row.protocolVersion !== 3 ||
+    row.burnedAtoms === null || row.burnedAtoms < 0n || row.burnedAtoms > row.mintedAtoms ||
     !["active", "unavailable"].includes(row.availability)
   ) throw new Error("inconsistent Cove CRC projection");
   return {
@@ -65,7 +64,7 @@ export function projectCrcAsset(row: AssetRow) {
     deployBlockHash: row.deployBlockHash,
     creatorScriptHex: row.creatorScriptHex,
     protocolScriptHex: row.protocolScriptHex,
-    protocolVersion: row.protocolVersion as 1 | 2,
+    protocolVersion: 3 as const,
     burnedAtoms: row.burnedAtoms?.toString() ?? null,
     mintedAtoms: row.mintedAtoms.toString(),
     inventoryAtoms: row.inventoryAtoms.toString(),
@@ -167,13 +166,10 @@ export async function readCrcQuoteAsset(db: Database, network: CrcNetwork, deplo
 
 export async function readCrcBalance(db: Database, network: CrcNetwork, deployTxid: string, scriptHex: string): Promise<bigint> {
   const result = await db.execute(sql`
-    select case when a.protocol_version = 2 then
-      (select coalesce(sum(u.atoms), 0) from cove_crc_token_utxos u
-        where u.network = a.network and u.deploy_txid = a.deploy_txid and u.script_hex = ${scriptHex})
-    else (select coalesce(b.atoms, 0) from cove_crc_balances b
-        where b.network = a.network and b.deploy_txid = a.deploy_txid and b.script_hex = ${scriptHex})
-    end as atoms
-    from cove_crc_assets a where a.network = ${network} and a.deploy_txid = ${deployTxid} limit 1`);
+    select coalesce(sum(u.atoms), 0) as atoms from cove_crc_token_utxos u
+      join cove_crc_assets a on a.network = u.network and a.deploy_txid = u.deploy_txid
+      where u.network = ${network} and u.deploy_txid = ${deployTxid}
+        and u.script_hex = ${scriptHex} and a.protocol_version = 3`);
   return BigInt((result.rows[0] as { atoms?: string | number | bigint } | undefined)?.atoms ?? 0);
 }
 
@@ -193,7 +189,7 @@ export async function readCrcTokenUtxos(db: Database, network: CrcNetwork, deplo
     .where(and(eq(schema.coveCrcTokenUtxos.network, network),
       eq(schema.coveCrcTokenUtxos.deployTxid, deployTxid),
       eq(schema.coveCrcTokenUtxos.scriptHex, scriptHex),
-      eq(schema.coveCrcAssets.protocolVersion, 2)))
+      eq(schema.coveCrcAssets.protocolVersion, 3)))
     .orderBy(desc(schema.coveCrcTokenUtxos.atoms), asc(schema.coveCrcTokenUtxos.txid), asc(schema.coveCrcTokenUtxos.vout))
     .limit(limit);
   return rows.map((row) => ({ ...row, atoms: row.atoms.toString(), createdHeight: row.createdHeight.toString() }));
@@ -209,7 +205,7 @@ export async function readCrcTokenUtxo(db: Database, network: CrcNetwork, deploy
     .where(and(eq(schema.coveCrcTokenUtxos.network, network),
       eq(schema.coveCrcTokenUtxos.deployTxid, deployTxid),
       eq(schema.coveCrcTokenUtxos.txid, txid), eq(schema.coveCrcTokenUtxos.vout, vout),
-      eq(schema.coveCrcAssets.protocolVersion, 2))).limit(1);
+      eq(schema.coveCrcAssets.protocolVersion, 3))).limit(1);
   return row ? { scriptHex: row.scriptHex, atoms: row.atoms } : null;
 }
 
@@ -219,13 +215,9 @@ export async function readCrcWalletBalances(
 ) {
   const rows = await db.execute(sql`
     with owned as (
-      select b.deploy_txid, b.atoms from cove_crc_balances b
-        join cove_crc_assets a on a.network = b.network and a.deploy_txid = b.deploy_txid
-        where b.network = ${network} and b.script_hex = ${scriptHex} and a.protocol_version = 1
-      union all
       select u.deploy_txid, sum(u.atoms) as atoms from cove_crc_token_utxos u
         join cove_crc_assets a on a.network = u.network and a.deploy_txid = u.deploy_txid
-        where u.network = ${network} and u.script_hex = ${scriptHex} and a.protocol_version = 2
+        where u.network = ${network} and u.script_hex = ${scriptHex} and a.protocol_version = 3
         group by u.deploy_txid
     )
     select o.deploy_txid as "deployTxid", a.ticker, o.atoms::text as atoms

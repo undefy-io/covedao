@@ -15,27 +15,20 @@ const req = (assetId = `signet:${txid}`) => new Request(`http://localhost/api/cr
 const params = (assetId = `signet:${txid}`) => ({ params: Promise.resolve({ assetId }) });
 
 beforeEach(() => {
-  mocks.asset.mockReset().mockResolvedValue({ assetId: `signet:${txid}`, protocolVersion: 2 });
+  mocks.asset.mockReset().mockResolvedValue({ assetId: `signet:${txid}`, protocolVersion: 3 });
   mocks.cursor.mockReset().mockResolvedValue({ height: "100", blockHash: "b".repeat(64) });
   mocks.utxos.mockReset().mockResolvedValue([{ txid: "c".repeat(64), vout: 1, atoms: "100000000000" }]);
 });
 
 describe("CRC indexed token output route", () => {
-  it("returns only exact network-scoped indexed v2 coins", async () => {
+  it("returns only exact network-scoped indexed coins", async () => {
     const response = await GET(req(), params());
     expect(response.status).toBe(200);
     expect((await response.json()).data).toMatchObject({
       assetId: `signet:${txid}`, utxos: [{ txid: "c".repeat(64), vout: 1, atoms: "100000000000" }],
-      truncated: false, legacyReadOnly: false,
+      truncated: false,
     });
     expect(mocks.utxos).toHaveBeenCalledWith({}, "signet", txid, expect.any(String), 101);
-  });
-
-  it("keeps legacy v1 assets readable without inventing token outputs", async () => {
-    mocks.asset.mockResolvedValue({ assetId: `signet:${txid}`, protocolVersion: 1 });
-    const response = await GET(req(), params());
-    expect((await response.json()).data).toMatchObject({ utxos: [], legacyReadOnly: true });
-    expect(mocks.utxos).not.toHaveBeenCalled();
   });
 
   it("rejects asset IDs from another network", async () => {

@@ -31,7 +31,7 @@ describe.skipIf(!isolated)("CRC trade build from DB-observed inputs", () => {
   it("makes vault input zero, payment change separate from token recipient, and immutable idempotency", async () => {
     await saveWalletFundingSnapshot(db!, network, buyer, [{ txid: paymentTxid, vout: 0, valueSats: "30000", confirmations: 1 }]);
     const asset = {
-      assetId: `${network}:${deployTxid}`, network, deployTxid, ticker: "TEST", protocolVersion: 2 as const, creatorScriptHex: seller,
+      assetId: `${network}:${deployTxid}`, network, deployTxid, ticker: "TEST", protocolVersion: 3 as const, creatorScriptHex: seller,
       protocolScriptHex: fee, registeredVaultScriptHex: vault, mintedAtoms: "0", inventoryAtoms: "0",
       circulatingAtoms: "0", vaultAnchorSats: "330", availability: "active" as const,
       vault: { txid: vaultTxid, vout: 1, btcSats: "330", scriptHex: vault },
@@ -44,7 +44,7 @@ describe.skipIf(!isolated)("CRC trade build from DB-observed inputs", () => {
     };
     const built = await buildCrcTradeSession(input);
     const psbt = bitcoin.Psbt.fromBase64(built.psbtBase64, { network: bitcoin.networks.regtest });
-    expect(psbt.txOutputs[0]!.script.toString("utf8")).toContain('"v":2');
+    expect(psbt.txOutputs[0]!.script.toString("utf8")).toContain('"op":"mint"');
     expect(psbt.txInputs[0]).toMatchObject({ index: 1 });
     expect(Buffer.from(psbt.txInputs[0]!.hash).reverse().toString("hex")).toBe(vaultTxid);
     expect(psbt.txOutputs[1]!.script.toString("hex")).toBe(seller);
@@ -58,13 +58,13 @@ describe.skipIf(!isolated)("CRC trade build from DB-observed inputs", () => {
     await saveWalletFundingSnapshot(db!, network, buyer, [{ txid: paymentTxid, vout: 0, valueSats: "30000", confirmations: 1 }]);
     await db!.execute(sql`insert into cove_crc_assets
       (network,deploy_txid,ticker,deploy_height,deploy_block_hash,launch_salt_hex,creator_script_hex,protocol_script_hex,protocol_version,burned_atoms)
-      values (${network},${deployTxid},'TEST',100,${"a".repeat(64)},${"b".repeat(64)},${seller},${fee},2,0)`);
+      values (${network},${deployTxid},'TEST',100,${"a".repeat(64)},${"b".repeat(64)},${seller},${fee},3,0)`);
     await db!.execute(sql`insert into cove_crc_token_utxos
       (network,deploy_txid,txid,vout,script_hex,atoms,created_height,created_block_hash)
       values (${network},${deployTxid},${sellerTxid},1,${seller},5000000000000,101,${"c".repeat(64)}),
         (${network},${deployTxid},${secondSellerTxid},1,${seller},5000000000000,101,${"c".repeat(64)})`);
     const asset = {
-      assetId: `${network}:${deployTxid}`, network, deployTxid, ticker: "TEST", protocolVersion: 2 as const, creatorScriptHex: seller,
+      assetId: `${network}:${deployTxid}`, network, deployTxid, ticker: "TEST", protocolVersion: 3 as const, creatorScriptHex: seller,
       protocolScriptHex: fee, registeredVaultScriptHex: vault, mintedAtoms: "10000000000000", inventoryAtoms: "0",
       circulatingAtoms: "10000000000000", vaultAnchorSats: "330", availability: "active" as const,
       vault: { txid: vaultTxid, vout: 1, btcSats: "3030", scriptHex: vault },

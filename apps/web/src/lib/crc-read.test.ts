@@ -27,7 +27,7 @@ describe("Cove CRC read contract", () => {
       btcSats: 1_000n,
       mintedAtoms: 200_000_000_000n,
       inventoryAtoms: 100_000_000_000n,
-      protocolVersion: 2,
+      protocolVersion: 3,
       burnedAtoms: 50_000_000_000n,
       availability: "active",
     };
@@ -36,10 +36,11 @@ describe("Cove CRC read contract", () => {
     expect(first.assetId).not.toBe(second.assetId);
     expect(first.ticker).toBe(second.ticker);
     expect(first.circulatingAtoms).toBe("100000000000");
-    expect(first.protocolVersion).toBe(2);
+    expect(first.protocolVersion).toBe(3);
     expect(first.burnedAtoms).toBe("50000000000");
     expect(first.vault.btcSats).toBe("1000");
     expect(() => JSON.stringify(first)).not.toThrow();
+    expect(projectCrcAsset({ ...base, deployTxid: txid, protocolVersion: 3 }).protocolVersion).toBe(3);
   });
 
   it("rejects inconsistent database projections before displaying a market", () => {

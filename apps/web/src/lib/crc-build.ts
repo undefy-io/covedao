@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import type * as bitcoin from "bitcoinjs-lib";
 import { unsignedTxDigest } from "@crclaunch/cove-app";
-import { buildCoveDeployWithVaultV2, buildCurveBuyV2, buildCurveSellV2, buildUnsignedPsbt, selectCrcFunding, type CoveV2Input } from "@crclaunch/crc20-transactions";
+import { buildCoveDeployWithVaultV3, buildCurveBuyV3, buildCurveSellV3, buildUnsignedPsbt, selectCrcFunding, type CoveTokenInput } from "@crclaunch/crc20-transactions";
 import type { VaultRecoveryProfile } from "@crclaunch/cove-vault";
 import type { Database } from "@crclaunch/db";
 import { loadCrcFundingCandidates, type CrcFundingOutpoint } from "./crc-funding";
@@ -36,7 +36,7 @@ export async function buildCrcLaunchSession(params: {
     vaultAnchorSats: 330,
     network: params.bitcoinNetwork,
   };
-  const first = buildCoveDeployWithVaultV2(base);
+  const first = buildCoveDeployWithVaultV3(base);
   const candidates = await loadCrcFundingCandidates(params.db, params.network, params.walletScriptHex, params.funding, {
     publicKeyHex: params.walletPublicKeyHex,
   });
@@ -46,7 +46,7 @@ export async function buildCrcLaunchSession(params: {
     minerFeeSats: params.minerFeeSats,
     changeScriptHex: params.walletScriptHex,
   });
-  const built = buildCoveDeployWithVaultV2({
+  const built = buildCoveDeployWithVaultV3({
     ...base,
     changeSats: selected.changeSats,
     changeScriptHex: params.walletScriptHex,
@@ -99,7 +99,7 @@ export async function buildCrcLaunchSession(params: {
 }
 
 export type CrcTradeAsset = CrcQuoteAsset & {
-  protocolVersion: 2;
+  protocolVersion: 3;
   network: "regtest" | "signet" | "testnet" | "mainnet";
   deployTxid: string;
   ticker: string;
@@ -121,14 +121,14 @@ export async function buildCrcTradeSession(params: {
   walletPublicKeyHex?: string;
   tokenPublicKeyHex?: string;
   sellerFunding?: CrcFundingOutpoint[];
-  verifiedSellerInputs?: CoveV2Input[];
+  verifiedSellerInputs?: CoveTokenInput[];
   paymentFunding: CrcFundingOutpoint[];
   minerFeeSats: number;
   idempotencyKey: string;
   feeScriptHex: string;
 }) {
   const { asset } = params;
-  if (asset.protocolVersion !== 2) throw new Error("legacy Cove CRC asset is read-only");
+  if (asset.protocolVersion !== 3) throw new Error("unsupported Cove CRC asset");
   if (asset.network !== params.network || asset.assetId !== `${params.network}:${asset.deployTxid}` ||
     asset.vault.scriptHex !== asset.registeredVaultScriptHex ||
     asset.protocolScriptHex !== params.feeScriptHex) {
@@ -141,7 +141,7 @@ export async function buildCrcTradeSession(params: {
   const quote = params.operation === "buy"
     ? quoteCrcBuy(asset, params.amountAtoms)
     : quoteCrcSell(asset, params.amountAtoms, params.walletScriptHex);
-  const vaultInput: CoveV2Input = {
+  const vaultInput: CoveTokenInput = {
     txid: asset.vault.txid, vout: asset.vault.vout,
     valueSats: Number(asset.vault.btcSats), scriptHex: asset.vault.scriptHex,
     tokenAtoms: BigInt(asset.inventoryAtoms),
@@ -175,7 +175,7 @@ export async function buildCrcTradeSession(params: {
   const candidates = await loadCrcFundingCandidates(params.db, params.network, params.walletScriptHex, paymentOutpoints, {
     publicKeyHex: params.walletPublicKeyHex,
   });
-  const btcCandidates: CoveV2Input[] = candidates.map((input) => ({ ...input, tokenAtoms: 0n }));
+  const btcCandidates: CoveTokenInput[] = candidates.map((input) => ({ ...input, tokenAtoms: 0n }));
   const scripts = {
     buyer: params.tokenScriptHex,
     seller: params.tokenScriptHex,
@@ -188,8 +188,8 @@ export async function buildCrcTradeSession(params: {
     amountTokens: params.amountAtoms / 100_000_000n, scripts,
   };
   const makeTemplate = (changeSats?: number) => params.operation === "buy"
-    ? buildCurveBuyV2({ ...common, vaultInput, recipientSats: 1_000, changeSats, changeScriptHex: params.walletScriptHex })
-    : buildCurveSellV2({ ...common, vaultInput, sellerTokenInputs: sellerInputs,
+    ? buildCurveBuyV3({ ...common, vaultInput, recipientSats: 1_000, changeSats, changeScriptHex: params.walletScriptHex })
+    : buildCurveSellV3({ ...common, vaultInput, sellerTokenInputs: sellerInputs,
       ...(sellerInputs.reduce((sum, input) => sum + input.tokenAtoms, 0n) > params.amountAtoms ? { tokenChangeSats: 1_000 } : {}),
       sellerPayoutScriptHex: params.tokenScriptHex, changeSats, changeScriptHex: params.walletScriptHex });
   const base = makeTemplate();

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import * as bitcoin from "bitcoinjs-lib";
-import { buildCoveV2MarketFill, buildUnsignedPsbt } from "@crclaunch/crc20-transactions";
+import { buildCoveV3MarketFill, buildUnsignedPsbt } from "@crclaunch/crc20-transactions";
 import { crcListingMessage } from "@crclaunch/cove-market";
 import { makeCrcSellerListing, sellerFillTermsFromPsbt, signCrcSellerFillAfterReview } from "./crc-market-seller";
 
@@ -19,12 +19,12 @@ const listing = { id: "11111111-1111-4111-8111-111111111111", network: "regtest"
   sellerAnchorTxid: sellerFunding.txid, sellerAnchorVout: 0, sellerAnchorSats: 10_000,
   amountAtoms: 100n, priceSats: 5_000, protocolFeeSats: 1_000, expiresAtHeight: 200n };
 const asset = { network: "regtest" as const, deployTxid, ticker: "COVE",
-  protocolVersion: 2, tokenOutpoint: `${sellerFunding.txid}:0`, tokenScriptHex: sellerScriptHex,
+  protocolVersion: 3, tokenOutpoint: `${sellerFunding.txid}:0`, tokenScriptHex: sellerScriptHex,
   tokenAtoms: 100n, protocolScriptHex, vaultScriptHex };
 
 function psbt(priceSats = 5_000, sighash = bitcoin.Transaction.SIGHASH_ALL,
   funding = buyerFunding) {
-  const template = buildCoveV2MarketFill({ ticker: "COVE", deploymentTxid: deployTxid,
+  const template = buildCoveV3MarketFill({ ticker: "COVE", deploymentTxid: deployTxid,
     listedInput: sellerFunding, buyerScriptHex, recipientSats: 1_000,
     sellerNetPriceSats: priceSats, protocolScriptHex, protocolFeeSats: 1_000,
     buyerChangeSats: 10_000 - priceSats - 1_000 - 1_000 - 400,
@@ -46,7 +46,7 @@ describe("CRC seller authorization", () => {
     expect(crcListingMessage(result)).toContain('"sellerAnchorTxid":"' + sellerFunding.txid + '"');
   });
 
-  it("rejects wrong wallet, missing carrier, expiry and non-v2 token before authorization", () => {
+  it("rejects wrong wallet, missing carrier, expiry and non-v3 token before authorization", () => {
     const options = { id: listing.id, network: "regtest" as const, deployTxid,
       ticker: "COVE", sellerScriptHex, sellerPayoutScriptHex: sellerScriptHex,
       tokenCoin: { txid: sellerFunding.txid, vout: 0, atoms: "100", scriptHex: sellerScriptHex },
@@ -115,7 +115,7 @@ describe("CRC seller authorization", () => {
     const tapFunding = { ...sellerFunding, scriptHex: tapScript };
     const tapListing = { ...listing, sellerScriptHex: tapScript, sellerPayoutScriptHex: tapScript };
     const tapAsset = { ...asset, tokenScriptHex: tapScript };
-    const template = buildCoveV2MarketFill({ ticker: "COVE", deploymentTxid: deployTxid,
+    const template = buildCoveV3MarketFill({ ticker: "COVE", deploymentTxid: deployTxid,
       listedInput: tapFunding, buyerScriptHex, recipientSats: 1_000,
       sellerNetPriceSats: 5_000, protocolScriptHex, protocolFeeSats: 1_000,
       buyerChangeSats: 2_600 });

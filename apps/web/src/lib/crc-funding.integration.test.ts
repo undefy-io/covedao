@@ -36,7 +36,7 @@ describe.skipIf(!isolated)("CRC wallet funding from server observation", () => {
     ]);
     await db!.execute(sql`insert into cove_crc_assets
       (network,deploy_txid,ticker,deploy_height,deploy_block_hash,launch_salt_hex,creator_script_hex,protocol_script_hex,protocol_version,burned_atoms)
-      values (${network},${deployTxid},'TEST',100,${deployTxid},${deployTxid},${scriptHex},${scriptHex},2,0)`);
+      values (${network},${deployTxid},'TEST',100,${deployTxid},${deployTxid},${scriptHex},${scriptHex},3,0)`);
     await db!.execute(sql`insert into cove_crc_token_utxos
       (network,deploy_txid,txid,vout,script_hex,atoms,created_height,created_block_hash)
       values (${network},${deployTxid},${txid},1,${scriptHex},100000000000,101,${deployTxid})`);

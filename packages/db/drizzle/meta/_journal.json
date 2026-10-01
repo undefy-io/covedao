@@ -232,6 +232,13 @@
       "when": 1790790000000,
       "tag": "0032_crc_token_utxos",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790800000000,
+      "tag": "0033_crc_garden_wire",
+      "breakpoints": true
     }
   ]
 }

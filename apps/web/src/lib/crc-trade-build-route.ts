@@ -1,5 +1,5 @@
 import * as bitcoin from "bitcoinjs-lib";
-import type { CoveV2Input } from "@crclaunch/crc20-transactions";
+import type { CoveTokenInput } from "@crclaunch/crc20-transactions";
 import { addressToScript } from "./address";
 import { bigintField, fail, handleError, ok, readJson, strField } from "./api";
 import { buildCrcTradeSession } from "./crc-build";
@@ -22,7 +22,7 @@ export async function crcTradeBuildRoute(req: Request, operation: "buy" | "sell"
     if (!indexedTip) return fail("INDEXER_REBUILDING", "Cove CRC index is not ready", 503, true);
     const asset = await readCrcQuoteAsset(db, config.network, identity.deployTxid);
     if (!asset || asset.availability !== "active") return fail("ASSET_UNAVAILABLE", "Trusted CRC vault is unavailable", 503, true);
-    if (asset.protocolVersion !== 2) return fail("CRC_V1_READ_ONLY", "This legacy token is read-only; launch a new Cove v2 token to trade", 409);
+    if (asset.protocolVersion !== 3) return fail("CRC_UNSUPPORTED", "This token uses an unsupported CRC format", 409);
     const walletScriptHex = addressToScript(strField(body, "walletAddress"), config.network);
     const tokenScriptHex = addressToScript(strField(body, "ordinalsAddress") || strField(body, "walletAddress"), config.network);
     if (operation === "sell" && amountAtoms > await readCrcBalance(db, config.network, identity.deployTxid, tokenScriptHex)) {
@@ -42,7 +42,7 @@ export async function crcTradeBuildRoute(req: Request, operation: "buy" | "sell"
     if (!idempotencyKey || idempotencyKey.length > 128) return fail("BAD_REQUEST", "Idempotency key is required", 400);
     const bitcoinNetwork = config.network === "mainnet" ? bitcoin.networks.bitcoin
       : config.network === "regtest" ? bitcoin.networks.regtest : bitcoin.networks.testnet;
-    const verifiedSellerInputs: CoveV2Input[] = [];
+    const verifiedSellerInputs: CoveTokenInput[] = [];
     if (operation === "sell") {
       const seen = new Set<string>();
       for (const seller of sellerFunding as { txid?: unknown; vout?: unknown }[]) {
@@ -75,7 +75,7 @@ export async function crcTradeBuildRoute(req: Request, operation: "buy" | "sell"
       }
     }
     const built = await buildCrcTradeSession({
-      db, network: config.network, bitcoinNetwork, asset: { ...asset, protocolVersion: 2, network: config.network }, operation, amountAtoms,
+      db, network: config.network, bitcoinNetwork, asset: { ...asset, protocolVersion: 3, network: config.network }, operation, amountAtoms,
       walletScriptHex, tokenScriptHex,
       walletPublicKeyHex: normalizeCrcWalletPublicKey(walletScriptHex, strField(body, "walletPublicKey") || undefined),
       tokenPublicKeyHex: normalizeCrcWalletPublicKey(tokenScriptHex, strField(body, "ordinalsPublicKey") || undefined),

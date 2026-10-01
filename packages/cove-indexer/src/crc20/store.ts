@@ -92,7 +92,7 @@ async function writeDelta(tx: DbTransaction, network: string, state: CrcProjecti
       await tx.delete(schema.coveCrcAssets).where(and(eq(schema.coveCrcAssets.network, network), eq(schema.coveCrcAssets.deployTxid, deployTxid)));
     } else {
       const row = { network, deployTxid, ticker: asset.ticker, deployHeight: BigInt(asset.deployHeight), deployBlockHash: asset.deployBlockHash, launchSaltHex: asset.launchSaltHex, creatorScriptHex: asset.creatorScriptHex, protocolScriptHex: asset.protocolScriptHex,
-        protocolVersion: asset.protocolVersion ?? 1, burnedAtoms: asset.protocolVersion === 2 ? BigInt(asset.burnedAtoms!) : null };
+        protocolVersion: asset.protocolVersion, burnedAtoms: BigInt(asset.burnedAtoms!) };
       await tx.insert(schema.coveCrcAssets).values(row).onConflictDoUpdate({ target: [schema.coveCrcAssets.network, schema.coveCrcAssets.deployTxid], set: row });
     }
   }
@@ -111,10 +111,10 @@ export async function readCrcProjectionInTransaction(db: DbTransaction, network:
     const height = Number(row.deployHeight);
     if (!Number.isSafeInteger(height)) throw new Error("CRC deployment height exceeds safe integer");
     const key = `${network}:${row.deployTxid}`;
-    if (row.protocolVersion !== 1 && row.protocolVersion !== 2) throw new Error(`invalid CRC asset protocol version ${row.protocolVersion}`);
+    if (row.protocolVersion !== 3) throw new Error(`invalid CRC asset protocol version ${row.protocolVersion}`);
     state.assets[key] = { ticker: row.ticker, deployTxid: row.deployTxid, deployHeight: height, deployBlockHash: row.deployBlockHash, launchSaltHex: row.launchSaltHex, creatorScriptHex: row.creatorScriptHex, protocolScriptHex: row.protocolScriptHex,
-      ...(row.protocolVersion === 2 ? { protocolVersion: 2, burnedAtoms: row.burnedAtoms?.toString() ?? "" } : {}) };
-    if (row.protocolVersion === 2) (state.tokenUtxos ??= {})[key] = {};
+      protocolVersion: 3, burnedAtoms: row.burnedAtoms?.toString() ?? "" };
+    (state.tokenUtxos ??= {})[key] = {};
   }
   for (const row of vaults) {
     if (row.availability !== "active" && row.availability !== "unavailable") throw new Error(`invalid CRC vault availability ${row.availability}`);

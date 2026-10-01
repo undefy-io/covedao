@@ -95,9 +95,9 @@ export async function buyCrcMarketListing(
   }
   const indexed = assetResult.token;
   if (indexed.network !== listing.network || indexed.deployTxid !== listing.deployTxid ||
-    indexed.ticker !== listing.ticker || indexed.protocolVersion !== 2 ||
+    indexed.ticker !== listing.ticker || indexed.protocolVersion !== 3 ||
     indexed.vault.scriptHex.toLowerCase() === listing.sellerScriptHex.toLowerCase()) {
-    throw new Error("Listing is not for the indexed Cove v2 deployment");
+    throw new Error("Listing is not for the indexed Cove deployment");
   }
   const recipientSats = 1_000;
   const target = BigInt(listing.priceSats) + BigInt(listing.protocolFeeSats) +

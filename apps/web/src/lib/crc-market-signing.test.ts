@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import * as bitcoin from "bitcoinjs-lib";
-import { buildCoveV2MarketFill, buildUnsignedPsbt } from "@crclaunch/crc20-transactions";
+import { buildCoveV3MarketFill, buildUnsignedPsbt } from "@crclaunch/crc20-transactions";
 import { signCrcMarketFillAfterReview } from "./crc-market-signing";
 
 const deploymentTxid = "a".repeat(64);
@@ -17,20 +17,20 @@ const listing = { id: "11111111-1111-4111-8111-111111111111", network: "regtest"
   sellerAnchorTxid: sellerFunding.txid, sellerAnchorVout: 0, sellerAnchorSats: 10_000,
   amountAtoms: 100n, priceSats: 5_000, protocolFeeSats: 1_000, expiresAtHeight: 200n };
 const asset = { network: "regtest" as const, deployTxid: deploymentTxid, ticker: "COVE",
-  protocolVersion: 2, tokenOutpoint: `${sellerFunding.txid}:0`, tokenScriptHex: sellerScriptHex,
+  protocolVersion: 3, tokenOutpoint: `${sellerFunding.txid}:0`, tokenScriptHex: sellerScriptHex,
   tokenAtoms: 100n, protocolScriptHex, vaultScriptHex };
 const terms = { listing, asset, sellerFunding, buyerFunding: [buyerFunding], buyerScriptHex,
   protocolScriptHex, recipientSats: 1_000, minerFeeSats: 400, currentHeight: 100n };
 
 function psbt(price = 5_000): string {
-  const template = buildCoveV2MarketFill({ ticker: "COVE", deploymentTxid, listedInput: sellerFunding,
+  const template = buildCoveV3MarketFill({ ticker: "COVE", deploymentTxid, listedInput: sellerFunding,
     buyerScriptHex, recipientSats: 1_000, sellerNetPriceSats: price,
     protocolScriptHex, protocolFeeSats: 1_000, buyerChangeSats: 10_000 - price - 1_000 - 1_000 - 400 });
   return buildUnsignedPsbt(template, [sellerFunding, buyerFunding], 400, bitcoin.networks.regtest).toBase64();
 }
 
 describe("CRC buyer signing boundary", () => {
-  it("reviews exact v2 payment and marker before opening the wallet signer", async () => {
+  it("reviews exact v3 payment and marker before opening the wallet signer", async () => {
     const signer = vi.fn(async () => "signed");
     await expect(signCrcMarketFillAfterReview(psbt(), terms, buyerScriptHex, signer)).resolves.toBe("signed");
     expect(signer).toHaveBeenCalledOnce();

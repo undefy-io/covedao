@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import * as bitcoin from "bitcoinjs-lib";
-import { buildCoveV2MarketFill, buildUnsignedPsbt } from "@crclaunch/crc20-transactions";
+import { buildCoveV3MarketFill, buildUnsignedPsbt } from "@crclaunch/crc20-transactions";
 import { buyCrcMarketListing, type CrcMarketListing } from "./crc-market-client";
 
 const deployTxid = "a".repeat(64);
@@ -27,7 +27,7 @@ function psbt(priceSats = 5_000, recipientScript = buyerScript) {
     tokenAtoms: 100_000_000_000n, tokenDeploymentTxid: deployTxid };
   const buyer = { txid: buyerTxid, vout: 0, valueSats: 10_000, scriptHex: buyerScript,
     tokenAtoms: 0n };
-  const template = buildCoveV2MarketFill({ ticker: "COVE", deploymentTxid: deployTxid,
+  const template = buildCoveV3MarketFill({ ticker: "COVE", deploymentTxid: deployTxid,
     listedInput: seller, buyerScriptHex: recipientScript, recipientSats: 1_000,
     sellerNetPriceSats: priceSats, protocolScriptHex: protocolScript,
     protocolFeeSats: 1_000, buyerChangeSats: 2_600 - (priceSats - 5_000),
@@ -50,7 +50,7 @@ function requests(fillPsbt = psbt(), tokenAtoms = listing.amountAtoms,
     }
     if (url.includes(`/tokens/${encodeURIComponent(`regtest:${deployTxid}`)}`)) {
       return response({ indexedTip: { height: "100" }, token: { network: "regtest", deployTxid,
-        ticker: "COVE", protocolVersion: 2, protocolScriptHex: protocolScript,
+        ticker: "COVE", protocolVersion: 3, protocolScriptHex: protocolScript,
         vault: { scriptHex: vaultScript } } });
     }
     if (url.startsWith("/api/crc/v1/wallet/utxos")) {

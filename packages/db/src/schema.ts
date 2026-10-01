@@ -685,7 +685,7 @@ export const coveCrcAssets = pgTable("cove_crc_assets", {
   launchSaltHex: text("launch_salt_hex").notNull(),
   creatorScriptHex: text("creator_script_hex").notNull(),
   protocolScriptHex: text("protocol_script_hex").notNull(),
-  protocolVersion: integer("protocol_version").notNull().default(1),
+  protocolVersion: integer("protocol_version").notNull().default(3),
   burnedAtoms: atoms("burned_atoms"),
 }, (t) => [
   primaryKey({ columns: [t.network, t.deployTxid] }),

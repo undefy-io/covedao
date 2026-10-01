@@ -16,9 +16,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ assetId:
     if (!indexedTip) return fail("INDEXER_REBUILDING", "Cove CRC index is not ready", 503, true);
     const asset = await readCrcAsset(db, network, id.deployTxid);
     if (!asset) return fail("TOKEN_NOT_FOUND", "Token not found", 404);
-    if (asset.protocolVersion !== 2) return ok({ assetId: asset.assetId, indexedTip, utxos: [], truncated: false, legacyReadOnly: true });
     const rows = await readCrcTokenUtxos(db, network, id.deployTxid, scriptHex, 101);
-    return ok({ assetId: asset.assetId, indexedTip, utxos: rows.slice(0, 100), truncated: rows.length > 100, legacyReadOnly: false });
+    return ok({ assetId: asset.assetId, indexedTip, utxos: rows.slice(0, 100), truncated: rows.length > 100 });
   } catch (error) {
     return handleError(error);
   }

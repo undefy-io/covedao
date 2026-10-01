@@ -27,7 +27,7 @@ const body = {
   assetId: `signet:${txid}`, amountAtoms: "100000000000", walletAddress,
   ordinalsAddress: walletAddress, paymentFunding: [],
   sellerFunding: [{ txid: sellerTxid, vout: 1 }],
-  minerFeeSats: "1000", idempotencyKey: "sell-v2-test",
+  minerFeeSats: "1000", idempotencyKey: "sell-test",
 };
 const request = (value: object) => new Request("http://localhost/api/crc/v1/backing/sell/build", {
   method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(value),
@@ -35,22 +35,14 @@ const request = (value: object) => new Request("http://localhost/api/crc/v1/back
 
 beforeEach(() => {
   mocks.cursor.mockReset().mockResolvedValue({ height: "100", blockHash: "c".repeat(64) });
-  mocks.asset.mockReset().mockResolvedValue({ protocolVersion: 2, availability: "active" });
+  mocks.asset.mockReset().mockResolvedValue({ protocolVersion: 3, availability: "active" });
   mocks.balance.mockReset().mockResolvedValue(100000000000n);
   mocks.tokenCoin.mockReset().mockResolvedValue({ scriptHex: walletScriptHex, atoms: 100000000000n });
   mocks.getTxout.mockReset().mockResolvedValue({ confirmations: 2, scriptPubKeyHex: walletScriptHex, valueSats: 1000n });
   mocks.build.mockReset().mockResolvedValue({ sessionId: "session", psbtBase64: "psbt", intent: {} });
 });
 
-describe("CRC v2 sell build authority", () => {
-  it("refuses a legacy v1 asset before constructing a trade", async () => {
-    mocks.asset.mockResolvedValue({ protocolVersion: 1, availability: "active" });
-    const response = await crcTradeBuildRoute(request(body), "sell");
-    expect(response.status).toBe(409);
-    expect((await response.json()).error.code).toBe("CRC_V1_READ_ONLY");
-    expect(mocks.build).not.toHaveBeenCalled();
-  });
-
+describe("CRC sell build authority", () => {
   it("rejects an ordinary same-script Bitcoin output without indexed token allocation", async () => {
     mocks.tokenCoin.mockResolvedValue(null);
     const response = await crcTradeBuildRoute(request(body), "sell");

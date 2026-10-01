@@ -72,7 +72,7 @@ export async function readCrcMarketListings(db: Database, network: CrcNetwork, d
     JOIN cove_crc_assets a ON a.network = l.network AND a.deploy_txid = l.deploy_txid
     JOIN cove_crc_token_utxos u ON u.network = l.network AND u.deploy_txid = l.deploy_txid
       AND u.txid = l.seller_anchor_txid AND u.vout = l.seller_anchor_vout
-    WHERE l.network = ${network} AND l.status IN ('OPEN', 'RESERVED') AND a.protocol_version = 2
+    WHERE l.network = ${network} AND l.status IN ('OPEN', 'RESERVED') AND a.protocol_version = 3
       AND u.script_hex = l.seller_script_hex AND u.atoms = l.amount_atoms
       AND ${deployTxid ? sql`l.deploy_txid = ${deployTxid}` : sql`true`}
       AND l.expires_at_height > COALESCE((SELECT height FROM cove_crc_cursor WHERE network = ${network}), 0)
