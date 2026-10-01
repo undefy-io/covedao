@@ -114,3 +114,4 @@
 {"id":"int-cebef6fe","kind":"field_change","created_at":"2026-10-01T13:20:30.221215597Z","actor":"andefy","issue_id":"covedao-61s","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Closed"}}
 {"id":"int-230821e7","kind":"field_change","created_at":"2026-10-01T13:36:19.104809799Z","actor":"andefy","issue_id":"covedao-6v0","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Closed"}}
 {"id":"int-6bcd4d73","kind":"field_change","created_at":"2026-10-01T13:36:19.225502678Z","actor":"andefy","issue_id":"covedao-n9o","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Closed"}}
+{"id":"int-3a935053","kind":"field_change","created_at":"2026-10-01T14:02:17.84228109Z","actor":"andefy","issue_id":"covedao-rau","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Closed"}}

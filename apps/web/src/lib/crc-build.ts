@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import type * as bitcoin from "bitcoinjs-lib";
 import { AppError, unsignedTxDigest } from "@crclaunch/cove-app";
+import { estimateVsize } from "@crclaunch/bitcoin";
 import { buildCoveDeployWithVaultV3, buildCurveBuyV3, buildCurveSellV3, buildUnsignedPsbt, selectCrcFunding, type CoveTokenInput } from "@crclaunch/crc20-transactions";
 import type { VaultRecoveryProfile } from "@crclaunch/cove-vault";
 import type { Database } from "@crclaunch/db";
@@ -21,6 +22,16 @@ function selectObservedFunding(params: Parameters<typeof selectCrcFunding>[0]) {
   }
 }
 
+function estimateCrcDeployVsize(inputScripts: readonly string[], outputScripts: readonly string[]): number {
+  return estimateVsize({
+    vaultInputs: 0,
+    p2wpkhInputs: inputScripts.filter((script) => script.startsWith("0014") && script.length === 44).length,
+    p2trInputs: inputScripts.filter((script) => script.startsWith("5120") && script.length === 68).length,
+    p2shP2wpkhInputs: inputScripts.filter((script) => script.startsWith("a914") && script.endsWith("87") && script.length === 46).length,
+    outputScriptBytes: outputScripts.map((script) => script.length / 2),
+  });
+}
+
 export async function buildCrcLaunchSession(params: {
   db: Database;
   network: "regtest" | "signet" | "testnet" | "mainnet";
@@ -31,13 +42,19 @@ export async function buildCrcLaunchSession(params: {
   tokenScriptHex: string;
   walletPublicKeyHex?: string;
   funding: CrcFundingOutpoint[];
-  minerFeeSats: number;
+  minerFeeSats?: number;
+  feeRateSatPerVb?: number;
+  feeTier?: "eco" | "standard" | "priority";
   idempotencyKey: string;
   feeScriptHex: string;
   guardianXOnly: Buffer;
   recoveryProfile: VaultRecoveryProfile;
 }) {
   if (!/^[A-Z0-9]{1,16}$/.test(params.ticker)) throw new Error("ticker must be 1-16 uppercase letters or digits");
+  if ((params.minerFeeSats === undefined) === (params.feeRateSatPerVb === undefined)) throw new Error("select one CRC miner fee method");
+  if (params.feeRateSatPerVb !== undefined && (!Number.isSafeInteger(params.feeRateSatPerVb) || params.feeRateSatPerVb < 1 || params.feeRateSatPerVb > 500)) {
+    throw new AppError("MINER_FEE_TOO_HIGH", "invalid CRC mining speed");
+  }
   const metadata = parseCrcLaunchMetadata(params.metadata, params.ticker);
   const launchSalt = randomBytes(32);
   const base = {
@@ -54,24 +71,32 @@ export async function buildCrcLaunchSession(params: {
   const candidates = await loadCrcFundingCandidates(params.db, params.network, params.walletScriptHex, params.funding, {
     publicKeyHex: params.walletPublicKeyHex,
   });
-  const selected = selectObservedFunding({
-    mandatoryInputs: [], candidates,
-    outputsSats: first.template.outputs.reduce((sum, output) => sum + output.valueSats, 0),
-    minerFeeSats: params.minerFeeSats,
-    changeScriptHex: params.walletScriptHex,
-  });
-  const built = buildCoveDeployWithVaultV3({
-    ...base,
-    changeSats: selected.changeSats,
-    changeScriptHex: params.walletScriptHex,
-  });
+  const outputsSats = first.template.outputs.reduce((sum, output) => sum + output.valueSats, 0);
+  let targetFee = params.minerFeeSats ?? params.feeRateSatPerVb! * estimateCrcDeployVsize(
+    [params.walletScriptHex], first.template.outputs.map((output) => output.scriptHex));
+  let selected: ReturnType<typeof selectCrcFunding> | undefined;
+  let built: ReturnType<typeof buildCoveDeployWithVaultV3> | undefined;
+  for (let attempt = 0; attempt < 42; attempt++) {
+    if (targetFee > 20_000) throw new AppError("MINER_FEE_TOO_HIGH", "selected mining speed exceeds the 20,000-sat cap");
+    selected = selectObservedFunding({ mandatoryInputs: [], candidates, outputsSats,
+      minerFeeSats: targetFee, changeScriptHex: params.walletScriptHex });
+    built = buildCoveDeployWithVaultV3({ ...base,
+      changeSats: selected.changeSats, changeScriptHex: params.walletScriptHex });
+    if (params.feeRateSatPerVb === undefined) break;
+    const required = params.feeRateSatPerVb * estimateCrcDeployVsize(
+      selected.inputs.map((input) => input.scriptHex), built.template.outputs.map((output) => output.scriptHex));
+    if (selected.minerFeeSats >= required) break;
+    targetFee = required;
+  }
+  if (!selected || !built || selected.minerFeeSats < targetFee) throw new Error("CRC deploy fee sizing did not converge");
   const psbt = buildUnsignedPsbt(built.template, selected.inputs, selected.minerFeeSats, params.bitcoinNetwork);
   const psbtBase64 = psbt.toBase64();
   const digest = unsignedTxDigest(psbt);
   const requestHash = createHash("sha256").update(JSON.stringify({
     network: params.network, ticker: params.ticker, metadata, walletScriptHex: params.walletScriptHex,
     tokenScriptHex: params.tokenScriptHex, funding: params.funding,
-    minerFeeSats: params.minerFeeSats, feeScriptHex: params.feeScriptHex,
+    minerFeeSats: params.minerFeeSats, feeRateSatPerVb: params.feeRateSatPerVb, feeTier: params.feeTier,
+    feeScriptHex: params.feeScriptHex,
     guardianXOnly: params.guardianXOnly.toString("hex"),
     recoveryProfile: {
       version: params.recoveryProfile.profileVersion,
@@ -91,6 +116,8 @@ export async function buildCrcLaunchSession(params: {
     creatorRecordSats: 1_000,
     launchFeeSats: 7_000,
     minerFeeSats: selected.minerFeeSats,
+    feeRateSatPerVb: params.feeRateSatPerVb ?? null,
+    feeTier: params.feeTier ?? null,
     changeSats: selected.changeSats,
     unsignedTxDigest: digest,
   };

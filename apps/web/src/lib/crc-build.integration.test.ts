@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import * as bitcoin from "bitcoinjs-lib";
 import { createDb, saveWalletFundingSnapshot } from "@crclaunch/db";
 import { dev1RecoveryProfile } from "@crclaunch/cove-vault";
+import { estimateVsize } from "@crclaunch/bitcoin";
 import { buildCrcLaunchSession } from "./crc-build";
 
 const url = process.env.CRC_READ_TEST_DATABASE_URL;
@@ -16,7 +17,7 @@ const dustTxid = "c".repeat(64);
 
 describe.skipIf(!isolated)("CRC launch build from observed wallet funding", () => {
   afterAll(async () => {
-    await db!.execute(sql`delete from cove_crc_build_sessions where network = 'regtest' and idempotency_key = ${idempotencyKey}`);
+    await db!.execute(sql`delete from cove_crc_build_sessions where network = 'regtest' and idempotency_key like ${idempotencyKey + "%"}`);
     await db!.execute(sql`delete from cove_wallet_funding where network = 'regtest' and wallet_script = ${walletScriptHex}`);
   });
 
@@ -44,6 +45,40 @@ describe.skipIf(!isolated)("CRC launch build from observed wallet funding", () =
     expect((await buildCrcLaunchSession(params)).sessionId).toBe(built.sessionId);
     await expect(buildCrcLaunchSession({ ...params, metadata: { displayName: "Different name", description: "" } }))
       .rejects.toThrow(/idempotency conflict/);
+    const rated = await buildCrcLaunchSession({ ...params, minerFeeSats: undefined,
+      feeRateSatPerVb: 2, feeTier: "standard", idempotencyKey: `${idempotencyKey}-rated` });
+    const ratedPsbt = bitcoin.Psbt.fromBase64(rated.psbtBase64, { network: bitcoin.networks.regtest });
+    const vsize = estimateVsize({ vaultInputs: 0, p2wpkhInputs: ratedPsbt.inputCount,
+      outputScriptBytes: ratedPsbt.txOutputs.map((output) => output.script.length) });
+    expect(rated.intent.minerFeeSats).toBeGreaterThanOrEqual(2 * vsize);
+    expect(rated.intent.feeRateSatPerVb).toBe(2);
+    expect(rated.intent.feeTier).toBe("standard");
+    await expect(buildCrcLaunchSession({ ...params, minerFeeSats: undefined,
+      feeRateSatPerVb: 500, feeTier: "priority", idempotencyKey: `${idempotencyKey}-expensive` }))
+      .rejects.toMatchObject({ code: "MINER_FEE_TOO_HIGH" });
+    await saveWalletFundingSnapshot(db!, "regtest", walletScriptHex, [
+      { txid: dustTxid, vout: 0, valueSats: "6000", confirmations: 1 },
+      { txid, vout: 0, valueSats: "6000", confirmations: 1 },
+    ]);
+    const multi = await buildCrcLaunchSession({ ...params, minerFeeSats: undefined,
+      feeRateSatPerVb: 2, feeTier: "eco", idempotencyKey: `${idempotencyKey}-multi` });
+    const multiPsbt = bitcoin.Psbt.fromBase64(multi.psbtBase64, { network: bitcoin.networks.regtest });
+    expect(multiPsbt.inputCount).toBe(2);
+    expect(multi.intent.minerFeeSats).toBeGreaterThanOrEqual(2 * estimateVsize({ vaultInputs: 0,
+      p2wpkhInputs: multiPsbt.inputCount,
+      outputScriptBytes: multiPsbt.txOutputs.map((output) => output.script.length),
+    }));
+    await saveWalletFundingSnapshot(db!, "regtest", walletScriptHex, [
+      { txid, vout: 0, valueSats: "9800", confirmations: 1 },
+    ]);
+    const narrow = await buildCrcLaunchSession({ ...params, funding: [{ txid, vout: 0 }], minerFeeSats: undefined,
+      feeRateSatPerVb: 4, feeTier: "standard", idempotencyKey: `${idempotencyKey}-narrow` });
+    const narrowPsbt = bitcoin.Psbt.fromBase64(narrow.psbtBase64, { network: bitcoin.networks.regtest });
+    expect(narrowPsbt.txOutputs).toHaveLength(4);
+    expect(narrow.intent.minerFeeSats).toBeGreaterThanOrEqual(4 * estimateVsize({ vaultInputs: 0,
+      p2wpkhInputs: narrowPsbt.inputCount,
+      outputScriptBytes: narrowPsbt.txOutputs.map((output) => output.script.length),
+    }));
   });
 
   it("reports insufficient BTC as a client error when only small outputs remain", async () => {

@@ -35,9 +35,15 @@ test("CRC navigation keeps launch, market, activity, and wallet pages available"
   await page.goto("/");
   await page.getByRole("link", { name: "Launch", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Launch a token" })).toBeVisible();
-  for (const label of ["Name", "Ticker", "Description", "Website URL", "X URL", "Image URL", "Miner fee (sats)"]) {
+  for (const label of ["Name", "Ticker", "Description", "Website URL", "X URL", "Image URL"]) {
     await expect(page.getByRole("textbox", { name: label, exact: true })).toBeVisible();
   }
+  await expect(page.getByRole("textbox", { name: "Miner fee (sats)" })).toHaveCount(0);
+  await page.getByRole("textbox", { name: "Name", exact: true }).fill("Fee Review Token");
+  await page.getByRole("textbox", { name: "Ticker", exact: true }).fill("FEE");
+  await page.getByRole("button", { name: "Review launch" }).click();
+  await expect(page.getByRole("button", { name: /Standard/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Priority/i })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByRole("link", { name: "Market", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Market", exact: true })).toBeVisible();

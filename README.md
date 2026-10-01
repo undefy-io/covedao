@@ -225,6 +225,9 @@ The launch form saves name, description, website, X, and image URL as Cove displ
 metadata after the wallet signs the deploy. The CRC-20 transaction keeps the
 Garden-compatible ticker and wire format; existing tokens without display
 metadata show their ticker as the name.
+Launch mining speed is selected during review. The CRC worker refreshes fee
+rates in the database each minute; the build sizes the actual miner fee from
+the selected rate and transaction shape, then shows the exact sats before signing.
 The CRC buy submission integration test covers wallet and Guardian signatures,
 PSBT finalization, and broadcast against the isolated test database; set
 `CRC_READ_TEST_DATABASE_URL` to that database before running the web tests.

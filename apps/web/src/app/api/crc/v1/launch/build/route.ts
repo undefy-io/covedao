@@ -1,11 +1,12 @@
 import * as bitcoin from "bitcoinjs-lib";
 import { addressToScript } from "@/lib/address";
-import { bigintField, fail, handleError, ok, readJson, strField } from "@/lib/api";
+import { fail, handleError, ok, readJson, strField } from "@/lib/api";
 import { buildCrcLaunchSession } from "@/lib/crc-build";
 import { getCrcMutationServices } from "@/lib/crc-mutation";
 import { checkCrcRateLimit } from "@/lib/crc-rate-limit";
 import { normalizeCrcWalletPublicKey } from "@/lib/crc-wallet-key";
 import { parseCrcLaunchMetadata } from "@/lib/crc-metadata";
+import { readFeeObservation } from "@crclaunch/cove-app";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +23,11 @@ export async function POST(req: Request) {
     if (strField(body, "walletScript") && strField(body, "walletScript").toLowerCase() !== walletScriptHex) {
       return fail("CLIENT_INTENT_MISMATCH", "Wallet address and script differ", 400);
     }
-    const minerFee = bigintField(body, "minerFeeSats", 0n);
-    if (minerFee < 1n || minerFee > config.maxMinerFeeSats) return fail("MINER_FEE_TOO_HIGH", "Choose a miner fee from 1 to 20,000 sats", 400);
+    const feeTier = strField(body, "feeTier");
+    if (feeTier !== "eco" && feeTier !== "standard" && feeTier !== "priority") return fail("BAD_REQUEST", "Choose a mining speed", 400);
+    const rates = await readFeeObservation(db, config.network);
+    const rate = rates.tiers.find((tier) => tier.key === feeTier)?.satPerVb;
+    if (!rate || rate > rates.ceilingSatPerVb || rate < rates.floorSatPerVb) return fail("BAD_REQUEST", "Mining speed is unavailable", 400);
     const funding = body.funding;
     if (!Array.isArray(funding)) return fail("FUNDING_INPUT_INVALID", "Wallet funding candidates are required", 400);
     const idempotencyKey = strField(body, "idempotencyKey");
@@ -37,7 +41,7 @@ export async function POST(req: Request) {
       walletScriptHex, tokenScriptHex,
       walletPublicKeyHex: normalizeCrcWalletPublicKey(walletScriptHex, strField(body, "walletPublicKey") || undefined),
       funding: funding as { txid: string; vout: number }[],
-      minerFeeSats: Number(minerFee), idempotencyKey,
+      feeRateSatPerVb: Number(rate), feeTier, idempotencyKey,
       feeScriptHex: crcVaultConfig.feeScriptHex,
       guardianXOnly: crcVaultConfig.guardianXOnly,
       recoveryProfile: crcVaultConfig.recoveryProfile,
