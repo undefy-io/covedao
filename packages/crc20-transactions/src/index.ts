@@ -9,9 +9,9 @@ import {
   type VaultRecoveryProfile,
 } from "@crclaunch/cove-vault";
 
-const COVE_V1_MAX_ATOMS = "2100000000000000";
-const COVE_V1_CREATOR_RECORD_SATS = 1_000;
-const COVE_V1_LAUNCH_FEE_SATS = 7_000;
+const COVE_MAX_ATOMS = "2100000000000000";
+const COVE_CREATOR_RECORD_SATS = 1_000;
+const COVE_LAUNCH_FEE_SATS = 7_000;
 
 export type ScriptSet = Readonly<{
   buyer: string;
@@ -29,7 +29,7 @@ export type FundingInput = Readonly<{
   publicKeyHex?: string;
 }>;
 
-export type CoveV2Input = FundingInput & Readonly<{
+export type CoveTokenInput = FundingInput & Readonly<{
   tokenAtoms: bigint;
   tokenDeploymentTxid?: string;
 }>;
@@ -41,9 +41,8 @@ export type TxTemplate = Readonly<{
   markerBytes: number;
   requiredFundingSats: number;
   previousVaultOutpoint?: string;
-  requiredFirstInputScriptHex?: string;
-  requiredInputs?: readonly CoveV2Input[];
-  v2DeploymentTxid?: string;
+  requiredInputs?: readonly CoveTokenInput[];
+  tokenDeploymentTxid?: string;
   tokenChangeAtoms?: bigint;
 }>;
 
@@ -112,33 +111,6 @@ function template(
   };
 }
 
-export function buildCurveDeploy(params: {
-  ticker: string;
-  maxAtoms: string;
-  scripts: Pick<ScriptSet, "vault" | "creator" | "protocol">;
-  vaultAnchorSats: number;
-  changeSats?: number;
-  changeScriptHex?: string;
-}): TxTemplate {
-  if (params.maxAtoms !== COVE_V1_MAX_ATOMS) throw new Error("invalid maximum supply for Cove v1");
-  const change = finalChange(params.changeSats, params.changeScriptHex);
-  return template(
-    "deploy",
-    curveDeployPayload(params.ticker),
-    [
-      { valueSats: params.vaultAnchorSats, scriptHex: params.scripts.vault },
-      { valueSats: COVE_V1_CREATOR_RECORD_SATS, scriptHex: params.scripts.creator },
-      { valueSats: COVE_V1_LAUNCH_FEE_SATS, scriptHex: params.scripts.protocol },
-      ...change,
-    ],
-    params.vaultAnchorSats + COVE_V1_CREATOR_RECORD_SATS + COVE_V1_LAUNCH_FEE_SATS + (params.changeSats ?? 0),
-  );
-}
-
-function curveDeployPayload(ticker: string): Record<string, string> {
-  return { p: "crc-20", op: "deploy", tick: ticker, type: "bonding", max: COVE_V1_MAX_ATOMS, cv: "cove-curve-v1" };
-}
-
 function finalChange(changeSats: number | undefined, scriptHex: string | undefined): TxOutput[] {
   if (changeSats === undefined || changeSats === 0) return [];
   if (!Number.isSafeInteger(changeSats) || changeSats < 0 || !scriptHex) {
@@ -147,163 +119,11 @@ function finalChange(changeSats: number | undefined, scriptHex: string | undefin
   return [{ valueSats: changeSats, scriptHex }];
 }
 
-export function buildCoveDeployWithVault(params: {
-  ticker: string;
-  launchSalt: Buffer;
-  guardianXOnly: Buffer;
-  recoveryProfile: VaultRecoveryProfile;
-  creatorScriptHex: string;
-  protocolScriptHex: string;
-  vaultAnchorSats: number;
-  changeSats?: number;
-  changeScriptHex?: string;
-  network?: bitcoin.networks.Network;
-}): { template: TxTemplate; vault: CoveVault } {
-  const markerBytes = Buffer.from(JSON.stringify(curveDeployPayload(params.ticker)), "utf8");
-  const vault = buildCrc20AssetVault({
-    asset: { deploymentTag: crc20DeploymentTag(markerBytes), launchSalt: params.launchSalt },
-    guardianXOnly: params.guardianXOnly,
-    recoveryProfile: params.recoveryProfile,
-    network: params.network,
-  });
-  const template = buildCurveDeploy({
-    ticker: params.ticker,
-    maxAtoms: COVE_V1_MAX_ATOMS,
-    scripts: { vault: vault.scriptPubKey.toString("hex"), creator: params.creatorScriptHex, protocol: params.protocolScriptHex },
-    vaultAnchorSats: params.vaultAnchorSats,
-    changeSats: params.changeSats,
-    changeScriptHex: params.changeScriptHex,
-  });
-  return { template, vault };
+function checkDeploymentIdentity(deploymentTxid: string): void {
+  if (!/^[0-9a-f]{64}$/.test(deploymentTxid)) throw new Error("invalid deployment txid");
 }
 
-export function buildCurveBuy(params: {
-  ticker: string;
-  deploymentTxid: string;
-  state: CurveState;
-  amountTokens: bigint;
-  scripts: ScriptSet;
-  recipientSats: number;
-  changeSats?: number;
-  changeScriptHex?: string;
-}): TxTemplate {
-  if (!/^[0-9a-f]{64}$/.test(params.deploymentTxid)) throw new Error("invalid deployment txid");
-  const quote = quoteBuy(params.state, params.amountTokens);
-  const payload =
-    quote.operation === "mint"
-      ? { p: "crc-20", op: "mint", tick: params.ticker, amt: quote.amountAtoms.toString(), id: params.deploymentTxid }
-      : { p: "crc-20", op: "transfer", tick: params.ticker, amt: quote.amountAtoms.toString(), id: params.deploymentTxid };
-  return template(
-    quote.operation,
-    payload,
-    [
-      { valueSats: params.recipientSats, scriptHex: params.scripts.buyer },
-      {
-        valueSats: safeSats(params.state.vaultSats + quote.grossSats),
-        scriptHex: params.scripts.vault,
-      },
-      { valueSats: safeSats(quote.protocolFeeSats), scriptHex: params.scripts.protocol },
-      { valueSats: safeSats(quote.creatorFeeSats), scriptHex: params.scripts.creator },
-      ...finalChange(params.changeSats, params.changeScriptHex ?? params.scripts.buyer),
-    ],
-    safeSats(
-      quote.grossSats + quote.protocolFeeSats + quote.creatorFeeSats + BigInt(params.recipientSats) + BigInt(params.changeSats ?? 0),
-    ),
-    params.state.vaultOutpoint,
-  );
-}
-
-export function buildCurveSell(params: {
-  ticker: string;
-  deploymentTxid: string;
-  state: CurveState;
-  amountTokens: bigint;
-  scripts: ScriptSet;
-  changeSats?: number;
-  sellerPayoutScriptHex?: string;
-  changeScriptHex?: string;
-}): TxTemplate {
-  if (!/^[0-9a-f]{64}$/.test(params.deploymentTxid)) throw new Error("invalid deployment txid");
-  const payoutScriptHex = params.sellerPayoutScriptHex ?? params.scripts.seller;
-  const quote = quoteSell(
-    params.state,
-    params.amountTokens,
-    dustThreshold(Buffer.from(payoutScriptHex, "hex")),
-  );
-  return template(
-    "transfer",
-    { p: "crc-20", op: "transfer", tick: params.ticker, amt: quote.amountAtoms.toString(), id: params.deploymentTxid },
-    [
-      {
-        valueSats: safeSats(params.state.vaultSats - quote.grossSats),
-        scriptHex: params.scripts.vault,
-      },
-      { valueSats: safeSats(quote.sellerPayoutSats), scriptHex: payoutScriptHex },
-      { valueSats: safeSats(quote.protocolFeeSats), scriptHex: params.scripts.protocol },
-      ...finalChange(params.changeSats, params.changeScriptHex ?? payoutScriptHex),
-    ],
-    safeSats(quote.walletTopUpSats + BigInt(params.changeSats ?? 0)),
-    params.state.vaultOutpoint,
-  );
-}
-
-export function buildCoveTransfer(params: {
-  ticker: string;
-  deploymentTxid: string;
-  amountAtoms: bigint;
-  senderScriptHex: string;
-  recipientScriptHex: string;
-  recipientSats: number;
-  changeSats?: number;
-}): TxTemplate {
-  if (!/^[0-9a-f]{64}$/.test(params.deploymentTxid)) throw new Error("invalid deployment txid");
-  if (params.amountAtoms <= 0n) throw new Error("transfer amount must be positive");
-  const changeSats = params.changeSats ?? 0;
-  if (!Number.isSafeInteger(changeSats) || changeSats < 0) throw new Error("invalid change amount");
-  const outputs: TxOutput[] = [{ valueSats: params.recipientSats, scriptHex: params.recipientScriptHex }];
-  if (changeSats > 0) outputs.push({ valueSats: changeSats, scriptHex: params.senderScriptHex });
-  return template(
-    "transfer",
-    { p: "crc-20", op: "transfer", tick: params.ticker, amt: params.amountAtoms.toString(), id: params.deploymentTxid },
-    outputs,
-    safeSats(BigInt(params.recipientSats) + BigInt(changeSats)),
-  );
-}
-
-export function buildCoveMarketFill(params: {
-  ticker: string;
-  deploymentTxid: string;
-  amountAtoms: bigint;
-  sellerScriptHex: string;
-  buyerScriptHex: string;
-  recipientSats: number;
-  sellerPayoutSats: number;
-  protocolScriptHex: string;
-  protocolFeeSats: number;
-  buyerChangeSats?: number;
-}): TxTemplate {
-  if (!/^[0-9a-f]{64}$/.test(params.deploymentTxid)) throw new Error("invalid deployment txid");
-  if (params.amountAtoms <= 0n) throw new Error("market amount must be positive");
-  const outputs: TxOutput[] = [
-    { valueSats: params.recipientSats, scriptHex: params.buyerScriptHex },
-    { valueSats: params.sellerPayoutSats, scriptHex: params.sellerScriptHex },
-    { valueSats: params.protocolFeeSats, scriptHex: params.protocolScriptHex },
-    ...finalChange(params.buyerChangeSats, params.buyerScriptHex),
-  ];
-  const built = template(
-    "transfer",
-    { p: "crc-20", op: "transfer", tick: params.ticker, amt: params.amountAtoms.toString(), id: params.deploymentTxid },
-    outputs,
-    safeSats(outputs.reduce((sum, output) => sum + BigInt(output.valueSats), 0n)),
-  );
-  return { ...built, requiredFirstInputScriptHex: params.sellerScriptHex };
-}
-
-function checkV2Identity(deploymentTxid: string): void {
-  if (!/^[0-9a-f]{64}$/.test(deploymentTxid)) throw new Error("invalid v2 deployment txid");
-}
-
-function checkV2Input(input: CoveV2Input, deploymentTxid: string, mustBearTokens: boolean): void {
+function checkTokenInput(input: CoveTokenInput, deploymentTxid: string, mustBearTokens: boolean): void {
   if (!/^[0-9a-fA-F]{64}$/.test(input.txid) || !Number.isSafeInteger(input.vout) || input.vout < 0 ||
     !Number.isSafeInteger(input.valueSats) || input.valueSats < 0) throw new Error("invalid token input outpoint");
   checkScript(input.scriptHex);
@@ -320,12 +140,12 @@ function checkV2Input(input: CoveV2Input, deploymentTxid: string, mustBearTokens
   }
 }
 
-function checkV2TokenInputs(inputs: readonly CoveV2Input[], deploymentTxid: string, ownerScriptHex?: string): bigint {
+function checkTokenInputs(inputs: readonly CoveTokenInput[], deploymentTxid: string, ownerScriptHex?: string): bigint {
   if (inputs.length === 0) throw new Error("at least one token input is required");
   const seen = new Set<string>();
   let atoms = 0n;
   for (const input of inputs) {
-    checkV2Input(input, deploymentTxid, true);
+    checkTokenInput(input, deploymentTxid, true);
     const outpoint = `${input.txid.toLowerCase()}:${input.vout}`;
     if (seen.has(outpoint)) throw new Error("duplicate token outpoint");
     seen.add(outpoint);
@@ -337,30 +157,31 @@ function checkV2TokenInputs(inputs: readonly CoveV2Input[], deploymentTxid: stri
   return atoms;
 }
 
-function v2Payload(operation: "mint" | "transfer", ticker: string, amountAtoms: bigint, deploymentTxid: string, ch?: number): Record<string, string | number> {
-  checkV2Identity(deploymentTxid);
+function wirePayload(operation: "mint" | "transfer", ticker: string, amountAtoms: bigint): Record<string, string> {
   if (amountAtoms <= 0n) throw new Error("token amount must be positive");
-  return { p: "crc-20", op: operation, tick: ticker, amt: amountAtoms.toString(), id: deploymentTxid, v: 2,
-    ...(ch === undefined ? {} : { ch }) };
+  return operation === "mint"
+    ? { p: "crc-20", op: "mint", tick: ticker }
+    : { p: "crc-20", op: "transfer", tick: ticker, amt: amountAtoms.toString() };
 }
 
-function v2Template(
+function tokenTemplate(
   operation: "mint" | "transfer",
   payload: Record<string, string | number>,
   outputs: readonly TxOutput[],
-  requiredInputs: readonly CoveV2Input[],
+  requiredInputs: readonly CoveTokenInput[],
   deploymentTxid: string,
   tokenChangeAtoms = 0n,
   previousVaultOutpoint?: string,
+  markerVout = 0,
 ): TxTemplate {
   const inputTotal = requiredInputs.reduce((sum, input) => sum + BigInt(input.valueSats), 0n);
   const outputTotal = outputs.reduce((sum, output) => sum + BigInt(output.valueSats), 0n);
   if (outputTotal < inputTotal) throw new Error("mandatory input sats exceed outputs; add explicit BTC change");
-  const built = template(operation, payload, outputs, safeSats(outputTotal - inputTotal), previousVaultOutpoint);
-  return { ...built, requiredInputs, v2DeploymentTxid: deploymentTxid, tokenChangeAtoms };
+  const built = template(operation, payload, outputs, safeSats(outputTotal - inputTotal), previousVaultOutpoint, markerVout);
+  return { ...built, requiredInputs, tokenDeploymentTxid: deploymentTxid, tokenChangeAtoms };
 }
 
-export function buildCurveDeployV2(params: {
+export function buildCurveDeployV3(params: {
   ticker: string;
   maxAtoms: string;
   scripts: Pick<ScriptSet, "vault" | "creator" | "protocol">;
@@ -368,17 +189,17 @@ export function buildCurveDeployV2(params: {
   changeSats?: number;
   changeScriptHex?: string;
 }): TxTemplate {
-  if (params.maxAtoms !== COVE_V1_MAX_ATOMS) throw new Error("invalid maximum supply for Cove v2");
+  if (params.maxAtoms !== COVE_MAX_ATOMS) throw new Error("invalid maximum supply for Cove curve");
   return template("deploy", { p: "crc-20", op: "deploy", tick: params.ticker, type: "bonding",
-    max: COVE_V1_MAX_ATOMS, cv: "cove-curve-v2" }, [
+    max: COVE_MAX_ATOMS, cv: "cove-curve-v3" }, [
     { valueSats: params.vaultAnchorSats, scriptHex: params.scripts.vault },
-    { valueSats: COVE_V1_CREATOR_RECORD_SATS, scriptHex: params.scripts.creator },
-    { valueSats: COVE_V1_LAUNCH_FEE_SATS, scriptHex: params.scripts.protocol },
+    { valueSats: COVE_CREATOR_RECORD_SATS, scriptHex: params.scripts.creator },
+    { valueSats: COVE_LAUNCH_FEE_SATS, scriptHex: params.scripts.protocol },
     ...finalChange(params.changeSats, params.changeScriptHex),
-  ], params.vaultAnchorSats + COVE_V1_CREATOR_RECORD_SATS + COVE_V1_LAUNCH_FEE_SATS + (params.changeSats ?? 0));
+  ], params.vaultAnchorSats + COVE_CREATOR_RECORD_SATS + COVE_LAUNCH_FEE_SATS + (params.changeSats ?? 0));
 }
 
-export function buildCoveDeployWithVaultV2(params: {
+export function buildCoveDeployWithVaultV3(params: {
   ticker: string;
   launchSalt: Buffer;
   guardianXOnly: Buffer;
@@ -391,33 +212,33 @@ export function buildCoveDeployWithVaultV2(params: {
   network?: bitcoin.networks.Network;
 }): { template: TxTemplate; vault: CoveVault } {
   const deployPayload = { p: "crc-20", op: "deploy", tick: params.ticker, type: "bonding",
-    max: COVE_V1_MAX_ATOMS, cv: "cove-curve-v2" };
+    max: COVE_MAX_ATOMS, cv: "cove-curve-v3" };
   const vault = buildCrc20AssetVault({
     asset: { deploymentTag: crc20DeploymentTag(Buffer.from(JSON.stringify(deployPayload), "utf8")), launchSalt: params.launchSalt },
     guardianXOnly: params.guardianXOnly,
     recoveryProfile: params.recoveryProfile,
     network: params.network,
   });
-  return { vault, template: buildCurveDeployV2({ ticker: params.ticker, maxAtoms: COVE_V1_MAX_ATOMS,
+  return { vault, template: buildCurveDeployV3({ ticker: params.ticker, maxAtoms: COVE_MAX_ATOMS,
     scripts: { vault: vault.scriptPubKey.toString("hex"), creator: params.creatorScriptHex,
       protocol: params.protocolScriptHex }, vaultAnchorSats: params.vaultAnchorSats,
     changeSats: params.changeSats, changeScriptHex: params.changeScriptHex }) };
 }
 
-export function buildCoveV2Transfer(params: {
+export function buildCoveV3Transfer(params: {
   ticker: string;
   deploymentTxid: string;
   amountAtoms: bigint;
-  tokenInputs: readonly CoveV2Input[];
+  tokenInputs: readonly CoveTokenInput[];
   recipientScriptHex: string;
   recipientSats: number;
   tokenChangeSats?: number;
   btcChangeSats?: number;
   btcChangeScriptHex?: string;
 }): TxTemplate {
-  checkV2Identity(params.deploymentTxid);
+  checkDeploymentIdentity(params.deploymentTxid);
   const owner = params.tokenInputs[0]?.scriptHex;
-  const total = checkV2TokenInputs(params.tokenInputs, params.deploymentTxid, owner);
+  const total = checkTokenInputs(params.tokenInputs, params.deploymentTxid, owner);
   if (total < params.amountAtoms) throw new Error("insufficient token input allocation");
   const remainder = total - params.amountAtoms;
   if (remainder > 0n && params.tokenChangeSats === undefined) throw new Error("token change output is required");
@@ -427,15 +248,14 @@ export function buildCoveV2Transfer(params: {
     ...(remainder > 0n ? [{ valueSats: params.tokenChangeSats!, scriptHex: owner! }] : []),
     ...finalChange(params.btcChangeSats, params.btcChangeScriptHex),
   ];
-  return v2Template("transfer", v2Payload("transfer", params.ticker, params.amountAtoms,
-    params.deploymentTxid, remainder > 0n ? 2 : undefined), outputs,
+  return tokenTemplate("transfer", wirePayload("transfer", params.ticker, params.amountAtoms), outputs,
     params.tokenInputs, params.deploymentTxid, remainder);
 }
 
-export function buildCoveV2MarketFill(params: {
+export function buildCoveV3MarketFill(params: {
   ticker: string;
   deploymentTxid: string;
-  listedInput: CoveV2Input;
+  listedInput: CoveTokenInput;
   buyerScriptHex: string;
   recipientSats: number;
   sellerNetPriceSats: number;
@@ -444,35 +264,35 @@ export function buildCoveV2MarketFill(params: {
   buyerChangeSats?: number;
   buyerChangeScriptHex?: string;
 }): TxTemplate {
-  checkV2Input(params.listedInput, params.deploymentTxid, true);
+  checkTokenInput(params.listedInput, params.deploymentTxid, true);
   if (!Number.isSafeInteger(params.sellerNetPriceSats) || params.sellerNetPriceSats < 0) {
     throw new Error("invalid seller net price");
   }
   const payout = safeSats(BigInt(params.listedInput.valueSats) + BigInt(params.sellerNetPriceSats));
   const outputs = [
-    { valueSats: params.recipientSats, scriptHex: params.buyerScriptHex },
     { valueSats: payout, scriptHex: params.listedInput.scriptHex },
+    { valueSats: params.recipientSats, scriptHex: params.buyerScriptHex },
     { valueSats: params.protocolFeeSats, scriptHex: params.protocolScriptHex },
     ...finalChange(params.buyerChangeSats, params.buyerChangeScriptHex ?? params.buyerScriptHex),
   ];
-  return v2Template("transfer", v2Payload("transfer", params.ticker, params.listedInput.tokenAtoms,
-    params.deploymentTxid), outputs, [params.listedInput], params.deploymentTxid);
+  return tokenTemplate("transfer", wirePayload("transfer", params.ticker, params.listedInput.tokenAtoms),
+    outputs, [params.listedInput], params.deploymentTxid, 0n, undefined, 1);
 }
 
-export function buildCurveBuyV2(params: {
+export function buildCurveBuyV3(params: {
   ticker: string;
   deploymentTxid: string;
   state: CurveState;
   amountTokens: bigint;
   scripts: ScriptSet;
   recipientSats: number;
-  vaultInput: CoveV2Input;
+  vaultInput: CoveTokenInput;
   changeSats?: number;
   changeScriptHex?: string;
 }): TxTemplate {
-  checkV2Identity(params.deploymentTxid);
+  checkDeploymentIdentity(params.deploymentTxid);
   const quote = quoteBuy(params.state, params.amountTokens);
-  checkV2Input(params.vaultInput, params.deploymentTxid, quote.operation === "transfer");
+  checkTokenInput(params.vaultInput, params.deploymentTxid, quote.operation === "transfer");
   if (`${params.vaultInput.txid}:${params.vaultInput.vout}` !== params.state.vaultOutpoint ||
     params.vaultInput.scriptHex.toLowerCase() !== params.scripts.vault.toLowerCase() ||
     BigInt(params.vaultInput.valueSats) !== params.state.vaultSats ||
@@ -486,36 +306,36 @@ export function buildCurveBuyV2(params: {
     { valueSats: safeSats(quote.creatorFeeSats), scriptHex: params.scripts.creator },
     ...finalChange(params.changeSats, params.changeScriptHex ?? params.scripts.buyer),
   ];
-  return v2Template(quote.operation, v2Payload(quote.operation, params.ticker, quote.amountAtoms,
-    params.deploymentTxid), outputs, [params.vaultInput], params.deploymentTxid, 0n, params.state.vaultOutpoint);
+  return tokenTemplate(quote.operation, wirePayload(quote.operation, params.ticker, quote.amountAtoms),
+    outputs, [params.vaultInput], params.deploymentTxid, 0n, params.state.vaultOutpoint);
 }
 
-export function buildCurveSellV2(params: {
+export function buildCurveSellV3(params: {
   ticker: string;
   deploymentTxid: string;
   state: CurveState;
   amountTokens: bigint;
   scripts: ScriptSet;
-  vaultInput: CoveV2Input;
-  sellerTokenInputs: readonly CoveV2Input[];
+  vaultInput: CoveTokenInput;
+  sellerTokenInputs: readonly CoveTokenInput[];
   tokenChangeSats?: number;
   changeSats?: number;
   sellerPayoutScriptHex?: string;
   changeScriptHex?: string;
 }): TxTemplate {
-  checkV2Identity(params.deploymentTxid);
-  checkV2Input(params.vaultInput, params.deploymentTxid, params.state.vaultAtoms > 0n);
+  checkDeploymentIdentity(params.deploymentTxid);
+  checkTokenInput(params.vaultInput, params.deploymentTxid, params.state.vaultAtoms > 0n);
   if (`${params.vaultInput.txid}:${params.vaultInput.vout}` !== params.state.vaultOutpoint ||
     params.vaultInput.scriptHex.toLowerCase() !== params.scripts.vault.toLowerCase() ||
     BigInt(params.vaultInput.valueSats) !== params.state.vaultSats ||
     params.vaultInput.tokenAtoms !== params.state.vaultAtoms) {
     throw new Error("vault inventory or outpoint mismatch");
   }
-  const total = checkV2TokenInputs(params.sellerTokenInputs, params.deploymentTxid, params.scripts.seller);
+  const total = checkTokenInputs(params.sellerTokenInputs, params.deploymentTxid, params.scripts.seller);
   if (total > params.state.circulatingAtoms) throw new Error("seller token inputs exceed circulating supply");
   const payoutScript = params.sellerPayoutScriptHex ?? params.scripts.seller;
   if (payoutScript.toLowerCase() !== params.scripts.seller.toLowerCase()) {
-    throw new Error("v2 seller payout must use the token input owner script");
+    throw new Error("seller payout must use the token input owner script");
   }
   const quote = quoteSell(params.state, params.amountTokens, dustThreshold(Buffer.from(payoutScript, "hex")));
   if (total < quote.amountAtoms) throw new Error("insufficient seller token allocation");
@@ -530,87 +350,8 @@ export function buildCurveSellV2(params: {
     ...(remainder > 0n ? [{ valueSats: params.tokenChangeSats!, scriptHex: params.scripts.seller }] : []),
     ...finalChange(params.changeSats, params.changeScriptHex ?? payoutScript),
   ];
-  return v2Template("transfer", v2Payload("transfer", params.ticker, quote.amountAtoms,
-    params.deploymentTxid, remainder > 0n ? 4 : undefined), outputs,
+  return tokenTemplate("transfer", wirePayload("transfer", params.ticker, quote.amountAtoms), outputs,
     [params.vaultInput, ...params.sellerTokenInputs], params.deploymentTxid, remainder, params.state.vaultOutpoint);
-}
-
-function v3TransferPayload(ticker: string, amountAtoms: bigint): Record<string, string> {
-  if (amountAtoms <= 0n) throw new Error("token amount must be positive");
-  return { p: "crc-20", op: "transfer", tick: ticker, amt: amountAtoms.toString() };
-}
-
-function v3FromV2(
-  source: TxTemplate,
-  payload: Record<string, string>,
-  following: readonly TxOutput[],
-  markerVout = 0,
-): TxTemplate {
-  const built = template(source.operation, payload, following, source.requiredFundingSats,
-    source.previousVaultOutpoint, markerVout);
-  return {
-    ...built,
-    requiredInputs: source.requiredInputs,
-    v2DeploymentTxid: source.v2DeploymentTxid,
-    tokenChangeAtoms: source.tokenChangeAtoms,
-  };
-}
-
-export function buildCurveDeployV3(params: Parameters<typeof buildCurveDeployV2>[0]): TxTemplate {
-  if (params.maxAtoms !== COVE_V1_MAX_ATOMS) throw new Error("invalid maximum supply for Cove v3");
-  return template("deploy", { p: "crc-20", op: "deploy", tick: params.ticker,
-    type: "bonding", max: COVE_V1_MAX_ATOMS, cv: "cove-curve-v3" }, [
-    { valueSats: params.vaultAnchorSats, scriptHex: params.scripts.vault },
-    { valueSats: COVE_V1_CREATOR_RECORD_SATS, scriptHex: params.scripts.creator },
-    { valueSats: COVE_V1_LAUNCH_FEE_SATS, scriptHex: params.scripts.protocol },
-    ...finalChange(params.changeSats, params.changeScriptHex),
-  ], params.vaultAnchorSats + COVE_V1_CREATOR_RECORD_SATS + COVE_V1_LAUNCH_FEE_SATS + (params.changeSats ?? 0));
-}
-
-export function buildCoveDeployWithVaultV3(params: Parameters<typeof buildCoveDeployWithVaultV2>[0]): {
-  template: TxTemplate;
-  vault: CoveVault;
-} {
-  const deployPayload = { p: "crc-20", op: "deploy", tick: params.ticker, type: "bonding",
-    max: COVE_V1_MAX_ATOMS, cv: "cove-curve-v3" };
-  const vault = buildCrc20AssetVault({
-    asset: { deploymentTag: crc20DeploymentTag(Buffer.from(JSON.stringify(deployPayload), "utf8")), launchSalt: params.launchSalt },
-    guardianXOnly: params.guardianXOnly,
-    recoveryProfile: params.recoveryProfile,
-    network: params.network,
-  });
-  return { vault, template: buildCurveDeployV3({ ticker: params.ticker, maxAtoms: COVE_V1_MAX_ATOMS,
-    scripts: { vault: vault.scriptPubKey.toString("hex"), creator: params.creatorScriptHex,
-      protocol: params.protocolScriptHex }, vaultAnchorSats: params.vaultAnchorSats,
-    changeSats: params.changeSats, changeScriptHex: params.changeScriptHex }) };
-}
-
-export function buildCoveV3Transfer(params: Parameters<typeof buildCoveV2Transfer>[0]): TxTemplate {
-  const source = buildCoveV2Transfer(params);
-  return v3FromV2(source, v3TransferPayload(params.ticker, params.amountAtoms), source.outputs.slice(1));
-}
-
-export function buildCoveV3MarketFill(params: Parameters<typeof buildCoveV2MarketFill>[0]): TxTemplate {
-  const source = buildCoveV2MarketFill(params);
-  const following = [source.outputs[2]!, source.outputs[1]!, ...source.outputs.slice(3)];
-  return v3FromV2(source, v3TransferPayload(params.ticker, params.listedInput.tokenAtoms), following, 1);
-}
-
-export function buildCurveBuyV3(params: Parameters<typeof buildCurveBuyV2>[0]): TxTemplate {
-  const source = buildCurveBuyV2(params);
-  const quote = quoteBuy(params.state, params.amountTokens);
-  const payload = quote.operation === "mint"
-    ? { p: "crc-20", op: "mint", tick: params.ticker }
-    : v3TransferPayload(params.ticker, quote.amountAtoms);
-  return v3FromV2(source, payload, source.outputs.slice(1));
-}
-
-export function buildCurveSellV3(params: Parameters<typeof buildCurveSellV2>[0]): TxTemplate {
-  const source = buildCurveSellV2(params);
-  const payoutScript = params.sellerPayoutScriptHex ?? params.scripts.seller;
-  const quote = quoteSell(params.state, params.amountTokens,
-    dustThreshold(Buffer.from(payoutScript, "hex")));
-  return v3FromV2(source, v3TransferPayload(params.ticker, quote.amountAtoms), source.outputs.slice(1));
 }
 
 export function buildUnsignedPsbt(
@@ -626,15 +367,11 @@ export function buildUnsignedPsbt(
       throw new Error("first input must be the current vault input");
     }
   }
-  if (txTemplate.requiredFirstInputScriptHex &&
-    inputs[0]?.scriptHex.toLowerCase() !== txTemplate.requiredFirstInputScriptHex.toLowerCase()) {
-    throw new Error("first input must be the seller input");
-  }
-  if (txTemplate.v2DeploymentTxid) {
+  if (txTemplate.tokenDeploymentTxid) {
     const mandatory = txTemplate.requiredInputs ?? [];
     for (let index = 0; index < mandatory.length; index++) {
       const expected = mandatory[index]!;
-      const actual = inputs[index] as CoveV2Input | undefined;
+      const actual = inputs[index] as CoveTokenInput | undefined;
       if (!actual || actual.txid.toLowerCase() !== expected.txid.toLowerCase() ||
         actual.vout !== expected.vout || actual.valueSats !== expected.valueSats ||
         actual.scriptHex.toLowerCase() !== expected.scriptHex.toLowerCase() ||
@@ -644,7 +381,7 @@ export function buildUnsignedPsbt(
       }
     }
     for (const funding of inputs.slice(mandatory.length)) {
-      const annotated = funding as CoveV2Input;
+      const annotated = funding as CoveTokenInput;
       if (annotated.tokenAtoms !== 0n || annotated.tokenDeploymentTxid !== undefined) {
         throw new Error("token-bearing input cannot be ordinary BTC funding");
       }

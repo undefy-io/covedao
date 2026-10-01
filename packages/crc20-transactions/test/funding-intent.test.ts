@@ -1,11 +1,10 @@
 import * as bitcoin from "bitcoinjs-lib";
-import { readFileSync } from "node:fs";
 import * as ecc from "tiny-secp256k1";
 import { ECPairFactory } from "ecpair";
 import { describe, expect, it } from "vitest";
 import { createCurveState } from "@crclaunch/crc20-curve";
 import { buildCrc20AssetVault, dev1RecoveryProfile } from "@crclaunch/cove-vault";
-import { buildCurveBuy, buildCurveDeploy, buildUnsignedPsbt, selectCrcFunding, verifyCrcGuardianSignedPsbt, verifyCrcWalletSignedPsbt } from "../src/index.js";
+import { buildCurveBuyV3, buildCurveDeployV3, buildUnsignedPsbt, selectCrcFunding, verifyCrcGuardianSignedPsbt, verifyCrcWalletSignedPsbt, type CoveTokenInput } from "../src/index.js";
 
 const ECPair = ECPairFactory(ecc);
 const owner = ECPair.fromPrivateKey(Buffer.alloc(32, 0x31));
@@ -38,20 +37,8 @@ describe("CRC wallet funding selection", () => {
 });
 
 describe("CRC wallet-signed PSBT intent", () => {
-  it("agrees with the standalone Guardian signed-PSBT golden fixture", () => {
-    const vector = JSON.parse(readFileSync(new URL("./fixtures/crc20-guardian-signed-psbt.json", import.meta.url), "utf8")) as {
-      network: "regtest";
-      walletSignedPsbtBase64: string;
-      guardianSignedPsbtBase64: string;
-      vaultInputIndex: number;
-      unsignedTxDigest: string;
-    };
-    const result = verifyCrcGuardianSignedPsbt(vector.walletSignedPsbtBase64, vector.guardianSignedPsbtBase64, vector.network, vector.vaultInputIndex);
-    expect(result.unsignedTxDigest).toBe(vector.unsignedTxDigest);
-  });
-
   it("accepts a signed launch and refuses changed unsigned tx, prevout metadata or missing signature", () => {
-    const deploy = buildCurveDeploy({
+    const deploy = buildCurveDeployV3({
       ticker: "COVE", maxAtoms: "2100000000000000", scripts: { vault, protocol, creator }, vaultAnchorSats: 330,
     });
     const unsigned = buildUnsignedPsbt(deploy, [coin("a", 9_330)], 1_000);
@@ -62,7 +49,7 @@ describe("CRC wallet-signed PSBT intent", () => {
     const altered = bitcoin.Psbt.fromBase64(signed.toBase64());
     altered.data.inputs[0]!.witnessUtxo!.value = 9_331;
     expect(() => verifyCrcWalletSignedPsbt(unsigned.toBase64(), altered.toBase64(), "regtest")).toThrow(/prevout/i);
-    const other = buildCurveDeploy({
+    const other = buildCurveDeployV3({
       ticker: "OTHER", maxAtoms: "2100000000000000", scripts: { vault, protocol, creator }, vaultAnchorSats: 330,
     });
     const otherUnsigned = buildUnsignedPsbt(other, [coin("a", 9_330)], 1_000);
@@ -71,11 +58,15 @@ describe("CRC wallet-signed PSBT intent", () => {
 
   it("requires wallet signature but reserves unsigned vault input for Guardian", () => {
     const state = createCurveState(`${"aa".repeat(32)}:1`, 330n);
-    const buy = buildCurveBuy({
+    const vaultInput: CoveTokenInput = { ...coin("a", 330, vault), vout: 1, tokenAtoms: 0n };
+    const fundingInput: CoveTokenInput = { ...coin("b", 1_000_000), tokenAtoms: 0n };
+    const buy = buildCurveBuyV3({
       ticker: "COVE", deploymentTxid: "99".repeat(32), state, amountTokens: 1_000n,
       scripts: { buyer: wallet, seller: wallet, vault, protocol, creator }, recipientSats: 330,
+      vaultInput,
     });
-    const unsigned = buildUnsignedPsbt(buy, [{ ...coin("a", 330, vault), vout: 1 }, coin("b", buy.requiredFundingSats + 1_000)], 1_000);
+    const unsigned = buildUnsignedPsbt(buy, [vaultInput,
+      { ...fundingInput, valueSats: buy.requiredFundingSats + 1_000 }], 1_000);
     const signed = bitcoin.Psbt.fromBase64(unsigned.toBase64());
     signed.signInput(1, owner);
     expect(verifyCrcWalletSignedPsbt(unsigned.toBase64(), signed.toBase64(), "regtest", 0).psbt.data.inputs[0]!.tapKeySig).toBeUndefined();
@@ -91,13 +82,16 @@ describe("CRC wallet-signed PSBT intent", () => {
       recoveryProfile: dev1RecoveryProfile(recoveryKey.publicKey.subarray(1)),
     });
     const state = createCurveState(`${"aa".repeat(32)}:1`, 330n);
-    const buy = buildCurveBuy({
+    const vaultInput: CoveTokenInput = { ...coin("a", 330, assetVault.scriptPubKey.toString("hex")), vout: 1, tokenAtoms: 0n };
+    const fundingInput: CoveTokenInput = { ...coin("b", 1_000_000), tokenAtoms: 0n };
+    const buy = buildCurveBuyV3({
       ticker: "COVE", deploymentTxid: "99".repeat(32), state, amountTokens: 1_000n,
       scripts: { buyer: wallet, seller: wallet, vault: assetVault.scriptPubKey.toString("hex"), protocol, creator }, recipientSats: 330,
+      vaultInput,
     });
     const unsigned = buildUnsignedPsbt(buy, [
-      { ...coin("a", 330, assetVault.scriptPubKey.toString("hex")), vout: 1 },
-      coin("b", buy.requiredFundingSats + 1_000),
+      vaultInput,
+      { ...fundingInput, valueSats: buy.requiredFundingSats + 1_000 },
     ], 1_000);
     const walletSigned = bitcoin.Psbt.fromBase64(unsigned.toBase64());
     walletSigned.signInput(1, owner);

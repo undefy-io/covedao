@@ -1,7 +1,7 @@
 import * as bitcoin from "bitcoinjs-lib";
 import { checkSpendSignature } from "@crclaunch/bitcoin/spend";
 import type { CoreRpcProvider } from "@crclaunch/bitcoin";
-import { buildCoveV3MarketFill, buildUnsignedPsbt, type CoveV2Input } from "@crclaunch/crc20-transactions";
+import { buildCoveV3MarketFill, buildUnsignedPsbt, type CoveTokenInput } from "@crclaunch/crc20-transactions";
 import { deterministicFee } from "@crclaunch/cove-economics";
 import { verifyBip322 } from "../order/signature.js";
 
@@ -45,8 +45,8 @@ export function crcMarketFee(priceSats: number, feeBps: bigint, minFeeSats: bigi
 export type CrcFillOptions = Readonly<{
   listing: CrcListing;
   asset: IndexedCrcAsset;
-  sellerFunding: CoveV2Input;
-  buyerFunding: readonly CoveV2Input[];
+  sellerFunding: CoveTokenInput;
+  buyerFunding: readonly CoveTokenInput[];
   buyerScriptHex: string;
   buyerFundingScriptHex?: string;
   protocolScriptHex: string;

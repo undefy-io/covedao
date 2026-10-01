@@ -8,7 +8,7 @@ import {
   buildCurveDeployV3,
   buildCurveSellV3,
   buildUnsignedPsbt,
-  type CoveV2Input,
+  type CoveTokenInput,
 } from "../src/index.js";
 
 const id = "99".repeat(32);
@@ -18,7 +18,7 @@ const vault = `5120${"33".repeat(32)}`;
 const protocol = `5120${"44".repeat(32)}`;
 const creator = `5120${"55".repeat(32)}`;
 const scripts = { seller, buyer, vault, protocol, creator };
-const listed: CoveV2Input = {
+const listed: CoveTokenInput = {
   txid: "aa".repeat(32), vout: 0, valueSats: 670, scriptHex: seller,
   tokenAtoms: 1_000n, tokenDeploymentTxid: id,
 };
@@ -30,7 +30,7 @@ function markerJson(scriptHex: string): string {
 }
 
 describe("Cove v3 Garden wire shape", () => {
-  it("identifies new deployments separately from v2", () => {
+  it("identifies the Cove curve deployment", () => {
     const deploy = buildCurveDeployV3({ ticker: "COVE", maxAtoms: "2100000000000000",
       scripts, vaultAnchorSats: 330 });
     expect(JSON.parse(markerJson(deploy.outputs[0]!.scriptHex))).toMatchObject({
@@ -40,7 +40,7 @@ describe("Cove v3 Garden wire shape", () => {
 
   it("uses the Garden amountless mint marker with recipient immediately after it", () => {
     const state = createCurveState(`${"aa".repeat(32)}:1`, 330n);
-    const vaultInput: CoveV2Input = { txid: "aa".repeat(32), vout: 1,
+    const vaultInput: CoveTokenInput = { txid: "aa".repeat(32), vout: 1,
       valueSats: 330, scriptHex: vault, tokenAtoms: 0n };
     const built = buildCurveBuyV3({ ticker: "COVE", deploymentTxid: id, state,
       amountTokens: 1_000n, scripts, recipientSats: 330, vaultInput });
@@ -68,7 +68,7 @@ describe("Cove v3 Garden wire shape", () => {
       nextVaultOutpoint: `${"dd".repeat(32)}:1`,
       nextVaultSats: initial.vaultSats + buy.grossSats,
       protocolFeeSats: buy.protocolFeeSats, creatorFeeSats: buy.creatorFeeSats });
-    const vaultInput: CoveV2Input = { txid: "dd".repeat(32), vout: 1,
+    const vaultInput: CoveTokenInput = { txid: "dd".repeat(32), vout: 1,
       valueSats: Number(state.vaultSats), scriptHex: vault, tokenAtoms: 0n };
     const sellerInput = { ...listed, tokenAtoms: 40_001n * 100_000_000n };
     const built = buildCurveSellV3({ ticker: "COVE", deploymentTxid: id,
@@ -92,7 +92,7 @@ describe("Cove v3 Garden wire shape", () => {
     expect(built.outputs[3]).toEqual({ valueSats: 1_000, scriptHex: protocol });
     expect(built.outputs[4]).toEqual({ valueSats: 1_000, scriptHex: buyer });
     expect(parseCrc20Transaction(built.outputs)).toMatchObject({ status: "valid", envelope: { recipientVout: 2 } });
-    const funding: CoveV2Input = { txid: "bb".repeat(32), vout: 0, valueSats: 13_330,
+    const funding: CoveTokenInput = { txid: "bb".repeat(32), vout: 0, valueSats: 13_330,
       scriptHex: buyer, tokenAtoms: 0n };
     const psbt = buildUnsignedPsbt(built, [listed, funding], 1_000);
     expect(psbt.txInputs[0]?.hash.toString("hex")).toBe(listed.txid);

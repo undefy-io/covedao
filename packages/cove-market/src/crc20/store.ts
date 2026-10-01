@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 import { broadcastRecordedTransaction, checkSpendSignature } from "@crclaunch/bitcoin";
 import type { CoreRpcProvider } from "@crclaunch/bitcoin";
 import type { Database, DbTransaction } from "@crclaunch/db";
-import type { CoveV2Input } from "@crclaunch/crc20-transactions";
+import type { CoveTokenInput } from "@crclaunch/crc20-transactions";
 import {
   createCrcFill,
   crcMarketFee,
@@ -80,7 +80,7 @@ async function checkAnchor(core: CoreUtxo, listing: CrcListing): Promise<void> {
 }
 
 async function assertTokenFreeBuyerFunding(tx: DbTransaction, network: CrcNetwork,
-  funding: readonly CoveV2Input[]): Promise<void> {
+  funding: readonly CoveTokenInput[]): Promise<void> {
   for (const input of funding) {
     const txid = input.txid.toLowerCase();
     const result = await tx.execute(sql`SELECT 1 FROM cove_crc_token_utxos
@@ -179,8 +179,8 @@ export type CrcFillReservation = Readonly<{
   protocolScriptHex: string;
   recipientSats: number;
   minerFeeSats: number;
-  sellerFunding: CoveV2Input;
-  buyerFunding: readonly CoveV2Input[];
+  sellerFunding: CoveTokenInput;
+  buyerFunding: readonly CoveTokenInput[];
 }>;
 
 export async function reserveCrcFill(

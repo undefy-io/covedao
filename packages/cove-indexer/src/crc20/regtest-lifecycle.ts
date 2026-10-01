@@ -6,7 +6,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { eq } from "drizzle-orm";
 import { CoreRpcProvider } from "@crclaunch/bitcoin";
 import { quoteBuy, quoteSell } from "@crclaunch/crc20-curve";
-import { buildCoveV3MarketFill, buildCoveV3Transfer, buildCurveBuyV3, buildCurveDeployV3, buildCurveSellV3, type CoveV2Input, type TxTemplate } from "@crclaunch/crc20-transactions";
+import { buildCoveV3MarketFill, buildCoveV3Transfer, buildCurveBuyV3, buildCurveDeployV3, buildCurveSellV3, type CoveTokenInput, type TxTemplate } from "@crclaunch/crc20-transactions";
 import { schema } from "@crclaunch/db";
 import { saveAuthorizedCrcLaunchIntent } from "./intents.js";
 import { syncCrcTip, type CrcWorkerSnapshot } from "./runner.js";
@@ -155,7 +155,7 @@ async function main(): Promise<void> {
         if (!output || output.script.toString("hex") !== tokenEntry[1].scriptHex) throw new Error("token carrier parent mismatch");
         return { txid: txid!, vout: Number(vout), sats: output.value, valueSats: output.value,
           scriptHex: tokenEntry[1].scriptHex,
-          tokenAtoms: BigInt(tokenEntry[1].atoms), tokenDeploymentTxid: deploy.txid } satisfies CoveV2Input & Funding;
+          tokenAtoms: BigInt(tokenEntry[1].atoms), tokenDeploymentTxid: deploy.txid } satisfies CoveTokenInput & Funding;
       })() : undefined;
       const fixedOutputs = buyQuote
         ? 330n + curve.vaultSats + buyQuote.grossSats + buyQuote.protocolFeeSats + buyQuote.creatorFeeSats
@@ -163,7 +163,7 @@ async function main(): Promise<void> {
       const change = Number(curve.vaultSats + BigInt(funding.sats) + BigInt(tokenInput?.sats ?? 0) - fixedOutputs - 1_000n);
       if (change < 330) throw new Error("regtest funding change below dust");
       const [vaultTxid, vaultVoutText] = curve.vaultOutpoint.split(":");
-      const vaultInput: CoveV2Input & Funding = { txid: vaultTxid!, vout: Number(vaultVoutText),
+      const vaultInput: CoveTokenInput & Funding = { txid: vaultTxid!, vout: Number(vaultVoutText),
         sats: Number(curve.vaultSats), valueSats: Number(curve.vaultSats), scriptHex: vault.scriptHex,
         tokenAtoms: curve.vaultAtoms, ...(curve.vaultAtoms > 0n ? { tokenDeploymentTxid: deploy.txid } : {}) };
       const template = operation.side === "buy"
@@ -243,7 +243,7 @@ async function main(): Promise<void> {
       const tokenParent = bitcoin.Transaction.fromHex(await rpc.call<string>("getrawtransaction", [listedTxidBefore]));
       const tokenOutput = tokenParent.outs[Number(listedVoutBefore)];
       if (!tokenOutput) throw new Error("withdrawal token parent output missing");
-      const oldListedInput: CoveV2Input & Funding = { txid: listedTxidBefore!, vout: Number(listedVoutBefore),
+      const oldListedInput: CoveTokenInput & Funding = { txid: listedTxidBefore!, vout: Number(listedVoutBefore),
         sats: tokenOutput.value, valueSats: tokenOutput.value, scriptHex: buyer.scriptHex,
         tokenAtoms: BigInt(beforeWithdrawal[1].atoms), tokenDeploymentTxid: deploy.txid };
       const splitFunding = await signRaw(rpc, unsigned([funding], [
@@ -301,7 +301,7 @@ async function main(): Promise<void> {
       const parent = bitcoin.Transaction.fromHex(await rpc.call<string>("getrawtransaction", [listedTxid]));
       const listedOutput = parent.outs[Number(listedVout)];
       if (!listedOutput) throw new Error("market token parent output missing");
-      const listedInput: CoveV2Input & Funding = { txid: listedTxid!, vout: Number(listedVout),
+      const listedInput: CoveTokenInput & Funding = { txid: listedTxid!, vout: Number(listedVout),
         sats: listedOutput.value, valueSats: listedOutput.value, scriptHex: withdrawnBuyer.scriptHex,
         tokenAtoms: BigInt(listed[1].atoms), tokenDeploymentTxid: deploy.txid };
       const marketBuyer = await rpc.address();
