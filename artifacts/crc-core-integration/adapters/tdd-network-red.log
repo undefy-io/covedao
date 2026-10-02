@@ -1,0 +1,38 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/crc20-adapters
+
+ ❯ src/index.test.ts (9 tests | 1 failed) 51ms
+   × unsupported fresh wallet network keeps typed NETWORK error 5ms
+     → expected Error: unsupported Bitcoin network to match object { code: 'NETWORK' }
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/index.test.ts > unsupported fresh wallet network keeps typed NETWORK error
+AssertionError: expected Error: unsupported Bitcoin network to match object { code: 'NETWORK' }
+
+- Expected
++ Received
+
+- Object {
+-   "code": "NETWORK",
+- }
++ [Error: unsupported Bitcoin network]
+
+ ❯ src/index.test.ts:96:2
+     94| test("unsupported fresh wallet network keeps typed NETWORK error",asyn…
+     95|  const request=vi.fn().mockResolvedValue({result:{bitcoin:{name:"Testn…
+     96|  await expect(adapters.assertWalletNetwork({request},"signet")).reject…
+       |  ^
+     97|  expect(request).toHaveBeenCalledTimes(1);
+     98| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 8 passed (9)
+   Start at  18:33:16
+   Duration  372ms (transform 74ms, setup 0ms, collect 103ms, tests 51ms, environment 0ms, prepare 59ms)
+
+undefined
+/home/andefy/dev/covedao/packages/crc20-adapters:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/index.test.ts

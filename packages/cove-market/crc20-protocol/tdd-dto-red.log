@@ -1,0 +1,43 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ dto.test.ts (12 tests | 2 failed) 5ms
+   × canonical DTO transport round trips large atoms, numeric input sats and untouched marker text 3ms
+     → encodeProtocolDto is not a function
+   × nested protocol DTOs preserve network identity and signed offer fields 0ms
+     → encodeProtocolDto is not a function
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  dto.test.ts > canonical DTO transport round trips large atoms, numeric input sats and untouched marker text
+TypeError: encodeProtocolDto is not a function
+ ❯ dto.test.ts:12:20
+     10| };
+     11| test("canonical DTO transport round trips large atoms, numeric input s…
+     12|   const dto = core.encodeProtocolDto(plan);
+       |                    ^
+     13|   expect(dto.inputs[0]!.sats).toBe("20000");
+     14|   expect(dto.outputs[0]!.atoms).toBe("900719925474099312345");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  dto.test.ts > nested protocol DTOs preserve network identity and signed offer fields
+TypeError: encodeProtocolDto is not a function
+ ❯ dto.test.ts:29:78
+     27|   const offer = {network:"signet",priceSats:1n,listedInput:{atoms:9007…
+     28|   const value = {offers:{["signet:"+"a".repeat(64)]:offer},config:{net…
+     29|   expect(core.decodeProtocolDto<typeof value>(JSON.parse(JSON.stringif…
+       |                                                                              ^
+     30| });
+     31| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 10 passed (12)
+   Start at  18:23:59
+   Duration  243ms (transform 87ms, setup 0ms, collect 109ms, tests 5ms, environment 0ms, prepare 32ms)
+
+undefined
+/home/andefy/dev/covedao/packages/cove-market/crc20-protocol:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run dto.test.ts

@@ -1,0 +1,349 @@
+import { Buffer } from "buffer";
+import * as bitcoin from "bitcoinjs-lib";
+import * as core from "@crclaunch/crc20-protocol";
+import type {
+  ChainTransaction,
+  Input,
+  Ledger,
+  Offer,
+  OfferTerms,
+  Plan,
+  ProtocolNetwork,
+} from "@crclaunch/crc20-protocol";
+
+export interface WalletAccount {
+  address: string;
+  publicKey: string;
+}
+export interface WalletInput extends WalletAccount {
+  index: number;
+}
+export interface SigningOptions {
+  network: string;
+  walletInputs: WalletInput[];
+  /** Already finalized external signer witnesses, e.g. Guardian. */
+  finalizedWitnesses?: Record<number, string[]>;
+}
+export interface WalletParams {
+  psbt: string;
+  signInputs: Record<string, number[]>;
+  broadcast: false;
+}
+export interface PreparedSigning {
+  network: ProtocolNetwork;
+  params: WalletParams;
+  prevouts: Input[];
+  walletInputs: WalletInput[];
+  plan?: Plan;
+  terms?: OfferTerms;
+}
+const networkFor = (network: ProtocolNetwork) =>
+  network === "bitcoin"
+    ? bitcoin.networks.bitcoin
+    : network === "regtest"
+      ? bitcoin.networks.regtest
+      : bitcoin.networks.testnet;
+const fromHex = (hex: string) => {
+  if (!/^(?:[0-9a-f]{2})*$/.test(hex)) throw new Error("noncanonical hex");
+  return Buffer.from(hex, "hex");
+};
+function accountScript(address: string, network: ProtocolNetwork): string {
+  // Decode the address without invoking bitcoinjs' ECC-backed p2tr payment factory.
+  // Script ownership and curve validity are proven by the authoritative core.
+  if (address.startsWith("bc1p") || address.startsWith("tb1p") || address.startsWith("bcrt1p")) {
+    const decoded = bitcoin.address.fromBech32(address);
+    if (
+      decoded.prefix !== networkFor(network).bech32 ||
+      decoded.version !== 1 ||
+      decoded.data.length !== 32
+    )
+      throw new Error("wallet address network or encoding mismatch");
+    return `5120${decoded.data.toString("hex")}`;
+  }
+  return bitcoin.address.toOutputScript(address, networkFor(network)).toString("hex");
+}
+function walletMetadata(input: Input, account: WalletAccount, network: ProtocolNetwork) {
+  if (accountScript(account.address, network) !== input.scriptHex)
+    throw new Error("wallet address/input script mismatch");
+  const kind = core.walletScriptKind(input.scriptHex, input.redeemScriptHex);
+  core.canonicalOfferPublicKey(
+    account.publicKey,
+    kind === "p2sh-p2wpkh" ? input.redeemScriptHex! : input.scriptHex,
+  );
+  return kind === "p2sh-p2wpkh"
+    ? { redeemScript: fromHex(input.redeemScriptHex!) }
+    : kind === "p2tr"
+      ? {
+          tapInternalKey: fromHex(
+            account.publicKey.length === 64 ? account.publicKey : account.publicKey.slice(2),
+          ),
+        }
+      : {};
+}
+function rawWithWitnesses(psbt: bitcoin.Psbt): bitcoin.Transaction {
+  const tx = bitcoin.Transaction.fromBuffer(psbt.data.globalMap.unsignedTx.toBuffer());
+  psbt.data.inputs.forEach((input, index) => {
+    if (input.finalScriptSig) tx.setInputScript(index, input.finalScriptSig);
+    if (input.finalScriptWitness)
+      tx.setWitness(
+        index,
+        core.decodeWitness(input.finalScriptWitness.toString("hex")).map((w) => Buffer.from(w)),
+      );
+  });
+  return tx;
+}
+function preparedPsbt(
+  inputs: Input[],
+  outputs: { sats: bigint; scriptHex: string }[],
+  options: SigningOptions,
+  sighash: number,
+  witnesses: Record<number, string[]> = {},
+): PreparedSigning {
+  const network = core.protocolNetwork(options.network);
+  const psbt = new bitcoin.Psbt({ network: networkFor(network) });
+  psbt.setVersion(2);
+  psbt.setLocktime(0);
+  const signInputs: Record<string, number[]> = {};
+  const indexed = new Map<number, WalletInput>();
+  for (const account of options.walletInputs) {
+    if (
+      !Number.isSafeInteger(account.index) ||
+      account.index < 0 ||
+      account.index >= inputs.length ||
+      indexed.has(account.index)
+    )
+      throw new Error("invalid or duplicate wallet input index");
+    if (witnesses[account.index]) throw new Error("cannot sign finalized external input");
+    indexed.set(account.index, account);
+    (signInputs[account.address] ??= []).push(account.index);
+  }
+  if (indexed.size === 0) throw new Error("wallet input required");
+  for (const key of Object.keys(witnesses))
+    if (!Number.isSafeInteger(Number(key)) || Number(key) < 0 || Number(key) >= inputs.length)
+      throw new Error("invalid finalized input index");
+  inputs.forEach((input, index) => {
+    if (
+      !/^[0-9a-f]{64}$/.test(input.txid) ||
+      !Number.isSafeInteger(input.vout) ||
+      input.vout < 0 ||
+      input.vout > 0xffffffff
+    )
+      throw new Error("invalid prevout");
+    const account = indexed.get(index);
+    const witness = witnesses[index];
+    if (!account && !witness) throw new Error("unassigned signing input");
+    psbt.addInput({
+      hash: input.txid,
+      index: input.vout,
+      sequence: 0xfffffffe,
+      witnessUtxo: { script: fromHex(input.scriptHex), value: Number(core.sats(input.sats)) },
+      ...(account
+        ? { sighashType: sighash, ...walletMetadata(input, account, network) }
+        : {
+            finalScriptWitness: fromHex(core.encodeWitness(witness!.map(fromHex))),
+            ...(input.redeemScriptHex
+              ? { finalScriptSig: bitcoin.script.compile([fromHex(input.redeemScriptHex)]) }
+              : {}),
+          }),
+    });
+  });
+  outputs.forEach((output) =>
+    psbt.addOutput({ script: fromHex(output.scriptHex), value: Number(core.sats(output.sats)) }),
+  );
+  const raw = core.parseRawTransaction(rawWithWitnesses(psbt).toHex());
+  for (const key of Object.keys(witnesses))
+    core.verifyInputSignature(
+      raw,
+      inputs,
+      Number(key),
+      sighash === 1 && witnesses[0] ? core.outpoint(inputs[0]!) : undefined,
+    );
+  return {
+    network,
+    params: { psbt: psbt.toBase64(), signInputs, broadcast: false },
+    prevouts: structuredClone(inputs),
+    walletInputs: structuredClone(options.walletInputs),
+  };
+}
+export function preparePlanSigning(plan: Plan, options: SigningOptions): PreparedSigning {
+  const witnesses: Record<number, string[]> = { ...options.finalizedWitnesses };
+  plan.inputWitnesses?.forEach((witness, index) => {
+    if (witness.length) {
+      if (witnesses[index] && JSON.stringify(witnesses[index]) !== JSON.stringify(witness))
+        throw new Error("conflicting finalized witness");
+      witnesses[index] = witness;
+    }
+  });
+  return {
+    ...preparedPsbt(plan.inputs, plan.outputs, options, 1, witnesses),
+    plan: structuredClone(plan),
+  };
+}
+export function prepareOfferSigning(terms: OfferTerms, account: WalletAccount): PreparedSigning {
+  const tx = core.offerSigningTransaction(terms);
+  const prepared = preparedPsbt(
+    [terms.listedInput],
+    tx.outputs,
+    { network: terms.network, walletInputs: [{ ...account, index: 0 }] },
+    131,
+  );
+  if (core.canonicalOfferPublicKey(account.publicKey, terms.sellerScriptHex) !== terms.publicKeyHex)
+    throw new Error("offer public key mismatch");
+  return { ...prepared, terms: structuredClone(terms) };
+}
+function checkedResponse(prepared: PreparedSigning, response: string): bitcoin.Psbt {
+  const original = bitcoin.Psbt.fromBase64(prepared.params.psbt);
+  const signed = bitcoin.Psbt.fromBase64(response);
+  if (
+    !signed.data.globalMap.unsignedTx
+      .toBuffer()
+      .equals(original.data.globalMap.unsignedTx.toBuffer())
+  )
+    throw new Error("wallet changed transaction");
+  original.data.inputs.forEach((before, index) => {
+    const after = signed.data.inputs[index]!;
+    if (
+      !after.witnessUtxo ||
+      !before.witnessUtxo ||
+      after.witnessUtxo.value !== before.witnessUtxo.value ||
+      !after.witnessUtxo.script.equals(before.witnessUtxo.script)
+    )
+      throw new Error("wallet changed prevout");
+    for (const field of [
+      "finalScriptWitness",
+      "finalScriptSig",
+      "redeemScript",
+      "tapInternalKey",
+    ] as const)
+      if (before[field] && !before[field]!.equals(after[field] ?? Buffer.alloc(0)))
+        throw new Error(`wallet changed ${field}`);
+    if (after.sighashType !== undefined && after.sighashType !== before.sighashType)
+      throw new Error("wallet changed sighash");
+  });
+  return signed;
+}
+function finalizeWalletInputs(psbt: bitcoin.Psbt, prepared: PreparedSigning): void {
+  for (const { index } of prepared.walletInputs) {
+    const input = psbt.data.inputs[index]!;
+    if (!input.finalScriptWitness) {
+      // bitcoinjs' default Taproot finalizer requires an injected ECC runtime.
+      // Serialization needs none; the authoritative core verifies the signature.
+      if (input.tapKeySig)
+        psbt.updateInput(index, {
+          finalScriptWitness: fromHex(core.encodeWitness([input.tapKeySig])),
+        });
+      else psbt.finalizeInput(index);
+    }
+    const witness = core.decodeWitness(
+      psbt.data.inputs[index]!.finalScriptWitness!.toString("hex"),
+    );
+    const expected = prepared.terms ? 131 : 1;
+    if (
+      witness[0]?.at(-1) !== expected ||
+      (/^5120/.test(prepared.prevouts[index]!.scriptHex) && witness[0]?.length !== 65)
+    )
+      throw new Error("wallet signature must use requested sighash");
+  }
+}
+export function completePlanSigning(
+  prepared: PreparedSigning,
+  response: string,
+  ledger?: Ledger,
+): ChainTransaction {
+  if (!prepared.plan || prepared.terms) throw new Error("plan signing context required");
+  const psbt = checkedResponse(prepared, response);
+  finalizeWalletInputs(psbt, prepared);
+  const transaction = {
+    rawHex: rawWithWitnesses(psbt).toHex(),
+    prevouts: structuredClone(prepared.prevouts),
+  };
+  core.validateFinalTransaction(prepared.plan, transaction, ledger);
+  return transaction;
+}
+export function completeOfferSigning(
+  prepared: PreparedSigning,
+  messageSignatureBase64: string,
+  response: string,
+): Offer {
+  if (!prepared.terms || prepared.plan) throw new Error("offer signing context required");
+  if (
+    !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(messageSignatureBase64)
+  )
+    throw new Error("invalid wallet BIP322 base64");
+  const signature = Buffer.from(messageSignatureBase64, "base64");
+  if (signature.toString("base64") !== messageSignatureBase64)
+    throw new Error("noncanonical wallet BIP322 framing");
+  const psbt = checkedResponse(prepared, response);
+  finalizeWalletInputs(psbt, prepared);
+  const witness = core
+    .decodeWitness(psbt.data.inputs[0]!.finalScriptWitness!.toString("hex"))
+    .map((w) => Buffer.from(w).toString("hex"));
+  return core.attachOfferAuthorization(prepared.terms, signature.toString("hex"), witness);
+}
+export interface WalletProvider {
+  request(method: string, params: unknown): Promise<any>;
+}
+export class WalletSigningError extends Error {
+  constructor(
+    public readonly code: "REJECTED" | "NETWORK" | "FAILED",
+    message: string,
+  ) {
+    super(message);
+    this.name = "WalletSigningError";
+  }
+}
+async function request(provider: WalletProvider, method: string, params: unknown): Promise<any> {
+  try {
+    const response = await provider.request(method, params);
+    if (response?.error) throw response.error;
+    if (!response?.result) throw new Error("wallet result missing");
+    return response.result;
+  } catch (error) {
+    if (error instanceof WalletSigningError) throw error;
+    const value = error as { code?: number; message?: string };
+    const message = value?.message ?? String(error);
+    throw new WalletSigningError(
+      value?.code === 4001 || /reject|cancel|declin/i.test(message) ? "REJECTED" : "FAILED",
+      message,
+    );
+  }
+}
+export async function assertWalletNetwork(
+  provider: WalletProvider,
+  network: ProtocolNetwork,
+): Promise<void> {
+  const result = await request(provider, "wallet_getNetwork", null);
+  const name = result?.bitcoin?.name;
+  try {
+    if (typeof name !== "string" || core.protocolNetwork(name.toLowerCase()) !== network)
+      throw new Error("wallet network mismatch");
+  } catch {
+    throw new WalletSigningError("NETWORK", "wallet network mismatch");
+  }
+}
+export async function requestWalletSigning(
+  provider: WalletProvider,
+  prepared: PreparedSigning,
+): Promise<string> {
+  await assertWalletNetwork(provider, prepared.network);
+  const result = await request(provider, "signPsbt", prepared.params);
+  if (typeof result.psbt !== "string")
+    throw new WalletSigningError("FAILED", "wallet PSBT missing");
+  return result.psbt;
+}
+export async function requestOfferSigning(
+  provider: WalletProvider,
+  prepared: PreparedSigning,
+): Promise<Offer> {
+  if (!prepared.terms) throw new Error("offer signing context required");
+  await assertWalletNetwork(provider, prepared.network);
+  const result = await request(provider, "signMessage", {
+    address: prepared.walletInputs[0]!.address,
+    message: core.offerMessage(prepared.terms),
+    protocol: "BIP322",
+  });
+  if (typeof result.signature !== "string")
+    throw new WalletSigningError("FAILED", "wallet BIP322 signature missing");
+  const signed = await requestWalletSigning(provider, prepared);
+  return completeOfferSigning(prepared, result.signature, signed);
+}

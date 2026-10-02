@@ -136,6 +136,18 @@ class Reader {
     return this.take(this.count());
   }
 }
+/** Consensus witness serialization for PSBT finalized inputs, including Guardian script paths. */
+export function encodeWitness(witness: Uint8Array[]): string {
+  return hex(concat(compact(witness.length), ...witness.map(sized)));
+}
+export function decodeWitness(witnessHex: string): Uint8Array[] {
+  const reader = new Reader(unhex(witnessHex));
+  const count = reader.count();
+  if (count > reader.bytes.length - reader.offset) throw new Error("truncated witness");
+  const result = Array.from({ length: count }, () => reader.field());
+  if (reader.offset !== reader.bytes.length) throw new Error("trailing witness bytes");
+  return result;
+}
 export interface RawInput {
   txid: string;
   vout: number;
@@ -258,75 +270,93 @@ export function verifySignatures(
   singleAnyoneCanPayOutpoint?: string,
 ): void {
   if (prevouts.length !== tx.inputs.length) throw new Error("prevout count mismatch");
-  tx.inputs.forEach((input, index) => {
-    const prevout = prevouts[index]!;
-    if (outpoint(input) !== outpoint(prevout)) throw new Error("prevout identity mismatch");
-    if (/^5120[0-9a-f]{64}$/.test(prevout.scriptHex)) {
-      if (input.scriptHex !== "") throw new Error("Taproot scriptSig must be empty");
-      const signature = input.witness[0];
-      if (!signature || ![64, 65].includes(signature.length))
-        throw new Error("invalid Schnorr signature length");
-      const hashType = signature.length === 64 ? 0 : signature[64]!;
-      if (signature.length === 65 && hashType === 0)
-        throw new Error("explicit DEFAULT flag is invalid");
-      if (
-        hashType !== 0 &&
-        hashType !== 1 &&
-        !(
-          hashType === 131 &&
-          index === 0 &&
-          singleAnyoneCanPayOutpoint === outpoint(input) &&
-          input.witness.length === 1
-        )
-      )
-        throw new Error("unauthorized signature flag");
-      const path =
-        input.witness.length === 1
-          ? { key: unhex(prevout.scriptHex.slice(4)), leafHash: undefined }
-          : guardianExecutionKey(input.witness, prevout.scriptHex);
-      if (
-        !ecc.verifySchnorr(
-          taprootSignatureHash(tx, prevouts, index, hashType, path.leafHash),
-          path.key,
-          signature.slice(0, 64),
-        )
-      )
-        throw new Error("invalid transaction signature");
-      return;
-    }
-    const nested = /^a914[0-9a-f]{40}87$/.test(prevout.scriptHex);
-    const program = nested ? input.scriptHex.slice(2) : prevout.scriptHex;
+  tx.inputs.forEach((_, index) =>
+    verifyInputSignature(tx, prevouts, index, singleAnyoneCanPayOutpoint),
+  );
+}
+
+/** Verify one already-signed input while other external signers are still pending. */
+export function verifyInputSignature(
+  tx: RawTransaction,
+  prevouts: Input[],
+  index: number,
+  singleAnyoneCanPayOutpoint?: string,
+): void {
+  if (
+    prevouts.length !== tx.inputs.length ||
+    !Number.isSafeInteger(index) ||
+    index < 0 ||
+    index >= tx.inputs.length
+  )
+    throw new Error("invalid input signature index or prevouts");
+  const input = tx.inputs[index]!;
+  const prevout = prevouts[index]!;
+  if (outpoint(input) !== outpoint(prevout)) throw new Error("prevout identity mismatch");
+  if (/^5120[0-9a-f]{64}$/.test(prevout.scriptHex)) {
+    if (input.scriptHex !== "") throw new Error("Taproot scriptSig must be empty");
+    const signature = input.witness[0];
+    if (!signature || ![64, 65].includes(signature.length))
+      throw new Error("invalid Schnorr signature length");
+    const hashType = signature.length === 64 ? 0 : signature[64]!;
+    if (signature.length === 65 && hashType === 0)
+      throw new Error("explicit DEFAULT flag is invalid");
     if (
-      !/^0014[0-9a-f]{40}$/.test(program) ||
-      input.witness.length !== 2 ||
-      (nested
-        ? input.scriptHex !== `16${program}` ||
-          hex(hash160(unhex(program))) !== prevout.scriptHex.slice(4, -2)
-        : input.scriptHex !== "")
-    )
-      throw new Error("unsupported or mismatched SegWit input script");
-    const key = input.witness[1]!,
-      signature = input.witness[0]!,
-      hashType = signature[signature.length - 1]!;
-    if (key.length !== 33 || hex(hash160(key)) !== program.slice(4))
-      throw new Error("witness owner mismatch");
-    if (
+      hashType !== 0 &&
       hashType !== 1 &&
-      !(hashType === 131 && index === 0 && singleAnyoneCanPayOutpoint === outpoint(input))
+      !(
+        hashType === 131 &&
+        index === 0 &&
+        singleAnyoneCanPayOutpoint === outpoint(input) &&
+        input.witness.length === 1
+      )
     )
       throw new Error("unauthorized signature flag");
-    const normalized = signature.slice();
-    normalized[normalized.length - 1] = 1;
+    const path =
+      input.witness.length === 1
+        ? { key: unhex(prevout.scriptHex.slice(4)), leafHash: undefined }
+        : guardianExecutionKey(input.witness, prevout.scriptHex);
     if (
-      !ecc.verify(
-        nativeSignatureHash(tx, prevouts, index, hashType),
-        key,
-        compactSignature(normalized),
-        true,
+      !ecc.verifySchnorr(
+        taprootSignatureHash(tx, prevouts, index, hashType, path.leafHash),
+        path.key,
+        signature.slice(0, 64),
       )
     )
       throw new Error("invalid transaction signature");
-  });
+    return;
+  }
+  const nested = /^a914[0-9a-f]{40}87$/.test(prevout.scriptHex);
+  const program = nested ? input.scriptHex.slice(2) : prevout.scriptHex;
+  if (
+    !/^0014[0-9a-f]{40}$/.test(program) ||
+    input.witness.length !== 2 ||
+    (nested
+      ? input.scriptHex !== `16${program}` ||
+        hex(hash160(unhex(program))) !== prevout.scriptHex.slice(4, -2)
+      : input.scriptHex !== "")
+  )
+    throw new Error("unsupported or mismatched SegWit input script");
+  const key = input.witness[1]!,
+    signature = input.witness[0]!,
+    hashType = signature[signature.length - 1]!;
+  if (key.length !== 33 || hex(hash160(key)) !== program.slice(4))
+    throw new Error("witness owner mismatch");
+  if (
+    hashType !== 1 &&
+    !(hashType === 131 && index === 0 && singleAnyoneCanPayOutpoint === outpoint(input))
+  )
+    throw new Error("unauthorized signature flag");
+  const normalized = signature.slice();
+  normalized[normalized.length - 1] = 1;
+  if (
+    !ecc.verify(
+      nativeSignatureHash(tx, prevouts, index, hashType),
+      key,
+      compactSignature(normalized),
+      true,
+    )
+  )
+    throw new Error("invalid transaction signature");
 }
 
 import { hash160 } from "./bytes.js";

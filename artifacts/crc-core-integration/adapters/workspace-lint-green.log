@@ -1,0 +1,257 @@
+
+> crc-launch@0.1.0 lint /home/andefy/dev/covedao
+> turbo run lint
+
+• turbo 2.11.2
+
+   • Packages in scope: @crclaunch/bitcoin, @crclaunch/config, @crclaunch/cove-app, @crclaunch/cove-covenant, @crclaunch/cove-economics, @crclaunch/cove-guardian, @crclaunch/cove-indexer, @crclaunch/cove-mainnet, @crclaunch/cove-market, @crclaunch/cove-recovery, @crclaunch/cove-simplicity, @crclaunch/cove-vault, @crclaunch/cove-wire, @crclaunch/crc20-adapters, @crclaunch/crc20-base, @crclaunch/crc20-curve, @crclaunch/crc20-ledger, @crclaunch/crc20-protocol, @crclaunch/crc20-transactions, @crclaunch/curve, @crclaunch/db, @crclaunch/docs, @crclaunch/guardian, @crclaunch/protocol, @crclaunch/schemas, @crclaunch/wallets, @crclaunch/web, @crclaunch/worker
+   • Running lint in 28 packages
+   • Remote caching disabled
+
+@crclaunch/crc20-protocol:lint: cache miss, executing 3639b78798b73c4d
+@crclaunch/curve:lint: cache hit, replaying logs 8cd359578f5a1094
+@crclaunch/curve:lint: 
+@crclaunch/curve:lint: > @crclaunch/curve@0.1.0 lint /home/andefy/dev/covedao/packages/curve
+@crclaunch/curve:lint: > eslint src --max-warnings=0
+@crclaunch/curve:lint: 
+@crclaunch/cove-wire:build: cache hit, replaying logs 42cdb2d3c9440d8d
+@crclaunch/cove-wire:build: 
+@crclaunch/cove-wire:build: > @crclaunch/cove-wire@0.1.0 build /home/andefy/dev/covedao/packages/cove-wire
+@crclaunch/cove-wire:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-wire:build: 
+@crclaunch/config:build: cache hit, replaying logs f633139ba1b9a0d8
+@crclaunch/config:build: 
+@crclaunch/config:build: > @crclaunch/config@0.1.0 build /home/andefy/dev/covedao/packages/config
+@crclaunch/config:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/config:build: 
+@crclaunch/crc20-base:lint: cache hit, replaying logs d49b40879d9143ba
+@crclaunch/crc20-base:lint: 
+@crclaunch/crc20-base:lint: > @crclaunch/crc20-base@0.1.0 lint /home/andefy/dev/covedao/packages/crc20-base
+@crclaunch/crc20-base:lint: > eslint src test --max-warnings=0
+@crclaunch/crc20-base:lint: 
+@crclaunch/crc20-base:build: cache hit, replaying logs df549cf963f1e4fe
+@crclaunch/crc20-base:build: 
+@crclaunch/crc20-base:build: > @crclaunch/crc20-base@0.1.0 build /home/andefy/dev/covedao/packages/crc20-base
+@crclaunch/crc20-base:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/crc20-base:build: 
+@crclaunch/cove-wire:lint: cache hit, replaying logs fd14b7533014a25b
+@crclaunch/cove-wire:lint: 
+@crclaunch/cove-wire:lint: > @crclaunch/cove-wire@0.1.0 lint /home/andefy/dev/covedao/packages/cove-wire
+@crclaunch/cove-wire:lint: > eslint src --max-warnings=0
+@crclaunch/cove-wire:lint: 
+@crclaunch/config:lint: cache hit, replaying logs 18585fbddecad34e
+@crclaunch/config:lint: 
+@crclaunch/config:lint: > @crclaunch/config@0.1.0 lint /home/andefy/dev/covedao/packages/config
+@crclaunch/config:lint: > eslint src --max-warnings=0
+@crclaunch/config:lint: 
+@crclaunch/schemas:lint: cache hit, replaying logs 4ce028d9550b02d9
+@crclaunch/schemas:lint: 
+@crclaunch/schemas:lint: > @crclaunch/schemas@0.1.0 lint /home/andefy/dev/covedao/packages/schemas
+@crclaunch/schemas:lint: > eslint src --max-warnings=0
+@crclaunch/schemas:lint: 
+@crclaunch/crc20-protocol:build: cache miss, executing eef8799d87c47f8e
+@crclaunch/curve:build: cache hit, replaying logs 10c6b044facbd3fe
+@crclaunch/curve:build: 
+@crclaunch/curve:build: > @crclaunch/curve@0.1.0 build /home/andefy/dev/covedao/packages/curve
+@crclaunch/curve:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/curve:build: 
+@crclaunch/db:build: cache hit, replaying logs 22711a8008f3cd23
+@crclaunch/db:build: 
+@crclaunch/db:build: > @crclaunch/db@0.1.0 build /home/andefy/dev/covedao/packages/db
+@crclaunch/db:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/db:build: 
+@crclaunch/cove-economics:build: cache hit, replaying logs 7bfd5343aaf71d67
+@crclaunch/cove-economics:build: 
+@crclaunch/cove-economics:build: > @crclaunch/cove-economics@0.1.0 build /home/andefy/dev/covedao/packages/cove-economics
+@crclaunch/cove-economics:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-economics:build: 
+@crclaunch/bitcoin:build: cache hit, replaying logs a646c0a13d18ad52
+@crclaunch/bitcoin:build: 
+@crclaunch/bitcoin:build: > @crclaunch/bitcoin@0.1.0 build /home/andefy/dev/covedao/packages/bitcoin
+@crclaunch/bitcoin:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/bitcoin:build: 
+@crclaunch/cove-covenant:build: cache hit, replaying logs 70014974b9280e10
+@crclaunch/cove-covenant:build: 
+@crclaunch/cove-covenant:build: > @crclaunch/cove-covenant@0.1.0 build /home/andefy/dev/covedao/packages/cove-covenant
+@crclaunch/cove-covenant:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-covenant:build: 
+@crclaunch/protocol:build: cache hit, replaying logs f75cebde14bf068b
+@crclaunch/db:lint: cache hit, replaying logs 4ad6ed1437b04239
+@crclaunch/protocol:build: 
+@crclaunch/protocol:build: > @crclaunch/protocol@0.1.0 build /home/andefy/dev/covedao/packages/protocol
+@crclaunch/protocol:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/protocol:build: 
+@crclaunch/bitcoin:lint: cache hit, replaying logs 8a790502265b0402
+@crclaunch/cove-economics:lint: cache hit, replaying logs c4aeac90f6f60b79
+@crclaunch/bitcoin:lint: 
+@crclaunch/bitcoin:lint: > @crclaunch/bitcoin@0.1.0 lint /home/andefy/dev/covedao/packages/bitcoin
+@crclaunch/bitcoin:lint: > eslint src --max-warnings=0
+@crclaunch/bitcoin:lint: 
+@crclaunch/db:lint: 
+@crclaunch/db:lint: > @crclaunch/db@0.1.0 lint /home/andefy/dev/covedao/packages/db
+@crclaunch/db:lint: > eslint src --max-warnings=0
+@crclaunch/db:lint: 
+@crclaunch/crc20-curve:lint: cache hit, replaying logs 01fda37971ceb16e
+@crclaunch/protocol:lint: cache hit, replaying logs 9017957767c5a562
+@crclaunch/cove-economics:lint: 
+@crclaunch/cove-economics:lint: > @crclaunch/cove-economics@0.1.0 lint /home/andefy/dev/covedao/packages/cove-economics
+@crclaunch/cove-economics:lint: > eslint src --max-warnings=0
+@crclaunch/cove-economics:lint: 
+@crclaunch/protocol:lint: 
+@crclaunch/protocol:lint: > @crclaunch/protocol@0.1.0 lint /home/andefy/dev/covedao/packages/protocol
+@crclaunch/protocol:lint: > eslint src --max-warnings=0
+@crclaunch/protocol:lint: 
+@crclaunch/crc20-curve:lint: 
+@crclaunch/crc20-curve:lint: > @crclaunch/crc20-curve@0.1.0 lint /home/andefy/dev/covedao/packages/crc20-curve
+@crclaunch/crc20-curve:lint: > eslint src test --max-warnings=0
+@crclaunch/crc20-curve:lint: 
+@crclaunch/crc20-curve:build: cache hit, replaying logs d965fe046154a2c6
+@crclaunch/crc20-curve:build: 
+@crclaunch/crc20-curve:build: > @crclaunch/crc20-curve@0.1.0 build /home/andefy/dev/covedao/packages/crc20-curve
+@crclaunch/crc20-curve:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/crc20-curve:build: 
+@crclaunch/cove-simplicity:build: cache hit, replaying logs 9f38990c49f1b59b
+@crclaunch/cove-simplicity:build: 
+@crclaunch/cove-simplicity:build: > @crclaunch/cove-simplicity@0.1.0 build /home/andefy/dev/covedao/packages/cove-simplicity
+@crclaunch/cove-simplicity:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-simplicity:build: 
+@crclaunch/cove-vault:build: cache hit, replaying logs 803b70090959e20d
+@crclaunch/cove-vault:build: 
+@crclaunch/cove-vault:build: > @crclaunch/cove-vault@0.1.0 build /home/andefy/dev/covedao/packages/cove-vault
+@crclaunch/cove-vault:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-vault:build: 
+@crclaunch/cove-covenant:lint: cache hit, replaying logs 97550113b34fa856
+@crclaunch/cove-covenant:lint: 
+@crclaunch/cove-covenant:lint: > @crclaunch/cove-covenant@0.1.0 lint /home/andefy/dev/covedao/packages/cove-covenant
+@crclaunch/cove-covenant:lint: > eslint src --max-warnings=0
+@crclaunch/cove-covenant:lint: 
+@crclaunch/wallets:build: cache hit, replaying logs 7de127aa5e5aa5e8
+@crclaunch/wallets:build: 
+@crclaunch/wallets:build: > @crclaunch/wallets@0.1.0 build /home/andefy/dev/covedao/packages/wallets
+@crclaunch/wallets:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/wallets:build: 
+@crclaunch/cove-mainnet:build: cache hit, replaying logs 63ae78786e45bdc3
+@crclaunch/cove-mainnet:build: 
+@crclaunch/cove-mainnet:build: > @crclaunch/cove-mainnet@0.1.0 build /home/andefy/dev/covedao/packages/cove-mainnet
+@crclaunch/cove-mainnet:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-mainnet:build: 
+@crclaunch/wallets:lint: cache hit, replaying logs d36916e018616490
+@crclaunch/wallets:lint: 
+@crclaunch/wallets:lint: > @crclaunch/wallets@0.1.0 lint /home/andefy/dev/covedao/packages/wallets
+@crclaunch/wallets:lint: > eslint src --max-warnings=0
+@crclaunch/wallets:lint: 
+@crclaunch/crc20-transactions:build: cache hit, replaying logs b43681d8e86a6056
+@crclaunch/cove-vault:lint: cache hit, replaying logs 68be7d9753228d81
+@crclaunch/crc20-transactions:build: 
+@crclaunch/crc20-transactions:build: > @crclaunch/crc20-transactions@0.1.0 build /home/andefy/dev/covedao/packages/crc20-transactions
+@crclaunch/crc20-transactions:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/crc20-transactions:build: 
+@crclaunch/cove-guardian:build: cache hit, replaying logs 4d6d5a52e81521d0
+@crclaunch/cove-guardian:build: 
+@crclaunch/cove-guardian:build: > @crclaunch/cove-guardian@0.1.0 build /home/andefy/dev/covedao/packages/cove-guardian
+@crclaunch/cove-simplicity:lint: cache hit, replaying logs 6711f8f8932ade37
+@crclaunch/cove-guardian:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-guardian:build: 
+@crclaunch/cove-mainnet:lint: cache hit, replaying logs 756726bdb8c931ef
+@crclaunch/cove-simplicity:lint: 
+@crclaunch/cove-simplicity:lint: > @crclaunch/cove-simplicity@0.1.0 lint /home/andefy/dev/covedao/packages/cove-simplicity
+@crclaunch/cove-simplicity:lint: > eslint src --max-warnings=0
+@crclaunch/cove-simplicity:lint: 
+@crclaunch/crc20-ledger:build: cache hit, replaying logs c0bf7b338bcc8df8
+@crclaunch/crc20-ledger:build: 
+@crclaunch/crc20-ledger:build: > @crclaunch/crc20-ledger@0.1.0 build /home/andefy/dev/covedao/packages/crc20-ledger
+@crclaunch/crc20-ledger:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/crc20-ledger:build: 
+@crclaunch/crc20-transactions:lint: cache hit, replaying logs 6c0acd7865ff2254
+@crclaunch/cove-vault:lint: 
+@crclaunch/cove-vault:lint: > @crclaunch/cove-vault@0.1.0 lint /home/andefy/dev/covedao/packages/cove-vault
+@crclaunch/cove-vault:lint: > eslint src --max-warnings=0
+@crclaunch/cove-vault:lint: 
+@crclaunch/cove-mainnet:lint: 
+@crclaunch/cove-mainnet:lint: > @crclaunch/cove-mainnet@0.1.0 lint /home/andefy/dev/covedao/packages/cove-mainnet
+@crclaunch/cove-mainnet:lint: > eslint src --max-warnings=0
+@crclaunch/cove-mainnet:lint: 
+@crclaunch/cove-guardian:lint: cache hit, replaying logs 4b3c3c3d80c3988a
+@crclaunch/cove-recovery:lint: cache hit, replaying logs f928b2958cd6f238
+@crclaunch/crc20-transactions:lint: 
+@crclaunch/crc20-transactions:lint: > @crclaunch/crc20-transactions@0.1.0 lint /home/andefy/dev/covedao/packages/crc20-transactions
+@crclaunch/crc20-transactions:lint: > eslint src test --max-warnings=0
+@crclaunch/crc20-transactions:lint: 
+@crclaunch/cove-recovery:lint: 
+@crclaunch/cove-recovery:lint: > @crclaunch/cove-recovery@0.1.0 lint /home/andefy/dev/covedao/packages/cove-recovery
+@crclaunch/cove-recovery:lint: > eslint src --max-warnings=0
+@crclaunch/cove-recovery:lint: 
+@crclaunch/cove-indexer:build: cache hit, replaying logs 9e549ba291775be3
+@crclaunch/cove-indexer:build: 
+@crclaunch/cove-indexer:build: > @crclaunch/cove-indexer@0.1.0 build /home/andefy/dev/covedao/packages/cove-indexer
+@crclaunch/cove-indexer:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-indexer:build: 
+@crclaunch/crc20-ledger:lint: cache hit, replaying logs bfe377c0c91795fe
+@crclaunch/cove-guardian:lint: 
+@crclaunch/cove-guardian:lint: > @crclaunch/cove-guardian@0.1.0 lint /home/andefy/dev/covedao/packages/cove-guardian
+@crclaunch/cove-guardian:lint: > eslint src --max-warnings=0
+@crclaunch/cove-guardian:lint: 
+@crclaunch/cove-market:build: cache miss, executing 7665e4a4e23929b0
+@crclaunch/cove-market:lint: cache miss, executing d5a4601153cf5f9c
+@crclaunch/crc20-ledger:lint: 
+@crclaunch/crc20-ledger:lint: > @crclaunch/crc20-ledger@0.1.0 lint /home/andefy/dev/covedao/packages/crc20-ledger
+@crclaunch/crc20-ledger:lint: > eslint src test --max-warnings=0
+@crclaunch/crc20-ledger:lint: 
+@crclaunch/cove-indexer:lint: cache hit, replaying logs d1ab70673ba7ae59
+@crclaunch/cove-indexer:lint: 
+@crclaunch/cove-indexer:lint: > @crclaunch/cove-indexer@0.1.0 lint /home/andefy/dev/covedao/packages/cove-indexer
+@crclaunch/cove-indexer:lint: > eslint src --max-warnings=0
+@crclaunch/cove-indexer:lint: 
+@crclaunch/cove-market:lint: 
+@crclaunch/cove-market:lint: > @crclaunch/cove-market@0.1.0 lint /home/andefy/dev/covedao/packages/cove-market
+@crclaunch/cove-market:lint: > eslint src --max-warnings=0
+@crclaunch/cove-market:lint: 
+@crclaunch/crc20-protocol:lint: 
+@crclaunch/crc20-protocol:lint: > @crclaunch/crc20-protocol@0.1.0 lint /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+@crclaunch/crc20-protocol:lint: > eslint *.ts *.mjs test-support/*.ts --max-warnings=0 --no-warn-ignored
+@crclaunch/crc20-protocol:lint: 
+@crclaunch/cove-market:build: 
+@crclaunch/cove-market:build: > @crclaunch/cove-market@0.1.0 build /home/andefy/dev/covedao/packages/cove-market
+@crclaunch/cove-market:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-market:build: 
+@crclaunch/crc20-protocol:build: 
+@crclaunch/crc20-protocol:build: > @crclaunch/crc20-protocol@0.1.0 build /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+@crclaunch/crc20-protocol:build: > tsc -p tsconfig.build.json && node build-browser.mjs
+@crclaunch/crc20-protocol:build: 
+@crclaunch/crc20-adapters:lint: cache miss, executing e6f6399dfa159c28
+@crclaunch/cove-app:lint: cache miss, executing 1f315a99357e039e
+@crclaunch/cove-app:build: cache miss, executing 2d19c20f3fed22f9
+@crclaunch/crc20-adapters:lint: 
+@crclaunch/crc20-adapters:lint: > @crclaunch/crc20-adapters@0.1.0 lint /home/andefy/dev/covedao/packages/crc20-adapters
+@crclaunch/crc20-adapters:lint: > eslint src --max-warnings=0
+@crclaunch/crc20-adapters:lint: 
+@crclaunch/cove-app:lint: 
+@crclaunch/cove-app:lint: > @crclaunch/cove-app@0.1.0 lint /home/andefy/dev/covedao/packages/cove-app
+@crclaunch/cove-app:lint: > eslint src --max-warnings=0
+@crclaunch/cove-app:lint: 
+@crclaunch/cove-app:build: 
+@crclaunch/cove-app:build: > @crclaunch/cove-app@0.1.0 build /home/andefy/dev/covedao/packages/cove-app
+@crclaunch/cove-app:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-app:build: 
+@crclaunch/worker:lint: cache miss, executing 7f03facdcee4b502
+@crclaunch/web:lint: cache miss, executing 531c206b30a84918
+@crclaunch/guardian:lint: cache miss, executing c9acd8bdec0373a4
+@crclaunch/worker:lint: 
+@crclaunch/worker:lint: > @crclaunch/worker@0.1.0 lint /home/andefy/dev/covedao/apps/worker
+@crclaunch/worker:lint: > eslint src --max-warnings=0
+@crclaunch/worker:lint: 
+@crclaunch/guardian:lint: 
+@crclaunch/guardian:lint: > @crclaunch/guardian@0.1.0 lint /home/andefy/dev/covedao/apps/guardian
+@crclaunch/guardian:lint: > eslint src --max-warnings=0
+@crclaunch/guardian:lint: 
+@crclaunch/web:lint: 
+@crclaunch/web:lint: > @crclaunch/web@0.1.0 lint /home/andefy/dev/covedao/apps/web
+@crclaunch/web:lint: > eslint src --max-warnings=0
+@crclaunch/web:lint: 
+
+ Tasks:    48 successful, 48 total
+Cached:    38 cached, 48 total
+  Time:    5.369s 
+
+ WARNING  no output files found for task @crclaunch/cove-app#build. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @crclaunch/cove-market#build. Please check your `outputs` key in `turbo.json`

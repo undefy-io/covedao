@@ -1,0 +1,11 @@
+{
+  "coreTests": 121,
+  "sqliteComparisons": 1950,
+  "adapterTests": 12,
+  "realBrowser": true,
+  "actualXverseCoreMint": "unfunded synthetic inputs, known test Guardian fixture, no broadcast",
+  "astra": "No blocking findings; rebuilt core mint and independently checked actual signature/witness/raw transaction/1000sat fee. Typed unsupported network fix verified.",
+  "productionIntegrations": "not implemented yet",
+  "mobile": "unverified",
+  "liveChain": "unverified"
+}

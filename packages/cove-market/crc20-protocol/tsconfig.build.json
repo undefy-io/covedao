@@ -17,6 +17,7 @@
     "replay.ts",
     "target.ts",
     "taproot.ts",
-    "bip322.ts"
+    "bip322.ts",
+    "dto.ts"
   ]
 }
