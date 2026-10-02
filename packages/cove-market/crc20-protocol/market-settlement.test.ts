@@ -1,3 +1,4 @@
+import { authorizeOffer } from "./test-support/signing.js";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { Transaction, script } from "bitcoinjs-lib";
 import * as p from "./index.ts";
@@ -77,7 +78,7 @@ async function register(
   input = token(ledger),
   expiryHeight = ledger.tip!.height + 1,
 ) {
-  const offer = await p.authorizeOffer(
+  const offer = await authorizeOffer(
     {
       network: "regtest",
       deployTxid: input.deployTxid,

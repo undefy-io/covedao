@@ -1,3 +1,4 @@
+import { authorizeOffer } from "./test-support/signing.js";
 import { expect, test } from "vitest";
 import * as p from "./index.ts";
 import type { Input } from "./types.js";
@@ -32,7 +33,7 @@ const state = {
 test.each(["deploy", "mint", "inventoryBuy", "sell", "transfer", "listing", "purchase", "cancel"])(
   "%s rejects annotated token funding while preserving ordinary funding",
   async (kind) => {
-    const offer = await p.authorizeOffer(
+    const offer = await authorizeOffer(
       {
         network: "regtest",
         deployTxid,

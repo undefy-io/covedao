@@ -1,3 +1,4 @@
+import { authorizeOffer } from "./test-support/signing.js";
 import { expect, test } from "vitest";
 import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
@@ -171,7 +172,7 @@ test("Taproot listings and private test helper use the same wallet-signable offe
   const t = terms(taproot);
   const { publicKeyHex, ...withoutKey } = t;
   expect(publicKeyHex).toBe(aliceKey.publicKey.toString("hex"));
-  const offer = await core.authorizeOffer(withoutKey, aliceKey.privateKey!);
+  const offer = await authorizeOffer(withoutKey, aliceKey.privateKey!);
   expect(offer.signatureHex).toBe(bip322(taproot, core.offerMessage(t)));
   expect(offer.sellerWitnessHex[0]!.slice(-2)).toBe("83");
   expect(

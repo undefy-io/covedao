@@ -1,0 +1,46 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+✘ [ERROR] Could not resolve "@crclaunch/crc20-protocol"
+
+    <stdin>:1:21:
+      1 │ import * as CRC from '@crclaunch/crc20-protocol';
+        ╵                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  The module "./dist/browser.js" was not found on the file system:
+
+    package.json:11:17:
+      11 │       "browser": "./dist/browser.js",
+         ╵                  ~~~~~~~~~~~~~~~~~~~
+
+  You can mark the path "@crclaunch/crc20-protocol" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+
+ ❯ browser.test.ts (1 test | 1 failed) 16ms
+   × production package import executes WASM and verifies external offers in Chromium 15ms
+     → Build failed with 1 error:
+<stdin>:1:21: ERROR: Could not resolve "@crclaunch/crc20-protocol"
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  browser.test.ts > production package import executes WASM and verifies external offers in Chromium
+Error: Build failed with 1 error:
+<stdin>:1:21: ERROR: Could not resolve "@crclaunch/crc20-protocol"
+ ❯ failureErrorWithLog ../../../node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:1472:15
+ ❯ ../../../node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:945:25
+ ❯ ../../../node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:897:52
+ ❯ buildResponseToResult ../../../node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:943:7
+ ❯ ../../../node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:970:16
+ ❯ responseCallbacks.<computed> ../../../node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:622:9
+ ❯ handleIncomingPacket ../../../node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:677:12
+ ❯ Socket.readFromStdout ../../../node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:600:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  17:24:13
+   Duration  414ms (transform 56ms, setup 0ms, collect 266ms, tests 16ms, environment 0ms, prepare 32ms)
+
+undefined
+/home/andefy/dev/covedao/packages/cove-market/crc20-protocol:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run browser.test.ts

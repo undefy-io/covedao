@@ -1,0 +1,29 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ package.test.ts (5 tests | 1 failed) 42ms
+   × parent package test collection excludes the independent nested package 2ms
+     → ENOENT: no such file or directory, open '/home/andefy/dev/covedao/packages/cove-market/vitest.config.ts'
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  package.test.ts > parent package test collection excludes the independent nested package
+Error: ENOENT: no such file or directory, open '/home/andefy/dev/covedao/packages/cove-market/vitest.config.ts'
+ ❯ package.test.ts:59:18
+     57| 
+     58| test("parent package test collection excludes the independent nested p…
+     59|   const config = readFileSync(new URL("../vitest.config.ts", import.me…
+       |                  ^
+     60|   expect(config).toContain('include: ["src/**/*.test.ts"]');
+     61| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  17:27:35
+   Duration  299ms (transform 128ms, setup 0ms, collect 131ms, tests 42ms, environment 0ms, prepare 38ms)
+
+undefined
+/home/andefy/dev/covedao/packages/cove-market/crc20-protocol:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run package.test.ts

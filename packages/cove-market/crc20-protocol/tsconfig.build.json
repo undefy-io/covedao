@@ -1,0 +1,22 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "outDir": "dist",
+    "rootDir": "."
+  },
+  "include": [
+    "index.ts",
+    "types.ts",
+    "bytes.ts",
+    "wire.ts",
+    "economics.ts",
+    "builders.ts",
+    "offers.ts",
+    "replay.ts",
+    "target.ts",
+    "taproot.ts",
+    "bip322.ts"
+  ]
+}

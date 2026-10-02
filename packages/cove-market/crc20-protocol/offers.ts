@@ -1,13 +1,9 @@
 import * as ecc from "tiny-secp256k1";
 import { hash160, hex, unhex } from "./bytes.js";
-import { outpoint, sats, signNativeInput, verifySignatures } from "./wire.js";
-import {
-  bip322SigningTransaction,
-  encodeMessageWitness,
-  verifyMessageAuthorization,
-} from "./bip322.js";
-import { taggedHash, taprootSignatureHash } from "./taproot.js";
-import type { Input, Ledger, Offer } from "./types.js";
+import { outpoint, sats, verifySignatures } from "./wire.js";
+import { verifyMessageAuthorization } from "./bip322.js";
+import { taggedHash } from "./taproot.js";
+import type { Ledger, Offer } from "./types.js";
 export const offerId = (offer: Offer): string =>
   `${offer.network}:${offer.deployTxid}:${outpoint(offer.listedInput)}`;
 export type OfferTerms = Omit<Offer, "signatureHex" | "sellerWitnessHex" | "status">;
@@ -51,24 +47,6 @@ function ownerScript(key: Uint8Array, script: string): string {
     if (output) return `5120${hex(output.xOnlyPubkey)}`;
   }
   throw new Error("unsupported offer owner script");
-}
-function signOwner(
-  tx: ReturnType<typeof authorizationTransaction>,
-  prevouts: Input[],
-  privateKey: Uint8Array,
-  hashType: number,
-): string[] {
-  if (prevouts[0]!.scriptHex.startsWith("0014"))
-    return signNativeInput(tx, prevouts, 0, privateKey, hashType);
-  const key = ecc.pointFromScalar(privateKey, true)!;
-  const internal = key.slice(1);
-  const tweaked = ecc.privateAdd(
-    key[0] === 3 ? ecc.privateNegate(privateKey) : privateKey,
-    taggedHash("TapTweak", internal),
-  );
-  if (!tweaked) throw new Error("invalid Taproot signing key");
-  const signature = hex(ecc.signSchnorr(taprootSignatureHash(tx, prevouts, 0, hashType), tweaked));
-  return [signature + (hashType === 0 ? "" : hashType.toString(16).padStart(2, "0"))];
 }
 export function validateOfferTerms(o: OfferTerms & { status?: Offer["status"] }): void {
   const allowed = [
@@ -114,32 +92,10 @@ export function validateOfferTerms(o: OfferTerms & { status?: Offer["status"] })
 export function verifyOffer(o: Offer): void {
   validateOfferTerms(o);
   verifyMessageAuthorization(o.sellerScriptHex, offerMessage(o), o.signatureHex);
-  const tx = authorizationTransaction(o);
+  const tx = offerSigningTransaction(o, o.sellerWitnessHex);
   if (tx.inputs[0]!.witness[0]?.at(-1) !== 131)
     throw new Error("offer requires SINGLE|ANYONECANPAY seller signature");
   verifySignatures(tx, [o.listedInput], outpoint(o.listedInput));
-}
-export async function authorizeOffer(
-  terms: Omit<Offer, "publicKeyHex" | "signatureHex" | "sellerWitnessHex" | "status">,
-  privateKey: Uint8Array,
-): Promise<Offer> {
-  const key = ecc.pointFromScalar(privateKey, true);
-  if (!key) throw new Error("invalid signing key");
-  const o: Offer = { ...terms, publicKeyHex: hex(key), signatureHex: "", sellerWitnessHex: [] };
-  if (ownerScript(key, o.sellerScriptHex) !== o.sellerScriptHex)
-    throw new Error("offer owner mismatch");
-  const virtual = bip322SigningTransaction(o.sellerScriptHex, offerMessage(o));
-  o.signatureHex = encodeMessageWitness(
-    signOwner(
-      virtual.tx,
-      virtual.prevouts,
-      privateKey,
-      o.sellerScriptHex.startsWith("0014") ? 1 : 0,
-    ),
-  );
-  o.sellerWitnessHex = signOwner(authorizationTransaction(o), [o.listedInput], privateKey, 131);
-  verifyOffer(o);
-  return o;
 }
 export async function registerOffer(ledger: Ledger, offer: Offer): Promise<Ledger> {
   verifyOffer(offer);
@@ -178,7 +134,8 @@ export function markOfferUnavailable(ledger: Ledger, id: string): Ledger {
   return { ...ledger, offers: { ...ledger.offers, [id]: { ...offer, status: "cancelPending" } } };
 }
 
-function authorizationTransaction(o: Offer) {
+export function offerSigningTransaction(o: OfferTerms, sellerWitnessHex: string[] = []) {
+  validateOfferTerms(o);
   return {
     txid: "",
     version: 2,
@@ -189,7 +146,7 @@ function authorizationTransaction(o: Offer) {
         vout: o.listedInput.vout,
         scriptHex: "",
         sequence: 0xfffffffe,
-        witness: o.sellerWitnessHex.map(unhex),
+        witness: sellerWitnessHex.map(unhex),
       },
     ],
     outputs: [{ sats: o.priceSats + sats(o.listedInput.sats), scriptHex: o.sellerScriptHex }],

@@ -1,3 +1,4 @@
+import { authorizeOffer } from "./test-support/signing.js";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { Transaction } from "bitcoinjs-lib";
 import { writeFileSync } from "node:fs";
@@ -338,7 +339,7 @@ test("two-wallet raw-chain lifecycle, invalid transitions, signatures, competito
       sats: 1000n,
       scriptHex: aliceScript,
     };
-    const offer = await p.authorizeOffer(
+    const offer = await authorizeOffer(
       {
         network: "regtest",
         deployTxid,

@@ -1,3 +1,4 @@
+import { authorizeOffer } from "./test-support/signing.js";
 import { test, expect } from "vitest";
 import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
@@ -50,7 +51,7 @@ test("registered buyer authorization and exact listing amount cannot be tampered
     priceSats: 20001n,
     expiryHeight: 120,
   };
-  const offer = await p.authorizeOffer(terms, key);
+  const offer = await authorizeOffer(terms, key);
   p.verifyOffer(offer);
   for (const change of [
     { expiryHeight: 121 },

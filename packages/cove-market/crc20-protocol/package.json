@@ -1,0 +1,36 @@
+{
+  "name": "@crclaunch/crc20-protocol",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "browser": "./dist/browser.js",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node build-browser.mjs",
+    "test": "pnpm build && vitest run",
+    "typecheck": "tsc --noEmit --incremental false --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution bundler --allowImportingTsExtensions --types node *.ts test-support/*.ts",
+    "lint": "eslint *.ts *.mjs test-support/*.ts --max-warnings=0 --no-warn-ignored"
+  },
+  "dependencies": {
+    "tiny-secp256k1": "^2.2.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.10.0",
+    "bitcoinjs-lib": "^6.1.7",
+    "ecpair": "^2.1.0",
+    "esbuild": "^0.21.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
