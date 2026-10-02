@@ -1,0 +1,2423 @@
+{
+  "scope": "Every confirmed protocol transaction, including the orphan cancellation and replacement fill",
+  "sharedWirePassed": true,
+  "exactGardenLedgerCompatibilityProven": false,
+  "transactions": [
+    {
+      "action": "deploy",
+      "txid": "51ed9d93fb5b34fb4df455af8383b8505112c228a3c233803ee48f97fd0ff31d",
+      "archiveReference": {
+        "txid": "546cc042d0f396a0d8ad67b6987d9d5c09619e6962738347ca1611a1d1841b67",
+        "operation": "deploy",
+        "markerVout": 0,
+        "inputCount": 1,
+        "outputCount": 2
+      },
+      "sharedWirePassed": true,
+      "exactGardenTransactionMatch": false,
+      "inputs": [
+        {
+          "vin": 0,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 4294967295,
+          "archiveWitnessItems": 1,
+          "outpoint": "e7085bdc2f0c16d8997500e2aec2e699f8d7cdf96b8113df13ecbcfddb560d56:0",
+          "sats": "3999999859",
+          "scriptHex": "0014f0772e3fdb303df0a8f609dafd5284998b006a45",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "ff66562e35fe4e224e8e37bcf4f63192f1d925cf94f0e08ab7e1d1f97b052570",
+            "vout": 0,
+            "sats": 210000,
+            "scriptHex": "5120bf39cfdfc985043dd4f95dd2403167d3d26874dc06ab15e7e09bf4415791c79f"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        }
+      ],
+      "outputs": [
+        {
+          "vout": 0,
+          "role": "marker",
+          "sats": "0",
+          "scriptHex": "6a4c7d7b2270223a226372632d3230222c226f70223a226465706c6f79222c227469636b223a2254455354222c2274797065223a22626f6e64696e67222c226d6178223a223231303030303030222c226c696d223a223231303030303030222c226c656166223a2230222c226f726469223a2230222c22627463223a2231227d",
+          "scriptFamily": "OP_RETURN",
+          "archiveReference": {
+            "vout": 0,
+            "value_sats": 0,
+            "script_hex": "6a4c897b2270223a226372632d3230222c226f70223a226465706c6f79222c227469636b223a224c454146222c2274797065223a22626f6e64696e67222c226d6178223a2231303030303030303030222c226c696d223a2232313030303030303030222c226c656166223a2231222c226f726469223a22323836222c22627463223a2233333333333333227d",
+            "op_return_text": "{\"p\":\"crc-20\",\"op\":\"deploy\",\"tick\":\"LEAF\",\"type\":\"bonding\",\"max\":\"1000000000\",\"lim\":\"2100000000\",\"leaf\":\"1\",\"ordi\":\"286\",\"btc\":\"3333333\"}"
+          },
+          "valueEqualToArchive": true,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 1,
+          "role": "vault",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 1,
+            "value_sats": 208760,
+            "script_hex": "0014fd77d6ea663562bf179e775ae05d7c7dcd4ac208",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 2,
+          "role": "creatorRecord",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 3,
+          "role": "protocolFee",
+          "sats": "7000",
+          "scriptHex": "00146363636363636363636363636363636363636363",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 4,
+          "role": "btcChange",
+          "sats": "3999989859",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        }
+      ],
+      "minerFeeSats": "1000",
+      "platformFeeSats": "7000",
+      "creatorFeeSats": "0",
+      "differences": [
+        "Cove output count/roles differ from archived example",
+        "Cove asset ticker differs",
+        "marker values differ for this asset/amount",
+        "registered native SegWit scripts differ from archived mainnet Taproot scripts",
+        "Cove fees, backing and extra change outputs are checked against Cove plans, not inferred from Garden"
+      ],
+      "unprovenClaims": [
+        "Garden fee policy and issuance/ownership rules",
+        "Garden validator acceptance of Cove assets"
+      ]
+    },
+    {
+      "action": "mint",
+      "txid": "6eacb1a467e78cd849275ab11180119eb2f901bef74e178e0fbb76369b761c15",
+      "archiveReference": {
+        "txid": "17c4c6fa3a877aa42c142f4836c3cb6b10d4e588ff2150df842e2e3e3e89bde4",
+        "operation": "mint",
+        "markerVout": 0,
+        "inputCount": 1,
+        "outputCount": 4
+      },
+      "sharedWirePassed": true,
+      "exactGardenTransactionMatch": false,
+      "inputs": [
+        {
+          "vin": 0,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 4294967293,
+          "archiveWitnessItems": 1,
+          "outpoint": "51ed9d93fb5b34fb4df455af8383b8505112c228a3c233803ee48f97fd0ff31d:1",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "2af206ef53e86c79fd9764ab374489ef94595a1672a3bd53eb9d4bc4d46e4185",
+            "vout": 5,
+            "sats": 84513,
+            "scriptHex": "5120c061627ae56b59a978e965ed3a17ec53590f4c036cadd530afed84ff1d37365a"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        },
+        {
+          "vin": 1,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": null,
+          "archiveWitnessItems": null,
+          "outpoint": "51ed9d93fb5b34fb4df455af8383b8505112c228a3c233803ee48f97fd0ff31d:4",
+          "sats": "3999989859",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        }
+      ],
+      "outputs": [
+        {
+          "vout": 0,
+          "role": "marker",
+          "sats": "0",
+          "scriptHex": "6a287b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a2254455354227d",
+          "scriptFamily": "OP_RETURN",
+          "archiveReference": {
+            "vout": 0,
+            "value_sats": 0,
+            "script_hex": "6a287b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a224c454146227d",
+            "op_return_text": "{\"p\":\"crc-20\",\"op\":\"mint\",\"tick\":\"LEAF\"}"
+          },
+          "valueEqualToArchive": true,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 1,
+          "role": "recipient",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 1,
+            "value_sats": 330,
+            "script_hex": "5120d468380b27135979c8ec9954ec772b98cc2fbbd33aad40f595aba35866432756",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 2,
+          "role": "vault",
+          "sats": "1054",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 2,
+            "value_sats": 30000,
+            "script_hex": "5120bf39cfdfc985043dd4f95dd2403167d3d26874dc06ab15e7e09bf4415791c79f",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 3,
+          "role": "protocolFee",
+          "sats": "5025",
+          "scriptHex": "00146363636363636363636363636363636363636363",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 3,
+            "value_sats": 53934,
+            "script_hex": "5120c061627ae56b59a978e965ed3a17ec53590f4c036cadd530afed84ff1d37365a",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 4,
+          "role": "creatorFee",
+          "sats": "546",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 5,
+          "role": "btcChange",
+          "sats": "3999982234",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        }
+      ],
+      "minerFeeSats": "1000",
+      "platformFeeSats": "5025",
+      "creatorFeeSats": "546",
+      "differences": [
+        "input count differs from archived example",
+        "Cove output count/roles differ from archived example",
+        "Cove asset ticker differs",
+        "marker values differ for this asset/amount",
+        "registered native SegWit scripts differ from archived mainnet Taproot scripts",
+        "Cove fees, backing and extra change outputs are checked against Cove plans, not inferred from Garden"
+      ],
+      "unprovenClaims": [
+        "Garden fee policy and issuance/ownership rules",
+        "Garden validator acceptance of Cove assets"
+      ]
+    },
+    {
+      "action": "transfer",
+      "txid": "b7be4033bd71d201a437e69a511cb0eab3255a117b6a3d396706a0f268cb7ed3",
+      "archiveReference": {
+        "txid": "0027744d44f27ad7a80e67b73790cce8123b95ae2ad8dc01a561b3728241ac40",
+        "operation": "transfer",
+        "markerVout": 0,
+        "inputCount": 2,
+        "outputCount": 3
+      },
+      "sharedWirePassed": true,
+      "exactGardenTransactionMatch": false,
+      "inputs": [
+        {
+          "vin": 0,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 1000,
+          "archiveWitnessItems": 3,
+          "outpoint": "6eacb1a467e78cd849275ab11180119eb2f901bef74e178e0fbb76369b761c15:1",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "f66e835fa0778675e45e2d8bd04575bc0529dd890ab18f9abc8bef06fa56d9ca",
+            "vout": 3,
+            "sats": 330,
+            "scriptHex": "51205649f40efd8345e7f6665fe1ee7027406e2759d97845e9567a9cb0db37712d29"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        },
+        {
+          "vin": 1,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 4294967293,
+          "archiveWitnessItems": 1,
+          "outpoint": "dc718d8347721a6561374fbb8100da3d27c74b7f364056768b014f974ae72120:0",
+          "sats": "5000000000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "f66e835fa0778675e45e2d8bd04575bc0529dd890ab18f9abc8bef06fa56d9ca",
+            "vout": 5,
+            "sats": 76456,
+            "scriptHex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        }
+      ],
+      "outputs": [
+        {
+          "vout": 0,
+          "role": "marker",
+          "sats": "0",
+          "scriptHex": "6a407b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a223530303030303030303030227d",
+          "scriptFamily": "OP_RETURN",
+          "archiveReference": {
+            "vout": 0,
+            "value_sats": 0,
+            "script_hex": "6a437b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a223839343632323835373134323836227d",
+            "op_return_text": "{\"p\":\"crc-20\",\"op\":\"transfer\",\"tick\":\"LEAF\",\"amt\":\"89462285714286\"}"
+          },
+          "valueEqualToArchive": true,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 1,
+          "role": "recipient",
+          "sats": "1000",
+          "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 1,
+            "value_sats": 330,
+            "script_hex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 2,
+          "role": "tokenChange",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 2,
+            "value_sats": 75502,
+            "script_hex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 3,
+          "role": "btcChange",
+          "sats": "4999998000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        }
+      ],
+      "minerFeeSats": "1000",
+      "platformFeeSats": "0",
+      "creatorFeeSats": "0",
+      "differences": [
+        "Cove output count/roles differ from archived example",
+        "Cove asset ticker differs",
+        "marker values differ for this asset/amount",
+        "registered native SegWit scripts differ from archived mainnet Taproot scripts",
+        "Cove fees, backing and extra change outputs are checked against Cove plans, not inferred from Garden"
+      ],
+      "unprovenClaims": [
+        "Garden fee policy and issuance/ownership rules",
+        "Garden validator acceptance of Cove assets"
+      ]
+    },
+    {
+      "action": "curveSell",
+      "txid": "e68d282771fd8020dc80ef4c7aa94acc4635829bdb444044ddcf63010c0d517f",
+      "archiveReference": {
+        "txid": "0027744d44f27ad7a80e67b73790cce8123b95ae2ad8dc01a561b3728241ac40",
+        "operation": "transfer",
+        "markerVout": 0,
+        "inputCount": 2,
+        "outputCount": 3
+      },
+      "sharedWirePassed": true,
+      "exactGardenTransactionMatch": false,
+      "inputs": [
+        {
+          "vin": 0,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 1000,
+          "archiveWitnessItems": 3,
+          "outpoint": "6eacb1a467e78cd849275ab11180119eb2f901bef74e178e0fbb76369b761c15:2",
+          "sats": "1054",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "f66e835fa0778675e45e2d8bd04575bc0529dd890ab18f9abc8bef06fa56d9ca",
+            "vout": 3,
+            "sats": 330,
+            "scriptHex": "51205649f40efd8345e7f6665fe1ee7027406e2759d97845e9567a9cb0db37712d29"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        },
+        {
+          "vin": 1,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 4294967293,
+          "archiveWitnessItems": 1,
+          "outpoint": "b7be4033bd71d201a437e69a511cb0eab3255a117b6a3d396706a0f268cb7ed3:2",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "f66e835fa0778675e45e2d8bd04575bc0529dd890ab18f9abc8bef06fa56d9ca",
+            "vout": 5,
+            "sats": 76456,
+            "scriptHex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        },
+        {
+          "vin": 2,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": null,
+          "archiveWitnessItems": null,
+          "outpoint": "dbdbd93329356b2bbbe472f32adb1a833d196c6c8288b613c447dafbdb40be97:0",
+          "sats": "5000000000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        }
+      ],
+      "outputs": [
+        {
+          "vout": 0,
+          "role": "marker",
+          "sats": "0",
+          "scriptHex": "6a417b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a22313030303030303030303030227d",
+          "scriptFamily": "OP_RETURN",
+          "archiveReference": {
+            "vout": 0,
+            "value_sats": 0,
+            "script_hex": "6a437b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a223839343632323835373134323836227d",
+            "op_return_text": "{\"p\":\"crc-20\",\"op\":\"transfer\",\"tick\":\"LEAF\",\"amt\":\"89462285714286\"}"
+          },
+          "valueEqualToArchive": true,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 1,
+          "role": "vault",
+          "sats": "1027",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 1,
+            "value_sats": 330,
+            "script_hex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 2,
+          "role": "payout",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 2,
+            "value_sats": 75502,
+            "script_hex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 3,
+          "role": "tokenChange",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 4,
+          "role": "protocolFee",
+          "sats": "1000",
+          "scriptHex": "00146363636363636363636363636363636363636363",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 5,
+          "role": "btcChange",
+          "sats": "4999997027",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        }
+      ],
+      "minerFeeSats": "1000",
+      "platformFeeSats": "1000",
+      "creatorFeeSats": "0",
+      "differences": [
+        "input count differs from archived example",
+        "Cove output count/roles differ from archived example",
+        "Cove asset ticker differs",
+        "marker values differ for this asset/amount",
+        "registered native SegWit scripts differ from archived mainnet Taproot scripts",
+        "Cove fees, backing and extra change outputs are checked against Cove plans, not inferred from Garden"
+      ],
+      "unprovenClaims": [
+        "Garden fee policy and issuance/ownership rules",
+        "Garden validator acceptance of Cove assets"
+      ]
+    },
+    {
+      "action": "inventoryBuy",
+      "txid": "29cac0beaa8259d88078726cfab77a2b8026889583c4d39256d62ba5326e247b",
+      "archiveReference": {
+        "txid": "0027744d44f27ad7a80e67b73790cce8123b95ae2ad8dc01a561b3728241ac40",
+        "operation": "transfer",
+        "markerVout": 0,
+        "inputCount": 2,
+        "outputCount": 3
+      },
+      "sharedWirePassed": true,
+      "exactGardenTransactionMatch": false,
+      "inputs": [
+        {
+          "vin": 0,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 1000,
+          "archiveWitnessItems": 3,
+          "outpoint": "e68d282771fd8020dc80ef4c7aa94acc4635829bdb444044ddcf63010c0d517f:1",
+          "sats": "1027",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "f66e835fa0778675e45e2d8bd04575bc0529dd890ab18f9abc8bef06fa56d9ca",
+            "vout": 3,
+            "sats": 330,
+            "scriptHex": "51205649f40efd8345e7f6665fe1ee7027406e2759d97845e9567a9cb0db37712d29"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        },
+        {
+          "vin": 1,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 4294967293,
+          "archiveWitnessItems": 1,
+          "outpoint": "e7085bdc2f0c16d8997500e2aec2e699f8d7cdf96b8113df13ecbcfddb560d56:1",
+          "sats": "1000000000",
+          "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "f66e835fa0778675e45e2d8bd04575bc0529dd890ab18f9abc8bef06fa56d9ca",
+            "vout": 5,
+            "sats": 76456,
+            "scriptHex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        }
+      ],
+      "outputs": [
+        {
+          "vout": 0,
+          "role": "marker",
+          "sats": "0",
+          "scriptHex": "6a417b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a22313030303030303030303030227d",
+          "scriptFamily": "OP_RETURN",
+          "archiveReference": {
+            "vout": 0,
+            "value_sats": 0,
+            "script_hex": "6a437b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a223839343632323835373134323836227d",
+            "op_return_text": "{\"p\":\"crc-20\",\"op\":\"transfer\",\"tick\":\"LEAF\",\"amt\":\"89462285714286\"}"
+          },
+          "valueEqualToArchive": true,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 1,
+          "role": "recipient",
+          "sats": "1000",
+          "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 1,
+            "value_sats": 330,
+            "script_hex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 2,
+          "role": "vault",
+          "sats": "1054",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 2,
+            "value_sats": 75502,
+            "script_hex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 3,
+          "role": "protocolFee",
+          "sats": "5013",
+          "scriptHex": "00146363636363636363636363636363636363636363",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 4,
+          "role": "creatorFee",
+          "sats": "546",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 5,
+          "role": "btcChange",
+          "sats": "999992414",
+          "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        }
+      ],
+      "minerFeeSats": "1000",
+      "platformFeeSats": "5013",
+      "creatorFeeSats": "546",
+      "differences": [
+        "Cove output count/roles differ from archived example",
+        "Cove asset ticker differs",
+        "marker values differ for this asset/amount",
+        "registered native SegWit scripts differ from archived mainnet Taproot scripts",
+        "Cove fees, backing and extra change outputs are checked against Cove plans, not inferred from Garden"
+      ],
+      "unprovenClaims": [
+        "Garden fee policy and issuance/ownership rules",
+        "Garden validator acceptance of Cove assets"
+      ]
+    },
+    {
+      "action": "mint",
+      "txid": "ee7857c4ae6968782eac42051403fb00bca2d934a31e5b10d0e6e7d0b69387d8",
+      "archiveReference": {
+        "txid": "17c4c6fa3a877aa42c142f4836c3cb6b10d4e588ff2150df842e2e3e3e89bde4",
+        "operation": "mint",
+        "markerVout": 0,
+        "inputCount": 1,
+        "outputCount": 4
+      },
+      "sharedWirePassed": true,
+      "exactGardenTransactionMatch": false,
+      "inputs": [
+        {
+          "vin": 0,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 4294967293,
+          "archiveWitnessItems": 1,
+          "outpoint": "29cac0beaa8259d88078726cfab77a2b8026889583c4d39256d62ba5326e247b:2",
+          "sats": "1054",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "2af206ef53e86c79fd9764ab374489ef94595a1672a3bd53eb9d4bc4d46e4185",
+            "vout": 5,
+            "sats": 84513,
+            "scriptHex": "5120c061627ae56b59a978e965ed3a17ec53590f4c036cadd530afed84ff1d37365a"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        },
+        {
+          "vin": 1,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": null,
+          "archiveWitnessItems": null,
+          "outpoint": "e68d282771fd8020dc80ef4c7aa94acc4635829bdb444044ddcf63010c0d517f:5",
+          "sats": "4999997027",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        }
+      ],
+      "outputs": [
+        {
+          "vout": 0,
+          "role": "marker",
+          "sats": "0",
+          "scriptHex": "6a287b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a2254455354227d",
+          "scriptFamily": "OP_RETURN",
+          "archiveReference": {
+            "vout": 0,
+            "value_sats": 0,
+            "script_hex": "6a287b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a224c454146227d",
+            "op_return_text": "{\"p\":\"crc-20\",\"op\":\"mint\",\"tick\":\"LEAF\"}"
+          },
+          "valueEqualToArchive": true,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 1,
+          "role": "recipient",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 1,
+            "value_sats": 330,
+            "script_hex": "5120d468380b27135979c8ec9954ec772b98cc2fbbd33aad40f595aba35866432756",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 2,
+          "role": "vault",
+          "sats": "1108",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 2,
+            "value_sats": 30000,
+            "script_hex": "5120bf39cfdfc985043dd4f95dd2403167d3d26874dc06ab15e7e09bf4415791c79f",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 3,
+          "role": "protocolFee",
+          "sats": "5025",
+          "scriptHex": "00146363636363636363636363636363636363636363",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 3,
+            "value_sats": 53934,
+            "script_hex": "5120c061627ae56b59a978e965ed3a17ec53590f4c036cadd530afed84ff1d37365a",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 4,
+          "role": "creatorFee",
+          "sats": "546",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 5,
+          "role": "btcChange",
+          "sats": "4999989402",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        }
+      ],
+      "minerFeeSats": "1000",
+      "platformFeeSats": "5025",
+      "creatorFeeSats": "546",
+      "differences": [
+        "input count differs from archived example",
+        "Cove output count/roles differ from archived example",
+        "Cove asset ticker differs",
+        "marker values differ for this asset/amount",
+        "registered native SegWit scripts differ from archived mainnet Taproot scripts",
+        "Cove fees, backing and extra change outputs are checked against Cove plans, not inferred from Garden"
+      ],
+      "unprovenClaims": [
+        "Garden fee policy and issuance/ownership rules",
+        "Garden validator acceptance of Cove assets"
+      ]
+    },
+    {
+      "action": "listing",
+      "txid": "f522061f3bdb07e808de3da969fcacd563a302a85d8a33a7c5943d38f88fa4fe",
+      "archiveReference": {
+        "txid": "0027744d44f27ad7a80e67b73790cce8123b95ae2ad8dc01a561b3728241ac40",
+        "operation": "transfer",
+        "markerVout": 0,
+        "inputCount": 2,
+        "outputCount": 3
+      },
+      "sharedWirePassed": true,
+      "exactGardenTransactionMatch": false,
+      "inputs": [
+        {
+          "vin": 0,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 1000,
+          "archiveWitnessItems": 3,
+          "outpoint": "ee7857c4ae6968782eac42051403fb00bca2d934a31e5b10d0e6e7d0b69387d8:1",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "f66e835fa0778675e45e2d8bd04575bc0529dd890ab18f9abc8bef06fa56d9ca",
+            "vout": 3,
+            "sats": 330,
+            "scriptHex": "51205649f40efd8345e7f6665fe1ee7027406e2759d97845e9567a9cb0db37712d29"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        },
+        {
+          "vin": 1,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 4294967293,
+          "archiveWitnessItems": 1,
+          "outpoint": "b7be4033bd71d201a437e69a511cb0eab3255a117b6a3d396706a0f268cb7ed3:3",
+          "sats": "4999998000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "f66e835fa0778675e45e2d8bd04575bc0529dd890ab18f9abc8bef06fa56d9ca",
+            "vout": 5,
+            "sats": 76456,
+            "scriptHex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        }
+      ],
+      "outputs": [
+        {
+          "vout": 0,
+          "role": "marker",
+          "sats": "0",
+          "scriptHex": "6a407b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a223530303030303030303030227d",
+          "scriptFamily": "OP_RETURN",
+          "archiveReference": {
+            "vout": 0,
+            "value_sats": 0,
+            "script_hex": "6a437b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a223839343632323835373134323836227d",
+            "op_return_text": "{\"p\":\"crc-20\",\"op\":\"transfer\",\"tick\":\"LEAF\",\"amt\":\"89462285714286\"}"
+          },
+          "valueEqualToArchive": true,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 1,
+          "role": "recipient",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 1,
+            "value_sats": 330,
+            "script_hex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 2,
+          "role": "tokenChange",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 2,
+            "value_sats": 75502,
+            "script_hex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 3,
+          "role": "btcChange",
+          "sats": "4999996000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        }
+      ],
+      "minerFeeSats": "1000",
+      "platformFeeSats": "0",
+      "creatorFeeSats": "0",
+      "differences": [
+        "Cove output count/roles differ from archived example",
+        "Cove asset ticker differs",
+        "marker values differ for this asset/amount",
+        "registered native SegWit scripts differ from archived mainnet Taproot scripts",
+        "Cove fees, backing and extra change outputs are checked against Cove plans, not inferred from Garden"
+      ],
+      "unprovenClaims": [
+        "Garden fee policy and issuance/ownership rules",
+        "Garden validator acceptance of Cove assets"
+      ]
+    },
+    {
+      "action": "marketBuy",
+      "txid": "0a29f137a16959fce0c3fd91ddf105b0049a1f402b5c594dab69dadadcb96f8f",
+      "archiveReference": {
+        "txid": "532f22d0edcd848d28b81ddb6b089402860d01fda2ec1fdb9701ea13bb0a2dcd",
+        "operation": "transfer",
+        "markerVout": 1,
+        "inputCount": 4,
+        "outputCount": 6
+      },
+      "sharedWirePassed": true,
+      "exactGardenTransactionMatch": false,
+      "inputs": [
+        {
+          "vin": 0,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 4294967295,
+          "archiveWitnessItems": 2,
+          "outpoint": "f522061f3bdb07e808de3da969fcacd563a302a85d8a33a7c5943d38f88fa4fe:1",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "411e12ed5fd5e21e2140c0acd770169881e7555415172b552d9b747f3b15dd29",
+            "vout": 0,
+            "sats": 670,
+            "scriptHex": "00148ca63a92c4234a02eb1b0eb01583aeb5553589ba"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        },
+        {
+          "vin": 1,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 4294967295,
+          "archiveWitnessItems": 2,
+          "outpoint": "29cac0beaa8259d88078726cfab77a2b8026889583c4d39256d62ba5326e247b:5",
+          "sats": "999992414",
+          "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "411e12ed5fd5e21e2140c0acd770169881e7555415172b552d9b747f3b15dd29",
+            "vout": 1,
+            "sats": 670,
+            "scriptHex": "00148ca63a92c4234a02eb1b0eb01583aeb5553589ba"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        }
+      ],
+      "outputs": [
+        {
+          "vout": 0,
+          "role": "sellerPayout",
+          "sats": "13347",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 0,
+            "value_sats": 434500,
+            "script_hex": "00148ca63a92c4234a02eb1b0eb01583aeb5553589ba",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 1,
+          "role": "marker",
+          "sats": "0",
+          "scriptHex": "6a407b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a223530303030303030303030227d",
+          "scriptFamily": "OP_RETURN",
+          "archiveReference": {
+            "vout": 1,
+            "value_sats": 0,
+            "script_hex": "6a427b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a2236383030303030303030303030227d",
+            "op_return_text": "{\"p\":\"crc-20\",\"op\":\"transfer\",\"tick\":\"LEAF\",\"amt\":\"6800000000000\"}"
+          },
+          "valueEqualToArchive": true,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 2,
+          "role": "recipient",
+          "sats": "1000",
+          "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 2,
+            "value_sats": 1000,
+            "script_hex": "5120dfb6b9dc8116f9e3dc353266355c585c84ae3909e20743234488da7e44ab2a9d",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": true,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 3,
+          "role": "protocolFee",
+          "sats": "1000",
+          "scriptHex": "00146363636363636363636363636363636363636363",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 3,
+            "value_sats": 22092,
+            "script_hex": "00146d8eafaa08dc5a867a7185b2538feb7a3b85c464",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 4,
+          "role": "btcChange",
+          "sats": "999977067",
+          "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 4,
+            "value_sats": 1000,
+            "script_hex": "0014a57066c30b741fc3135f36b9d1d3a816dfe147be",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        }
+      ],
+      "minerFeeSats": "1000",
+      "platformFeeSats": "1000",
+      "creatorFeeSats": "0",
+      "differences": [
+        "input count differs from archived example",
+        "Cove output count/roles differ from archived example",
+        "Cove asset ticker differs",
+        "marker values differ for this asset/amount",
+        "registered native SegWit scripts differ from archived mainnet Taproot scripts",
+        "Cove fees, backing and extra change outputs are checked against Cove plans, not inferred from Garden"
+      ],
+      "unprovenClaims": [
+        "Garden fee policy and issuance/ownership rules",
+        "Garden validator acceptance of Cove assets"
+      ]
+    },
+    {
+      "action": "listing",
+      "txid": "59ddf377a6882fb6d6f83ec3f1fc7498a0b80f65f5b0064a22516b1d007117eb",
+      "archiveReference": {
+        "txid": "0027744d44f27ad7a80e67b73790cce8123b95ae2ad8dc01a561b3728241ac40",
+        "operation": "transfer",
+        "markerVout": 0,
+        "inputCount": 2,
+        "outputCount": 3
+      },
+      "sharedWirePassed": true,
+      "exactGardenTransactionMatch": false,
+      "inputs": [
+        {
+          "vin": 0,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 1000,
+          "archiveWitnessItems": 3,
+          "outpoint": "f522061f3bdb07e808de3da969fcacd563a302a85d8a33a7c5943d38f88fa4fe:2",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "f66e835fa0778675e45e2d8bd04575bc0529dd890ab18f9abc8bef06fa56d9ca",
+            "vout": 3,
+            "sats": 330,
+            "scriptHex": "51205649f40efd8345e7f6665fe1ee7027406e2759d97845e9567a9cb0db37712d29"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        },
+        {
+          "vin": 1,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 4294967293,
+          "archiveWitnessItems": 1,
+          "outpoint": "6eacb1a467e78cd849275ab11180119eb2f901bef74e178e0fbb76369b761c15:5",
+          "sats": "3999982234",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "f66e835fa0778675e45e2d8bd04575bc0529dd890ab18f9abc8bef06fa56d9ca",
+            "vout": 5,
+            "sats": 76456,
+            "scriptHex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        }
+      ],
+      "outputs": [
+        {
+          "vout": 0,
+          "role": "marker",
+          "sats": "0",
+          "scriptHex": "6a3e7b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a22313233343536373839227d",
+          "scriptFamily": "OP_RETURN",
+          "archiveReference": {
+            "vout": 0,
+            "value_sats": 0,
+            "script_hex": "6a437b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a223839343632323835373134323836227d",
+            "op_return_text": "{\"p\":\"crc-20\",\"op\":\"transfer\",\"tick\":\"LEAF\",\"amt\":\"89462285714286\"}"
+          },
+          "valueEqualToArchive": true,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 1,
+          "role": "recipient",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 1,
+            "value_sats": 330,
+            "script_hex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 2,
+          "role": "tokenChange",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 2,
+            "value_sats": 75502,
+            "script_hex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 3,
+          "role": "btcChange",
+          "sats": "3999980234",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        }
+      ],
+      "minerFeeSats": "1000",
+      "platformFeeSats": "0",
+      "creatorFeeSats": "0",
+      "differences": [
+        "Cove output count/roles differ from archived example",
+        "Cove asset ticker differs",
+        "marker values differ for this asset/amount",
+        "registered native SegWit scripts differ from archived mainnet Taproot scripts",
+        "Cove fees, backing and extra change outputs are checked against Cove plans, not inferred from Garden"
+      ],
+      "unprovenClaims": [
+        "Garden fee policy and issuance/ownership rules",
+        "Garden validator acceptance of Cove assets"
+      ]
+    },
+    {
+      "action": "marketBuy",
+      "txid": "bdada53fb8731e6a5877a99a6a5a01ee267d90094f68d7c23235c80d4640a827",
+      "archiveReference": {
+        "txid": "532f22d0edcd848d28b81ddb6b089402860d01fda2ec1fdb9701ea13bb0a2dcd",
+        "operation": "transfer",
+        "markerVout": 1,
+        "inputCount": 4,
+        "outputCount": 6
+      },
+      "sharedWirePassed": true,
+      "exactGardenTransactionMatch": false,
+      "inputs": [
+        {
+          "vin": 0,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 4294967295,
+          "archiveWitnessItems": 2,
+          "outpoint": "59ddf377a6882fb6d6f83ec3f1fc7498a0b80f65f5b0064a22516b1d007117eb:1",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "411e12ed5fd5e21e2140c0acd770169881e7555415172b552d9b747f3b15dd29",
+            "vout": 0,
+            "sats": 670,
+            "scriptHex": "00148ca63a92c4234a02eb1b0eb01583aeb5553589ba"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        },
+        {
+          "vin": 1,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 4294967295,
+          "archiveWitnessItems": 2,
+          "outpoint": "0a29f137a16959fce0c3fd91ddf105b0049a1f402b5c594dab69dadadcb96f8f:4",
+          "sats": "999977067",
+          "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "411e12ed5fd5e21e2140c0acd770169881e7555415172b552d9b747f3b15dd29",
+            "vout": 1,
+            "sats": 670,
+            "scriptHex": "00148ca63a92c4234a02eb1b0eb01583aeb5553589ba"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        }
+      ],
+      "outputs": [
+        {
+          "vout": 0,
+          "role": "sellerPayout",
+          "sats": "21001",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 0,
+            "value_sats": 434500,
+            "script_hex": "00148ca63a92c4234a02eb1b0eb01583aeb5553589ba",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 1,
+          "role": "marker",
+          "sats": "0",
+          "scriptHex": "6a3e7b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a22313233343536373839227d",
+          "scriptFamily": "OP_RETURN",
+          "archiveReference": {
+            "vout": 1,
+            "value_sats": 0,
+            "script_hex": "6a427b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a2236383030303030303030303030227d",
+            "op_return_text": "{\"p\":\"crc-20\",\"op\":\"transfer\",\"tick\":\"LEAF\",\"amt\":\"6800000000000\"}"
+          },
+          "valueEqualToArchive": true,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 2,
+          "role": "recipient",
+          "sats": "1000",
+          "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 2,
+            "value_sats": 1000,
+            "script_hex": "5120dfb6b9dc8116f9e3dc353266355c585c84ae3909e20743234488da7e44ab2a9d",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": true,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 3,
+          "role": "protocolFee",
+          "sats": "1501",
+          "scriptHex": "00146363636363636363636363636363636363636363",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 3,
+            "value_sats": 22092,
+            "script_hex": "00146d8eafaa08dc5a867a7185b2538feb7a3b85c464",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 4,
+          "role": "btcChange",
+          "sats": "999953565",
+          "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 4,
+            "value_sats": 1000,
+            "script_hex": "0014a57066c30b741fc3135f36b9d1d3a816dfe147be",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        }
+      ],
+      "minerFeeSats": "1000",
+      "platformFeeSats": "1501",
+      "creatorFeeSats": "0",
+      "differences": [
+        "input count differs from archived example",
+        "Cove output count/roles differ from archived example",
+        "Cove asset ticker differs",
+        "marker values differ for this asset/amount",
+        "registered native SegWit scripts differ from archived mainnet Taproot scripts",
+        "Cove fees, backing and extra change outputs are checked against Cove plans, not inferred from Garden"
+      ],
+      "unprovenClaims": [
+        "Garden fee policy and issuance/ownership rules",
+        "Garden validator acceptance of Cove assets"
+      ]
+    },
+    {
+      "action": "listing",
+      "txid": "0f42344f84cd955f978841e3ebb55d5c8c803066676ddae333e68d24963d6035",
+      "archiveReference": {
+        "txid": "0027744d44f27ad7a80e67b73790cce8123b95ae2ad8dc01a561b3728241ac40",
+        "operation": "transfer",
+        "markerVout": 0,
+        "inputCount": 2,
+        "outputCount": 3
+      },
+      "sharedWirePassed": true,
+      "exactGardenTransactionMatch": false,
+      "inputs": [
+        {
+          "vin": 0,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 1000,
+          "archiveWitnessItems": 3,
+          "outpoint": "59ddf377a6882fb6d6f83ec3f1fc7498a0b80f65f5b0064a22516b1d007117eb:2",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "f66e835fa0778675e45e2d8bd04575bc0529dd890ab18f9abc8bef06fa56d9ca",
+            "vout": 3,
+            "sats": 330,
+            "scriptHex": "51205649f40efd8345e7f6665fe1ee7027406e2759d97845e9567a9cb0db37712d29"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        },
+        {
+          "vin": 1,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 4294967293,
+          "archiveWitnessItems": 1,
+          "outpoint": "59ddf377a6882fb6d6f83ec3f1fc7498a0b80f65f5b0064a22516b1d007117eb:3",
+          "sats": "3999980234",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "f66e835fa0778675e45e2d8bd04575bc0529dd890ab18f9abc8bef06fa56d9ca",
+            "vout": 5,
+            "sats": 76456,
+            "scriptHex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        }
+      ],
+      "outputs": [
+        {
+          "vout": 0,
+          "role": "marker",
+          "sats": "0",
+          "scriptHex": "6a367b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a2231227d",
+          "scriptFamily": "OP_RETURN",
+          "archiveReference": {
+            "vout": 0,
+            "value_sats": 0,
+            "script_hex": "6a437b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a223839343632323835373134323836227d",
+            "op_return_text": "{\"p\":\"crc-20\",\"op\":\"transfer\",\"tick\":\"LEAF\",\"amt\":\"89462285714286\"}"
+          },
+          "valueEqualToArchive": true,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 1,
+          "role": "recipient",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 1,
+            "value_sats": 330,
+            "script_hex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 2,
+          "role": "tokenChange",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 2,
+            "value_sats": 75502,
+            "script_hex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 3,
+          "role": "btcChange",
+          "sats": "3999978234",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        }
+      ],
+      "minerFeeSats": "1000",
+      "platformFeeSats": "0",
+      "creatorFeeSats": "0",
+      "differences": [
+        "Cove output count/roles differ from archived example",
+        "Cove asset ticker differs",
+        "marker values differ for this asset/amount",
+        "registered native SegWit scripts differ from archived mainnet Taproot scripts",
+        "Cove fees, backing and extra change outputs are checked against Cove plans, not inferred from Garden"
+      ],
+      "unprovenClaims": [
+        "Garden fee policy and issuance/ownership rules",
+        "Garden validator acceptance of Cove assets"
+      ]
+    },
+    {
+      "action": "cancel",
+      "txid": "a72eca2e88dd0a3c0d598813a8973ebd22f77e1a16f505cd43a607511ea28c15",
+      "archiveReference": {
+        "txid": "0027744d44f27ad7a80e67b73790cce8123b95ae2ad8dc01a561b3728241ac40",
+        "operation": "transfer",
+        "markerVout": 0,
+        "inputCount": 2,
+        "outputCount": 3
+      },
+      "sharedWirePassed": true,
+      "exactGardenTransactionMatch": false,
+      "inputs": [
+        {
+          "vin": 0,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 1000,
+          "archiveWitnessItems": 3,
+          "outpoint": "0f42344f84cd955f978841e3ebb55d5c8c803066676ddae333e68d24963d6035:1",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "f66e835fa0778675e45e2d8bd04575bc0529dd890ab18f9abc8bef06fa56d9ca",
+            "vout": 3,
+            "sats": 330,
+            "scriptHex": "51205649f40efd8345e7f6665fe1ee7027406e2759d97845e9567a9cb0db37712d29"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        },
+        {
+          "vin": 1,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 4294967293,
+          "archiveWitnessItems": 1,
+          "outpoint": "a48c25ff791b6d3e1d66398ac28e6238a5e4ee55d73810ad9faa7f9070c7ce5c:0",
+          "sats": "5000000000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "f66e835fa0778675e45e2d8bd04575bc0529dd890ab18f9abc8bef06fa56d9ca",
+            "vout": 5,
+            "sats": 76456,
+            "scriptHex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        }
+      ],
+      "outputs": [
+        {
+          "vout": 0,
+          "role": "marker",
+          "sats": "0",
+          "scriptHex": "6a367b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a2231227d",
+          "scriptFamily": "OP_RETURN",
+          "archiveReference": {
+            "vout": 0,
+            "value_sats": 0,
+            "script_hex": "6a437b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a223839343632323835373134323836227d",
+            "op_return_text": "{\"p\":\"crc-20\",\"op\":\"transfer\",\"tick\":\"LEAF\",\"amt\":\"89462285714286\"}"
+          },
+          "valueEqualToArchive": true,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 1,
+          "role": "recipient",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 1,
+            "value_sats": 330,
+            "script_hex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 2,
+          "role": "btcChange",
+          "sats": "4999999000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 2,
+            "value_sats": 75502,
+            "script_hex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        }
+      ],
+      "minerFeeSats": "1000",
+      "platformFeeSats": "0",
+      "creatorFeeSats": "0",
+      "differences": [
+        "Cove asset ticker differs",
+        "marker values differ for this asset/amount",
+        "registered native SegWit scripts differ from archived mainnet Taproot scripts",
+        "Cove fees, backing and extra change outputs are checked against Cove plans, not inferred from Garden"
+      ],
+      "unprovenClaims": [
+        "Garden fee policy and issuance/ownership rules",
+        "Garden validator acceptance of Cove assets"
+      ]
+    },
+    {
+      "action": "marketBuy",
+      "txid": "5e0cc8b1e44928f0e791c15afe4c508ef2f02a08a5fb819890fb23da3c7b7f80",
+      "archiveReference": {
+        "txid": "532f22d0edcd848d28b81ddb6b089402860d01fda2ec1fdb9701ea13bb0a2dcd",
+        "operation": "transfer",
+        "markerVout": 1,
+        "inputCount": 4,
+        "outputCount": 6
+      },
+      "sharedWirePassed": true,
+      "exactGardenTransactionMatch": false,
+      "inputs": [
+        {
+          "vin": 0,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 4294967295,
+          "archiveWitnessItems": 2,
+          "outpoint": "0f42344f84cd955f978841e3ebb55d5c8c803066676ddae333e68d24963d6035:1",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "411e12ed5fd5e21e2140c0acd770169881e7555415172b552d9b747f3b15dd29",
+            "vout": 0,
+            "sats": 670,
+            "scriptHex": "00148ca63a92c4234a02eb1b0eb01583aeb5553589ba"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        },
+        {
+          "vin": 1,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 4294967295,
+          "archiveWitnessItems": 2,
+          "outpoint": "bdada53fb8731e6a5877a99a6a5a01ee267d90094f68d7c23235c80d4640a827:4",
+          "sats": "999953565",
+          "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "411e12ed5fd5e21e2140c0acd770169881e7555415172b552d9b747f3b15dd29",
+            "vout": 1,
+            "sats": 670,
+            "scriptHex": "00148ca63a92c4234a02eb1b0eb01583aeb5553589ba"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        }
+      ],
+      "outputs": [
+        {
+          "vout": 0,
+          "role": "sellerPayout",
+          "sats": "13347",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 0,
+            "value_sats": 434500,
+            "script_hex": "00148ca63a92c4234a02eb1b0eb01583aeb5553589ba",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 1,
+          "role": "marker",
+          "sats": "0",
+          "scriptHex": "6a367b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a2231227d",
+          "scriptFamily": "OP_RETURN",
+          "archiveReference": {
+            "vout": 1,
+            "value_sats": 0,
+            "script_hex": "6a427b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a2236383030303030303030303030227d",
+            "op_return_text": "{\"p\":\"crc-20\",\"op\":\"transfer\",\"tick\":\"LEAF\",\"amt\":\"6800000000000\"}"
+          },
+          "valueEqualToArchive": true,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 2,
+          "role": "recipient",
+          "sats": "1000",
+          "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 2,
+            "value_sats": 1000,
+            "script_hex": "5120dfb6b9dc8116f9e3dc353266355c585c84ae3909e20743234488da7e44ab2a9d",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": true,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 3,
+          "role": "protocolFee",
+          "sats": "1000",
+          "scriptHex": "00146363636363636363636363636363636363636363",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 3,
+            "value_sats": 22092,
+            "script_hex": "00146d8eafaa08dc5a867a7185b2538feb7a3b85c464",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 4,
+          "role": "btcChange",
+          "sats": "999938218",
+          "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 4,
+            "value_sats": 1000,
+            "script_hex": "0014a57066c30b741fc3135f36b9d1d3a816dfe147be",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        }
+      ],
+      "minerFeeSats": "1000",
+      "platformFeeSats": "1000",
+      "creatorFeeSats": "0",
+      "differences": [
+        "input count differs from archived example",
+        "Cove output count/roles differ from archived example",
+        "Cove asset ticker differs",
+        "marker values differ for this asset/amount",
+        "registered native SegWit scripts differ from archived mainnet Taproot scripts",
+        "Cove fees, backing and extra change outputs are checked against Cove plans, not inferred from Garden"
+      ],
+      "unprovenClaims": [
+        "Garden fee policy and issuance/ownership rules",
+        "Garden validator acceptance of Cove assets"
+      ]
+    },
+    {
+      "action": "listing",
+      "txid": "a62a39ae1fa2e2cabb9f641b2bf1be88845b4d0ec620d5c59403864c4295a02d",
+      "archiveReference": {
+        "txid": "0027744d44f27ad7a80e67b73790cce8123b95ae2ad8dc01a561b3728241ac40",
+        "operation": "transfer",
+        "markerVout": 0,
+        "inputCount": 2,
+        "outputCount": 3
+      },
+      "sharedWirePassed": true,
+      "exactGardenTransactionMatch": false,
+      "inputs": [
+        {
+          "vin": 0,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 1000,
+          "archiveWitnessItems": 3,
+          "outpoint": "0f42344f84cd955f978841e3ebb55d5c8c803066676ddae333e68d24963d6035:2",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "f66e835fa0778675e45e2d8bd04575bc0529dd890ab18f9abc8bef06fa56d9ca",
+            "vout": 3,
+            "sats": 330,
+            "scriptHex": "51205649f40efd8345e7f6665fe1ee7027406e2759d97845e9567a9cb0db37712d29"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        },
+        {
+          "vin": 1,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 4294967293,
+          "archiveWitnessItems": 1,
+          "outpoint": "45b884fd40030780ecb835955bdd4b021aac9014cfa90f1a45b6fa1e1eb7baf4:0",
+          "sats": "5000000000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "f66e835fa0778675e45e2d8bd04575bc0529dd890ab18f9abc8bef06fa56d9ca",
+            "vout": 5,
+            "sats": 76456,
+            "scriptHex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        }
+      ],
+      "outputs": [
+        {
+          "vout": 0,
+          "role": "marker",
+          "sats": "0",
+          "scriptHex": "6a407b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a223530303030303030303030227d",
+          "scriptFamily": "OP_RETURN",
+          "archiveReference": {
+            "vout": 0,
+            "value_sats": 0,
+            "script_hex": "6a437b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a223839343632323835373134323836227d",
+            "op_return_text": "{\"p\":\"crc-20\",\"op\":\"transfer\",\"tick\":\"LEAF\",\"amt\":\"89462285714286\"}"
+          },
+          "valueEqualToArchive": true,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 1,
+          "role": "recipient",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 1,
+            "value_sats": 330,
+            "script_hex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 2,
+          "role": "tokenChange",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 2,
+            "value_sats": 75502,
+            "script_hex": "5120e9b76375b22d898e5c508e8d9b6ae915c068a35f830eda7482a92d240699ae97",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 3,
+          "role": "btcChange",
+          "sats": "4999998000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        }
+      ],
+      "minerFeeSats": "1000",
+      "platformFeeSats": "0",
+      "creatorFeeSats": "0",
+      "differences": [
+        "Cove output count/roles differ from archived example",
+        "Cove asset ticker differs",
+        "marker values differ for this asset/amount",
+        "registered native SegWit scripts differ from archived mainnet Taproot scripts",
+        "Cove fees, backing and extra change outputs are checked against Cove plans, not inferred from Garden"
+      ],
+      "unprovenClaims": [
+        "Garden fee policy and issuance/ownership rules",
+        "Garden validator acceptance of Cove assets"
+      ]
+    },
+    {
+      "action": "marketBuy",
+      "txid": "72d83c7b1589ac9a58ecd9529364c0a6192cfccbb35c22250cf2fe0e53cfd03d",
+      "archiveReference": {
+        "txid": "532f22d0edcd848d28b81ddb6b089402860d01fda2ec1fdb9701ea13bb0a2dcd",
+        "operation": "transfer",
+        "markerVout": 1,
+        "inputCount": 4,
+        "outputCount": 6
+      },
+      "sharedWirePassed": true,
+      "exactGardenTransactionMatch": false,
+      "inputs": [
+        {
+          "vin": 0,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 4294967295,
+          "archiveWitnessItems": 2,
+          "outpoint": "a62a39ae1fa2e2cabb9f641b2bf1be88845b4d0ec620d5c59403864c4295a02d:1",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "411e12ed5fd5e21e2140c0acd770169881e7555415172b552d9b747f3b15dd29",
+            "vout": 0,
+            "sats": 670,
+            "scriptHex": "00148ca63a92c4234a02eb1b0eb01583aeb5553589ba"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        },
+        {
+          "vin": 1,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 4294967295,
+          "archiveWitnessItems": 2,
+          "outpoint": "5e0cc8b1e44928f0e791c15afe4c508ef2f02a08a5fb819890fb23da3c7b7f80:4",
+          "sats": "999938218",
+          "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "411e12ed5fd5e21e2140c0acd770169881e7555415172b552d9b747f3b15dd29",
+            "vout": 1,
+            "sats": 670,
+            "scriptHex": "00148ca63a92c4234a02eb1b0eb01583aeb5553589ba"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        }
+      ],
+      "outputs": [
+        {
+          "vout": 0,
+          "role": "sellerPayout",
+          "sats": "13347",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 0,
+            "value_sats": 434500,
+            "script_hex": "00148ca63a92c4234a02eb1b0eb01583aeb5553589ba",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 1,
+          "role": "marker",
+          "sats": "0",
+          "scriptHex": "6a407b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a223530303030303030303030227d",
+          "scriptFamily": "OP_RETURN",
+          "archiveReference": {
+            "vout": 1,
+            "value_sats": 0,
+            "script_hex": "6a427b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a224c454146222c22616d74223a2236383030303030303030303030227d",
+            "op_return_text": "{\"p\":\"crc-20\",\"op\":\"transfer\",\"tick\":\"LEAF\",\"amt\":\"6800000000000\"}"
+          },
+          "valueEqualToArchive": true,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 2,
+          "role": "recipient",
+          "sats": "1000",
+          "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 2,
+            "value_sats": 1000,
+            "script_hex": "5120dfb6b9dc8116f9e3dc353266355c585c84ae3909e20743234488da7e44ab2a9d",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": true,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 3,
+          "role": "protocolFee",
+          "sats": "1000",
+          "scriptHex": "00146363636363636363636363636363636363636363",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 3,
+            "value_sats": 22092,
+            "script_hex": "00146d8eafaa08dc5a867a7185b2538feb7a3b85c464",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 4,
+          "role": "btcChange",
+          "sats": "999922871",
+          "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 4,
+            "value_sats": 1000,
+            "script_hex": "0014a57066c30b741fc3135f36b9d1d3a816dfe147be",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        }
+      ],
+      "minerFeeSats": "1000",
+      "platformFeeSats": "1000",
+      "creatorFeeSats": "0",
+      "differences": [
+        "input count differs from archived example",
+        "Cove output count/roles differ from archived example",
+        "Cove asset ticker differs",
+        "marker values differ for this asset/amount",
+        "registered native SegWit scripts differ from archived mainnet Taproot scripts",
+        "Cove fees, backing and extra change outputs are checked against Cove plans, not inferred from Garden"
+      ],
+      "unprovenClaims": [
+        "Garden fee policy and issuance/ownership rules",
+        "Garden validator acceptance of Cove assets"
+      ]
+    },
+    {
+      "action": "deploy",
+      "txid": "822381201c175c84a28698f34f00b35550fe1b880872ae4db681e5e63c927636",
+      "archiveReference": {
+        "txid": "546cc042d0f396a0d8ad67b6987d9d5c09619e6962738347ca1611a1d1841b67",
+        "operation": "deploy",
+        "markerVout": 0,
+        "inputCount": 1,
+        "outputCount": 2
+      },
+      "sharedWirePassed": true,
+      "exactGardenTransactionMatch": false,
+      "inputs": [
+        {
+          "vin": 0,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 4294967295,
+          "archiveWitnessItems": 1,
+          "outpoint": "a62a39ae1fa2e2cabb9f641b2bf1be88845b4d0ec620d5c59403864c4295a02d:3",
+          "sats": "4999998000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "ff66562e35fe4e224e8e37bcf4f63192f1d925cf94f0e08ab7e1d1f97b052570",
+            "vout": 0,
+            "sats": 210000,
+            "scriptHex": "5120bf39cfdfc985043dd4f95dd2403167d3d26874dc06ab15e7e09bf4415791c79f"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        }
+      ],
+      "outputs": [
+        {
+          "vout": 0,
+          "role": "marker",
+          "sats": "0",
+          "scriptHex": "6a4c7d7b2270223a226372632d3230222c226f70223a226465706c6f79222c227469636b223a2254455354222c2274797065223a22626f6e64696e67222c226d6178223a223231303030303030222c226c696d223a223231303030303030222c226c656166223a2230222c226f726469223a2230222c22627463223a2231227d",
+          "scriptFamily": "OP_RETURN",
+          "archiveReference": {
+            "vout": 0,
+            "value_sats": 0,
+            "script_hex": "6a4c897b2270223a226372632d3230222c226f70223a226465706c6f79222c227469636b223a224c454146222c2274797065223a22626f6e64696e67222c226d6178223a2231303030303030303030222c226c696d223a2232313030303030303030222c226c656166223a2231222c226f726469223a22323836222c22627463223a2233333333333333227d",
+            "op_return_text": "{\"p\":\"crc-20\",\"op\":\"deploy\",\"tick\":\"LEAF\",\"type\":\"bonding\",\"max\":\"1000000000\",\"lim\":\"2100000000\",\"leaf\":\"1\",\"ordi\":\"286\",\"btc\":\"3333333\"}"
+          },
+          "valueEqualToArchive": true,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 1,
+          "role": "vault",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 1,
+            "value_sats": 208760,
+            "script_hex": "0014fd77d6ea663562bf179e775ae05d7c7dcd4ac208",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 2,
+          "role": "creatorRecord",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 3,
+          "role": "protocolFee",
+          "sats": "7000",
+          "scriptHex": "00146363636363636363636363636363636363636363",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 4,
+          "role": "btcChange",
+          "sats": "4999988000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        }
+      ],
+      "minerFeeSats": "1000",
+      "platformFeeSats": "7000",
+      "creatorFeeSats": "0",
+      "differences": [
+        "Cove output count/roles differ from archived example",
+        "Cove asset ticker differs",
+        "marker values differ for this asset/amount",
+        "registered native SegWit scripts differ from archived mainnet Taproot scripts",
+        "Cove fees, backing and extra change outputs are checked against Cove plans, not inferred from Garden"
+      ],
+      "unprovenClaims": [
+        "Garden fee policy and issuance/ownership rules",
+        "Garden validator acceptance of Cove assets"
+      ]
+    },
+    {
+      "action": "mint",
+      "txid": "f2b3f4722a5c9f9a466b62997a1ed8353015d08e4280e95a2b203619add4ffeb",
+      "archiveReference": {
+        "txid": "17c4c6fa3a877aa42c142f4836c3cb6b10d4e588ff2150df842e2e3e3e89bde4",
+        "operation": "mint",
+        "markerVout": 0,
+        "inputCount": 1,
+        "outputCount": 4
+      },
+      "sharedWirePassed": true,
+      "exactGardenTransactionMatch": false,
+      "inputs": [
+        {
+          "vin": 0,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 4294967293,
+          "archiveWitnessItems": 1,
+          "outpoint": "822381201c175c84a28698f34f00b35550fe1b880872ae4db681e5e63c927636:1",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "2af206ef53e86c79fd9764ab374489ef94595a1672a3bd53eb9d4bc4d46e4185",
+            "vout": 5,
+            "sats": 84513,
+            "scriptHex": "5120c061627ae56b59a978e965ed3a17ec53590f4c036cadd530afed84ff1d37365a"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        },
+        {
+          "vin": 1,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": null,
+          "archiveWitnessItems": null,
+          "outpoint": "f3b09a5f29e266f503213ce60aa4bfa414b403ca2d95e1955d133dc0cb001bef:0",
+          "sats": "5000000000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        }
+      ],
+      "outputs": [
+        {
+          "vout": 0,
+          "role": "marker",
+          "sats": "0",
+          "scriptHex": "6a287b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a2254455354227d",
+          "scriptFamily": "OP_RETURN",
+          "archiveReference": {
+            "vout": 0,
+            "value_sats": 0,
+            "script_hex": "6a287b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a224c454146227d",
+            "op_return_text": "{\"p\":\"crc-20\",\"op\":\"mint\",\"tick\":\"LEAF\"}"
+          },
+          "valueEqualToArchive": true,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 1,
+          "role": "recipient",
+          "sats": "1000",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 1,
+            "value_sats": 330,
+            "script_hex": "5120d468380b27135979c8ec9954ec772b98cc2fbbd33aad40f595aba35866432756",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 2,
+          "role": "vault",
+          "sats": "1054",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 2,
+            "value_sats": 30000,
+            "script_hex": "5120bf39cfdfc985043dd4f95dd2403167d3d26874dc06ab15e7e09bf4415791c79f",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 3,
+          "role": "protocolFee",
+          "sats": "5025",
+          "scriptHex": "00146363636363636363636363636363636363636363",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 3,
+            "value_sats": 53934,
+            "script_hex": "5120c061627ae56b59a978e965ed3a17ec53590f4c036cadd530afed84ff1d37365a",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 4,
+          "role": "creatorFee",
+          "sats": "546",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 5,
+          "role": "btcChange",
+          "sats": "4999992375",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        }
+      ],
+      "minerFeeSats": "1000",
+      "platformFeeSats": "5025",
+      "creatorFeeSats": "546",
+      "differences": [
+        "input count differs from archived example",
+        "Cove output count/roles differ from archived example",
+        "Cove asset ticker differs",
+        "marker values differ for this asset/amount",
+        "registered native SegWit scripts differ from archived mainnet Taproot scripts",
+        "Cove fees, backing and extra change outputs are checked against Cove plans, not inferred from Garden"
+      ],
+      "unprovenClaims": [
+        "Garden fee policy and issuance/ownership rules",
+        "Garden validator acceptance of Cove assets"
+      ]
+    },
+    {
+      "action": "mint",
+      "txid": "1e005312578909cda5667b1085244136a8f970f9e53e8673b8fbd88eaf73e1cc",
+      "archiveReference": {
+        "txid": "17c4c6fa3a877aa42c142f4836c3cb6b10d4e588ff2150df842e2e3e3e89bde4",
+        "operation": "mint",
+        "markerVout": 0,
+        "inputCount": 1,
+        "outputCount": 4
+      },
+      "sharedWirePassed": true,
+      "exactGardenTransactionMatch": false,
+      "inputs": [
+        {
+          "vin": 0,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": 4294967293,
+          "archiveWitnessItems": 1,
+          "outpoint": "f2b3f4722a5c9f9a466b62997a1ed8353015d08e4280e95a2b203619add4ffeb:2",
+          "sats": "1054",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "txid": "2af206ef53e86c79fd9764ab374489ef94595a1672a3bd53eb9d4bc4d46e4185",
+            "vout": 5,
+            "sats": 84513,
+            "scriptHex": "5120c061627ae56b59a978e965ed3a17ec53590f4c036cadd530afed84ff1d37365a"
+          },
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        },
+        {
+          "vin": 1,
+          "sequence": 4294967294,
+          "scriptSigHex": "",
+          "witnessItems": 2,
+          "archiveSequence": null,
+          "archiveWitnessItems": null,
+          "outpoint": "72d83c7b1589ac9a58ecd9529364c0a6192cfccbb35c22250cf2fe0e53cfd03d:4",
+          "sats": "999922871",
+          "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "comparison": "Cove outpoint and ownership differ by asset/network; prevout identity/value checked exactly"
+        }
+      ],
+      "outputs": [
+        {
+          "vout": 0,
+          "role": "marker",
+          "sats": "0",
+          "scriptHex": "6a287b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a2254455354227d",
+          "scriptFamily": "OP_RETURN",
+          "archiveReference": {
+            "vout": 0,
+            "value_sats": 0,
+            "script_hex": "6a287b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a224c454146227d",
+            "op_return_text": "{\"p\":\"crc-20\",\"op\":\"mint\",\"tick\":\"LEAF\"}"
+          },
+          "valueEqualToArchive": true,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 1,
+          "role": "recipient",
+          "sats": "1000",
+          "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 1,
+            "value_sats": 330,
+            "script_hex": "5120d468380b27135979c8ec9954ec772b98cc2fbbd33aad40f595aba35866432756",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 2,
+          "role": "vault",
+          "sats": "1081",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 2,
+            "value_sats": 30000,
+            "script_hex": "5120bf39cfdfc985043dd4f95dd2403167d3d26874dc06ab15e7e09bf4415791c79f",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 3,
+          "role": "protocolFee",
+          "sats": "5013",
+          "scriptHex": "00146363636363636363636363636363636363636363",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": {
+            "vout": 3,
+            "value_sats": 53934,
+            "script_hex": "5120c061627ae56b59a978e965ed3a17ec53590f4c036cadd530afed84ff1d37365a",
+            "op_return_text": null
+          },
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 4,
+          "role": "creatorFee",
+          "sats": "546",
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        },
+        {
+          "vout": 5,
+          "role": "btcChange",
+          "sats": "999915285",
+          "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
+          "scriptFamily": "P2WPKH",
+          "archiveReference": null,
+          "valueEqualToArchive": false,
+          "scriptEqualToArchive": false
+        }
+      ],
+      "minerFeeSats": "1000",
+      "platformFeeSats": "5013",
+      "creatorFeeSats": "546",
+      "differences": [
+        "input count differs from archived example",
+        "Cove output count/roles differ from archived example",
+        "Cove asset ticker differs",
+        "marker values differ for this asset/amount",
+        "registered native SegWit scripts differ from archived mainnet Taproot scripts",
+        "Cove fees, backing and extra change outputs are checked against Cove plans, not inferred from Garden"
+      ],
+      "unprovenClaims": [
+        "Garden fee policy and issuance/ownership rules",
+        "Garden validator acceptance of Cove assets"
+      ]
+    }
+  ]
+}

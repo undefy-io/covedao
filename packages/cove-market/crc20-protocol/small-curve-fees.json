@@ -1,0 +1,744 @@
+[
+  {
+    "scenario": "400+600",
+    "action": "deploy",
+    "txid": "9571626780fc3a8961032b28ad491ef77dc86296d34f34d8c883835ef42caf18",
+    "grossSats": 0,
+    "platformFeeSats": 7000,
+    "creatorFeeSats": 0,
+    "minerFeeSats": 1000,
+    "inputs": [
+      {
+        "outpoint": "6664322ed92e83a7f4db44705cbe474960b675f868de0727abd17c3da04ad624:0",
+        "sats": "3999999859"
+      }
+    ],
+    "outputs": [
+      {
+        "vout": 0,
+        "role": "marker",
+        "sats": "0",
+        "scriptHex": "6a4c7d7b2270223a226372632d3230222c226f70223a226465706c6f79222c227469636b223a2254455354222c2274797065223a22626f6e64696e67222c226d6178223a223231303030303030222c226c696d223a223231303030303030222c226c656166223a2230222c226f726469223a2230222c22627463223a2231227d"
+      },
+      {
+        "vout": 1,
+        "role": "vault",
+        "sats": "1000",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 2,
+        "role": "creatorRecord",
+        "sats": "1000",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 3,
+        "role": "protocolFee",
+        "sats": "7000",
+        "scriptHex": "00146363636363636363636363636363636363636363"
+      },
+      {
+        "vout": 4,
+        "role": "btcChange",
+        "sats": "3999989859",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      }
+    ],
+    "walletTopUpSats": "0"
+  },
+  {
+    "scenario": "400+600",
+    "action": "mint",
+    "txid": "828ceff9a5481793083090eb7b90f3fe45260391beb537360fad2047f040ed6a",
+    "grossSats": 14,
+    "platformFeeSats": 5007,
+    "creatorFeeSats": 546,
+    "minerFeeSats": 1000,
+    "inputs": [
+      {
+        "outpoint": "9571626780fc3a8961032b28ad491ef77dc86296d34f34d8c883835ef42caf18:1",
+        "sats": "1000"
+      },
+      {
+        "outpoint": "9571626780fc3a8961032b28ad491ef77dc86296d34f34d8c883835ef42caf18:4",
+        "sats": "3999989859"
+      }
+    ],
+    "outputs": [
+      {
+        "vout": 0,
+        "role": "marker",
+        "sats": "0",
+        "scriptHex": "6a287b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a2254455354227d"
+      },
+      {
+        "vout": 1,
+        "role": "recipient",
+        "sats": "1000",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 2,
+        "role": "vault",
+        "sats": "1014",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 3,
+        "role": "protocolFee",
+        "sats": "5007",
+        "scriptHex": "00146363636363636363636363636363636363636363"
+      },
+      {
+        "vout": 4,
+        "role": "creatorFee",
+        "sats": "546",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 5,
+        "role": "btcChange",
+        "sats": "3999982292",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      }
+    ],
+    "walletTopUpSats": "0"
+  },
+  {
+    "scenario": "400+600",
+    "action": "mint",
+    "txid": "6d01b55d5245c17810f3e024c553c95afe673f5d9e7089fe20af18dc91df2580",
+    "grossSats": 13,
+    "platformFeeSats": 5006,
+    "creatorFeeSats": 546,
+    "minerFeeSats": 1000,
+    "inputs": [
+      {
+        "outpoint": "828ceff9a5481793083090eb7b90f3fe45260391beb537360fad2047f040ed6a:2",
+        "sats": "1014"
+      },
+      {
+        "outpoint": "828ceff9a5481793083090eb7b90f3fe45260391beb537360fad2047f040ed6a:5",
+        "sats": "3999982292"
+      }
+    ],
+    "outputs": [
+      {
+        "vout": 0,
+        "role": "marker",
+        "sats": "0",
+        "scriptHex": "6a287b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a2254455354227d"
+      },
+      {
+        "vout": 1,
+        "role": "recipient",
+        "sats": "1000",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 2,
+        "role": "vault",
+        "sats": "1027",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 3,
+        "role": "protocolFee",
+        "sats": "5006",
+        "scriptHex": "00146363636363636363636363636363636363636363"
+      },
+      {
+        "vout": 4,
+        "role": "creatorFee",
+        "sats": "546",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 5,
+        "role": "btcChange",
+        "sats": "3999974727",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      }
+    ],
+    "walletTopUpSats": "0"
+  },
+  {
+    "scenario": "400+600",
+    "action": "curveSell",
+    "txid": "701946542681d1dbf7ac972f79ce04a6693042d0670f7f98436fe1d8fcf4a215",
+    "grossSats": 10,
+    "platformFeeSats": 1000,
+    "creatorFeeSats": 0,
+    "minerFeeSats": 1000,
+    "inputs": [
+      {
+        "outpoint": "6d01b55d5245c17810f3e024c553c95afe673f5d9e7089fe20af18dc91df2580:2",
+        "sats": "1027"
+      },
+      {
+        "outpoint": "828ceff9a5481793083090eb7b90f3fe45260391beb537360fad2047f040ed6a:1",
+        "sats": "1000"
+      },
+      {
+        "outpoint": "6d01b55d5245c17810f3e024c553c95afe673f5d9e7089fe20af18dc91df2580:5",
+        "sats": "3999974727"
+      }
+    ],
+    "outputs": [
+      {
+        "vout": 0,
+        "role": "marker",
+        "sats": "0",
+        "scriptHex": "6a407b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a223430303030303030303030227d"
+      },
+      {
+        "vout": 1,
+        "role": "vault",
+        "sats": "1017",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 2,
+        "role": "payout",
+        "sats": "1000",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 3,
+        "role": "tokenChange",
+        "sats": "1000",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 4,
+        "role": "protocolFee",
+        "sats": "1000",
+        "scriptHex": "00146363636363636363636363636363636363636363"
+      },
+      {
+        "vout": 5,
+        "role": "btcChange",
+        "sats": "3999971737",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      }
+    ],
+    "walletTopUpSats": "2990"
+  },
+  {
+    "scenario": "400+600",
+    "action": "curveSell",
+    "txid": "8e3594f1c076310c75bd8b0c3341b554d7b38c135ea8ae04d5d15d33a0175874",
+    "grossSats": 17,
+    "platformFeeSats": 1000,
+    "creatorFeeSats": 0,
+    "minerFeeSats": 1000,
+    "inputs": [
+      {
+        "outpoint": "701946542681d1dbf7ac972f79ce04a6693042d0670f7f98436fe1d8fcf4a215:1",
+        "sats": "1017"
+      },
+      {
+        "outpoint": "6d01b55d5245c17810f3e024c553c95afe673f5d9e7089fe20af18dc91df2580:1",
+        "sats": "1000"
+      },
+      {
+        "outpoint": "701946542681d1dbf7ac972f79ce04a6693042d0670f7f98436fe1d8fcf4a215:3",
+        "sats": "1000"
+      },
+      {
+        "outpoint": "701946542681d1dbf7ac972f79ce04a6693042d0670f7f98436fe1d8fcf4a215:5",
+        "sats": "3999971737"
+      }
+    ],
+    "outputs": [
+      {
+        "vout": 0,
+        "role": "marker",
+        "sats": "0",
+        "scriptHex": "6a407b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a223630303030303030303030227d"
+      },
+      {
+        "vout": 1,
+        "role": "vault",
+        "sats": "1000",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 2,
+        "role": "payout",
+        "sats": "1000",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 3,
+        "role": "protocolFee",
+        "sats": "1000",
+        "scriptHex": "00146363636363636363636363636363636363636363"
+      },
+      {
+        "vout": 4,
+        "role": "btcChange",
+        "sats": "3999970754",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      }
+    ],
+    "walletTopUpSats": "983"
+  },
+  {
+    "scenario": "400+600",
+    "action": "inventoryBuy",
+    "txid": "d94448a84682e875956ee1fb76918496bd487dda89fdd4e44ab4aa61bb11656e",
+    "grossSats": 14,
+    "platformFeeSats": 5007,
+    "creatorFeeSats": 546,
+    "minerFeeSats": 1000,
+    "inputs": [
+      {
+        "outpoint": "8e3594f1c076310c75bd8b0c3341b554d7b38c135ea8ae04d5d15d33a0175874:1",
+        "sats": "1000"
+      },
+      {
+        "outpoint": "6664322ed92e83a7f4db44705cbe474960b675f868de0727abd17c3da04ad624:1",
+        "sats": "1000000000"
+      }
+    ],
+    "outputs": [
+      {
+        "vout": 0,
+        "role": "marker",
+        "sats": "0",
+        "scriptHex": "6a407b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a223530303030303030303030227d"
+      },
+      {
+        "vout": 1,
+        "role": "recipient",
+        "sats": "1000",
+        "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871"
+      },
+      {
+        "vout": 2,
+        "role": "vault",
+        "sats": "1014",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 3,
+        "role": "protocolFee",
+        "sats": "5007",
+        "scriptHex": "00146363636363636363636363636363636363636363"
+      },
+      {
+        "vout": 4,
+        "role": "creatorFee",
+        "sats": "546",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 5,
+        "role": "btcChange",
+        "sats": "999992433",
+        "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871"
+      }
+    ],
+    "walletTopUpSats": "0"
+  },
+  {
+    "scenario": "400+600",
+    "action": "inventoryBuy",
+    "txid": "9bcf3f6b07546f2f3719c8f12fdf550d866929c7e3bc62b37ba074cebcb6ca47",
+    "grossSats": 13,
+    "platformFeeSats": 5006,
+    "creatorFeeSats": 546,
+    "minerFeeSats": 1000,
+    "inputs": [
+      {
+        "outpoint": "d94448a84682e875956ee1fb76918496bd487dda89fdd4e44ab4aa61bb11656e:2",
+        "sats": "1014"
+      },
+      {
+        "outpoint": "d94448a84682e875956ee1fb76918496bd487dda89fdd4e44ab4aa61bb11656e:5",
+        "sats": "999992433"
+      }
+    ],
+    "outputs": [
+      {
+        "vout": 0,
+        "role": "marker",
+        "sats": "0",
+        "scriptHex": "6a407b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a223530303030303030303030227d"
+      },
+      {
+        "vout": 1,
+        "role": "recipient",
+        "sats": "1000",
+        "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871"
+      },
+      {
+        "vout": 2,
+        "role": "vault",
+        "sats": "1027",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 3,
+        "role": "protocolFee",
+        "sats": "5006",
+        "scriptHex": "00146363636363636363636363636363636363636363"
+      },
+      {
+        "vout": 4,
+        "role": "creatorFee",
+        "sats": "546",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 5,
+        "role": "btcChange",
+        "sats": "999984868",
+        "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871"
+      }
+    ],
+    "walletTopUpSats": "0"
+  },
+  {
+    "scenario": "1000",
+    "action": "deploy",
+    "txid": "88ca5a4fce8abee062373d1bfe4aad34d65de684a88d7cdd2fa7632158f19ce7",
+    "grossSats": 0,
+    "platformFeeSats": 7000,
+    "creatorFeeSats": 0,
+    "minerFeeSats": 1000,
+    "inputs": [
+      {
+        "outpoint": "dbdbd93329356b2bbbe472f32adb1a833d196c6c8288b613c447dafbdb40be97:0",
+        "sats": "5000000000"
+      }
+    ],
+    "outputs": [
+      {
+        "vout": 0,
+        "role": "marker",
+        "sats": "0",
+        "scriptHex": "6a4c7d7b2270223a226372632d3230222c226f70223a226465706c6f79222c227469636b223a2254455354222c2274797065223a22626f6e64696e67222c226d6178223a223231303030303030222c226c696d223a223231303030303030222c226c656166223a2230222c226f726469223a2230222c22627463223a2231227d"
+      },
+      {
+        "vout": 1,
+        "role": "vault",
+        "sats": "1000",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 2,
+        "role": "creatorRecord",
+        "sats": "1000",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 3,
+        "role": "protocolFee",
+        "sats": "7000",
+        "scriptHex": "00146363636363636363636363636363636363636363"
+      },
+      {
+        "vout": 4,
+        "role": "btcChange",
+        "sats": "4999990000",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      }
+    ],
+    "walletTopUpSats": "0"
+  },
+  {
+    "scenario": "1000",
+    "action": "mint",
+    "txid": "e9f1d30548090bd150ed3c4f724b798835c0f32008935bea49fe008596c612ea",
+    "grossSats": 14,
+    "platformFeeSats": 5007,
+    "creatorFeeSats": 546,
+    "minerFeeSats": 1000,
+    "inputs": [
+      {
+        "outpoint": "88ca5a4fce8abee062373d1bfe4aad34d65de684a88d7cdd2fa7632158f19ce7:1",
+        "sats": "1000"
+      },
+      {
+        "outpoint": "f3b09a5f29e266f503213ce60aa4bfa414b403ca2d95e1955d133dc0cb001bef:0",
+        "sats": "5000000000"
+      }
+    ],
+    "outputs": [
+      {
+        "vout": 0,
+        "role": "marker",
+        "sats": "0",
+        "scriptHex": "6a287b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a2254455354227d"
+      },
+      {
+        "vout": 1,
+        "role": "recipient",
+        "sats": "1000",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 2,
+        "role": "vault",
+        "sats": "1014",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 3,
+        "role": "protocolFee",
+        "sats": "5007",
+        "scriptHex": "00146363636363636363636363636363636363636363"
+      },
+      {
+        "vout": 4,
+        "role": "creatorFee",
+        "sats": "546",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 5,
+        "role": "btcChange",
+        "sats": "4999992433",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      }
+    ],
+    "walletTopUpSats": "0"
+  },
+  {
+    "scenario": "1000",
+    "action": "mint",
+    "txid": "85603b5064b8d09edd9977c17e51e9a10f1d69ad8287563313fff34a6029c55b",
+    "grossSats": 13,
+    "platformFeeSats": 5006,
+    "creatorFeeSats": 546,
+    "minerFeeSats": 1000,
+    "inputs": [
+      {
+        "outpoint": "e9f1d30548090bd150ed3c4f724b798835c0f32008935bea49fe008596c612ea:2",
+        "sats": "1014"
+      },
+      {
+        "outpoint": "e9f1d30548090bd150ed3c4f724b798835c0f32008935bea49fe008596c612ea:5",
+        "sats": "4999992433"
+      }
+    ],
+    "outputs": [
+      {
+        "vout": 0,
+        "role": "marker",
+        "sats": "0",
+        "scriptHex": "6a287b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a2254455354227d"
+      },
+      {
+        "vout": 1,
+        "role": "recipient",
+        "sats": "1000",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 2,
+        "role": "vault",
+        "sats": "1027",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 3,
+        "role": "protocolFee",
+        "sats": "5006",
+        "scriptHex": "00146363636363636363636363636363636363636363"
+      },
+      {
+        "vout": 4,
+        "role": "creatorFee",
+        "sats": "546",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 5,
+        "role": "btcChange",
+        "sats": "4999984868",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      }
+    ],
+    "walletTopUpSats": "0"
+  },
+  {
+    "scenario": "1000",
+    "action": "curveSell",
+    "txid": "30851ead2b9299a2b538a96771737a657aa4ba67869d6944cc0c72f8826bfbcc",
+    "grossSats": 27,
+    "platformFeeSats": 1000,
+    "creatorFeeSats": 0,
+    "minerFeeSats": 1000,
+    "inputs": [
+      {
+        "outpoint": "85603b5064b8d09edd9977c17e51e9a10f1d69ad8287563313fff34a6029c55b:2",
+        "sats": "1027"
+      },
+      {
+        "outpoint": "e9f1d30548090bd150ed3c4f724b798835c0f32008935bea49fe008596c612ea:1",
+        "sats": "1000"
+      },
+      {
+        "outpoint": "85603b5064b8d09edd9977c17e51e9a10f1d69ad8287563313fff34a6029c55b:1",
+        "sats": "1000"
+      },
+      {
+        "outpoint": "df8d5b8a031bb6c2f189b82c94d66c99afb671cb747010a7095c2d5e9758734b:0",
+        "sats": "5000000000"
+      }
+    ],
+    "outputs": [
+      {
+        "vout": 0,
+        "role": "marker",
+        "sats": "0",
+        "scriptHex": "6a417b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a22313030303030303030303030227d"
+      },
+      {
+        "vout": 1,
+        "role": "vault",
+        "sats": "1000",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 2,
+        "role": "payout",
+        "sats": "1000",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 3,
+        "role": "protocolFee",
+        "sats": "1000",
+        "scriptHex": "00146363636363636363636363636363636363636363"
+      },
+      {
+        "vout": 4,
+        "role": "btcChange",
+        "sats": "4999999027",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      }
+    ],
+    "walletTopUpSats": "973"
+  },
+  {
+    "scenario": "1000",
+    "action": "inventoryBuy",
+    "txid": "7349cc23143b48b9287c4f7b952d0fa9a0154cbf325e843655f775f280cda32d",
+    "grossSats": 14,
+    "platformFeeSats": 5007,
+    "creatorFeeSats": 546,
+    "minerFeeSats": 1000,
+    "inputs": [
+      {
+        "outpoint": "30851ead2b9299a2b538a96771737a657aa4ba67869d6944cc0c72f8826bfbcc:1",
+        "sats": "1000"
+      },
+      {
+        "outpoint": "9bcf3f6b07546f2f3719c8f12fdf550d866929c7e3bc62b37ba074cebcb6ca47:5",
+        "sats": "999984868"
+      }
+    ],
+    "outputs": [
+      {
+        "vout": 0,
+        "role": "marker",
+        "sats": "0",
+        "scriptHex": "6a407b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a223530303030303030303030227d"
+      },
+      {
+        "vout": 1,
+        "role": "recipient",
+        "sats": "1000",
+        "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871"
+      },
+      {
+        "vout": 2,
+        "role": "vault",
+        "sats": "1014",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 3,
+        "role": "protocolFee",
+        "sats": "5007",
+        "scriptHex": "00146363636363636363636363636363636363636363"
+      },
+      {
+        "vout": 4,
+        "role": "creatorFee",
+        "sats": "546",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 5,
+        "role": "btcChange",
+        "sats": "999977301",
+        "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871"
+      }
+    ],
+    "walletTopUpSats": "0"
+  },
+  {
+    "scenario": "1000",
+    "action": "inventoryBuy",
+    "txid": "1cfd6dc52a123d3e6d516668af767165436e2a10af11468927bbd08830f787b9",
+    "grossSats": 13,
+    "platformFeeSats": 5006,
+    "creatorFeeSats": 546,
+    "minerFeeSats": 1000,
+    "inputs": [
+      {
+        "outpoint": "7349cc23143b48b9287c4f7b952d0fa9a0154cbf325e843655f775f280cda32d:2",
+        "sats": "1014"
+      },
+      {
+        "outpoint": "7349cc23143b48b9287c4f7b952d0fa9a0154cbf325e843655f775f280cda32d:5",
+        "sats": "999977301"
+      }
+    ],
+    "outputs": [
+      {
+        "vout": 0,
+        "role": "marker",
+        "sats": "0",
+        "scriptHex": "6a407b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a223530303030303030303030227d"
+      },
+      {
+        "vout": 1,
+        "role": "recipient",
+        "sats": "1000",
+        "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871"
+      },
+      {
+        "vout": 2,
+        "role": "vault",
+        "sats": "1027",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 3,
+        "role": "protocolFee",
+        "sats": "5006",
+        "scriptHex": "00146363636363636363636363636363636363636363"
+      },
+      {
+        "vout": 4,
+        "role": "creatorFee",
+        "sats": "546",
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+      },
+      {
+        "vout": 5,
+        "role": "btcChange",
+        "sats": "999969736",
+        "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871"
+      }
+    ],
+    "walletTopUpSats": "0"
+  }
+]

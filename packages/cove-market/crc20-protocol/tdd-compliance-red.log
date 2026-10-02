@@ -1,0 +1,44 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ compliance.test.ts (9 tests | 9 failed) 13ms
+   × SQLite compliance checks every input/output of deploy and distinguishes intentional differences 9ms
+     → Failed to load url ./test-support/compliance.ts (resolved id: ./test-support/compliance.ts) in /home/andefy/dev/covedao/packages/cove-market/crc20-protocol/compliance.test.ts. Does the file exist?
+   × SQLite compliance checks every input/output of mint and distinguishes intentional differences 1ms
+     → Failed to load url ./test-support/compliance.ts (resolved id: ./test-support/compliance.ts) in /home/andefy/dev/covedao/packages/cove-market/crc20-protocol/compliance.test.ts. Does the file exist?
+   × SQLite compliance checks every input/output of transfer and distinguishes intentional differences 0ms
+     → Failed to load url ./test-support/compliance.ts (resolved id: ./test-support/compliance.ts) in /home/andefy/dev/covedao/packages/cove-market/crc20-protocol/compliance.test.ts. Does the file exist?
+   × SQLite compliance checks every input/output of curveSell and distinguishes intentional differences 0ms
+     → Failed to load url ./test-support/compliance.ts (resolved id: ./test-support/compliance.ts) in /home/andefy/dev/covedao/packages/cove-market/crc20-protocol/compliance.test.ts. Does the file exist?
+   × SQLite compliance checks every input/output of inventoryBuy and distinguishes intentional differences 0ms
+     → Failed to load url ./test-support/compliance.ts (resolved id: ./test-support/compliance.ts) in /home/andefy/dev/covedao/packages/cove-market/crc20-protocol/compliance.test.ts. Does the file exist?
+   × SQLite compliance checks every input/output of listing and distinguishes intentional differences 0ms
+     → Failed to load url ./test-support/compliance.ts (resolved id: ./test-support/compliance.ts) in /home/andefy/dev/covedao/packages/cove-market/crc20-protocol/compliance.test.ts. Does the file exist?
+   × SQLite compliance checks every input/output of marketBuy and distinguishes intentional differences 0ms
+     → Failed to load url ./test-support/compliance.ts (resolved id: ./test-support/compliance.ts) in /home/andefy/dev/covedao/packages/cove-market/crc20-protocol/compliance.test.ts. Does the file exist?
+   × SQLite compliance checks every input/output of cancel and distinguishes intentional differences 0ms
+     → Failed to load url ./test-support/compliance.ts (resolved id: ./test-support/compliance.ts) in /home/andefy/dev/covedao/packages/cove-market/crc20-protocol/compliance.test.ts. Does the file exist?
+   × compliance rejects missing prevouts, duplicate inputs, altered output value/script and corrupted marker bytes 0ms
+     → Failed to load url ./test-support/compliance.ts (resolved id: ./test-support/compliance.ts) in /home/andefy/dev/covedao/packages/cove-market/crc20-protocol/compliance.test.ts. Does the file exist?
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 9 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  compliance.test.ts > SQLite compliance checks every input/output of deploy and distinguishes intentional differences
+ FAIL  compliance.test.ts > SQLite compliance checks every input/output of mint and distinguishes intentional differences
+ FAIL  compliance.test.ts > SQLite compliance checks every input/output of transfer and distinguishes intentional differences
+ FAIL  compliance.test.ts > SQLite compliance checks every input/output of curveSell and distinguishes intentional differences
+ FAIL  compliance.test.ts > SQLite compliance checks every input/output of inventoryBuy and distinguishes intentional differences
+ FAIL  compliance.test.ts > SQLite compliance checks every input/output of listing and distinguishes intentional differences
+ FAIL  compliance.test.ts > SQLite compliance checks every input/output of marketBuy and distinguishes intentional differences
+ FAIL  compliance.test.ts > SQLite compliance checks every input/output of cancel and distinguishes intentional differences
+ FAIL  compliance.test.ts > compliance rejects missing prevouts, duplicate inputs, altered output value/script and corrupted marker bytes
+Error: Failed to load url ./test-support/compliance.ts (resolved id: ./test-support/compliance.ts) in /home/andefy/dev/covedao/packages/cove-market/crc20-protocol/compliance.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../../node_modules/.pnpm/vite@5.4.21_@types+node@22.20.4_terser@5.51.2/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51969:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/9]⎯
+
+ Test Files  1 failed (1)
+      Tests  9 failed (9)
+   Start at  14:06:28
+   Duration  256ms (transform 91ms, setup 0ms, collect 125ms, tests 13ms, environment 0ms, prepare 31ms)
+

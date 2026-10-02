@@ -1,0 +1,30 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ hardening.test.ts (5 tests | 2 failed) 109ms
+   × transfer builder rejects wrong asset, unsafe numeric amounts and missing recipient without mutation 3ms
+     → expected [Function] to throw an error
+   × a listing cannot redirect its exact sale carrier to another owner 0ms
+     → expected [Function] to throw an error
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  hardening.test.ts > transfer builder rejects wrong asset, unsafe numeric amounts and missing recipient without mutation
+AssertionError: expected [Function] to throw an error
+ ❯ hardening.test.ts:42:251
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  hardening.test.ts > a listing cannot redirect its exact sale carrier to another owner
+AssertionError: expected [Function] to throw an error
+ ❯ hardening.test.ts:57:280
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 3 passed (5)
+   Start at  11:50:35
+   Duration  252ms (transform 95ms, setup 0ms, collect 27ms, tests 109ms, environment 0ms, prepare 31ms)
+

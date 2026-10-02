@@ -1,0 +1,26 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ hardening.test.ts (4 tests | 1 failed) 65ms
+   × repeated block identity cannot conceal altered contents 52ms
+     → expected [Function] to throw an error
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  hardening.test.ts > repeated block identity cannot conceal altered contents
+AssertionError: expected [Function] to throw an error
+ ❯ hardening.test.ts:14:71
+     12|   const next=p.applyBlock(empty,block);
+     13|   expect(p.applyBlock(next,block)).toBe(next);
+     14|   expect(()=>p.applyBlock(next,{...block,parentHash:'c'.repeat(64)})).…
+       |                                                                       ^
+     15|   expect(()=>p.applyBlock(next,{...block,height:101})).toThrow();
+     16|   expect(p.rollbackBlock(next,block.hash)).toEqual(empty);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  11:43:42
+   Duration  192ms (transform 56ms, setup 0ms, collect 17ms, tests 65ms, environment 0ms, prepare 33ms)
+

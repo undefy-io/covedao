@@ -1,0 +1,7 @@
+.vitest-cache/
+.regtest/
+!tdd-*.log
+!verification.log
+!typecheck.log
+!lint.log
+!format.log

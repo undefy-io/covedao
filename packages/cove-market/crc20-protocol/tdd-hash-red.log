@@ -1,0 +1,20 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ hash.test.ts (1 test | 1 failed) 7ms
+   × browser hash primitives match independent SHA256/RIPEMD160 vectors 6ms
+     → Failed to load url ./bytes.ts (resolved id: ./bytes.ts) in /home/andefy/dev/covedao/packages/cove-market/crc20-protocol/hash.test.ts. Does the file exist?
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  hash.test.ts > browser hash primitives match independent SHA256/RIPEMD160 vectors
+Error: Failed to load url ./bytes.ts (resolved id: ./bytes.ts) in /home/andefy/dev/covedao/packages/cove-market/crc20-protocol/hash.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../../node_modules/.pnpm/vite@5.4.21_@types+node@22.20.4_terser@5.51.2/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51969:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  11:28:42
+   Duration  148ms (transform 21ms, setup 0ms, collect 19ms, tests 7ms, environment 0ms, prepare 36ms)
+
