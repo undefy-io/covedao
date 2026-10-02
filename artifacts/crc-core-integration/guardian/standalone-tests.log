@@ -1,0 +1,27 @@
+
+> @crclaunch/guardian@0.1.0 test /home/andefy/dev/guardian/apps/guardian
+> vitest run
+
+
+ RUN  v2.1.9 /home/andefy/dev/guardian/apps/guardian
+
+ ✓ src/auth.test.ts (5 tests) 7ms
+stderr | src/http.test.ts > Guardian request lifecycle > disconnect aborts in-flight work and later requests regain signing capacity
+guardian request failed: Guardian client disconnected
+guardian request failed: Guardian client disconnected
+
+stderr | src/http.test.ts > Guardian request lifecycle > an incomplete disconnected request never enters signing
+guardian request failed: Guardian client disconnected
+
+ ✓ src/custody.test.ts (7 tests) 19ms
+ ✓ src/boot.test.ts (6 tests) 23ms
+ ✓ src/http.test.ts (5 tests) 206ms
+ ✓ src/crc20-service.test.ts (3 tests) 23ms
+ ✓ src/service.test.ts (4 tests) 2ms
+ ↓ src/pending.integration.test.ts (14 tests | 14 skipped)
+
+ Test Files  6 passed | 1 skipped (7)
+      Tests  30 passed | 14 skipped (44)
+   Start at  20:16:05
+   Duration  931ms (transform 915ms, setup 0ms, collect 3.07s, tests 280ms, environment 1ms, prepare 463ms)
+

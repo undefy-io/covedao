@@ -54,7 +54,8 @@
     "drizzle-orm": "^0.36.4",
     "pg": "^8.23.0",
     "tiny-secp256k1": "^2.2.3",
-    "@crclaunch/crc20-protocol": "workspace:*"
+    "@crclaunch/crc20-protocol": "workspace:*",
+    "@crclaunch/crc20-state": "workspace:*"
   },
   "devDependencies": {
     "@crclaunch/cove-guardian": "workspace:*",

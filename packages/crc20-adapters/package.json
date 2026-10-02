@@ -28,6 +28,7 @@
     "vitest": "^2.1.8",
     "@playwright/test": "^1.49.1",
     "esbuild": "^0.21.5",
-    "@types/node": "^22.10.0"
+    "@types/node": "^22.10.0",
+    "tiny-secp256k1": "^2.2.3"
   }
 }

@@ -1,0 +1,182 @@
+Scope: 30 of 31 workspace projects
+apps/docs build$ docusaurus build
+packages/config build$ tsc -p tsconfig.json --noEmit
+packages/cove-market/crc20-protocol build$ tsc -p tsconfig.build.json && node build-browser.mjs
+packages/cove-wire build$ tsc -p tsconfig.json --noEmit
+packages/config build: Done
+packages/crc20-base build$ tsc -p tsconfig.json --noEmit
+packages/cove-wire build: Done
+packages/curve build$ tsc -p tsconfig.json --noEmit
+packages/cove-market/crc20-protocol build: Done
+packages/schemas build$ tsc -p tsconfig.json --noEmit
+apps/docs build: [INFO] Website will be built for all these locales: 
+apps/docs build: - en
+apps/docs build: - zh-Hans
+apps/docs build: [INFO] [en] Creating an optimized production build...
+packages/curve build: Done
+packages/schemas build: Done
+apps/docs build: [webpackbar] ℹ Compiling Client
+packages/crc20-base build: Done
+apps/docs build: [webpackbar] ℹ Compiling Server
+apps/docs build: [webpackbar] ✔ Server: Compiled successfully in 1.23s
+apps/docs build: [webpackbar] ✔ Client: Compiled successfully in 1.46s
+apps/docs build: [SUCCESS] Generated static files in "build".
+apps/docs build: [INFO] [zh-Hans] Creating an optimized production build...
+apps/docs build: [webpackbar] ℹ Compiling Client
+apps/docs build: [webpackbar] ℹ Compiling Server
+apps/docs build: [webpackbar] ✔ Server: Compiled successfully in 797.60ms
+apps/docs build: [webpackbar] ✔ Client: Compiled successfully in 817.72ms
+apps/docs build: [SUCCESS] Generated static files in "build/zh-Hans".
+apps/docs build: [INFO] Use `npm run serve` command to test your build locally.
+apps/docs build: Done
+packages/bitcoin build$ tsc -p tsconfig.json --noEmit
+packages/cove-economics build$ tsc -p tsconfig.json --noEmit
+packages/crc20-adapters build$ tsc -p tsconfig.build.json && node build-browser.mjs
+packages/db build$ tsc -p tsconfig.json --noEmit
+packages/cove-economics build: Done
+packages/crc20-adapters build: Done
+packages/bitcoin build: Done
+packages/db build: Done
+packages/cove-covenant build$ tsc -p tsconfig.json --noEmit
+packages/crc20-curve build$ tsc -p tsconfig.json --noEmit
+packages/protocol build$ tsc -p tsconfig.json --noEmit
+packages/crc20-state build$ tsc -p tsconfig.json --noEmit
+packages/crc20-curve build: Done
+packages/crc20-state build: Done
+packages/cove-covenant build: Done
+packages/protocol build: Done
+packages/cove-simplicity build$ tsc -p tsconfig.json --noEmit
+packages/wallets build$ tsc -p tsconfig.json --noEmit
+packages/cove-vault build$ tsc -p tsconfig.json --noEmit
+packages/cove-simplicity build: Done
+packages/wallets build: Done
+packages/cove-vault build: Done
+packages/cove-mainnet build$ tsc -p tsconfig.json --noEmit
+packages/cove-recovery build$ tsc -p tsconfig.json --noEmit
+packages/crc20-transactions build$ tsc -p tsconfig.json --noEmit
+packages/cove-mainnet build: Done
+packages/crc20-transactions build: Done
+packages/cove-recovery build: Done
+packages/cove-guardian build$ tsc -p tsconfig.json --noEmit
+packages/crc20-ledger build$ tsc -p tsconfig.json --noEmit
+packages/crc20-ledger build: Done
+packages/cove-guardian build: Done
+packages/cove-indexer build$ tsc -p tsconfig.json --noEmit
+packages/cove-indexer build: Done
+packages/cove-market build$ tsc -p tsconfig.json --noEmit
+packages/crc20-guardian build$ tsc -p tsconfig.json --noEmit
+packages/crc20-guardian build: Done
+packages/cove-market build: Done
+packages/cove-app build$ tsc -p tsconfig.json --noEmit
+packages/cove-app build: Done
+apps/guardian build$ tsc -p tsconfig.json --noEmit
+apps/web build$ pnpm --filter @crclaunch/docs build:web && next build
+apps/worker build$ tsc -p tsconfig.json --noEmit
+apps/web build: > @crclaunch/docs@0.1.0 build:web /home/andefy/dev/covedao/apps/docs
+apps/web build: > DOCS_HASH_ROUTER=1 DOCS_BASE_URL=/ DOCS_LOCALE=en docusaurus build --out-dir ../web/public/docs && DOCS_HASH_ROUTER=1 DOCS_BASE_URL=/ DOCS_LOCALE=zh-Hans docusaurus build --locale zh-Hans --out-dir ../web/public/docs/zh-Hans
+apps/guardian build: Done
+apps/web build: [INFO] [en] Creating an optimized production build...
+apps/web build: [WARNING] docusaurus-plugin-sitemap does not support the Hash Router and will be disabled.
+apps/web build: [webpackbar] ℹ Compiling Client
+apps/web build: [webpackbar] ✔ Client: Compiled successfully in 967.64ms
+apps/web build: [SUCCESS] Generated static files in "../web/public/docs".
+apps/web build: [INFO] Use `npm run serve` command to test your build locally.
+apps/web build: [INFO] [zh-Hans] Creating an optimized production build...
+apps/worker build: Done
+apps/web build: [WARNING] docusaurus-plugin-sitemap does not support the Hash Router and will be disabled.
+apps/web build: [webpackbar] ℹ Compiling Client
+apps/web build: [webpackbar] ✔ Client: Compiled successfully in 696.63ms
+apps/web build: [SUCCESS] Generated static files in "../web/public/docs/zh-Hans".
+apps/web build: [INFO] Use `npm run serve` command to test your build locally.
+apps/web build:    ▲ Next.js 15.5.26
+apps/web build:    - Experiments (use with caution):
+apps/web build:      · clientTraceMetadata
+apps/web build:    Creating an optimized production build ...
+apps/web build:  ✓ Compiled successfully in 10.5s
+apps/web build:    Skipping linting
+apps/web build:    Checking validity of types ...
+apps/web build:    Collecting page data ...
+apps/web build:    Generating static pages (0/11) ...
+apps/web build:    Generating static pages (2/11) 
+apps/web build:    Generating static pages (5/11) 
+apps/web build:    Generating static pages (8/11) 
+apps/web build:  ✓ Generating static pages (11/11)
+apps/web build:    Finalizing page optimization ...
+apps/web build:    Collecting build traces ...
+apps/web build: Route (app)                                                 Size  First Load JS
+apps/web build: ┌ ƒ /                                                    3.98 kB         213 kB
+apps/web build: ├ ƒ /_not-found                                          1.01 kB         176 kB
+apps/web build: ├ ƒ /activity                                            3.23 kB         213 kB
+apps/web build: ├ ƒ /api/crc/v1/activity                                   276 B         175 kB
+apps/web build: ├ ƒ /api/crc/v1/backing/buy/build                          276 B         175 kB
+apps/web build: ├ ƒ /api/crc/v1/backing/buy/quote                          276 B         175 kB
+apps/web build: ├ ƒ /api/crc/v1/backing/buy/submit                         276 B         175 kB
+apps/web build: ├ ƒ /api/crc/v1/backing/sell/build                         276 B         175 kB
+apps/web build: ├ ƒ /api/crc/v1/backing/sell/quote                         276 B         175 kB
+apps/web build: ├ ƒ /api/crc/v1/backing/sell/submit                        276 B         175 kB
+apps/web build: ├ ƒ /api/crc/v1/fees                                       276 B         175 kB
+apps/web build: ├ ƒ /api/crc/v1/launch/build                               276 B         175 kB
+apps/web build: ├ ƒ /api/crc/v1/launch/submit                              276 B         175 kB
+apps/web build: ├ ƒ /api/crc/v1/market/[operation]                         276 B         175 kB
+apps/web build: ├ ƒ /api/crc/v1/market/status                              276 B         175 kB
+apps/web build: ├ ƒ /api/crc/v1/tokens                                     276 B         175 kB
+apps/web build: ├ ƒ /api/crc/v1/tokens/[assetId]                           276 B         175 kB
+apps/web build: ├ ƒ /api/crc/v1/tokens/[assetId]/activity                  276 B         175 kB
+apps/web build: ├ ƒ /api/crc/v1/tokens/[assetId]/candles                   276 B         175 kB
+apps/web build: ├ ƒ /api/crc/v1/tokens/[assetId]/market                    276 B         175 kB
+apps/web build: ├ ƒ /api/crc/v1/tokens/[assetId]/utxos                     276 B         175 kB
+apps/web build: ├ ƒ /api/crc/v1/trading/status                             276 B         175 kB
+apps/web build: ├ ƒ /api/crc/v1/wallet/[address]/balances                  276 B         175 kB
+apps/web build: ├ ƒ /api/crc/v1/wallet/utxos                               276 B         175 kB
+apps/web build: ├ ƒ /api/dev/wallet                                        276 B         175 kB
+apps/web build: ├ ƒ /api/v3/activity                                       276 B         175 kB
+apps/web build: ├ ƒ /api/v3/backing/buy/build                              276 B         175 kB
+apps/web build: ├ ƒ /api/v3/backing/buy/plan                               276 B         175 kB
+apps/web build: ├ ƒ /api/v3/backing/buy/quote                              276 B         175 kB
+apps/web build: ├ ƒ /api/v3/backing/buy/quote-sats                         276 B         175 kB
+apps/web build: ├ ƒ /api/v3/backing/buy/submit                             276 B         175 kB
+apps/web build: ├ ƒ /api/v3/backing/redeem/build                           276 B         175 kB
+apps/web build: ├ ƒ /api/v3/backing/redeem/quote                           276 B         175 kB
+apps/web build: ├ ƒ /api/v3/backing/redeem/submit                          276 B         175 kB
+apps/web build: ├ ƒ /api/v3/fees                                           276 B         175 kB
+apps/web build: ├ ƒ /api/v3/launch/build                                   276 B         175 kB
+apps/web build: ├ ƒ /api/v3/launch/prepare                                 276 B         175 kB
+apps/web build: ├ ƒ /api/v3/launch/submit                                  276 B         175 kB
+apps/web build: ├ ƒ /api/v3/market/fills/[fillId]                          276 B         175 kB
+apps/web build: ├ ƒ /api/v3/market/fills/[fillId]/build                    276 B         175 kB
+apps/web build: ├ ƒ /api/v3/market/fills/[fillId]/buyer-signature          276 B         175 kB
+apps/web build: ├ ƒ /api/v3/market/fills/[fillId]/finalize                 276 B         175 kB
+apps/web build: ├ ƒ /api/v3/market/listings                                276 B         175 kB
+apps/web build: ├ ƒ /api/v3/market/listings/[listingId]/cancel             276 B         175 kB
+apps/web build: ├ ƒ /api/v3/market/listings/[listingId]/cancel/prepare     276 B         175 kB
+apps/web build: ├ ƒ /api/v3/market/listings/[listingId]/reserve            276 B         175 kB
+apps/web build: ├ ƒ /api/v3/market/listings/[listingId]/reserve/prepare    276 B         175 kB
+apps/web build: ├ ƒ /api/v3/market/listings/prepare                        276 B         175 kB
+apps/web build: ├ ƒ /api/v3/status                                         276 B         175 kB
+apps/web build: ├ ƒ /api/v3/tokens                                         276 B         175 kB
+apps/web build: ├ ƒ /api/v3/tokens/[tokenId]                               276 B         175 kB
+apps/web build: ├ ƒ /api/v3/tokens/[tokenId]/activity                      276 B         175 kB
+apps/web build: ├ ƒ /api/v3/tokens/[tokenId]/buy/routes                    276 B         175 kB
+apps/web build: ├ ƒ /api/v3/tokens/[tokenId]/candles                       276 B         175 kB
+apps/web build: ├ ƒ /api/v3/tokens/[tokenId]/holders                       276 B         175 kB
+apps/web build: ├ ƒ /api/v3/tokens/[tokenId]/market                        276 B         175 kB
+apps/web build: ├ ƒ /api/v3/tokens/sparklines                              276 B         175 kB
+apps/web build: ├ ƒ /api/v3/transfer/build                                 276 B         175 kB
+apps/web build: ├ ƒ /api/v3/transfer/submit                                276 B         175 kB
+apps/web build: ├ ƒ /api/v3/tx/[txid]                                      276 B         175 kB
+apps/web build: ├ ƒ /api/v3/wallet/[address]/portfolio                     276 B         175 kB
+apps/web build: ├ ƒ /api/v3/wallet/utxos                                   276 B         175 kB
+apps/web build: ├ ○ /apple-icon.png                                          0 B            0 B
+apps/web build: ├ ƒ /explore                                             7.04 kB         216 kB
+apps/web build: ├ ○ /icon.png                                                0 B            0 B
+apps/web build: ├ ƒ /launch                                              5.41 kB         410 kB
+apps/web build: ├ ƒ /market                                              7.33 kB         427 kB
+apps/web build: ├ ƒ /token/[tokenId]                                       19 kB         434 kB
+apps/web build: └ ƒ /wallet                                              9.01 kB         429 kB
+apps/web build: + First Load JS shared by all                             175 kB
+apps/web build:   ├ chunks/298fdf74-aa6ccb9e05c98900.js                  54.2 kB
+apps/web build:   ├ chunks/8166-d7309341aec1de4c.js                       117 kB
+apps/web build:   └ other shared chunks (total)                          3.32 kB
+apps/web build: ○  (Static)   prerendered as static content
+apps/web build: ƒ  (Dynamic)  server-rendered on demand
+apps/web build: Done

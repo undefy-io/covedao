@@ -274,6 +274,13 @@
       "when": 1790968856971,
       "tag": "0038_crc_shared_core",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1790970514393,
+      "tag": "0039_crc_guardian_journal",
+      "breakpoints": true
     }
   ]
 }

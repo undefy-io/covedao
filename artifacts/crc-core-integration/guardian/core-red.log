@@ -1,0 +1,50 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ guardian-preflight.test.ts (3 tests | 2 failed) 11ms
+   × Guardian preflight reuses exact core transition with only its own signature absent 7ms
+     → validateGuardianTransaction is not a function
+   × Guardian preflight cannot turn missing signatures on ordinary inputs into an authorization bypass 2ms
+     → expected [Function] to throw error matching /already|unsigned/ but got 'validateGuardia…'
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  guardian-preflight.test.ts > Guardian preflight reuses exact core transition with only its own signature absent
+TypeError: validateGuardianTransaction is not a function
+ ❯ guardian-preflight.test.ts:18:23
+     16| test("Guardian preflight reuses exact core transition with only its ow…
+     17|   const {ledger, transaction} = fixture();
+     18|   const result = core.validateGuardianTransaction(ledger, transaction);
+       |                       ^
+     19|   expect(result.kind).toBe("mint");
+     20|   expect(result.plan).toEqual(request.plan);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  guardian-preflight.test.ts > Guardian preflight cannot turn missing signatures on ordinary inputs into an authorization bypass
+AssertionError: expected [Function] to throw error matching /already|unsigned/ but got 'validateGuardia…'
+
+- Expected: 
+/already|unsigned/
+
++ Received: 
+"__vite_ssr_import_3__.validateGuardianTransaction is not a function"
+
+ ❯ guardian-preflight.test.ts:46:97
+     44|   expect(() => core.validateGuardianTransaction(downgraded, transactio…
+     45|   const raw = bitcoin.Transaction.fromHex(response.rawTransaction);
+     46|   expect(() => core.validateGuardianTransaction(ledger, {...transactio…
+       |                                                                                                 ^
+     47| });
+     48| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 1 passed (3)
+   Start at  19:40:22
+   Duration  240ms (transform 77ms, setup 0ms, collect 109ms, tests 11ms, environment 0ms, prepare 33ms)
+
+undefined
+/home/andefy/dev/covedao/packages/cove-market/crc20-protocol:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run guardian-preflight.test.ts

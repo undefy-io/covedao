@@ -109,7 +109,11 @@ export class Core {
   }
   funding(wallet: "alice" | "bob", excluded: Set<string> = new Set()) {
     const rows = this.rpc("listunspent", [1, 9999999], wallet);
-    const row = rows.find((r: any) => r.amount > 0.01 && !excluded.has(`${r.txid}:${r.vout}`));
+    const script = wallet === "alice" ? aliceScript : bobScript;
+    const row = rows.find(
+      (r: any) =>
+        r.amount > 0.01 && r.scriptPubKey === script && !excluded.has(`${r.txid}:${r.vout}`),
+    );
     if (!row) throw new Error(`no ordinary ${wallet} funding`);
     return {
       txid: row.txid,

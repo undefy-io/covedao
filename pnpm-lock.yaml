@@ -524,6 +524,9 @@ importers:
       '@crclaunch/crc20-protocol':
         specifier: workspace:*
         version: link:../cove-market/crc20-protocol
+      '@crclaunch/crc20-state':
+        specifier: workspace:*
+        version: link:../crc20-state
       '@crclaunch/crc20-transactions':
         specifier: workspace:*
         version: link:../crc20-transactions
@@ -802,6 +805,9 @@ importers:
       esbuild:
         specifier: ^0.21.5
         version: 0.21.5
+      tiny-secp256k1:
+        specifier: ^2.2.3
+        version: 2.2.4
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
@@ -837,6 +843,40 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.20.4)(terser@5.51.2)
 
+  packages/crc20-guardian:
+    dependencies:
+      '@crclaunch/cove-vault':
+        specifier: workspace:*
+        version: link:../cove-vault
+      '@crclaunch/crc20-adapters':
+        specifier: workspace:*
+        version: link:../crc20-adapters
+      '@crclaunch/crc20-protocol':
+        specifier: workspace:*
+        version: link:../cove-market/crc20-protocol
+      '@crclaunch/crc20-state':
+        specifier: workspace:*
+        version: link:../crc20-state
+      '@crclaunch/db':
+        specifier: workspace:*
+        version: link:../db
+      bitcoinjs-lib:
+        specifier: 6.1.8
+        version: 6.1.8
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(@types/react@19.3.0)(pg@8.23.0)(react@19.2.8)
+    devDependencies:
+      '@crclaunch/cove-guardian':
+        specifier: workspace:*
+        version: link:../cove-guardian
+      '@crclaunch/cove-indexer':
+        specifier: workspace:*
+        version: link:../cove-indexer
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.4)(terser@5.51.2)
+
   packages/crc20-ledger:
     dependencies:
       '@crclaunch/cove-economics':
@@ -864,6 +904,18 @@ importers:
       vitest:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.20.4)(terser@5.51.2)
+
+  packages/crc20-state:
+    dependencies:
+      '@crclaunch/crc20-protocol':
+        specifier: workspace:*
+        version: link:../cove-market/crc20-protocol
+      '@crclaunch/db':
+        specifier: workspace:*
+        version: link:../db
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(@types/react@19.3.0)(pg@8.23.0)(react@19.2.8)
 
   packages/crc20-transactions:
     dependencies:

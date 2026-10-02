@@ -1481,3 +1481,25 @@ export const crcIndexedBlocks = pgTable(
     uniqueIndex("crc_indexed_blocks_hash_idx").on(t.network, t.hash),
   ],
 );
+
+/** Custody journal: claims bind one unsigned transaction, never reserve a vault exclusively. */
+export const crcSignatures = pgTable(
+  "crc_signatures",
+  {
+    network: text("network").notNull(),
+    backingOutpoint: text("backing_outpoint").notNull(),
+    unsignedDigest: text("unsigned_digest").notNull(),
+    deployTxid: text("deploy_txid").notNull(),
+    stateRoot: text("state_root").notNull(),
+    claimId: uuid("claim_id").notNull(),
+    status: text("status").notNull().default("pending"),
+    claimedAt: timestamp("claimed_at", { withTimezone: true })
+      .notNull()
+      .default(sql`clock_timestamp()`),
+    signedPsbtBase64: text("signed_psbt_base64"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.network, t.backingOutpoint, t.unsignedDigest] }),
+    uniqueIndex("crc_signatures_claim_idx").on(t.claimId),
+  ],
+);

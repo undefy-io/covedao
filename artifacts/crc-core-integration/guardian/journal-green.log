@@ -1,0 +1,11 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-indexer
+
+ ✓ src/crc20/runner-core.integration.test.ts (3 tests | 2 skipped) 12518ms
+   ✓ actual mined deploy/mint and offer retirement persist exact core state across restart/reorg 7300ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 2 skipped (3)
+   Start at  19:48:52
+   Duration  13.21s (transform 208ms, setup 0ms, collect 474ms, tests 12.52s, environment 0ms, prepare 48ms)
+

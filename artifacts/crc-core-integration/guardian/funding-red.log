@@ -1,0 +1,44 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ core-funding.test.ts (1 test | 1 failed) 6ms
+   × fixed-key Core fixture funding ignores generated wallet change 6ms
+     → expected { …(4) } to match object { …(3) }
+(1 matching property omitted from actual)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  core-funding.test.ts > fixed-key Core fixture funding ignores generated wallet change
+AssertionError: expected { …(4) } to match object { …(3) }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+  Object {
+-   "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+-   "txid": "2222222222222222222222222222222222222222222222222222222222222222",
+-   "vout": 1,
++   "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
++   "txid": "1111111111111111111111111111111111111111111111111111111111111111",
++   "vout": 0,
+  }
+
+ ❯ core-funding.test.ts:10:33
+      8|     { txid: "22".repeat(32), vout: 1, amount: 50, scriptPubKey: aliceS…
+      9|   ]);
+     10|   expect(node.funding("alice")).toMatchObject({
+       |                                 ^
+     11|     txid: "22".repeat(32),
+     12|     vout: 1,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  20:12:05
+   Duration  189ms (transform 31ms, setup 0ms, collect 67ms, tests 6ms, environment 0ms, prepare 34ms)
+
+undefined
+/home/andefy/dev/covedao/packages/cove-market/crc20-protocol:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run core-funding.test.ts

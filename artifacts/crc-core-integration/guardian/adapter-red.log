@@ -1,0 +1,43 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/crc20-adapters
+
+ ❯ src/guardian.test.ts (2 tests | 2 failed) 12ms
+   × Guardian adapter signs only core-validated custody, preserves finalized wallet and verifies complete raw 10ms
+     → signGuardianPsbt is not a function
+   × Guardian adapter refuses wallet or economic tampering before custody; bad custody signature is rejected 1ms
+     → signGuardianPsbt is not a function
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/guardian.test.ts > Guardian adapter signs only core-validated custody, preserves finalized wallet and verifies complete raw
+TypeError: signGuardianPsbt is not a function
+ ❯ src/guardian.test.ts:23:32
+     21|   const f=fixture();
+     22|   const wallet = Buffer.from(f.psbt.data.inputs[1]!.finalScriptWitness…
+     23|   const result = await adapter.signGuardianPsbt(f.psbt.toBase64(), f.l…
+       |                                ^
+     24|   expect(f.sign).toHaveBeenCalledTimes(1);
+     25|   const signed=bitcoin.Psbt.fromBase64(result.psbtBase64);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/guardian.test.ts > Guardian adapter refuses wallet or economic tampering before custody; bad custody signature is rejected
+TypeError: signGuardianPsbt is not a function
+ ❯ src/guardian.test.ts:33:24
+     31|   const f=fixture();
+     32|   f.psbt.data.inputs[1]!.witnessUtxo!.value++;
+     33|   await expect(adapter.signGuardianPsbt(f.psbt.toBase64(), f.ledger, f…
+       |                        ^
+     34|   expect(f.sign).not.toHaveBeenCalled();
+     35|   const bad=fixture();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  19:45:04
+   Duration  305ms (transform 84ms, setup 0ms, collect 117ms, tests 12ms, environment 0ms, prepare 66ms)
+
+undefined
+/home/andefy/dev/covedao/packages/crc20-adapters:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/guardian.test.ts

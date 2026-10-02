@@ -34,6 +34,7 @@ import {
   parseRawTransaction,
   sats,
   verifySignatures,
+  verifyInputSignature,
 } from "./wire.js";
 import { offerId, verifyOffer, prepareOfferRehydration } from "./offers.js";
 export function emptyLedger(config: Config): Ledger {
@@ -71,7 +72,19 @@ function compare(plan: Plan, outputs: { sats: bigint; scriptHex: string }[]): vo
   )
     throw new Error("transaction outputs violate registered transition, fees or token change");
 }
+export interface ValidatedTransition {
+  ledger: Ledger;
+  plan: Plan;
+  kind: string;
+}
 function applyTransaction(ledger: Ledger, transaction: ChainTransaction): Ledger {
+  return transitionTransaction(ledger, transaction).ledger;
+}
+function transitionTransaction(
+  ledger: Ledger,
+  transaction: ChainTransaction,
+  guardianUnsigned = false,
+): ValidatedTransition {
   const tx = parseRawTransaction(transaction.rawHex);
   if (
     ledger.seen[tx.txid] ||
@@ -82,11 +95,17 @@ function applyTransaction(ledger: Ledger, transaction: ChainTransaction): Ledger
   const authorized = Object.values(ledger.offers).find(
     (o) => outpoint(o.listedInput) === outpoint(tx.inputs[0]!),
   );
-  verifySignatures(
-    tx,
-    transaction.prevouts,
-    authorized ? outpoint(authorized.listedInput) : undefined,
-  );
+  if (guardianUnsigned) {
+    if (transaction.prevouts.length !== tx.inputs.length) throw new Error("missing input prevouts");
+    for (let index = 1; index < tx.inputs.length; index++)
+      verifyInputSignature(tx, transaction.prevouts, index);
+  } else {
+    verifySignatures(
+      tx,
+      transaction.prevouts,
+      authorized ? outpoint(authorized.listedInput) : undefined,
+    );
+  }
   const marker = decodeTransaction(
     tx.outputs.map((o, vout) => ({ vout, value_sats: o.sats, script_hex: o.scriptHex })),
   );
@@ -297,14 +316,53 @@ function applyTransaction(ledger: Ledger, transaction: ChainTransaction): Ledger
   if (total + asset.inventoryAtoms + asset.burnedAtoms !== asset.issuedAtoms)
     throw new Error("atom conservation failure");
   return {
-    ...ledger,
-    assets: { ...ledger.assets, [asset.deployTxid]: asset },
-    allocations,
-    spent,
-    seen,
-    offers,
+    plan,
+    kind,
+    ledger: {
+      ...ledger,
+      assets: { ...ledger.assets, [asset.deployTxid]: asset },
+      allocations,
+      spent,
+      seen,
+      offers,
+    },
   };
 }
+/** Guardian preflight of the same transition; only the registered vault's own signature is absent.
+ * The predicted ledger must not be persisted as a confirmed chain observation. */
+export function validateGuardianTransaction(
+  ledger: Ledger,
+  transaction: ChainTransaction,
+): ValidatedTransition {
+  const tx = parseRawTransaction(transaction.rawHex);
+  const asset = Object.values(ledger.assets).find(
+    (asset) => tx.inputs[0] && outpoint(asset.vault) === outpoint(tx.inputs[0]),
+  );
+  if (!asset?.config.guardianCustody) throw new Error("registered Guardian custody required");
+  validateConfig(asset.config);
+  if (asset.config.network !== ledger.config.network) throw new Error("Guardian network mismatch");
+  if (asset.vaultAvailable === false || tx.inputs[0]!.witness.length || tx.inputs[0]!.scriptHex)
+    throw new Error("Guardian input must be current and unsigned, not already finalized");
+  if (
+    tx.version !== 2 ||
+    tx.locktime !== 0 ||
+    tx.inputs.some((input) => input.sequence !== 0xfffffffe)
+  )
+    throw new Error("Guardian transaction header outside core plan");
+  const claimed = transaction.prevouts[0];
+  if (
+    !claimed ||
+    outpoint(claimed) !== outpoint(asset.vault) ||
+    claimed.scriptHex !== asset.vault.scriptHex ||
+    sats(claimed.sats) !== sats(asset.vault.sats)
+  )
+    throw new Error("Guardian vault prevout mismatch");
+  const result = transitionTransaction({ ...ledger, config: asset.config }, transaction, true);
+  if (!["mint", "inventoryBuy", "sell"].includes(result.kind))
+    throw new Error("Guardian operation requires vault transition");
+  return { ...result, ledger: { ...result.ledger, config: ledger.config } };
+}
+
 export function applyBlock(ledger: Ledger, block: Block): Ledger {
   const fingerprint = hex(
     hash256(

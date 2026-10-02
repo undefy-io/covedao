@@ -123,6 +123,29 @@ test("actual mined deploy/mint and offer retirement persist exact core state acr
   }
   expect(await store.loadCrcCoreLedger(fixture.db, "regtest")).toEqual(beforeDeploy);
   const deployed = (await sync()).snapshot.state!;
+  const journalDigest = "ab".repeat(32);
+  const journalContext = {
+    network: "regtest",
+    deployTxid: deployId,
+    unsignedDigest: journalDigest,
+    stateRoot: store.crcCoreStateRoot(deployed),
+  };
+  const claim = await store.claimCrcSignature(fixture.db, journalContext);
+  expect(claim.claimId).toBeTruthy();
+  await expect(store.claimCrcSignature(fixture.db, journalContext)).rejects.toThrow(/progress/);
+  await store.releaseCrcSignature(fixture.db, claim.claimId);
+  const retry = await store.claimCrcSignature(fixture.db, journalContext);
+  expect(retry.claimId).not.toBe(claim.claimId);
+  await expect(
+    store.completeCrcSignature(fixture.db, claim.claimId, journalContext, "stale-claim"),
+  ).rejects.toThrow();
+  await store.completeCrcSignature(fixture.db, retry.claimId, journalContext, "signed-test-record");
+  expect((await store.claimCrcSignature(fixture.db, journalContext)).signedPsbtBase64).toBe(
+    "signed-test-record",
+  );
+  await expect(
+    store.claimCrcSignature(fixture.db, { ...journalContext, stateRoot: "cd".repeat(32) }),
+  ).rejects.toThrow(/changed/);
   const mint = core.buildMint({
     state: deployed.assets[deployId]!,
     funding: [node.funding("alice")],

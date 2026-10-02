@@ -142,3 +142,30 @@ provider and database failures, restart, bounded undo and shallow/same-height/de
 reorgs. This source milestone does not deploy the replacement: Guardian/API and
 frontend consumers are the following dependent gates, followed by obsolete-state
 removal and CRC-only reset. Shared infrastructure and SQLite fixtures remain intact.
+
+## Guardian integration
+
+`@crclaunch/crc20-state` owns the shared persistence adapter used by indexer and
+Guardian. `@crclaunch/crc20-guardian` independently verifies trusted registration,
+configured custody/recovery, archived deployment parents, current indexed state,
+and actual confirmed unspent prevouts. Core preflight allows only unsigned vault
+input 0 while verifying every wallet signature. The custody adapter signs the
+core's Taproot digest and runs complete core verification before returning it.
+
+The signing journal binds network, vault outpoint and unsigned digest with a
+leased claim and state-root CAS. Identical completed requests reuse a verified
+signature; valid competing transactions do not exclusively reserve the vault.
+State changes during custody reject the response and release the claim for retry.
+Actual chain conflicts and confirmed core transitions determine the winner.
+
+Standalone Guardian imports the same managed runtime sources. Run
+`python3 scripts/guardian/sync-crc-core.py /path/to/guardian --check` to compare
+canonical bytes and package metadata; the generated manifest records hashes.
+Old standalone CRC validators and their signing path were deleted. Shared
+non-CRC recovery infrastructure and the preexisting user README edit remain.
+
+[Guardian evidence](../artifacts/crc-core-integration/guardian/README.md) records
+mined trades with exact fees and indexed/core equality, rejection cases, journal
+recovery, fresh Astra review, and the standalone Docker package import check.
+API and browser wallet-first preparation remain dependent gates. No replacement
+deployment, application reset, production custody or live-wallet canary is claimed.
