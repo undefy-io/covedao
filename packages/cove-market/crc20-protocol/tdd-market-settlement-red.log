@@ -1,0 +1,121 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ market-settlement.test.ts (8 tests | 8 failed) 22906ms
+   × purchase confirmed 0 blocks after expiry still pays and allocates tokens 2168ms
+     → expired or consumed offer
+   × purchase confirmed 2 blocks after expiry still pays and allocates tokens 2437ms
+     → expired or consumed offer
+   × new signed-offer purchases require height and reject expired or unavailable offers 1627ms
+     → expected [Function] to throw an error
+   × owner transfer 100000000000n, expired=false preserves allocation and retires listing 2417ms
+     → expired or consumed offer
+   × owner transfer 50000000000n, expired=false preserves allocation and retires listing 2473ms
+     → wrong listed token outpoint or amount
+   × owner transfer 1n, expired=true preserves allocation and retires listing 2504ms
+     → wrong listed token outpoint or amount
+   × one owner transfer can consume multiple registered token outputs 3345ms
+     → multiple listed outputs
+   × curve sale of a listed carrier retires its offer 2608ms
+     → expected 'open' to be 'cancelled' // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  market-settlement.test.ts > purchase confirmed 0 blocks after expiry still pays and allocates tokens
+ FAIL  market-settlement.test.ts > purchase confirmed 2 blocks after expiry still pays and allocates tokens
+Error: expired or consumed offer
+ ❯ applyTransaction replay.ts:232:19
+    230|             !["open", "cancelPending"].includes(usedOffer.status!)
+    231|           )
+    232|             throw new Error("expired or consumed offer");
+       |                   ^
+    233|           plan = buildPurchase({
+    234|             offer: usedOffer,
+ ❯ Module.applyBlock replay.ts:318:47
+ ❯ mine market-settlement.test.ts:20:51
+ ❯ market-settlement.test.ts:102:12
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  market-settlement.test.ts > new signed-offer purchases require height and reject expired or unavailable offers
+AssertionError: expected [Function] to throw an error
+ ❯ market-settlement.test.ts:119:63
+    117|   expect(() => p.buildPurchase(args)).not.toThrow();
+    118|   for (const currentHeight of [offer.expiryHeight, offer.expiryHeight …
+    119|     expect(() => p.buildPurchase({ ...args, currentHeight })).toThrow(…
+       |                                                               ^
+    120|   const { currentHeight: _height, ...missing } = args;
+    121|   expect(() => p.buildPurchase(missing)).toThrow();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  market-settlement.test.ts > owner transfer 100000000000n, expired=false preserves allocation and retires listing
+Error: expired or consumed offer
+ ❯ applyTransaction replay.ts:232:19
+    230|             !["open", "cancelPending"].includes(usedOffer.status!)
+    231|           )
+    232|             throw new Error("expired or consumed offer");
+       |                   ^
+    233|           plan = buildPurchase({
+    234|             offer: usedOffer,
+ ❯ Module.applyBlock replay.ts:318:47
+ ❯ mine market-settlement.test.ts:20:51
+ ❯ confirm market-settlement.test.ts:28:16
+ ❯ market-settlement.test.ts:145:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  market-settlement.test.ts > owner transfer 50000000000n, expired=false preserves allocation and retires listing
+ FAIL  market-settlement.test.ts > owner transfer 1n, expired=true preserves allocation and retires listing
+Error: wrong listed token outpoint or amount
+ ❯ applyTransaction replay.ts:222:17
+    220|           usedOffer.deployTxid !== id
+    221|         )
+    222|           throw new Error("wrong listed token outpoint or amount");
+       |                 ^
+    223|         if (marker.markerVout === 0 && recipientScriptHex === usedOffe…
+    224|           plan = buildCancel({ offer: usedOffer, funding, changeScript…
+ ❯ Module.applyBlock replay.ts:318:47
+ ❯ mine market-settlement.test.ts:20:51
+ ❯ confirm market-settlement.test.ts:28:16
+ ❯ market-settlement.test.ts:145:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  market-settlement.test.ts > one owner transfer can consume multiple registered token outputs
+Error: multiple listed outputs
+ ❯ applyTransaction replay.ts:212:36
+    210|         tokens.some((t) => outpoint(t) === outpoint(o.listedInput)),
+    211|       );
+    212|       if (offers.length > 1) throw new Error("multiple listed outputs"…
+       |                                    ^
+    213|       usedOffer = offers[0];
+    214|       if (usedOffer) {
+ ❯ Module.applyBlock replay.ts:318:47
+ ❯ mine market-settlement.test.ts:20:51
+ ❯ confirm market-settlement.test.ts:28:16
+ ❯ market-settlement.test.ts:180:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+ FAIL  market-settlement.test.ts > curve sale of a listed carrier retires its offer
+AssertionError: expected 'open' to be 'cancelled' // Object.is equality
+
+Expected: "cancelled"
+Received: "open"
+
+ ❯ market-settlement.test.ts:203:58
+    201|     funding: [core.funding("alice")],
+    202|   }));
+    203|   expect(result.ledger.offers[p.offerId(offer)]!.status).toBe("cancell…
+       |                                                          ^
+    204|   expect(result.ledger.assets[start.deployTxid]!.inventoryAtoms).toBe(…
+    205| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯
+
+ Test Files  1 failed (1)
+      Tests  8 failed (8)
+   Start at  14:48:52
+   Duration  23.18s (transform 86ms, setup 0ms, collect 136ms, tests 22.91s, environment 0ms, prepare 34ms)
+

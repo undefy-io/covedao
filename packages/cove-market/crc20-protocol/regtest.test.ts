@@ -354,6 +354,7 @@ test("two-wallet raw-chain lifecycle, invalid transitions, signatures, competito
   expect(balance(aliceScript)).toBe(250000000000n);
   const fillArgs = {
     offer,
+    currentHeight: core.rpc("getblockcount"),
     buyerFunding: funding("bob"),
     buyerScriptHex: bobScript,
     protocolScriptHex: protocolScript,
@@ -437,6 +438,7 @@ test("two-wallet raw-chain lifecycle, invalid transitions, signatures, competito
   await confirm(
     p.buildPurchase({
       offer: arbitrary,
+      currentHeight: core.rpc("getblockcount"),
       buyerFunding: funding("bob"),
       buyerScriptHex: bobScript,
       protocolScriptHex: protocolScript,
@@ -460,6 +462,7 @@ test("two-wallet raw-chain lifecycle, invalid transitions, signatures, competito
   expect(cancelPlan.creatorFeeSats).toBe(0n);
   const reorgFillPlan = p.buildPurchase({
     offer: cancelOffer,
+    currentHeight: core.rpc("getblockcount"),
     buyerFunding: funding("bob"),
     buyerScriptHex: bobScript,
     protocolScriptHex: protocolScript,
@@ -501,6 +504,7 @@ test("two-wallet raw-chain lifecycle, invalid transitions, signatures, competito
   await confirm(
     p.buildPurchase({
       offer: fillOffer,
+      currentHeight: core.rpc("getblockcount"),
       buyerFunding: funding("bob"),
       buyerScriptHex: bobScript,
       protocolScriptHex: protocolScript,

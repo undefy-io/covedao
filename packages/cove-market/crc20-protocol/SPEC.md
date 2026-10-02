@@ -50,6 +50,10 @@ A listing records the deploy txid, 500 TEST, 12,347 sats **total**, Alice's payo
 
 Alice may list any amount she owns in the one listing transaction, which creates an exact carrier and returns her remainder. A buyer cannot partially fill an already signed listing; doing that requires a separate residual authorization protocol.
 
+Expiry is an off-chain availability rule. New presigned purchase construction requires the current chain height and an available offer, and refuses construction at or after expiry. Bitcoin cannot make this existing signature expire: an otherwise valid fill confirmed at or after expiry still pays the seller and credits the buyer. Confirmation, rather than an off-chain timestamp or status, decides settlement.
+
+Registering an offer does not restrict fresh owner-signed transfers. The owner may transfer the full balance, split a partial balance, combine listed carriers, or sell a listed carrier to the curve. Each accepted spend retires every offer attached to its spent outputs. A non-market spend records those offers as cancelled; a market fill records its authorization as filled. Reorg rollback restores the prior authorizations and balances.
+
 ### Alice cancels before Bob buys
 
 Alice can request cancellation while the listing is open. The service marks

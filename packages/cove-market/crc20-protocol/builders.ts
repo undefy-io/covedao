@@ -269,6 +269,8 @@ export function buildSell(args: TradeArgs): Plan {
 }
 export interface PurchaseArgs {
   offer?: Offer;
+  /** Required for new presigned purchases; expiry is advisory, not a Bitcoin timelock. */
+  currentHeight?: number;
   network?: string;
   deployTxid?: string;
   ticker?: string;
@@ -282,7 +284,16 @@ export interface PurchaseArgs {
   minerFeeSats?: bigint;
 }
 export function buildPurchase(args: PurchaseArgs): Plan {
-  if (args.offer) verifyOffer(args.offer);
+  if (args.offer) {
+    verifyOffer(args.offer);
+    if (
+      !Number.isSafeInteger(args.currentHeight) ||
+      args.currentHeight! < 0 ||
+      args.currentHeight! >= args.offer.expiryHeight ||
+      (args.offer.status !== undefined && args.offer.status !== "open")
+    )
+      throw new Error("expired or unavailable offer, or missing current height");
+  }
   const input = args.offer?.listedInput ?? args.listedInput;
   const price = args.offer?.priceSats ?? args.priceSats;
   const seller = args.offer?.sellerScriptHex ?? args.sellerScriptHex;

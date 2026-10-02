@@ -1,7 +1,6 @@
 import { hash256, hex, utf8 } from "./bytes.js";
 import type { Asset, Block, ChainTransaction, Config, Ledger, Offer, Plan } from "./types.js";
 import {
-  buildCancel,
   buildDeploy,
   buildInventoryBuy,
   buildMint,
@@ -61,7 +60,7 @@ function compare(plan: Plan, outputs: { sats: bigint; scriptHex: string }[]): vo
   )
     throw new Error("transaction outputs violate registered transition, fees or token change");
 }
-function applyTransaction(ledger: Ledger, transaction: ChainTransaction, height: number): Ledger {
+function applyTransaction(ledger: Ledger, transaction: ChainTransaction): Ledger {
   const tx = parseRawTransaction(transaction.rawHex);
   if (
     ledger.seen[tx.txid] ||
@@ -206,12 +205,9 @@ function applyTransaction(ledger: Ledger, transaction: ChainTransaction, height:
       }
     } else {
       if (marker.operation !== "transfer") throw new Error("mint requires current vault");
-      const offers = Object.values(ledger.offers).filter((o) =>
-        tokens.some((t) => outpoint(t) === outpoint(o.listedInput)),
-      );
-      if (offers.length > 1) throw new Error("multiple listed outputs");
-      usedOffer = offers[0];
-      if (usedOffer) {
+      if (marker.markerVout === 1) {
+        usedOffer = authorized;
+        if (!usedOffer) throw new Error("unregistered market offer");
         verifyOffer(usedOffer);
         if (
           tokens.length !== 1 ||
@@ -220,26 +216,20 @@ function applyTransaction(ledger: Ledger, transaction: ChainTransaction, height:
           usedOffer.deployTxid !== id
         )
           throw new Error("wrong listed token outpoint or amount");
-        if (marker.markerVout === 0 && recipientScriptHex === usedOffer.sellerScriptHex) {
-          plan = buildCancel({ offer: usedOffer, funding, changeScriptHex, minerFeeSats });
-          kind = "cancel";
-        } else {
-          if (
-            marker.markerVout !== 1 ||
-            height >= usedOffer.expiryHeight ||
-            !["open", "cancelPending"].includes(usedOffer.status!)
-          )
-            throw new Error("expired or consumed offer");
-          plan = buildPurchase({
-            offer: usedOffer,
-            buyerFunding: funding,
-            buyerScriptHex: recipientScriptHex,
-            protocolScriptHex: asset.config.protocolScriptHex,
-            changeScriptHex,
-            minerFeeSats,
-          });
-          kind = "fill";
-        }
+        // Confirmed settlement is governed by the actual outpoint spend, not an
+        // off-chain expiry/status. Rebuild the terms without constructing a new offer purchase.
+        plan = buildPurchase({
+          listedInput: usedOffer.listedInput,
+          priceSats: usedOffer.priceSats,
+          sellerScriptHex: usedOffer.sellerScriptHex,
+          ticker: usedOffer.ticker,
+          buyerFunding: funding,
+          buyerScriptHex: recipientScriptHex,
+          protocolScriptHex: asset.config.protocolScriptHex,
+          changeScriptHex,
+          minerFeeSats,
+        });
+        kind = "fill";
       } else {
         if (marker.markerVout !== 0)
           throw new Error("unregistered market offer or invalid transfer position");
@@ -275,11 +265,15 @@ function applyTransaction(ledger: Ledger, transaction: ChainTransaction, height:
         scriptHex: output.scriptHex,
         deployTxid: asset.deployTxid,
       };
-  if (usedOffer)
-    offers[offerId(usedOffer)] = {
-      ...usedOffer,
-      status: kind === "cancel" ? "cancelled" : "filled",
-    };
+  // Every accepted spend retires all authorizations attached to consumed outputs,
+  // including owner transfers, curve sales and spends of multiple listed carriers.
+  const consumed = new Set(inputs.map(outpoint));
+  for (const [id, offer] of Object.entries(offers))
+    if (consumed.has(outpoint(offer.listedInput)))
+      offers[id] = {
+        ...offer,
+        status: usedOffer && id === offerId(usedOffer) && kind === "fill" ? "filled" : "cancelled",
+      };
   const total = Object.values(allocations)
     .filter((a) => a.deployTxid === asset.deployTxid)
     .reduce((sum, a) => sum + a.atoms, 0n);
@@ -315,7 +309,7 @@ export function applyBlock(ledger: Ledger, block: Block): Ledger {
   )
     throw new Error("detached block or reorg requires rollback");
   let next = ledger;
-  for (const tx of block.transactions) next = applyTransaction(next, tx, block.height);
+  for (const tx of block.transactions) next = applyTransaction(next, tx);
   return {
     ...next,
     tip: { hash: block.hash, height: block.height, fingerprint },
