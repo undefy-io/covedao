@@ -1,0 +1,45 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/wallets/xverse-capabilities.test.ts (8 tests | 2 failed) 19ms
+   × mock provider refusal 4001 is a cancellation with no retry 7ms
+     → expected WalletError: Xverse: You declined the req… { code: '…' } to match object { code: 'REJECTED' }
+(1 matching property omitted from actual)
+   × mock provider refusal -32000 is a cancellation with no retry 1ms
+     → expected WalletError: Xverse: You declined the req… { code: '…' } to match object { code: 'REJECTED' }
+(1 matching property omitted from actual)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/wallets/xverse-capabilities.test.ts > mock provider refusal 4001 is a cancellation with no retry
+ FAIL  src/lib/wallets/xverse-capabilities.test.ts > mock provider refusal -32000 is a cancellation with no retry
+AssertionError: expected WalletError: Xverse: You declined the req… { code: '…' } to match object { code: 'REJECTED' }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+- Object {
+-   "code": "REJECTED",
++ WalletError {
++   "code": "FAILED",
+  }
+
+ ❯ src/lib/wallets/xverse-capabilities.test.ts:45:5
+     43|   test(`mock provider refusal ${error.code} is a cancellation with no …
+     44|     const request = provider({ error });
+     45|     await expect(adapterFor("xverse").signMessage("signet", "selected-…
+       |     ^
+     46|     expect(request).toHaveBeenCalledTimes(1);
+     47|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 6 passed (8)
+   Start at  17:31:21
+   Duration  497ms (transform 66ms, setup 0ms, collect 170ms, tests 19ms, environment 0ms, prepare 52ms)
+
+undefined
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/lib/wallets/xverse-capabilities.test.ts

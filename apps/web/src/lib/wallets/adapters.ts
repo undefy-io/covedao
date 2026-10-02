@@ -42,6 +42,7 @@ function isTaprootAddress(address: string): boolean {
 }
 
 function fail(walletName: string, e: unknown): never {
+  if (e instanceof WalletError) throw e;
   const message = e instanceof Error ? e.message : String(e);
   if (/cancel|reject|denied|user/i.test(message)) {
     throw new WalletError("REJECTED", tr("wal.cancelled", { wallet: walletName }));
