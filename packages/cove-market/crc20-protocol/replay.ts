@@ -35,7 +35,7 @@ import {
   sats,
   verifySignatures,
 } from "./wire.js";
-import { offerId, verifyOffer } from "./offers.js";
+import { offerId, verifyOffer, prepareOfferRehydration } from "./offers.js";
 export function emptyLedger(config: Config): Ledger {
   validateConfig(config);
   return {
@@ -495,7 +495,8 @@ export function applyConfirmedBlock(
     (block.parentHash !== ledger.tip.hash || block.height !== ledger.tip.height + 1)
   )
     throw new Error("detached block or reorg requires rollback");
-  let next = ledger;
+  const rehydrate = prepareOfferRehydration(ledger, options.authorizations ?? []);
+  let next = rehydrate(ledger);
   for (const transaction of block.transactions) {
     const tx = parseRawTransaction(transaction.rawHex);
     const consumed = new Set(tx.inputs.map(outpoint));
@@ -564,6 +565,10 @@ export function applyConfirmedBlock(
         );
       next = burnConfirmedInputs(next, transaction);
     }
+    next = rehydrate(
+      next,
+      tx.outputs.map((_, vout) => `${tx.txid}:${vout}`),
+    );
   }
   return {
     ...next,

@@ -521,6 +521,9 @@ importers:
       '@crclaunch/crc20-ledger':
         specifier: workspace:*
         version: link:../crc20-ledger
+      '@crclaunch/crc20-protocol':
+        specifier: workspace:*
+        version: link:../cove-market/crc20-protocol
       '@crclaunch/crc20-transactions':
         specifier: workspace:*
         version: link:../crc20-transactions

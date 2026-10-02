@@ -31,7 +31,7 @@
     "mainnet-config": "tsx src/mainnet-config.ts",
     "mainnet-canary": "tsx src/mainnet-canary.ts",
     "regtest-reorg": "tsx src/regtest-reorg.ts",
-    "crc:regtest-lifecycle": "tsx src/crc20/regtest-lifecycle.ts",
+    "crc:regtest-lifecycle": "vitest run src/crc20/runner-core.integration.test.ts",
     "v3:persistent-lifecycle": "tsx src/v3/persistent-lifecycle.ts",
     "v3:persistent-reorg-matrix": "tsx src/v3/persistent-reorg-matrix.ts"
   },
@@ -53,7 +53,8 @@
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.36.4",
     "pg": "^8.23.0",
-    "tiny-secp256k1": "^2.2.3"
+    "tiny-secp256k1": "^2.2.3",
+    "@crclaunch/crc20-protocol": "workspace:*"
   },
   "devDependencies": {
     "@crclaunch/cove-guardian": "workspace:*",

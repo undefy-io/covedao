@@ -108,6 +108,7 @@ export interface BlockUndo {
   seen: Record<string, true | null>;
 }
 export interface ConfirmedBlockOptions {
+  authorizations?: readonly Offer[];
   registeredDeployments?: Record<string, Config>;
   undoLimit?: number;
 }

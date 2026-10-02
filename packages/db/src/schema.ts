@@ -1379,3 +1379,105 @@ export const coveWalletFunding = pgTable(
     index("cove_wallet_funding_observed_idx").on(t.observedAt),
   ],
 );
+
+/** Single-core CRC state. Records are mechanical projections of the core DTOs. */
+export const crcNetworks = pgTable("crc_networks", {
+  network: text("network").primaryKey(),
+  configJson: jsonb("config_json").notNull(),
+  activationHeight: atoms("activation_height").notNull(),
+});
+export const crcRecords = pgTable(
+  "crc_records",
+  {
+    network: text("network").notNull(),
+    kind: text("kind").notNull(),
+    key: text("key").notNull(),
+    valueJson: jsonb("value_json").notNull(),
+    deployTxid: text("deploy_txid"),
+    scriptHex: text("script_hex"),
+    atoms: atoms("atoms"),
+    sats: atoms("sats"),
+    status: text("status"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.network, t.kind, t.key] }),
+    index("crc_records_wallet_idx")
+      .on(t.network, t.scriptHex, t.deployTxid)
+      .where(sql`${t.kind} = 'allocations'`),
+    index("crc_records_market_idx")
+      .on(t.network, t.deployTxid, t.status)
+      .where(sql`${t.kind} = 'offers'`),
+  ],
+);
+export const crcCursors = pgTable("crc_cursors", {
+  network: text("network").primaryKey(),
+  height: atoms("height"),
+  blockHash: text("block_hash"),
+  fingerprint: text("fingerprint"),
+  stateRoot: text("state_root").notNull(),
+});
+export const crcUndo = pgTable(
+  "crc_undo",
+  {
+    network: text("network").notNull(),
+    height: atoms("height").notNull(),
+    blockHash: text("block_hash").notNull(),
+    undoJson: jsonb("undo_json").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.network, t.height] }),
+    uniqueIndex("crc_undo_hash_idx").on(t.network, t.blockHash),
+  ],
+);
+export const crcCheckpoints = pgTable(
+  "crc_checkpoints",
+  {
+    network: text("network").notNull(),
+    height: atoms("height").notNull(),
+    blockHash: text("block_hash"),
+    baseline: boolean("baseline").notNull().default(false),
+    stateJson: jsonb("state_json").notNull(),
+    stateRoot: text("state_root").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.network, t.height] })],
+);
+export const crcRegistrations = pgTable(
+  "crc_registrations",
+  {
+    network: text("network").notNull(),
+    deployTxid: text("deploy_txid").notNull(),
+    configJson: jsonb("config_json").notNull(),
+    signedRawHex: text("signed_raw_hex").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.network, t.deployTxid] })],
+);
+export const crcAuthorizations = pgTable(
+  "crc_authorizations",
+  {
+    network: text("network").notNull(),
+    offerId: text("offer_id").notNull(),
+    listedOutpoint: text("listed_outpoint").notNull(),
+    offerJson: jsonb("offer_json").notNull(),
+    cancelRequested: boolean("cancel_requested").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.network, t.offerId] }),
+    index("crc_authorizations_outpoint_idx").on(t.network, t.listedOutpoint),
+  ],
+);
+export const crcIndexedBlocks = pgTable(
+  "crc_indexed_blocks",
+  {
+    network: text("network").notNull(),
+    height: atoms("height").notNull(),
+    hash: text("hash").notNull(),
+    parentHash: text("parent_hash").notNull(),
+    fingerprint: text("fingerprint").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.network, t.height] }),
+    uniqueIndex("crc_indexed_blocks_hash_idx").on(t.network, t.hash),
+  ],
+);

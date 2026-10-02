@@ -1,6 +1,7 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import * as bitcoin from "bitcoinjs-lib";
 import * as core from "./index.js";
+import * as bip322 from "./bip322.js";
 import { aliceKey, aliceScript, bobScript, protocolScript } from "./test-support/core.js";
 import { signNativeInput, authorizeOffer } from "./test-support/signing.js";
 import type { Config, Input, Ledger, ChainTransaction } from "./types.js";
@@ -411,4 +412,107 @@ test("confirmed paid fill settles after off-chain expiry and cancel request from
   expect(next.offers[core.offerId(offer)]!.status).toBe("filled");
   expect(Object.values(next.allocations)[0]!.scriptHex).toBe(bobScript);
   expect(next.assets[id]!.burnedAtoms).toBe(0n);
+});
+test("durable signed authorizations rehydrate between intra-block creation and expired paid fill", async () => {
+  const ledger = seeded();
+  const first = core.buildTransfer({
+    network: "regtest",
+    deployTxid: id,
+    ticker: "TEST",
+    inputs: [token],
+    funding: [{ txid: "d".repeat(64), vout: 0, sats: 10000n, scriptHex: aliceScript }],
+    amountAtoms: token.atoms,
+    recipientScriptHex: aliceScript,
+  });
+  const firstTx = sign(first.inputs, first.outputs);
+  const listedInput = { ...token, txid: core.parseRawTransaction(firstTx.rawHex).txid, vout: 1 };
+  const offer = await authorizeOffer(
+    {
+      network: "regtest",
+      deployTxid: id,
+      ticker: "TEST",
+      listedInput,
+      sellerScriptHex: aliceScript,
+      priceSats: 10000n,
+      expiryHeight: 1,
+    },
+    aliceKey.privateKey!,
+  );
+  const purchase = core.buildPurchase({
+    listedInput,
+    priceSats: offer.priceSats,
+    sellerScriptHex: aliceScript,
+    ticker: "TEST",
+    buyerFunding: [{ txid: "e".repeat(64), vout: 0, sats: 100000n, scriptHex: aliceScript }],
+    buyerScriptHex: bobScript,
+    protocolScriptHex: protocolScript,
+    minerFeeSats: 1000n,
+  });
+  const fill = sign(purchase.inputs, purchase.outputs);
+  const tx = bitcoin.Transaction.fromHex(fill.rawHex);
+  tx.setWitness(
+    0,
+    offer.sellerWitnessHex.map((h) => Buffer.from(h, "hex")),
+  );
+  const next = core.applyConfirmedBlock(ledger, block([firstTx, { ...fill, rawHex: tx.toHex() }]), {
+    authorizations: [{ ...offer, status: "cancelPending" }],
+  });
+  expect(next.offers[core.offerId(offer)]!.status).toBe("filled");
+  expect(next.assets[id]!.burnedAtoms).toBe(0n);
+  expect(Object.values(next.allocations)[0]!.scriptHex).toBe(bobScript);
+  expect(core.rollbackBlock(next, next.tip!.hash)).toEqual(ledger);
+});
+test("rehydration rejects conflicting durable terms and ignores absent allocation", async () => {
+  const offer = await authorizeOffer(
+    {
+      network: "regtest",
+      deployTxid: id,
+      ticker: "TEST",
+      listedInput: token,
+      sellerScriptHex: aliceScript,
+      priceSats: 10000n,
+      expiryHeight: 1,
+    },
+    aliceKey.privateKey!,
+  );
+  const other = await authorizeOffer({ ...offer, priceSats: 20000n }, aliceKey.privateKey!);
+  const admitted = await core.registerOffer(seeded(), offer);
+  expect(() => core.applyConfirmedBlock(admitted, block([]), { authorizations: [other] })).toThrow(
+    /conflicting/,
+  );
+  expect(
+    core.applyConfirmedBlock(core.emptyLedger(config), block([]), { authorizations: [offer] })
+      .offers,
+  ).toEqual({});
+});
+
+test("confirmed block authenticates durable terms once despite unrelated Bitcoin transactions", async () => {
+  const offer = await authorizeOffer(
+    {
+      network: "regtest",
+      deployTxid: id,
+      ticker: "TEST",
+      listedInput: token,
+      sellerScriptHex: aliceScript,
+      priceSats: 10000n,
+      expiryHeight: 10,
+    },
+    aliceKey.privateKey!,
+  );
+  const verify = vi.spyOn(bip322, "verifyMessageAuthorization");
+  try {
+    const transactions = Array.from({ length: 20 }, (_, n) =>
+      sign(
+        [{ ...token, txid: (n + 100).toString(16).padStart(64, "0") }],
+        [{ scriptHex: bobScript, sats: 500n }],
+      ),
+    );
+    const next = core.applyConfirmedBlock(seeded(), block(transactions), {
+      authorizations: [offer],
+    });
+    expect(next.offers[core.offerId(offer)]!.status).toBe("open");
+    expect(verify).toHaveBeenCalledTimes(1);
+  } finally {
+    verify.mockRestore();
+  }
 });

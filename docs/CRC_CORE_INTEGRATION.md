@@ -109,3 +109,36 @@ market filters and listing controls, wallet holdings/transfer/cancel controls,
 wallet picker, rejection/disconnect/network handling, and pending refresh.
 Amounts/fees may change only to accurately display the target core values;
 control structure and appearance remain the baseline.
+
+## Fresh indexer persistence
+
+The CRC runner now observes exact canonical Bitcoin blocks and authenticated parent
+transactions, then calls `applyConfirmedBlock` from the shared core. It ignores
+unregistered external deployments and never invokes the removed CRC parser,
+curve replay, projection validator or ledger conversion. `crc:regtest-lifecycle`
+runs the disposable PostgreSQL/Bitcoin Core integration suite.
+
+Fresh `crc_*` tables hold core DTO records, trusted signed deployment
+registrations, durable offer authorizations, the cursor, flat inverse deltas and
+checkpoints. A network transaction advisory lock serializes publication and block
+commits. Record changes, undo, indexed-block identity and the cursor commit in one
+transaction. Reads verify the persisted core state root. RPC observation completes
+before the transaction; a missing/wrong parent stops replay without burning tokens
+or advancing the cursor. Registrations are rechecked inside the commit transaction.
+
+Undo defaults to 32 blocks. Checkpoints default to every 1,000 blocks, retaining
+four plus the activation baseline. Deep reorgs select a checkpoint whose hash is
+canonical at the provider, then replay from it; the empty activation baseline is
+always retained. There is no old-ledger recovery or historical conversion path.
+Offer authorizations survive separately from chain state and are rehydrated by
+core rules as allocations return, including intra-block creation before a paid
+fill. Cancellation remains an off-chain request; confirmed spends decide fills
+and retirement. Historical authorizations are cryptographically checked once per
+block and looked up by outpoint during transitions.
+
+[Indexer evidence](../artifacts/crc-core-integration/indexer/README.md) covers real
+mined deployment/mint/burn/fill, exact 1,000-sat fees, external deployment exclusion,
+provider and database failures, restart, bounded undo and shallow/same-height/deep
+reorgs. This source milestone does not deploy the replacement: Guardian/API and
+frontend consumers are the following dependent gates, followed by obsolete-state
+removal and CRC-only reset. Shared infrastructure and SQLite fixtures remain intact.

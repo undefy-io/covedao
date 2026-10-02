@@ -108,21 +108,85 @@ export function verifyOffer(o: Offer): void {
     throw new Error("offer requires SINGLE|ANYONECANPAY seller signature");
   verifySignatures(tx, [o.listedInput], outpoint(o.listedInput));
 }
-export async function registerOffer(ledger: Ledger, offer: Offer): Promise<Ledger> {
-  verifyOffer(offer);
+function matchesAllocation(ledger: Ledger, offer: Offer): boolean {
   const allocation = ledger.allocations[outpoint(offer.listedInput)],
     asset = ledger.assets[offer.deployTxid];
-  if (
-    !asset ||
-    offer.network !== asset.config.network ||
-    offer.ticker !== asset.config.ticker ||
-    !allocation ||
-    allocation.deployTxid !== offer.deployTxid ||
-    allocation.atoms !== offer.listedInput.atoms ||
-    allocation.sats !== sats(offer.listedInput.sats) ||
-    allocation.scriptHex !== offer.sellerScriptHex ||
-    (ledger.tip && ledger.tip.height >= offer.expiryHeight)
-  )
+  return Boolean(
+    asset &&
+    offer.network === asset.config.network &&
+    offer.ticker === asset.config.ticker &&
+    allocation &&
+    allocation.deployTxid === offer.deployTxid &&
+    allocation.atoms === offer.listedInput.atoms &&
+    allocation.sats === sats(offer.listedInput.sats) &&
+    allocation.scriptHex === offer.sellerScriptHex,
+  );
+}
+/** Replay previously admitted signed terms, including expired terms needed for confirmed fills.
+ * New publication must use registerOffer, which checks current allocation and expiry. */
+export function prepareOfferRehydration(
+  ledger: Ledger,
+  authorizations: readonly Offer[],
+): (state: Ledger, outpoints?: Iterable<string>) => Ledger {
+  const byOutpoint = new Map<string, Offer>();
+  for (const authorization of authorizations) {
+    const offer = structuredClone(authorization);
+    verifyOffer(offer);
+    const key = outpoint(offer.listedInput),
+      existing = ledger.offers[offerId(offer)] ?? byOutpoint.get(key);
+    if (existing && offerMessage(existing) !== offerMessage(offer))
+      throw new Error("conflicting authorization for listed outpoint");
+    const first = byOutpoint.get(key);
+    byOutpoint.set(
+      key,
+      first
+        ? {
+            ...first,
+            status:
+              first.status === "cancelPending" || offer.status === "cancelPending"
+                ? "cancelPending"
+                : "open",
+          }
+        : offer,
+    );
+  }
+  return (state, outpoints = Object.keys(state.allocations)) => {
+    let next = state;
+    for (const key of outpoints) {
+      const offer = byOutpoint.get(key);
+      if (!offer || !matchesAllocation(next, offer)) continue;
+      const id = offerId(offer),
+        existing = next.offers[id];
+      if (existing) {
+        if (offerMessage(existing) !== offerMessage(offer))
+          throw new Error("conflicting authorization for listed outpoint");
+        if (offer.status === "cancelPending" && existing.status === "open")
+          next = markOfferUnavailable(next, id);
+        continue;
+      }
+      next = {
+        ...next,
+        offers: {
+          ...next.offers,
+          [id]: {
+            ...structuredClone(offer),
+            status: offer.status === "cancelPending" ? "cancelPending" : "open",
+          },
+        },
+      };
+    }
+    return next;
+  };
+}
+export function rehydrateOfferAuthorizations(
+  ledger: Ledger,
+  authorizations: readonly Offer[],
+): Ledger {
+  return prepareOfferRehydration(ledger, authorizations)(ledger);
+}
+export async function registerOffer(ledger: Ledger, offer: Offer): Promise<Ledger> {
+  verifyOffer(offer);
+  if (!matchesAllocation(ledger, offer) || (ledger.tip && ledger.tip.height >= offer.expiryHeight))
     throw new Error("offer does not match current chain allocation");
   const id = offerId(offer);
   const existing = ledger.offers[id];
