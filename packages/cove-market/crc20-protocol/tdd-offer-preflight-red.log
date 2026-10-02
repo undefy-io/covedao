@@ -1,0 +1,26 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao
+
+ ❯ packages/cove-market/crc20-protocol/wallet-offers.test.ts (6 tests | 1 failed | 5 skipped) 6ms
+   × offer messages reject unsupported ownership and malformed identity before a wallet prompt 5ms
+     → expected [Function] to throw an error
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/cove-market/crc20-protocol/wallet-offers.test.ts > offer messages reject unsupported ownership and malformed identity before a wallet prompt
+AssertionError: expected [Function] to throw an error
+ ❯ packages/cove-market/crc20-protocol/wallet-offers.test.ts:141:59
+    139|     { listedInput: { ...t.listedInput, vout: -1 } },
+    140|     { listedInput: { ...t.listedInput, atoms: 0n } }, { priceSats: 0n …
+    141|   ]) expect(() => core.offerMessage({ ...t, ...change })).toThrow();
+       |                                                           ^
+    142| });
+    143| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 skipped (6)
+   Start at  17:08:16
+   Duration  248ms (transform 69ms, setup 0ms, collect 114ms, tests 6ms, environment 0ms, prepare 32ms)
+

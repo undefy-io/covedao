@@ -105,7 +105,7 @@ test("supported native, proven nested, and Taproot funding return exact deploy p
 });
 
 test("listing preparation refuses sellers without reusable-offer signing support", () => {
-  for (const input of [{ scriptHex: taproot }, { scriptHex: nested, redeemScriptHex: native }])
+  for (const input of [{ scriptHex: nested, redeemScriptHex: native }])
     expect(() =>
       core.buildListing({
         network: "regtest",

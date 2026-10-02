@@ -19,6 +19,7 @@ export interface Config {
   vaultScriptHex: string;
   creatorScriptHex: string;
   protocolScriptHex: string;
+  guardianCustody?: GuardianCustody;
 }
 export interface Asset {
   config: Config;

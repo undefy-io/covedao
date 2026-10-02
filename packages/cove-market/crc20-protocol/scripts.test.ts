@@ -202,6 +202,15 @@ test("registered replay derives proven nested redeem data from raw input rather 
     network: "regtest",
     ticker: "TEST",
     vaultScriptHex: guardian.output!.toString("hex"),
+    guardianCustody: {
+      assetCommitmentHex: commit.toString("hex"),
+      guardianPublicKeyHex: key.toString("hex"),
+      executionScriptHex: script.toString("hex"),
+      controlBlockHex: guardian.witness!.at(-1)!.toString("hex"),
+      recoveryLeafHashHex: bitcoin.crypto
+        .taggedHash("TapLeaf", Buffer.from("c00151", "hex"))
+        .toString("hex"),
+    },
     creatorScriptHex: taproot.output!.toString("hex"),
     protocolScriptHex: aliceScript,
   };
@@ -350,4 +359,34 @@ test("Guardian custody rejects an execution controller that is not a curve point
         .toString("hex"),
     }),
   ).toThrow(/controller/i);
+});
+
+test("Taproot curve registrations require custody metadata and refuse weaker vault substitution", async () => {
+  const core = await import("./index.js");
+  const custody = {
+    assetCommitmentHex: commit.toString("hex"),
+    guardianPublicKeyHex: key.toString("hex"),
+    executionScriptHex: script.toString("hex"),
+    controlBlockHex: guardian.witness!.at(-1)!.toString("hex"),
+    recoveryLeafHashHex: bitcoin.crypto
+      .taggedHash("TapLeaf", Buffer.from("c00151", "hex"))
+      .toString("hex"),
+  };
+  const config = {
+    network: "regtest",
+    ticker: "TEST",
+    vaultScriptHex: guardian.output!.toString("hex"),
+    creatorScriptHex: aliceScript,
+    protocolScriptHex: aliceScript,
+  };
+  expect(() => core.emptyLedger(config)).toThrow(/custody/i);
+  const selected = core.guardianConfig(config, custody);
+  expect(() => core.emptyLedger(selected)).not.toThrow();
+  expect(() => core.emptyLedger({ ...selected, vaultScriptHex: aliceScript })).toThrow(/custody/i);
+  expect(() =>
+    core.emptyLedger({ ...selected, vaultScriptHex: taproot.output!.toString("hex") }),
+  ).toThrow();
+  expect(() =>
+    core.guardianConfig(config, { ...custody, recoveryLeafHashHex: "11".repeat(32) }),
+  ).toThrow();
 });

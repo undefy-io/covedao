@@ -1,0 +1,46 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao
+
+ ❯ packages/cove-market/crc20-protocol/wallet-offers.test.ts (4 tests | 3 failed) 7ms
+   × external wallet authorizations bind all terms and reusable witness for 00147016cc099e003049b776999217a90b5d9030b9ab 3ms
+     → offerMessage is not a function
+   × external wallet authorizations bind all terms and reusable witness for 512083570ca33d502de8a7e15e59987c180d78b97e827fcfd3417e215c402afea2cd 0ms
+     → offerMessage is not a function
+   × Taproot listings and private test helper use the same wallet-signable offer scheme 2ms
+     → unsupported witness program
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/cove-market/crc20-protocol/wallet-offers.test.ts > external wallet authorizations bind all terms and reusable witness for 00147016cc099e003049b776999217a90b5d9030b9ab
+ FAIL  packages/cove-market/crc20-protocol/wallet-offers.test.ts > external wallet authorizations bind all terms and reusable witness for 512083570ca33d502de8a7e15e59987c180d78b97e827fcfd3417e215c402afea2cd
+TypeError: offerMessage is not a function
+ ❯ packages/cove-market/crc20-protocol/wallet-offers.test.ts:42:24
+     40| test.each([aliceScript, taproot])("external wallet authorizations bind…
+     41|   const t = terms(script);
+     42|   const message = core.offerMessage(t);
+       |                        ^
+     43|   const signatureHex = bip322(script, message);
+     44|   const witness = presign(t);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  packages/cove-market/crc20-protocol/wallet-offers.test.ts > Taproot listings and private test helper use the same wallet-signable offer scheme
+Error: unsupported witness program
+ ❯ nativeSignatureHash packages/cove-market/crc20-protocol/wire.ts:237:57
+    235|     ? prevout.scriptHex
+    236|     : tx.inputs[index]!.scriptHex.slice(2);
+    237|   if (!/^0014[0-9a-f]{40}$/.test(witnessProgram)) throw new Error("uns…
+       |                                                         ^
+    238|   const scriptCode = unhex(`76a914${witnessProgram.slice(4)}88ac`);
+    239|   return hash256(
+ ❯ Module.signNativeInput packages/cove-market/crc20-protocol/wire.ts:340:30
+ ❯ Module.authorizeOffer packages/cove-market/crc20-protocol/offers.ts:74:24
+ ❯ packages/cove-market/crc20-protocol/wallet-offers.test.ts:67:28
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 1 passed (4)
+   Start at  17:03:59
+   Duration  322ms (transform 106ms, setup 0ms, collect 173ms, tests 7ms, environment 0ms, prepare 45ms)
+

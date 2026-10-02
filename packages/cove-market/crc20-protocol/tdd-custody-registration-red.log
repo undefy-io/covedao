@@ -1,0 +1,33 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao
+
+ ❯ packages/cove-market/crc20-protocol/scripts.test.ts (12 tests | 1 failed | 11 skipped) 40ms
+   × Taproot curve registrations require custody metadata and refuse weaker vault substitution 40ms
+     → expected [Function] to throw an error
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/cove-market/crc20-protocol/scripts.test.ts > Taproot curve registrations require custody metadata and refuse weaker vault substitution
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ packages/cove-market/crc20-protocol/scripts.test.ts:364:42
+    362|   const config = { network: "regtest", ticker: "TEST", vaultScriptHex:…
+    363|     creatorScriptHex: aliceScript, protocolScriptHex: aliceScript };
+    364|   expect(() => core.emptyLedger(config)).toThrow(/custody/i);
+       |                                          ^
+    365|   const selected = core.guardianConfig(config, custody);
+    366|   expect(() => core.emptyLedger(selected)).not.toThrow();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 11 skipped (12)
+   Start at  17:09:45
+   Duration  263ms (transform 81ms, setup 0ms, collect 100ms, tests 40ms, environment 0ms, prepare 30ms)
+

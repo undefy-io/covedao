@@ -1,6 +1,6 @@
 # Verification evidence
 
-The current isolated suite passes 86 tests in thirteen files, with no skipped tests. The full run takes approximately 77 seconds on this workspace, including Docker startup and cleanup. Production integration requirements remain open below. Blocks are generated on demand; no ten-minute block interval is used.
+The current isolated suite passes 94 tests in fourteen files, with no skipped tests. The full run takes approximately 84 seconds on this workspace, including Docker startup and cleanup. Production integration requirements remain open below. Blocks are generated on demand; no ten-minute block interval is used.
 
 `test-support/check.sh` runs the suite, strict TypeScript checks over runtime and test support, ESLint and formatting checks. `verification.log`, `typecheck.log` and `lint.log` retain the command results. A nonzero exit fails the check script.
 
@@ -96,3 +96,22 @@ invalid Guardian controller points and listing preparation exceeding reusable
 offer support. Its separate 126-case bitcoinjs comparison found no Taproot digest
 mismatch. This is correctness evidence for the core extension, not an actual
 wallet or deployment gate.
+
+
+The offer extension selects one BIP322 simple authorization scheme for native
+P2WPKH and BIP86 Taproot owners. `wallet-offers.test.ts` builds independent
+bitcoinjs virtual transactions/signatures, rejects changed terms, noncanonical
+witness vectors and incorrect seller flags, and proves message preflight before
+prompts. A mined fractional Taproot listing fills with only Bob signing and
+exact fee/allocation/rollback checks. Randomized Schnorr-proof retries preserve
+the existing authorization and cancellation status; changed valid terms conflict.
+Fresh Astra independently checked ten published valid BIP322 vectors and fifteen
+malformed rejection vectors, found the retry issue and confirmed its fix.
+
+Taproot vault selection now requires validated custody metadata. Registration
+rejects missing metadata, native/key-path substitution, invalid controller points
+and changed recovery branch hashes. `guardianConfig` is the mandatory selection
+contract for production adapters; native vaults remain testable core script
+fixtures. Actual production custody enforcement and invalid-spend/broken-vault
+transitions still require their downstream integration tasks. No consumer is
+connected to this core yet, and no actual extension capability is established.

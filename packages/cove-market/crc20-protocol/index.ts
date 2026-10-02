@@ -6,3 +6,4 @@ export * from "./offers.js";
 export * from "./replay.js";
 export * from "./target.js";
 export * from "./taproot.js";
+export * from "./bip322.js";

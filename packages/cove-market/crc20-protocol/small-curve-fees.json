@@ -2,14 +2,14 @@
   {
     "scenario": "400+600",
     "action": "deploy",
-    "txid": "e601344210de450cb85c4f62c667837ccb7494f5432257cd15db95fffc9c50d6",
+    "txid": "f12b4d9c1aaa2314b127eac442b04caed3028e1705d86690be378e673c8bbc27",
     "grossSats": 0,
     "platformFeeSats": 7000,
     "creatorFeeSats": 0,
     "minerFeeSats": 1000,
     "inputs": [
       {
-        "outpoint": "fa2cf77859341d966d4ae621473bb6430e4df2e5fd6696751dcb36ff82cfb105:1",
+        "outpoint": "bc4ed92225061c69173aa93afbf5f5ef9a89f3baca5267208dffa70ea4f41740:0",
         "sats": "3999999859"
       }
     ],
@@ -50,18 +50,18 @@
   {
     "scenario": "400+600",
     "action": "mint",
-    "txid": "486ab1ac9a08820b685cf378fb742aa247bbfd9f8c92523b4a13c976938e43d5",
+    "txid": "24b64c76232fc6a0d38149990aa42b9cddfe6bd4b60cebe49e8e90fb0100ad79",
     "grossSats": 14,
     "platformFeeSats": 5007,
     "creatorFeeSats": 546,
     "minerFeeSats": 1000,
     "inputs": [
       {
-        "outpoint": "e601344210de450cb85c4f62c667837ccb7494f5432257cd15db95fffc9c50d6:1",
+        "outpoint": "f12b4d9c1aaa2314b127eac442b04caed3028e1705d86690be378e673c8bbc27:1",
         "sats": "1000"
       },
       {
-        "outpoint": "e601344210de450cb85c4f62c667837ccb7494f5432257cd15db95fffc9c50d6:4",
+        "outpoint": "f12b4d9c1aaa2314b127eac442b04caed3028e1705d86690be378e673c8bbc27:4",
         "sats": "3999989859"
       }
     ],
@@ -108,18 +108,18 @@
   {
     "scenario": "400+600",
     "action": "mint",
-    "txid": "5e35ed9168ce91cc4dc4366add73aa3d2e0cb60594f802fcb55cf47a4dee02a2",
+    "txid": "c703b73d2bdd0b202b44faa9162c8765808bd8ae7849a7f5b3a330510d29cbaa",
     "grossSats": 13,
     "platformFeeSats": 5006,
     "creatorFeeSats": 546,
     "minerFeeSats": 1000,
     "inputs": [
       {
-        "outpoint": "486ab1ac9a08820b685cf378fb742aa247bbfd9f8c92523b4a13c976938e43d5:2",
+        "outpoint": "24b64c76232fc6a0d38149990aa42b9cddfe6bd4b60cebe49e8e90fb0100ad79:2",
         "sats": "1014"
       },
       {
-        "outpoint": "486ab1ac9a08820b685cf378fb742aa247bbfd9f8c92523b4a13c976938e43d5:5",
+        "outpoint": "24b64c76232fc6a0d38149990aa42b9cddfe6bd4b60cebe49e8e90fb0100ad79:5",
         "sats": "3999982292"
       }
     ],
@@ -166,23 +166,23 @@
   {
     "scenario": "400+600",
     "action": "curveSell",
-    "txid": "063a8ebbff031aaa442a4f367d765d7f72e9a1c2e0ce5e5930cc6383fb9f7918",
+    "txid": "23968397277fa3deff1a7983fe2aad137d37d374edc5f9e86d7f29fb11f4ca5f",
     "grossSats": 10,
     "platformFeeSats": 1000,
     "creatorFeeSats": 0,
     "minerFeeSats": 1000,
     "inputs": [
       {
-        "outpoint": "5e35ed9168ce91cc4dc4366add73aa3d2e0cb60594f802fcb55cf47a4dee02a2:2",
+        "outpoint": "c703b73d2bdd0b202b44faa9162c8765808bd8ae7849a7f5b3a330510d29cbaa:2",
         "sats": "1027"
       },
       {
-        "outpoint": "486ab1ac9a08820b685cf378fb742aa247bbfd9f8c92523b4a13c976938e43d5:1",
+        "outpoint": "24b64c76232fc6a0d38149990aa42b9cddfe6bd4b60cebe49e8e90fb0100ad79:1",
         "sats": "1000"
       },
       {
-        "outpoint": "5e35ed9168ce91cc4dc4366add73aa3d2e0cb60594f802fcb55cf47a4dee02a2:5",
-        "sats": "3999974727"
+        "outpoint": "dc718d8347721a6561374fbb8100da3d27c74b7f364056768b014f974ae72120:0",
+        "sats": "5000000000"
       }
     ],
     "outputs": [
@@ -219,7 +219,7 @@
       {
         "vout": 5,
         "role": "btcChange",
-        "sats": "3999971737",
+        "sats": "4999997010",
         "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
       }
     ],
@@ -228,27 +228,27 @@
   {
     "scenario": "400+600",
     "action": "curveSell",
-    "txid": "74256a6d22ec8ea429fe2d3a9cea0c57cbd4e05911214357c202b96767b5865d",
+    "txid": "f7feac22dac8b498c00690565d4d871270631cef33af8a38b967d8a2f6b67501",
     "grossSats": 17,
     "platformFeeSats": 1000,
     "creatorFeeSats": 0,
     "minerFeeSats": 1000,
     "inputs": [
       {
-        "outpoint": "063a8ebbff031aaa442a4f367d765d7f72e9a1c2e0ce5e5930cc6383fb9f7918:1",
+        "outpoint": "23968397277fa3deff1a7983fe2aad137d37d374edc5f9e86d7f29fb11f4ca5f:1",
         "sats": "1017"
       },
       {
-        "outpoint": "5e35ed9168ce91cc4dc4366add73aa3d2e0cb60594f802fcb55cf47a4dee02a2:1",
+        "outpoint": "c703b73d2bdd0b202b44faa9162c8765808bd8ae7849a7f5b3a330510d29cbaa:1",
         "sats": "1000"
       },
       {
-        "outpoint": "063a8ebbff031aaa442a4f367d765d7f72e9a1c2e0ce5e5930cc6383fb9f7918:3",
+        "outpoint": "23968397277fa3deff1a7983fe2aad137d37d374edc5f9e86d7f29fb11f4ca5f:3",
         "sats": "1000"
       },
       {
-        "outpoint": "a48c25ff791b6d3e1d66398ac28e6238a5e4ee55d73810ad9faa7f9070c7ce5c:0",
-        "sats": "5000000000"
+        "outpoint": "23968397277fa3deff1a7983fe2aad137d37d374edc5f9e86d7f29fb11f4ca5f:5",
+        "sats": "4999997010"
       }
     ],
     "outputs": [
@@ -279,7 +279,7 @@
       {
         "vout": 4,
         "role": "btcChange",
-        "sats": "4999999017",
+        "sats": "4999996027",
         "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
       }
     ],
@@ -288,18 +288,18 @@
   {
     "scenario": "400+600",
     "action": "inventoryBuy",
-    "txid": "2a315b1bf51dda35fc51c3e129043eb4f7dd6f1e4c8070f3d347784ada1e97d6",
+    "txid": "7384399014ffd7910feb530f871d1d02ec0d1aabb78855c13197ac42b59b8876",
     "grossSats": 14,
     "platformFeeSats": 5007,
     "creatorFeeSats": 546,
     "minerFeeSats": 1000,
     "inputs": [
       {
-        "outpoint": "74256a6d22ec8ea429fe2d3a9cea0c57cbd4e05911214357c202b96767b5865d:1",
+        "outpoint": "f7feac22dac8b498c00690565d4d871270631cef33af8a38b967d8a2f6b67501:1",
         "sats": "1000"
       },
       {
-        "outpoint": "fa2cf77859341d966d4ae621473bb6430e4df2e5fd6696751dcb36ff82cfb105:0",
+        "outpoint": "bc4ed92225061c69173aa93afbf5f5ef9a89f3baca5267208dffa70ea4f41740:1",
         "sats": "1000000000"
       }
     ],
@@ -346,18 +346,18 @@
   {
     "scenario": "400+600",
     "action": "inventoryBuy",
-    "txid": "065ffe2e8c0803f3fe6dcfb05c6b0204d40417796072a8e6c760e8ddee6afb56",
+    "txid": "62f32f287981e1d8354ae9cd0e5d192baf7ab38d143f07db445f35cf7ba9b631",
     "grossSats": 13,
     "platformFeeSats": 5006,
     "creatorFeeSats": 546,
     "minerFeeSats": 1000,
     "inputs": [
       {
-        "outpoint": "2a315b1bf51dda35fc51c3e129043eb4f7dd6f1e4c8070f3d347784ada1e97d6:2",
+        "outpoint": "7384399014ffd7910feb530f871d1d02ec0d1aabb78855c13197ac42b59b8876:2",
         "sats": "1014"
       },
       {
-        "outpoint": "2a315b1bf51dda35fc51c3e129043eb4f7dd6f1e4c8070f3d347784ada1e97d6:5",
+        "outpoint": "7384399014ffd7910feb530f871d1d02ec0d1aabb78855c13197ac42b59b8876:5",
         "sats": "999992433"
       }
     ],
@@ -404,14 +404,14 @@
   {
     "scenario": "1000",
     "action": "deploy",
-    "txid": "1a42e9a8385de31a080fe676370c8a2febad80a62f34093ec8b8be0c924de2d2",
+    "txid": "aca3a0bf81da78ec4334d7c49632f327a71ae77ea99fd119145ca68afbcca008",
     "grossSats": 0,
     "platformFeeSats": 7000,
     "creatorFeeSats": 0,
     "minerFeeSats": 1000,
     "inputs": [
       {
-        "outpoint": "45b884fd40030780ecb835955bdd4b021aac9014cfa90f1a45b6fa1e1eb7baf4:0",
+        "outpoint": "f3b09a5f29e266f503213ce60aa4bfa414b403ca2d95e1955d133dc0cb001bef:0",
         "sats": "5000000000"
       }
     ],
@@ -452,18 +452,18 @@
   {
     "scenario": "1000",
     "action": "mint",
-    "txid": "4037b2826c4329a4cf7c7820fa95ab90bd7fa57c6e208a22d5f54dd03cbf67ad",
+    "txid": "b0cd977b1b5132445ab6305eae4b73d4ace721663ab66070f6cde4b20615c896",
     "grossSats": 14,
     "platformFeeSats": 5007,
     "creatorFeeSats": 546,
     "minerFeeSats": 1000,
     "inputs": [
       {
-        "outpoint": "1a42e9a8385de31a080fe676370c8a2febad80a62f34093ec8b8be0c924de2d2:1",
+        "outpoint": "aca3a0bf81da78ec4334d7c49632f327a71ae77ea99fd119145ca68afbcca008:1",
         "sats": "1000"
       },
       {
-        "outpoint": "707b793c17c23d406ad37cd2a9faaa17f3e942c6a1eff9632dab79991b7e6b7e:0",
+        "outpoint": "45b884fd40030780ecb835955bdd4b021aac9014cfa90f1a45b6fa1e1eb7baf4:0",
         "sats": "5000000000"
       }
     ],
@@ -510,18 +510,18 @@
   {
     "scenario": "1000",
     "action": "mint",
-    "txid": "41ff885a748de77e790ff1881becb0b07c17e44b88d40f9ca607a97efe81695c",
+    "txid": "2ec302f4583daaa700d56b721f319e18a3a7bb2a9232f43dc49e0087926c9a0c",
     "grossSats": 13,
     "platformFeeSats": 5006,
     "creatorFeeSats": 546,
     "minerFeeSats": 1000,
     "inputs": [
       {
-        "outpoint": "4037b2826c4329a4cf7c7820fa95ab90bd7fa57c6e208a22d5f54dd03cbf67ad:2",
+        "outpoint": "b0cd977b1b5132445ab6305eae4b73d4ace721663ab66070f6cde4b20615c896:2",
         "sats": "1014"
       },
       {
-        "outpoint": "4037b2826c4329a4cf7c7820fa95ab90bd7fa57c6e208a22d5f54dd03cbf67ad:5",
+        "outpoint": "b0cd977b1b5132445ab6305eae4b73d4ace721663ab66070f6cde4b20615c896:5",
         "sats": "4999992433"
       }
     ],
@@ -568,27 +568,27 @@
   {
     "scenario": "1000",
     "action": "curveSell",
-    "txid": "61b9c2f29c0d5f7be9916b7cd1b0f436c90bee75325a40f5d9bab3f64dd5deaa",
+    "txid": "6ec9af9d43da9278ec9ee96891e11ab930be3dd5899bd2e4592bb09e43a8db7c",
     "grossSats": 27,
     "platformFeeSats": 1000,
     "creatorFeeSats": 0,
     "minerFeeSats": 1000,
     "inputs": [
       {
-        "outpoint": "41ff885a748de77e790ff1881becb0b07c17e44b88d40f9ca607a97efe81695c:2",
+        "outpoint": "2ec302f4583daaa700d56b721f319e18a3a7bb2a9232f43dc49e0087926c9a0c:2",
         "sats": "1027"
       },
       {
-        "outpoint": "4037b2826c4329a4cf7c7820fa95ab90bd7fa57c6e208a22d5f54dd03cbf67ad:1",
+        "outpoint": "b0cd977b1b5132445ab6305eae4b73d4ace721663ab66070f6cde4b20615c896:1",
         "sats": "1000"
       },
       {
-        "outpoint": "41ff885a748de77e790ff1881becb0b07c17e44b88d40f9ca607a97efe81695c:1",
+        "outpoint": "2ec302f4583daaa700d56b721f319e18a3a7bb2a9232f43dc49e0087926c9a0c:1",
         "sats": "1000"
       },
       {
-        "outpoint": "dc718d8347721a6561374fbb8100da3d27c74b7f364056768b014f974ae72120:0",
-        "sats": "5000000000"
+        "outpoint": "2ec302f4583daaa700d56b721f319e18a3a7bb2a9232f43dc49e0087926c9a0c:5",
+        "sats": "4999984868"
       }
     ],
     "outputs": [
@@ -619,7 +619,7 @@
       {
         "vout": 4,
         "role": "btcChange",
-        "sats": "4999999027",
+        "sats": "4999983895",
         "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
       }
     ],
@@ -628,18 +628,18 @@
   {
     "scenario": "1000",
     "action": "inventoryBuy",
-    "txid": "fd1d3db37c304b22a488f97f8164d4154f2f9e8c780ae8f1e7a5a583c8f30366",
+    "txid": "87a77fa3107c27447b60bc153b147b182fa09cc1df29c90e22057ce73201aac4",
     "grossSats": 14,
     "platformFeeSats": 5007,
     "creatorFeeSats": 546,
     "minerFeeSats": 1000,
     "inputs": [
       {
-        "outpoint": "61b9c2f29c0d5f7be9916b7cd1b0f436c90bee75325a40f5d9bab3f64dd5deaa:1",
+        "outpoint": "6ec9af9d43da9278ec9ee96891e11ab930be3dd5899bd2e4592bb09e43a8db7c:1",
         "sats": "1000"
       },
       {
-        "outpoint": "065ffe2e8c0803f3fe6dcfb05c6b0204d40417796072a8e6c760e8ddee6afb56:5",
+        "outpoint": "62f32f287981e1d8354ae9cd0e5d192baf7ab38d143f07db445f35cf7ba9b631:5",
         "sats": "999984868"
       }
     ],
@@ -686,18 +686,18 @@
   {
     "scenario": "1000",
     "action": "inventoryBuy",
-    "txid": "cd7b4bf46a2d13969a5432b8fa3277cb4b973476afc117383e31beebe75b7711",
+    "txid": "cead782f4bc4374aa4dae60496321ff6aeaa94477c9a3ca9d7f211bcf940baf1",
     "grossSats": 13,
     "platformFeeSats": 5006,
     "creatorFeeSats": 546,
     "minerFeeSats": 1000,
     "inputs": [
       {
-        "outpoint": "fd1d3db37c304b22a488f97f8164d4154f2f9e8c780ae8f1e7a5a583c8f30366:2",
+        "outpoint": "87a77fa3107c27447b60bc153b147b182fa09cc1df29c90e22057ce73201aac4:2",
         "sats": "1014"
       },
       {
-        "outpoint": "fd1d3db37c304b22a488f97f8164d4154f2f9e8c780ae8f1e7a5a583c8f30366:5",
+        "outpoint": "87a77fa3107c27447b60bc153b147b182fa09cc1df29c90e22057ce73201aac4:5",
         "sats": "999977301"
       }
     ],

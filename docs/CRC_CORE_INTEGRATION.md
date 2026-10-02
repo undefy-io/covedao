@@ -35,9 +35,10 @@ its redeem script; a Taproot address does not prove its execution path.
 A reusable seller authorization requires input 0 / output 0 and exactly
 `SINGLE|ANYONECANPAY` (`0x83`). Buyers sign their own funding with `ALL`; already
 finalized seller and Guardian witnesses must survive PSBT processing.
-Bound offer terms require wallet-supported message signing and verification,
-selected and proven in `ag3.3`; the core's existing raw-key ECDSA helper is test
-capability evidence only. No consumer receives raw wallet private keys.
+Bound offer terms use the core's canonical message and BIP322 simple proof for
+native P2WPKH or BIP86 Taproot owners. The raw-key helper now produces that same
+proof and remains test capability evidence only. `ag3.3` must still prove the
+actual wallet protocol/prefix framing and signing behavior. No consumer receives raw wallet private keys.
 
 Signet is the proposed live canary chain. Actual Xverse desktop/mobile signet,
 per-input `0x83`, and bound-message support are **unverified**. Simulated providers
@@ -52,7 +53,10 @@ core. The trusted registration must bind the actual vault script, Guardian key,
 asset commitment, and recovery profile. The core must verify the execution
 witness and its commitment to the actual prevout; adapters retrieve actual
 prevouts and independently trusted registrations, never backend quote metadata.
-Guardian re-evaluates the same core transition before signing and journals spends.
+Taproot vault configurations require validated custody metadata; production
+adapters select `guardianConfig` and independently validate the configured
+recovery profile. Guardian re-evaluates the same core transition before signing
+and journals spends.
 
 This remains custodial enforcement: Bitcoin checks the configured signature and
 script, while the Guardian applies the token/curve rules. It is not a consensus
@@ -97,8 +101,11 @@ proof of new-core integration or a source-built visual parity test.
 Additional full-page launch review and buy review captures include fee presets
 and connect controls. `manifest.json` records routes, viewport dimensions, image
 hashes and the immutable runtime image ID. Runtime build provenance has not been
-proved against the source commit. Connected holdings, seller listing, buyer fill
-and cancellation states remain uncaptured; all replacement comparisons remain open.
+proved against the source commit. Connected wallet captures additionally show 1,000 TOKEN1 using a simulated
+read-only provider and mocked balance/empty-UTXO responses. Signing and mutation
+requests are disabled; this is appearance evidence only. Seller listing, buyer
+fill and cancellation reviews remain for the browser release harness. All
+replacement comparisons remain open.
 
 Preserved interaction contracts include launch metadata fields and review,
 buy/sell tabs and amount inputs, fee presets, sell shortcuts, charts/history,

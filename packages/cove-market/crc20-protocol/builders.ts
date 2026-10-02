@@ -1,5 +1,6 @@
 import { requireSupportedInputScript, requireSupportedOutputScript } from "./target.js";
-import type { Asset, Config, Input, Offer, Output, Plan } from "./types.js";
+import { validateGuardianCustody } from "./taproot.js";
+import type { Asset, Config, GuardianCustody, Input, Offer, Output, Plan } from "./types.js";
 import {
   capAtoms,
   carrierSats,
@@ -34,8 +35,21 @@ export function validateConfig(config: Config): void {
     !/^[A-Za-z0-9]{1,16}$/.test(config.ticker)
   )
     throw new Error("invalid deployment identity");
+  if (config.vaultScriptHex.startsWith("5120")) {
+    if (!config.guardianCustody)
+      throw new Error("Taproot vault requires registered Guardian custody");
+    validateGuardianCustody(config.vaultScriptHex, config.guardianCustody);
+  } else if (config.guardianCustody || !/^0014[0-9a-f]{40}$/.test(config.vaultScriptHex)) {
+    throw new Error("unsupported or downgraded vault custody");
+  }
   for (const script of [config.vaultScriptHex, config.creatorScriptHex, config.protocolScriptHex])
     requireSupportedOutputScript(script);
+}
+/** Production adapters select this contract, including independently trusted recovery metadata. */
+export function guardianConfig(config: Config, custody: GuardianCustody): Config {
+  const selected = { ...structuredClone(config), guardianCustody: structuredClone(custody) };
+  validateConfig(selected);
+  return selected;
 }
 const output = (role: string, scriptHex: string, value: bigint, atoms?: bigint): Output => {
   if (role !== "marker") {
@@ -153,7 +167,7 @@ export function buildTransfer(args: TransferArgs): Plan {
   );
 }
 export function buildListing(args: TransferArgs): Plan {
-  if (!/^0014[0-9a-f]{40}$/.test(args.sellerScriptHex ?? ""))
+  if (!/^(?:0014[0-9a-f]{40}|5120[0-9a-f]{64})$/.test(args.sellerScriptHex ?? ""))
     throw new Error("unsupported seller signing script for reusable offers");
   if (tokenInputs(args).owner !== args.sellerScriptHex)
     throw new Error("listing seller must own the token inputs");

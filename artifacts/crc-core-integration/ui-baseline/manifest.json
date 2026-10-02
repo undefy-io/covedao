@@ -38,6 +38,9 @@
     "desktop-token.png": {
       "sha256": "13091815a065506706be1ef06a5d09a8442400825ca774b5c37aa3ecbefe9e6d"
     },
+    "desktop-wallet-connected.png": {
+      "sha256": "94a1b409db844a41102cf2329d066bd05a59c2146c39e6953d94ea1cf9c29df1"
+    },
     "desktop-wallet.png": {
       "sha256": "d347baa431ad9268b3505cbe47a3adc17fc90acb23105200a08bef8ccd9cb2f8"
     },
@@ -56,8 +59,24 @@
     "mobile-token.png": {
       "sha256": "3bc40e4a3f0b5c7048c5a121e161e8879a79d4caa80ade6214e82b987b278dca"
     },
+    "mobile-wallet-connected.png": {
+      "sha256": "75138df68045fea759999e72ecb5007632522780a025c331a4cbb630d13a955c"
+    },
     "mobile-wallet.png": {
       "sha256": "bd6dfadccf395cb155603e9dc708bf46b9b2860a02fa106ff77c52c071c35225"
     }
+  },
+  "connected_wallet_evidence": {
+    "kind": "simulated read-only provider",
+    "signing_disabled": true,
+    "mutation_requests_disabled": true,
+    "balances_mocked": [
+      {
+        "ticker": "TOKEN1",
+        "atoms": "100000000000"
+      }
+    ],
+    "token_and_btc_utxos_mocked": [],
+    "proves_actual_wallet_capability": false
   }
 }

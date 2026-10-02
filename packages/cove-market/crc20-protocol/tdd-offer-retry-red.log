@@ -1,0 +1,27 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao
+
+ ❯ packages/cove-market/crc20-protocol/wallet-offers.test.ts (7 tests | 1 failed | 6 skipped) 13ms
+   × wallet retry with a new valid Schnorr proof preserves registered authorization and status 13ms
+     → conflicting authorization for listed outpoint
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/cove-market/crc20-protocol/wallet-offers.test.ts > wallet retry with a new valid Schnorr proof preserves registered authorization and status
+Error: conflicting authorization for listed outpoint
+ ❯ Module.registerOffer packages/cove-market/crc20-protocol/offers.ts:163:11
+    161|   const existing = ledger.offers[id];
+    162|   if (existing && existing.signatureHex !== offer.signatureHex)
+    163|     throw new Error("conflicting authorization for listed outpoint");
+       |           ^
+    164|   return {
+    165|     ...ledger,
+ ❯ packages/cove-market/crc20-protocol/wallet-offers.test.ts:333:28
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 skipped (7)
+   Start at  17:10:34
+   Duration  282ms (transform 72ms, setup 0ms, collect 118ms, tests 13ms, environment 0ms, prepare 34ms)
+
