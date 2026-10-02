@@ -1,0 +1,29 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ wallet-key.test.ts (2 tests | 1 failed) 4ms
+   × wallet x-only BIP86 key normalizes to the one canonical offer key 3ms
+     → canonicalOfferPublicKey is not a function
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  wallet-key.test.ts > wallet x-only BIP86 key normalizes to the one canonical offer key
+TypeError: canonicalOfferPublicKey is not a function
+ ❯ wallet-key.test.ts:9:15
+      7| const script = `5120${bitcoin.address.fromBech32("tb1p6c2ntr5n2swmpcxt…
+      8| test("wallet x-only BIP86 key normalizes to the one canonical offer ke…
+      9|   expect(core.canonicalOfferPublicKey(key, script)).toBe(`02${key}`);
+       |               ^
+     10|   expect(core.canonicalOfferPublicKey(`03${key}`, script)).toBe(`02${k…
+     11|   expect(core.canonicalOfferPublicKey(`02${key}`, script)).toBe(`02${k…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  17:57:00
+   Duration  225ms (transform 76ms, setup 0ms, collect 111ms, tests 4ms, environment 0ms, prepare 35ms)
+
+undefined
+/home/andefy/dev/covedao/packages/cove-market/crc20-protocol:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run wallet-key.test.ts

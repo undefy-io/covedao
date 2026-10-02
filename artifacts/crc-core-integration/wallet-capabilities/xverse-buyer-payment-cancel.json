@@ -1,0 +1,11 @@
+{
+  "state": "resolved",
+  "value": {
+    "jsonrpc": "2.0",
+    "error": {
+      "code": -32000,
+      "message": "User rejected request to sign Psbt"
+    },
+    "id": "OGHa7i0XN2t0n2uugTw9p"
+  }
+}

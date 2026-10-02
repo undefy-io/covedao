@@ -112,7 +112,7 @@ and changed recovery branch hashes. `guardianConfig` is the mandatory selection
 contract for production adapters; native vaults remain testable core script
 fixtures. Actual production custody enforcement and invalid-spend/broken-vault
 transitions still require their downstream integration tasks. No consumer is
-connected to this core yet, and no actual extension capability is established.
+connected to this core yet. Actual extension signing capability is recorded below.
 
 ## Independent package milestone
 
@@ -121,3 +121,9 @@ connected to this core yet, and no actual extension capability is established.
 `package.test.ts` checks the explicit nested workspace entry, exports, one runtime dependency, acyclic runtime source graph, no infrastructure or test-support imports, built Node behavior and rejected private subpaths. `browser.test.ts` uses an ordinary package-name import through esbuild with no consumer WASM plugin, serves it over HTTP, and loads it in real Chromium. Native and BIP86 Taproot BIP322 proofs plus seller witnesses verify; changed price rejects; bigint amounts above JavaScript’s safe-integer range survive and Node globals are absent. This proves production bundle execution, not actual wallet-provider behavior.
 
 Fresh Astra review found no confirmed package bug. Independent direct-browser ESM import verified 32 bitcoinjs-signed offers across 16 keys and native/Taproot scripts, and rejected all 32 altered expiries. Node package entry and rejected private subpaths passed; a standalone strict NodeNext declaration consumer passed with no Node ambient types and `skipLibCheck: false`. Parent-package tests collect only `src`, preventing duplicated nested Docker lifecycles; its 81 unit tests pass (six existing environment-dependent integration tests remain skipped).
+
+## Actual desktop wallet milestone
+
+An unmodified official Xverse 2.9.3 extension in isolated headed Chromium generated both native and BIP86 offer BIP322 proofs and seller 0x83 signatures. Actual native, nested and Taproot buyer ALL responses retain finalized seller witnesses and produce exact core purchase transactions with 1,000-sat fees. A separate synthetic Guardian execution fixture retains its four-item finalized witness during actual wallet ALL signing. `wallet-evidence.test.ts` replays actual PSBTs and cryptographic checks; `wallet-key.test.ts` proves x-only normalization binds the actual owner script. The wallet was fresh and unfunded; keys were never exported and broadcasting was disabled.
+
+Actual Cancel returns JSON-RPC -32000. Fresh wallet_getNetwork distinguishes Signet/Regtest; the test probe refuses signing while mismatched. Production adapters, mobile and live-chain behavior remain separate gates. See [capability matrix](../../../docs/CRC_WALLET_CAPABILITIES.md) for exact artifacts and limitations.

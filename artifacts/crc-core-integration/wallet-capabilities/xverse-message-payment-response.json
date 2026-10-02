@@ -1,0 +1,13 @@
+{
+  "state": "resolved",
+  "value": {
+    "jsonrpc": "2.0",
+    "result": {
+      "address": "tb1qhwrpr5jhcdaze0dcl27xf2qk3pfhtw9a8x224s",
+      "messageHash": "63e8279a99631eb948802ff12b062c30ea1bdad94c8064773a8f4b3cbf3f6fcf",
+      "signature": "AkgwRQIhAJJ5SDVVCjl65C9Oxie5hWfiK+06OjQS9aGFPkVu+Su1AiBLgwO0AbXpGd1xn272hCSJtHio/d7Z7PzPi87MqeQE5wEhApjg+cPiEi3yEF4tRjxeO/5bSd440YKm8CuzzS9InGHH",
+      "protocol": "BIP322"
+    },
+    "id": "SaRk386iupXpA6PF7jHIg"
+  }
+}

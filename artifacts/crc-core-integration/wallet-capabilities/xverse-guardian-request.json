@@ -1,0 +1,29 @@
+{
+  "syntheticPrevouts": true,
+  "testGuardianFixture": true,
+  "recoveryLeaf": "OP_TRUE test fixture only; not selected production recovery",
+  "prevouts": [
+    {
+      "txid": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "vout": 0,
+      "sats": "1000",
+      "scriptHex": "51209b5f59a1bae52ff7f508b8173516bcb9ceca981346222883c94437b4d80f85b7"
+    },
+    {
+      "txid": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "vout": 0,
+      "sats": "100000",
+      "scriptHex": "0014bb8611d257c37a2cbdb8fabc64a816885375b8bd"
+    }
+  ],
+  "method": "signPsbt",
+  "params": {
+    "psbt": "cHNidP8BAHsCAAAAAt3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3dAAAAAAD+////7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u4AAAAAAP7///8BoIYBAAAAAAAWABS7hhHSV8N6LL24+rxkqBaIU3W4vQAAAAAAAQEr6AMAAAAAAAAiUSCbX1mhuuUv9/UIuBc1Fry5zsqYE0YiKIPJRDe02A+FtwEI6wRBpWQJup5E3EE6f5hWhnhf7B+KXhhgalPrqE9a58LaMXFd2frRrgFi8cwhG5XKZ4pLzB/jOf0S+ny+C4ODMaCYIgEgQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFEIEFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBiCAbhMVWexJkQJldPtWqugVl1x4YNGBIGf+cF/Xp1d0Hj6xBwVCSm3TBoElUt4tLYDXpel4HiloPKOyW1Ue/7prOgDrAqFshB/eRsmqE51hsKM7Hy2EgLtPQGUTYMlAPNjeC1nUAAQEfoIYBAAAAAAAWABS7hhHSV8N6LL24+rxkqBaIU3W4vQEDBAEAAAAAAA==",
+    "signInputs": {
+      "tb1qhwrpr5jhcdaze0dcl27xf2qk3pfhtw9a8x224s": [
+        1
+      ]
+    },
+    "broadcast": false
+  }
+}

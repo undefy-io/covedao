@@ -1,0 +1,31 @@
+{
+  "walletVersion": "2.9.3",
+  "unfunded": true,
+  "syntheticPrevout": true,
+  "terms": {
+    "network": "signet",
+    "deployTxid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "ticker": "CAPTEST",
+    "listedInput": {
+      "txid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "vout": 0,
+      "atoms": "123456789",
+      "sats": "1000",
+      "scriptHex": "5120d615358e93541db0e0cb561e60ab97471941bbafd459cdc6d527e51a7ff2d046"
+    },
+    "sellerScriptHex": "5120d615358e93541db0e0cb561e60ab97471941bbafd459cdc6d527e51a7ff2d046",
+    "priceSats": "12347",
+    "expiryHeight": 1000000,
+    "publicKeyHex": "02d1f7ff2fdff88f887d3589be9d710e0b5cf1d2a565ef9750edab40587ae3f204"
+  },
+  "method": "signPsbt",
+  "params": {
+    "psbt": "cHNidP8BAF4CAAAAAbu7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7AAAAAAD+////ASM0AAAAAAAAIlEg1hU1jpNUHbDgy1YeYKuXRxlBu6/UWc3G1SflGn/y0EYAAAAAAAEBK+gDAAAAAAAAIlEg1hU1jpNUHbDgy1YeYKuXRxlBu6/UWc3G1SflGn/y0EYBAwSDAAAAARcg0ff/L9/4j4h9NYm+nXEOC1zx0qVl75dQ7atAWHrj8gQAAA==",
+    "signInputs": {
+      "tb1p6c2ntr5n2swmpcxt2c0xp2uhguv5rwa063vum3k4ylj35llj6prq00thjv": [
+        0
+      ]
+    },
+    "broadcast": false
+  }
+}

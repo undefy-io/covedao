@@ -1,0 +1,131 @@
+{
+  "plan": {
+    "inputs": [
+      {
+        "txid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "vout": 0,
+        "atoms": "123456789",
+        "sats": "1000",
+        "scriptHex": "0014bb8611d257c37a2cbdb8fabc64a816885375b8bd"
+      },
+      {
+        "txid": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "vout": 0,
+        "sats": "100000",
+        "scriptHex": "5120d615358e93541db0e0cb561e60ab97471941bbafd459cdc6d527e51a7ff2d046"
+      }
+    ],
+    "outputs": [
+      {
+        "role": "sellerPayout",
+        "scriptHex": "0014bb8611d257c37a2cbdb8fabc64a816885375b8bd",
+        "sats": "13347"
+      },
+      {
+        "role": "marker",
+        "scriptHex": "6a417b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2243415054455354222c22616d74223a22313233343536373839227d",
+        "sats": "0"
+      },
+      {
+        "role": "recipient",
+        "scriptHex": "5120d615358e93541db0e0cb561e60ab97471941bbafd459cdc6d527e51a7ff2d046",
+        "sats": "1000",
+        "atoms": "123456789"
+      },
+      {
+        "role": "protocolFee",
+        "scriptHex": "00141111111111111111111111111111111111111111",
+        "sats": "1000"
+      },
+      {
+        "role": "btcChange",
+        "scriptHex": "5120d615358e93541db0e0cb561e60ab97471941bbafd459cdc6d527e51a7ff2d046",
+        "sats": "84653"
+      }
+    ],
+    "transactions": [
+      {
+        "inputs": [
+          {
+            "txid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "vout": 0,
+            "atoms": "123456789",
+            "sats": "1000",
+            "scriptHex": "0014bb8611d257c37a2cbdb8fabc64a816885375b8bd"
+          },
+          {
+            "txid": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "vout": 0,
+            "sats": "100000",
+            "scriptHex": "5120d615358e93541db0e0cb561e60ab97471941bbafd459cdc6d527e51a7ff2d046"
+          }
+        ],
+        "outputs": [
+          {
+            "role": "sellerPayout",
+            "scriptHex": "0014bb8611d257c37a2cbdb8fabc64a816885375b8bd",
+            "sats": "13347"
+          },
+          {
+            "role": "marker",
+            "scriptHex": "6a417b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2243415054455354222c22616d74223a22313233343536373839227d",
+            "sats": "0"
+          },
+          {
+            "role": "recipient",
+            "scriptHex": "5120d615358e93541db0e0cb561e60ab97471941bbafd459cdc6d527e51a7ff2d046",
+            "sats": "1000",
+            "atoms": "123456789"
+          },
+          {
+            "role": "protocolFee",
+            "scriptHex": "00141111111111111111111111111111111111111111",
+            "sats": "1000"
+          },
+          {
+            "role": "btcChange",
+            "scriptHex": "5120d615358e93541db0e0cb561e60ab97471941bbafd459cdc6d527e51a7ff2d046",
+            "sats": "84653"
+          }
+        ]
+      }
+    ],
+    "markerJson": "{\"p\":\"crc-20\",\"op\":\"transfer\",\"tick\":\"CAPTEST\",\"amt\":\"123456789\"}",
+    "markerVout": 1,
+    "recipientVout": 2,
+    "changeAtoms": "0",
+    "protocolFeeSats": "1000",
+    "creatorFeeSats": "0",
+    "minerFeeSats": "1000",
+    "sellerPayoutSats": "12347",
+    "buyerAtoms": "123456789",
+    "inputWitnesses": [
+      [
+        "30450221009eede1491201e1f0ce444039b7b198cb58e71cc912309b38ced2d45ab036180c0220565d4cc01c6e407628477256017dc17e51a8efd5d2deac0d2914f976222c692283",
+        "0298e0f9c3e2122df2105e2d463c5e3bfe5b49de38d182a6f02bb3cd2f489c61c7"
+      ]
+    ]
+  },
+  "offer": {
+    "network": "signet",
+    "deployTxid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "ticker": "CAPTEST",
+    "listedInput": {
+      "txid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "vout": 0,
+      "atoms": "123456789",
+      "sats": "1000",
+      "scriptHex": "0014bb8611d257c37a2cbdb8fabc64a816885375b8bd"
+    },
+    "sellerScriptHex": "0014bb8611d257c37a2cbdb8fabc64a816885375b8bd",
+    "priceSats": "12347",
+    "expiryHeight": 1000000,
+    "publicKeyHex": "0298e0f9c3e2122df2105e2d463c5e3bfe5b49de38d182a6f02bb3cd2f489c61c7",
+    "signatureHex": "0248304502210092794835550a397ae42f4ec627b98567e22bed3a3a3412f5a1853e456ef92bb502204b8303b401b5e919dd719f6ef6842489b478a8fdded9ecfccf8bcecca9e404e701210298e0f9c3e2122df2105e2d463c5e3bfe5b49de38d182a6f02bb3cd2f489c61c7",
+    "sellerWitnessHex": [
+      "30450221009eede1491201e1f0ce444039b7b198cb58e71cc912309b38ced2d45ab036180c0220565d4cc01c6e407628477256017dc17e51a8efd5d2deac0d2914f976222c692283",
+      "0298e0f9c3e2122df2105e2d463c5e3bfe5b49de38d182a6f02bb3cd2f489c61c7"
+    ]
+  },
+  "sellerPurpose": "payment"
+}

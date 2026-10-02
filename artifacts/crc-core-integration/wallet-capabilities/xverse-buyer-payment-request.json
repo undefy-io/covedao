@@ -1,0 +1,31 @@
+{
+  "walletVersion": "2.9.3",
+  "unfunded": true,
+  "syntheticPrevout": true,
+  "terms": {
+    "network": "signet",
+    "deployTxid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "ticker": "CAPTEST",
+    "listedInput": {
+      "txid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "vout": 0,
+      "atoms": "123456789",
+      "sats": "1000",
+      "scriptHex": "0014bb8611d257c37a2cbdb8fabc64a816885375b8bd"
+    },
+    "sellerScriptHex": "0014bb8611d257c37a2cbdb8fabc64a816885375b8bd",
+    "priceSats": "12347",
+    "expiryHeight": 1000000,
+    "publicKeyHex": "0298e0f9c3e2122df2105e2d463c5e3bfe5b49de38d182a6f02bb3cd2f489c61c7"
+  },
+  "method": "signPsbt",
+  "params": {
+    "psbt": "cHNidP8BAP0wAQIAAAACu7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7sAAAAAAP7////MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzAAAAAAA/v///wUjNAAAAAAAACJRINYVNY6TVB2w4MtWHmCrl0cZQbuv1FnNxtUn5Rp/8tBGAAAAAAAAAABDakF7InAiOiJjcmMtMjAiLCJvcCI6InRyYW5zZmVyIiwidGljayI6IkNBUFRFU1QiLCJhbXQiOiIxMjM0NTY3ODkifegDAAAAAAAAFgAUu4YR0lfDeiy9uPq8ZKgWiFN1uL3oAwAAAAAAABYAFBERERERERERERERERERERERERERrUoBAAAAAAAWABS7hhHSV8N6LL24+rxkqBaIU3W4vQAAAAAAAQEr6AMAAAAAAAAiUSDWFTWOk1QdsODLVh5gq5dHGUG7r9RZzcbVJ+Uaf/LQRgEIQwFB28s0KaDKUERQDn9vzuSFiB6WbTpCDPnClOYvV8CNQKovQY8TvHfdpgcopvAIYMtZphU/UGKe6v6v3kCdDZtY64MAAQEfoIYBAAAAAAAWABS7hhHSV8N6LL24+rxkqBaIU3W4vQEDBAEAAAAAAAAAAAA=",
+    "signInputs": {
+      "tb1qhwrpr5jhcdaze0dcl27xf2qk3pfhtw9a8x224s": [
+        1
+      ]
+    },
+    "broadcast": false
+  }
+}

@@ -37,13 +37,9 @@ A reusable seller authorization requires input 0 / output 0 and exactly
 finalized seller and Guardian witnesses must survive PSBT processing.
 Bound offer terms use the core's canonical message and BIP322 simple proof for
 native P2WPKH or BIP86 Taproot owners. The raw-key helper now produces that same
-proof and remains test capability evidence only. `ag3.3` must still prove the
-actual wallet protocol/prefix framing and signing behavior. No consumer receives raw wallet private keys.
+proof and remains test capability evidence only. Actual Xverse desktop 2.9.3 proves serialized-witness base64 framing, native/compressed and BIP86/x-only public keys, and required script signing/preservation. `canonicalOfferPublicKey` proves the script before signing. No consumer receives raw wallet private keys.
 
-Signet is the proposed live canary chain. Actual Xverse desktop/mobile signet,
-per-input `0x83`, and bound-message support are **unverified**. Simulated providers
-and regtest wallets cannot close those gates. Mainnet is not activated, and no
-real funded wallet spend is authorized by implementation work.
+Signet is the proposed live canary chain. Actual desktop signing capability is measured using unfunded synthetic prevouts with broadcast disabled; see [wallet evidence](CRC_WALLET_CAPABILITIES.md). Mobile and live-chain execution remain **unverified**. These signing proofs do not close later transaction/release gates. Mainnet is not activated, and no real funded user-wallet spend is authorized by implementation work.
 
 ## Custody and broken vaults
 

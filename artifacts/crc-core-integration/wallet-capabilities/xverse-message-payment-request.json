@@ -1,0 +1,27 @@
+{
+  "walletVersion": "2.9.3",
+  "unfunded": true,
+  "syntheticPrevout": false,
+  "terms": {
+    "network": "signet",
+    "deployTxid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "ticker": "CAPTEST",
+    "listedInput": {
+      "txid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "vout": 0,
+      "atoms": "123456789",
+      "sats": "1000",
+      "scriptHex": "0014bb8611d257c37a2cbdb8fabc64a816885375b8bd"
+    },
+    "sellerScriptHex": "0014bb8611d257c37a2cbdb8fabc64a816885375b8bd",
+    "priceSats": "12347",
+    "expiryHeight": 1000000,
+    "publicKeyHex": "0298e0f9c3e2122df2105e2d463c5e3bfe5b49de38d182a6f02bb3cd2f489c61c7"
+  },
+  "method": "signMessage",
+  "params": {
+    "address": "tb1qhwrpr5jhcdaze0dcl27xf2qk3pfhtw9a8x224s",
+    "message": "[\"cove-crc-offer-v1\",\"signet\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"CAPTEST\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",0,\"123456789\",\"1000\",\"0014bb8611d257c37a2cbdb8fabc64a816885375b8bd\",\"0014bb8611d257c37a2cbdb8fabc64a816885375b8bd\",\"12347\",1000000,\"0298e0f9c3e2122df2105e2d463c5e3bfe5b49de38d182a6f02bb3cd2f489c61c7\"]",
+    "protocol": "BIP322"
+  }
+}

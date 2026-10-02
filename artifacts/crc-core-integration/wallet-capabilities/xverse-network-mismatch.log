@@ -1,0 +1,8 @@
+file:///home/andefy/dev/covedao/packages/cove-market/crc20-protocol/test-support/xverse-guardian-probe.mjs:35
+if(network.result?.bitcoin?.name!=='Signet') throw new Error('wallet must be Signet');
+                                                   ^
+
+Error: wallet must be Signet
+    at file:///home/andefy/dev/covedao/packages/cove-market/crc20-protocol/test-support/xverse-guardian-probe.mjs:35:52
+
+Node.js v24.21.0

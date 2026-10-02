@@ -1,0 +1,11 @@
+{
+  "state": "resolved",
+  "value": {
+    "jsonrpc": "2.0",
+    "result": {
+      "psbt": "cHNidP8BAF4CAAAAAbu7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7AAAAAAD+////ASM0AAAAAAAAIlEg1hU1jpNUHbDgy1YeYKuXRxlBu6/UWc3G1SflGn/y0EYAAAAAAAEBK+gDAAAAAAAAIlEg1hU1jpNUHbDgy1YeYKuXRxlBu6/UWc3G1SflGn/y0EYBAwSDAAAAARNB28s0KaDKUERQDn9vzuSFiB6WbTpCDPnClOYvV8CNQKovQY8TvHfdpgcopvAIYMtZphU/UGKe6v6v3kCdDZtY64MBFyDR9/8v3/iPiH01ib6dcQ4LXPHSpWXvl1Dtq0BYeuPyBAAA",
+      "txid": ""
+    },
+    "id": "gw4p5ZDpkXqghbS7NmFyS"
+  }
+}

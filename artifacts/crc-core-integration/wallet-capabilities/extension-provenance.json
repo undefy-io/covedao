@@ -1,0 +1,11 @@
+{
+  "download_page": "https://www.xverse.app/download",
+  "web_store_id": "idnnbdplmphpflfnlkomgpfbpcgelopg",
+  "version": "2.9.3",
+  "crx_sha256": "2d337049dca0225bc8a0cb48f51248b5314716535c332f8f9f6241151b1b7a7a",
+  "loaded_unpacked_extension_id": "lonnhdplfckaoibdembflnbpnnkhkbbc",
+  "distribution": "Google official CRX update endpoint; unmodified contents extracted to isolated temporary directory",
+  "browser": "agent-browser isolated crc-real-xverse; headed Chrome on isolated Xvfb :93; no existing user profile",
+  "wallet": "fresh unfunded software wallet; wallet-generated keys stay inside extension; no seed/key export",
+  "broadcast": false
+}

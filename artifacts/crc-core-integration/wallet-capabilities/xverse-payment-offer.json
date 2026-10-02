@@ -1,0 +1,26 @@
+{
+  "offer": {
+    "network": "signet",
+    "deployTxid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "ticker": "CAPTEST",
+    "listedInput": {
+      "txid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "vout": 0,
+      "atoms": "123456789",
+      "sats": "1000",
+      "scriptHex": "0014bb8611d257c37a2cbdb8fabc64a816885375b8bd"
+    },
+    "sellerScriptHex": "0014bb8611d257c37a2cbdb8fabc64a816885375b8bd",
+    "priceSats": "12347",
+    "expiryHeight": 1000000,
+    "publicKeyHex": "0298e0f9c3e2122df2105e2d463c5e3bfe5b49de38d182a6f02bb3cd2f489c61c7",
+    "signatureHex": "0248304502210092794835550a397ae42f4ec627b98567e22bed3a3a3412f5a1853e456ef92bb502204b8303b401b5e919dd719f6ef6842489b478a8fdded9ecfccf8bcecca9e404e701210298e0f9c3e2122df2105e2d463c5e3bfe5b49de38d182a6f02bb3cd2f489c61c7",
+    "sellerWitnessHex": [
+      "30450221009eede1491201e1f0ce444039b7b198cb58e71cc912309b38ced2d45ab036180c0220565d4cc01c6e407628477256017dc17e51a8efd5d2deac0d2914f976222c692283",
+      "0298e0f9c3e2122df2105e2d463c5e3bfe5b49de38d182a6f02bb3cd2f489c61c7"
+    ]
+  },
+  "rawPartialTransaction": "02000000000101bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb0000000000feffffff012334000000000000160014bb8611d257c37a2cbdb8fabc64a816885375b8bd024830450221009eede1491201e1f0ce444039b7b198cb58e71cc912309b38ced2d45ab036180c0220565d4cc01c6e407628477256017dc17e51a8efd5d2deac0d2914f976222c692283210298e0f9c3e2122df2105e2d463c5e3bfe5b49de38d182a6f02bb3cd2f489c61c700000000",
+  "coreVerified": true,
+  "partialNotBroadcastable": true
+}

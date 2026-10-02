@@ -1,0 +1,51 @@
+{
+  "connect": {
+    "state": "resolved",
+    "value": {
+      "jsonrpc": "2.0",
+      "result": {
+        "id": "3963b925208a69dfb8d59b3a48845fe4580a26ea60623c6c7b54c395fdbf1892",
+        "walletType": "software",
+        "addresses": [
+          {
+            "address": "tb1qhwrpr5jhcdaze0dcl27xf2qk3pfhtw9a8x224s",
+            "publicKey": "0298e0f9c3e2122df2105e2d463c5e3bfe5b49de38d182a6f02bb3cd2f489c61c7",
+            "purpose": "payment",
+            "addressType": "p2wpkh",
+            "walletType": "software"
+          },
+          {
+            "address": "tb1p6c2ntr5n2swmpcxt2c0xp2uhguv5rwa063vum3k4ylj35llj6prq00thjv",
+            "publicKey": "d1f7ff2fdff88f887d3589be9d710e0b5cf1d2a565ef9750edab40587ae3f204",
+            "purpose": "ordinals",
+            "addressType": "p2tr",
+            "walletType": "software"
+          }
+        ],
+        "network": {
+          "bitcoin": {
+            "name": "Signet"
+          },
+          "stacks": {
+            "name": "testnet"
+          },
+          "spark": {
+            "name": "regtest"
+          }
+        }
+      },
+      "id": "amdO1ewNelNag9hyjmYya"
+    }
+  },
+  "network": {
+    "state": "resolved",
+    "value": {
+      "jsonrpc": "2.0",
+      "error": {
+        "code": -32002,
+        "message": "Access denied."
+      },
+      "id": "KpzalsjziNZMnN8U9IKWr"
+    }
+  }
+}

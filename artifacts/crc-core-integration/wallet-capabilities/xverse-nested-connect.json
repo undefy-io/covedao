@@ -1,0 +1,59 @@
+{
+  "state": "resolved",
+  "value": {
+    "jsonrpc": "2.0",
+    "result": {
+      "id": "3963b925208a69dfb8d59b3a48845fe4580a26ea60623c6c7b54c395fdbf1892",
+      "walletType": "software",
+      "addresses": [
+        {
+          "address": "tb1p6c2ntr5n2swmpcxt2c0xp2uhguv5rwa063vum3k4ylj35llj6prq00thjv",
+          "publicKey": "d1f7ff2fdff88f887d3589be9d710e0b5cf1d2a565ef9750edab40587ae3f204",
+          "purpose": "ordinals",
+          "addressType": "p2tr",
+          "walletType": "software"
+        },
+        {
+          "address": "2N4odjPKpeCQkZgNa7Teh5imHN764qFDxxM",
+          "publicKey": "03f5451461d7fcb6f07abfd5f7a09aa6f1f409cef8d0a0e563160d4c8dd7b5820c",
+          "purpose": "payment",
+          "addressType": "p2sh",
+          "walletType": "software"
+        },
+        {
+          "address": "ST1HZDT53TR3R3AHQCZ61FSHQ15JFGCA985DND2QS",
+          "publicKey": "0342bce3a8dc75ddb794e70e17d4feee6b6d00817352757ff443450ec3cccf0335",
+          "purpose": "stacks",
+          "addressType": "stacks",
+          "walletType": "software"
+        },
+        {
+          "address": "0x07c4fbf77b7d0d7699da6c73edfc6fcb62128860fac090b3816ca875e82014df",
+          "publicKey": "",
+          "purpose": "starknet",
+          "addressType": "starknet",
+          "walletType": "software"
+        },
+        {
+          "address": "sparkrt1pgss9f5hq8fkmhyw0wr8j7xwkfkgez8dzhqnhe4hkd29r8ev495dq6c7g03n5a",
+          "publicKey": "02a69701d36ddc8e7b867978ceb26c8c88ed15c13be6b7b354519f2ca968d06b1e",
+          "purpose": "spark",
+          "addressType": "spark",
+          "walletType": "software"
+        }
+      ],
+      "network": {
+        "bitcoin": {
+          "name": "Signet"
+        },
+        "stacks": {
+          "name": "testnet"
+        },
+        "spark": {
+          "name": "regtest"
+        }
+      }
+    },
+    "id": "16NpalEOa2Ubio4BCVXUd"
+  }
+}

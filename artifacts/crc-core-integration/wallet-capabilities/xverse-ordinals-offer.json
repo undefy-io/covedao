@@ -1,0 +1,25 @@
+{
+  "offer": {
+    "network": "signet",
+    "deployTxid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "ticker": "CAPTEST",
+    "listedInput": {
+      "txid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "vout": 0,
+      "atoms": "123456789",
+      "sats": "1000",
+      "scriptHex": "5120d615358e93541db0e0cb561e60ab97471941bbafd459cdc6d527e51a7ff2d046"
+    },
+    "sellerScriptHex": "5120d615358e93541db0e0cb561e60ab97471941bbafd459cdc6d527e51a7ff2d046",
+    "priceSats": "12347",
+    "expiryHeight": 1000000,
+    "publicKeyHex": "02d1f7ff2fdff88f887d3589be9d710e0b5cf1d2a565ef9750edab40587ae3f204",
+    "signatureHex": "0140532b1645c9ad0f09193ad1bf2fdaeafbb98cb347310d5f4065978b42d2bfe099d06053cb374b2d52d06f898cc05c2bb93b72cc7e6e332ea28e202fef369b5a9f",
+    "sellerWitnessHex": [
+      "dbcb3429a0ca5044500e7f6fcee485881e966d3a420cf9c294e62f57c08d40aa2f418f13bc77dda60728a6f00860cb59a6153f50629eeafeafde409d0d9b58eb83"
+    ]
+  },
+  "rawPartialTransaction": "02000000000101bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb0000000000feffffff012334000000000000225120d615358e93541db0e0cb561e60ab97471941bbafd459cdc6d527e51a7ff2d0460141dbcb3429a0ca5044500e7f6fcee485881e966d3a420cf9c294e62f57c08d40aa2f418f13bc77dda60728a6f00860cb59a6153f50629eeafeafde409d0d9b58eb8300000000",
+  "coreVerified": true,
+  "partialNotBroadcastable": true
+}

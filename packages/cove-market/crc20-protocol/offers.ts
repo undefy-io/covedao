@@ -38,6 +38,17 @@ export function attachOfferAuthorization(
   verifyOffer(offer);
   return offer;
 }
+/** Normalize wallet-returned public keys and prove ownership before any prompt. */
+export function canonicalOfferPublicKey(publicKeyHex: string, sellerScriptHex: string): string {
+  if (!/^(?:[0-9a-f]{64}|0[23][0-9a-f]{64})$/.test(publicKeyHex))
+    throw new Error("invalid wallet public key encoding");
+  const canonical = sellerScriptHex.startsWith("5120")
+    ? `02${publicKeyHex.length === 64 ? publicKeyHex : publicKeyHex.slice(2)}`
+    : publicKeyHex;
+  if (ownerScript(unhex(canonical), sellerScriptHex) !== sellerScriptHex)
+    throw new Error("wallet key/offer owner mismatch");
+  return canonical;
+}
 function ownerScript(key: Uint8Array, script: string): string {
   if (key.length !== 33 || !ecc.isPoint(key)) throw new Error("invalid owner public key");
   if (script.startsWith("0014")) return `0014${hex(hash160(key))}`;

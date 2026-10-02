@@ -1,0 +1,15 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "bitcoin": {
+      "name": "Signet"
+    },
+    "stacks": {
+      "name": "testnet"
+    },
+    "spark": {
+      "name": "regtest"
+    }
+  },
+  "id": "l6zXHAnGKijTkjaLh5aLi"
+}
