@@ -392,6 +392,18 @@ export function completeServerWalletSigning(
   core.validateFinalTransaction(plan, transaction, ledger);
   return { psbtBase64: psbt.toBase64(), transaction };
 }
+/** Browser-only input-scoped preview; authoritative submission still verifies the full ledger. */
+export function completeBrowserWalletSigning(
+  prepared: PreparedSigning, response: string, view: core.TransactionView,
+): { psbtBase64: string; transaction: ChainTransaction } {
+  if (!prepared.plan || prepared.terms) throw new Error("browser plan context required");
+  const psbt = checkedResponse(prepared, response);
+  finalizeWalletInputs(psbt, prepared);
+  const transaction = { rawHex: rawWithWitnesses(psbt).toHex(), prevouts: structuredClone(prepared.prevouts) };
+  if (prepared.guardianPending) core.validateGuardianTransactionView(view, transaction);
+  else core.validateFinalTransactionView(prepared.plan, transaction, view);
+  return { psbtBase64: psbt.toBase64(), transaction };
+}
 export function completeOfferSigning(
   prepared: PreparedSigning,
   messageSignatureBase64: string,

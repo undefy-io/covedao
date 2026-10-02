@@ -1,0 +1,36 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/lib/crc-browser-session.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-browser-session.test.ts (3 tests | 1 failed) 31ms
+   × validates the actual Xverse wallet-first mint response with unsigned server vault metadata 9ms
+     → Server changed signing sighash
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-browser-session.test.ts > validates the actual Xverse wallet-first mint response with unsigned server vault metadata
+Error: Server changed signing sighash
+ ❯ src/lib/crc-browser-signing.ts:58:57
+     56|       if ((input[field] || actual[field]) && !input[field]?.equals(act…
+     57|     }
+     58|     if (actual.sighashType !== input.sighashType) throw new Error("Ser…
+       |                                                         ^
+     59|   });
+     60|   const response = await signPsbt(prepared.params.psbt, context.operat…
+ ❯ Module.signCrcReviewedPlan src/lib/crc-browser-signing.ts:51:24
+ ❯ Module.signCrcBuildSession src/lib/crc-browser-session.ts:132:10
+ ❯ src/lib/crc-browser-session.test.ts:53:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+   Start at  22:25:52
+   Duration  466ms (transform 114ms, setup 0ms, collect 160ms, tests 31ms, environment 0ms, prepare 76ms)
+
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 test: `vitest run --passWithNoTests src/lib/crc-browser-session.test.ts`
+Exit status 1

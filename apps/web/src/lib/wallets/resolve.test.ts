@@ -127,4 +127,10 @@ describe("inputsOwnedBy", () => {
     psbt.addOutput({ script: payments.output!, value: 40_000 });
     expect(inputsOwnedBy(psbt.toBase64(), "testnet", connection)).toEqual([]);
   });
+  it("never asks a wallet to replace a finalized seller witness on a self purchase", () => {
+    const psbt = bitcoin.Psbt.fromBase64(mintPsbt());
+    psbt.data.inputs[1]!.finalScriptWitness = Buffer.from("010151", "hex");
+    expect(inputsOwnedBy(psbt.toBase64(), "testnet", connection)).toEqual([]);
+  });
+
 });

@@ -1,0 +1,112 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/lib/wallets/xverse-capabilities.test.ts src/lib/wallets/resolve.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/wallets/resolve.test.ts (10 tests | 1 failed) 14ms
+   × inputsOwnedBy > never asks a wallet to replace a finalized seller witness on a self purchase 5ms
+     → expected [ { …(2) } ] to deeply equal []
+ ❯ src/lib/wallets/xverse-capabilities.test.ts (9 tests | 6 failed) 15ms
+   × mock Xverse transport preserves input flag 131 and finalized witness, asks only named wallet input 7ms
+     → expected "spy" to be called 2 times, but got 1 times
+   × mock Xverse transport preserves input flag 1 and finalized witness, asks only named wallet input 1ms
+     → expected "spy" to be called 2 times, but got 1 times
+   × mock bound-message request selects BIP322 and passes exact terms once 0ms
+     → expected "spy" to be called 2 times, but got 1 times
+   × mock provider refusal 4001 is a cancellation with no retry 1ms
+     → expected "spy" to be called 2 times, but got 1 times
+   × mock provider refusal -32000 is a cancellation with no retry 0ms
+     → expected "spy" to be called 2 times, but got 1 times
+   × actual wallet network mismatch refuses signPsbt and BIP322 before signing requests 2ms
+     → promise resolved "undefined" instead of rejecting
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/wallets/resolve.test.ts > inputsOwnedBy > never asks a wallet to replace a finalized seller witness on a self purchase
+AssertionError: expected [ { …(2) } ] to deeply equal []
+
+- Expected
++ Received
+
+- Array []
++ Array [
++   Object {
++     "address": "2NAFk3jVN6mZyfLMNYoQpVTy81sY44dHeWW",
++     "indexes": Array [
++       1,
++     ],
++   },
++ ]
+
+ ❯ src/lib/wallets/resolve.test.ts:133:67
+    131|     const psbt = bitcoin.Psbt.fromBase64(mintPsbt());
+    132|     psbt.data.inputs[1]!.finalScriptWitness = Buffer.from("010151", "h…
+    133|     expect(inputsOwnedBy(psbt.toBase64(), "testnet", connection)).toEq…
+       |                                                                   ^
+    134|   });
+    135| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  src/lib/wallets/xverse-capabilities.test.ts > mock Xverse transport preserves input flag 131 and finalized witness, asks only named wallet input
+ FAIL  src/lib/wallets/xverse-capabilities.test.ts > mock Xverse transport preserves input flag 1 and finalized witness, asks only named wallet input
+AssertionError: expected "spy" to be called 2 times, but got 1 times
+ ❯ src/lib/wallets/xverse-capabilities.test.ts:49:21
+     47|       sighashType: flag,
+     48|     });
+     49|     expect(request).toHaveBeenCalledTimes(2);
+       |                     ^
+     50|     expect(request).toHaveBeenCalledWith("signPsbt", {
+     51|       psbt: encoded,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  src/lib/wallets/xverse-capabilities.test.ts > mock bound-message request selects BIP322 and passes exact terms once
+AssertionError: expected "spy" to be called 2 times, but got 1 times
+ ❯ src/lib/wallets/xverse-capabilities.test.ts:68:19
+     66|     "mock-response-not-a-proof",
+     67|   );
+     68|   expect(request).toHaveBeenCalledTimes(2);
+       |                   ^
+     69|   expect(request).toHaveBeenCalledWith("signMessage", {
+     70|     address: "selected-address",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  src/lib/wallets/xverse-capabilities.test.ts > mock provider refusal 4001 is a cancellation with no retry
+ FAIL  src/lib/wallets/xverse-capabilities.test.ts > mock provider refusal -32000 is a cancellation with no retry
+AssertionError: expected "spy" to be called 2 times, but got 1 times
+ ❯ src/lib/wallets/xverse-capabilities.test.ts:84:21
+     82|       adapterFor("xverse").signMessage("signet", "selected-address", "…
+     83|     ).rejects.toMatchObject({ code: "REJECTED" });
+     84|     expect(request).toHaveBeenCalledTimes(2);
+       |                     ^
+     85|   });
+     86| }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  src/lib/wallets/xverse-capabilities.test.ts > actual wallet network mismatch refuses signPsbt and BIP322 before signing requests
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected: 
+[Error: rejected promise]
+
++ Received: 
+undefined
+
+ ❯ src/lib/wallets/xverse-capabilities.test.ts:110:160
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ Test Files  2 failed (2)
+      Tests  7 failed | 12 passed (19)
+   Start at  22:34:40
+   Duration  503ms (transform 93ms, setup 0ms, collect 286ms, tests 29ms, environment 0ms, prepare 106ms)
+
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 test: `vitest run --passWithNoTests src/lib/wallets/xverse-capabilities.test.ts src/lib/wallets/resolve.test.ts`
+Exit status 1

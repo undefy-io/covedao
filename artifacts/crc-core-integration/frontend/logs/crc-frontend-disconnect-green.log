@@ -1,0 +1,7 @@
+
+Running 2 tests using 1 worker
+
+  ✓  1 [desktop] › tests-crc-core/interactions.spec.ts:166:1 › disconnect during independent plan observations prevents a stale wallet prompt (2.6s)
+  ✓  2 [mobile] › tests-crc-core/interactions.spec.ts:166:1 › disconnect during independent plan observations prevents a stale wallet prompt (1.9s)
+
+  2 passed (5.3s)

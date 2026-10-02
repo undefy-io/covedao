@@ -1,0 +1,37 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/lib/crc-market-client.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-market-client.test.ts (2 tests | 1 failed) 25ms
+   × buys using signed core terms, exact atoms and one buyer prompt with no fresh seller signature 16ms
+     → promise rejected "Error: Listed token output no longer matc…" instead of resolving
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-market-client.test.ts > buys using signed core terms, exact atoms and one buyer prompt with no fresh seller signature
+AssertionError: promise rejected "Error: Listed token output no longer matc…" instead of resolving
+ ❯ src/lib/crc-market-client.test.ts:54:68
+     52| test("buys using signed core terms, exact atoms and one buyer prompt w…
+     53|   const f = await fixture();
+     54|   await expect(buyCrcMarketListing(f.row, f.wallet, 400, f.request)).r…
+       |                                                                    ^
+     55|   expect(f.signer).toHaveBeenCalledOnce();
+     56|   expect(f.request.mock.calls.some(([url]) => /seller-sign|broadcast/.…
+
+Caused by: Error: Listed token output no longer matches the indexed allocation and Bitcoin funding
+ ❯ Module.buyCrcMarketListing src/lib/crc-market-client.ts:94:11
+ ❯ src/lib/crc-market-client.test.ts:54:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  22:19:17
+   Duration  778ms (transform 360ms, setup 0ms, collect 448ms, tests 25ms, environment 0ms, prepare 60ms)
+
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 test: `vitest run --passWithNoTests src/lib/crc-market-client.test.ts`
+Exit status 1

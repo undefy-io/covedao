@@ -48,6 +48,8 @@ export interface SignPsbtRequest {
    * them, and nothing else — so a buyer can complete the sale later.
    */
   sighashType?: number;
+  /** Recheck the live connection after asynchronous provider observations. */
+  assertCurrent?: () => void;
 }
 
 export interface WalletAdapter {
@@ -69,7 +71,7 @@ export interface WalletAdapter {
    */
   signPsbt(network: CoveNetwork, request: SignPsbtRequest): Promise<string>;
   /** BIP-322 message signature, used to authorise marketplace orders. */
-  signMessage(network: CoveNetwork, address: string, message: string): Promise<string>;
+  signMessage(network: CoveNetwork, address: string, message: string, assertCurrent?: () => void): Promise<string>;
 }
 
 export class WalletError extends Error {

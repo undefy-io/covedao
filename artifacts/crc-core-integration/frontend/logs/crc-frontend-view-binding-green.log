@@ -1,0 +1,19 @@
+
+> @crclaunch/crc20-protocol@0.1.0 test /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+> pnpm build && vitest run transaction-view.test.ts guardian-preflight.test.ts
+
+
+> @crclaunch/crc20-protocol@0.1.0 build /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+> tsc -p tsconfig.build.json && node build-browser.mjs
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ✓ transaction-view.test.ts (3 tests) 60ms
+ ✓ guardian-preflight.test.ts (3 tests) 19ms
+
+ Test Files  2 passed (2)
+      Tests  6 passed (6)
+   Start at  22:29:52
+   Duration  488ms (transform 125ms, setup 0ms, collect 176ms, tests 80ms, environment 0ms, prepare 65ms)
+

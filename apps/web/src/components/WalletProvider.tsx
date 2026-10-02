@@ -1,12 +1,13 @@
 "use client";
 
 import { tr } from "@/i18n";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { NETWORK as COVE_NETWORK } from "@/lib/network";
 import { selectFundingCandidates, type WalletFundingCoin } from "@/lib/funding-candidates";
 import type { WalletCapabilities } from "@crclaunch/wallets";
 import { adapterFor, inputsOwnedBy } from "@/lib/wallets/adapters";
-import { LISTING_SIGHASH } from "@crclaunch/wallets";
+import { Transaction } from "bitcoinjs-lib";
+const LISTING_SIGHASH = Transaction.SIGHASH_SINGLE | Transaction.SIGHASH_ANYONECANPAY;
 import { WalletError, type CoveNetwork, type WalletId } from "@/lib/wallets/types";
 import {
   DEV_WALLET_ID,
@@ -111,6 +112,8 @@ interface Connected {
 
 export function WalletProvider({ children, protocolMode = "legacy" }: { children: React.ReactNode; protocolMode?: "legacy" | "crc-read-only" }) {
   const [conn, setConn] = useState<Connected | null>(null);
+  const liveConnection = useRef<Connected | null>(null);
+  useEffect(() => { liveConnection.current = conn; }, [conn]);
   const [capabilities, setCapabilities] = useState<WalletCapabilities | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [devIdentity, setDevIdentity] = useState("");
@@ -184,6 +187,7 @@ export function WalletProvider({ children, protocolMode = "legacy" }: { children
   );
 
   const disconnect = useCallback(() => {
+    liveConnection.current = null;
     if (conn?.walletId === DEV_WALLET_ID) removeDevWallet();
     setConn(null);
     setCapabilities(null);
@@ -228,47 +232,57 @@ export function WalletProvider({ children, protocolMode = "legacy" }: { children
 
   const signPsbt = useCallback(
     async (psbtBase64: string, operation: string) => {
-      if (!conn) throw new WalletError("FAILED", tr("wal.noWallet"));
+      if (!conn || liveConnection.current !== conn) throw new WalletError("FAILED", tr("wal.noWallet"));
       if (conn.isTestWallet) {
         const test = getTestWallet();
         if (!test) throw new WalletError("FAILED", tr("wal.noWallet"));
-        return test.signPsbt({ psbtBase64, operation });
+        const response = await test.signPsbt({ psbtBase64, operation });
+        if (liveConnection.current !== conn) throw new WalletError("FAILED", tr("wal.noWallet"));
+        return response;
       }
       // Tell the wallet exactly which inputs are its own. The backing vault
       // input belongs to neither address, so it is never offered — the
-      // Guardian has already signed it and a second signature would only
-      // invalidate the transaction.
+      // Guardian signs it after wallet submission. Finalized seller witnesses
+      // are also excluded from the wallet signing request.
       const inputsByAddress = inputsOwnedBy(psbtBase64, NETWORK, conn);
       if (inputsByAddress.length === 0) {
         throw new WalletError("FAILED", tr("wal.noInputs"));
       }
-      return adapterFor(conn.walletId as WalletId).signPsbt(NETWORK, {
+      const response = await adapterFor(conn.walletId as WalletId).signPsbt(NETWORK, {
         psbtBase64,
         inputsByAddress,
         // A listing is presigned SIGHASH_SINGLE|ANYONECANPAY; everything else is SIGHASH_ALL.
         sighashType: operation === "P2P_LIST" ? LISTING_SIGHASH : undefined,
+        assertCurrent: () => { if (liveConnection.current !== conn) throw new WalletError("FAILED", tr("wal.noWallet")); },
       });
+      if (liveConnection.current !== conn) throw new WalletError("FAILED", tr("wal.noWallet"));
+      return response;
     },
     [conn],
   );
 
   const signBip322 = useCallback(
     async (message: string) => {
-      if (!conn) throw new WalletError("FAILED", tr("wal.noWallet"));
+      if (!conn || liveConnection.current !== conn) throw new WalletError("FAILED", tr("wal.noWallet"));
       if (conn.isTestWallet) {
         const test = getTestWallet();
         if (!test?.signBip322Simple) {
           throw new WalletError("UNSUPPORTED", tr("wal.noBip322"));
         }
-        return test.signBip322Simple({ message });
+        const response = await test.signBip322Simple({ message });
+        if (liveConnection.current !== conn) throw new WalletError("FAILED", tr("wal.noWallet"));
+        return response;
       }
       // Marketplace orders are authorised by the address that holds the
       // tokens, which is the ordinals address.
-      return adapterFor(conn.walletId as WalletId).signMessage(
+      const response = await adapterFor(conn.walletId as WalletId).signMessage(
         NETWORK,
         conn.ordinals.address,
         message,
+        () => { if (liveConnection.current !== conn) throw new WalletError("FAILED", tr("wal.noWallet")); },
       );
+      if (liveConnection.current !== conn) throw new WalletError("FAILED", tr("wal.noWallet"));
+      return response;
     },
     [conn],
   );

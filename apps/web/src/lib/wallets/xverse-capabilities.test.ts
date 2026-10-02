@@ -15,7 +15,7 @@ vi.mock("@ordzaar/ordit-sdk/xverse", () => ({
 }));
 afterEach(() => vi.unstubAllGlobals());
 function provider(result: unknown) {
-  const request = vi.fn().mockResolvedValue(result);
+  const request = vi.fn(async (method: string) => method === "wallet_getNetwork" ? { result: { bitcoin: { name: "Signet" } } } : result);
   vi.stubGlobal("window", { XverseProviders: { BitcoinProvider: { request } } });
   return request;
 }
@@ -46,7 +46,7 @@ for (const flag of [0x83, bitcoin.Transaction.SIGHASH_ALL]) {
       inputsByAddress: [{ address: "selected-address", indexes: [1] }],
       sighashType: flag,
     });
-    expect(request).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledTimes(2);
     expect(request).toHaveBeenCalledWith("signPsbt", {
       psbt: encoded,
       signInputs: { "selected-address": [1] },
@@ -65,7 +65,7 @@ test("mock bound-message request selects BIP322 and passes exact terms once", as
   expect(await adapterFor("xverse").signMessage("signet", "selected-address", message)).toBe(
     "mock-response-not-a-proof",
   );
-  expect(request).toHaveBeenCalledTimes(1);
+  expect(request).toHaveBeenCalledTimes(2);
   expect(request).toHaveBeenCalledWith("signMessage", {
     address: "selected-address",
     message,
@@ -81,7 +81,7 @@ for (const error of [
     await expect(
       adapterFor("xverse").signMessage("signet", "selected-address", "terms"),
     ).rejects.toMatchObject({ code: "REJECTED" });
-    expect(request).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledTimes(2);
   });
 }
 test("regtest is rejected before any browser provider prompt", async () => {
@@ -103,3 +103,31 @@ test("missing provider refuses signing before transport", async () => {
     adapterFor("xverse").signMessage("signet", "selected-address", "terms"),
   ).rejects.toMatchObject({ code: "NOT_INSTALLED" });
 });
+
+test("actual wallet network mismatch refuses signPsbt and BIP322 before signing requests", async () => {
+  const request = vi.fn(async (_method: string) => ({ result: { bitcoin: { name: "Mainnet" } } }));
+  vi.stubGlobal("window", { XverseProviders: { BitcoinProvider: { request } } });
+  await expect(adapterFor("xverse").signPsbt("signet", { psbtBase64: fixture(1).toBase64(), inputsByAddress: [{ address: "selected-address", indexes: [1] }] })).rejects.toMatchObject({ code: "WRONG_NETWORK" });
+  await expect(adapterFor("xverse").signMessage("signet", "selected-address", "terms")).rejects.toMatchObject({ code: "WRONG_NETWORK" });
+  expect(request.mock.calls.map(([method]) => method)).toEqual(["wallet_getNetwork", "wallet_getNetwork"]);
+});
+
+for (const operation of ["psbt", "message"] as const) {
+  test(`disconnect during Xverse network observation prevents the ${operation} signing request`, async () => {
+    let release!: () => void, observing!: () => void, connected = true;
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    const started = new Promise<void>((resolve) => { observing = resolve; });
+    const request = vi.fn(async (method: string) => {
+      if (method === "wallet_getNetwork") { observing(); await held; return { result: { bitcoin: { name: "Signet" } } }; }
+      return { result: { psbt: fixture(1).toBase64(), signature: "unused" } };
+    });
+    vi.stubGlobal("window", { XverseProviders: { BitcoinProvider: { request } } });
+    const assertCurrent = () => { if (!connected) throw new Error("Wallet disconnected"); };
+    const result = operation === "psbt"
+      ? adapterFor("xverse").signPsbt("signet", { psbtBase64: fixture(1).toBase64(), inputsByAddress: [{ address: "selected-address", indexes: [1] }], assertCurrent })
+      : adapterFor("xverse").signMessage("signet", "selected-address", "terms", assertCurrent);
+    const rejected = expect(result).rejects.toThrow(/disconnected/i);
+    await started; connected = false; release(); await rejected;
+    expect(request.mock.calls.map(([method]) => method)).toEqual(["wallet_getNetwork"]);
+  });
+}

@@ -1,0 +1,108 @@
+{
+  "baselineCommit": "5dded6a",
+  "pages": 7,
+  "viewports": [
+    "desktop",
+    "mobile"
+  ],
+  "comparisons": [
+    {
+      "test": "ui-parity-unchanged-UI-mat-002cd-d6a-pixels-and-controls-at--desktop",
+      "current": "screenshots/002cd-d6a-pixels-and-controls-at--desktop-current.png",
+      "baseline": "screenshots/002cd-d6a-pixels-and-controls-at--desktop-baseline-5dded6a.png",
+      "sha256": "ad9b7247f4b49afea8ed862517dea5dea51620314b546466d24d3ad113624043",
+      "identicalBytes": true
+    },
+    {
+      "test": "ui-parity-unchanged-UI-mat-002cd-d6a-pixels-and-controls-at--mobile",
+      "current": "screenshots/002cd-d6a-pixels-and-controls-at--mobile-current.png",
+      "baseline": "screenshots/002cd-d6a-pixels-and-controls-at--mobile-baseline-5dded6a.png",
+      "sha256": "df3c24d303ce3357774f1b1778893c854fc718bef8467dcb95214478863a2ba6",
+      "identicalBytes": true
+    },
+    {
+      "test": "ui-parity-unchanged-UI-mat-5f643-ls-and-controls-at-activity-desktop",
+      "current": "screenshots/5f643-ls-and-controls-at-activity-desktop-current.png",
+      "baseline": "screenshots/5f643-ls-and-controls-at-activity-desktop-baseline-5dded6a.png",
+      "sha256": "ea27011c33db69938d91013c027c0e3e5adfed6385073dde5ddade594ebe9f63",
+      "identicalBytes": true
+    },
+    {
+      "test": "ui-parity-unchanged-UI-mat-5f643-ls-and-controls-at-activity-mobile",
+      "current": "screenshots/5f643-ls-and-controls-at-activity-mobile-current.png",
+      "baseline": "screenshots/5f643-ls-and-controls-at-activity-mobile-baseline-5dded6a.png",
+      "sha256": "f26ea1df17ebfbe8313bfb78fac9cd69fe01a26326c9557d4aab6e4852d575f2",
+      "identicalBytes": true
+    },
+    {
+      "test": "ui-parity-unchanged-UI-mat-87862-els-and-controls-at-explore-desktop",
+      "current": "screenshots/87862-els-and-controls-at-explore-desktop-current.png",
+      "baseline": "screenshots/87862-els-and-controls-at-explore-desktop-baseline-5dded6a.png",
+      "sha256": "be6a37b5775c3f7a98e6e2c1a482428ff619b66cbdddd7d33f12a220d8aa1a70",
+      "identicalBytes": true
+    },
+    {
+      "test": "ui-parity-unchanged-UI-mat-87862-els-and-controls-at-explore-mobile",
+      "current": "screenshots/87862-els-and-controls-at-explore-mobile-current.png",
+      "baseline": "screenshots/87862-els-and-controls-at-explore-mobile-baseline-5dded6a.png",
+      "sha256": "0b14b2db8b4316f7d880f27234d3cf1a59c1d6247ee9d7599ef928269fe830de",
+      "identicalBytes": true
+    },
+    {
+      "test": "ui-parity-unchanged-UI-mat-98eec-aaaaaaaaaaaaaaaaaaaaaaaaaaa-desktop",
+      "current": "screenshots/98eec-aaaaaaaaaaaaaaaaaaaaaaaaaaa-desktop-current.png",
+      "baseline": "screenshots/98eec-aaaaaaaaaaaaaaaaaaaaaaaaaaa-desktop-baseline-5dded6a.png",
+      "sha256": "3483b247bf0cf46123dd3ff392a5c8e42dfccace2243251a4f4170747082697b",
+      "identicalBytes": true
+    },
+    {
+      "test": "ui-parity-unchanged-UI-mat-98eec-aaaaaaaaaaaaaaaaaaaaaaaaaaa-mobile",
+      "current": "screenshots/98eec-aaaaaaaaaaaaaaaaaaaaaaaaaaa-mobile-current.png",
+      "baseline": "screenshots/98eec-aaaaaaaaaaaaaaaaaaaaaaaaaaa-mobile-baseline-5dded6a.png",
+      "sha256": "58a4427a8092f0950f7936fb6b41b56b5f111b8a962e16604463b964bf52883a",
+      "identicalBytes": true
+    },
+    {
+      "test": "ui-parity-unchanged-UI-mat-b9e96-xels-and-controls-at-market-desktop",
+      "current": "screenshots/b9e96-xels-and-controls-at-market-desktop-current.png",
+      "baseline": "screenshots/b9e96-xels-and-controls-at-market-desktop-baseline-5dded6a.png",
+      "sha256": "d1adeebb0f205a4c3958687fa30ed1b5c20c7fc736185ea5068327aeda375683",
+      "identicalBytes": true
+    },
+    {
+      "test": "ui-parity-unchanged-UI-mat-b9e96-xels-and-controls-at-market-mobile",
+      "current": "screenshots/b9e96-xels-and-controls-at-market-mobile-current.png",
+      "baseline": "screenshots/b9e96-xels-and-controls-at-market-mobile-baseline-5dded6a.png",
+      "sha256": "294c28b300df14fd9bdd1adef5602ecdf0cef06dc4154b640fe20bef109734eb",
+      "identicalBytes": true
+    },
+    {
+      "test": "ui-parity-unchanged-UI-mat-ee016-xels-and-controls-at-launch-desktop",
+      "current": "screenshots/ee016-xels-and-controls-at-launch-desktop-current.png",
+      "baseline": "screenshots/ee016-xels-and-controls-at-launch-desktop-baseline-5dded6a.png",
+      "sha256": "03552266aa98fbd0e57d2cbcd01df74ad258b94535978fbf2909508cc2abc9db",
+      "identicalBytes": true
+    },
+    {
+      "test": "ui-parity-unchanged-UI-mat-ee016-xels-and-controls-at-launch-mobile",
+      "current": "screenshots/ee016-xels-and-controls-at-launch-mobile-current.png",
+      "baseline": "screenshots/ee016-xels-and-controls-at-launch-mobile-baseline-5dded6a.png",
+      "sha256": "753b03612145de30847134d641373577b5f65bbe371026c83db107c9aa9e4642",
+      "identicalBytes": true
+    },
+    {
+      "test": "ui-parity-unchanged-UI-mat-f6e57-xels-and-controls-at-wallet-desktop",
+      "current": "screenshots/f6e57-xels-and-controls-at-wallet-desktop-current.png",
+      "baseline": "screenshots/f6e57-xels-and-controls-at-wallet-desktop-baseline-5dded6a.png",
+      "sha256": "499abc6cf723d8d2fb465d7394351526505d8427017bac8a89aab7784f037664",
+      "identicalBytes": true
+    },
+    {
+      "test": "ui-parity-unchanged-UI-mat-f6e57-xels-and-controls-at-wallet-mobile",
+      "current": "screenshots/f6e57-xels-and-controls-at-wallet-mobile-current.png",
+      "baseline": "screenshots/f6e57-xels-and-controls-at-wallet-mobile-baseline-5dded6a.png",
+      "sha256": "78fbf4366e0322627a348265f06c7e1142323403b1f2fb2f22512a519ca22b4a",
+      "identicalBytes": true
+    }
+  ]
+}

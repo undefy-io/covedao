@@ -130,7 +130,9 @@ export async function crcMarketPost(
   enabled: boolean,
   services: () => CrcMarketServices,
 ): Promise<Response> {
-  if (!enabled) return fail("CRC_MARKET_DISABLED", "Cove marketplace trading is paused", 503, true);
+  // Funding exclusion is a read-only observation shared by launch and curve
+  // signing; marketplace release controls only marketplace mutations.
+  if (!enabled && operation !== "funding-check") return fail("CRC_MARKET_DISABLED", "Cove marketplace trading is paused", 503, true);
   try {
     const limited = checkCrcRateLimit(req, true);
     if (limited) return limited;

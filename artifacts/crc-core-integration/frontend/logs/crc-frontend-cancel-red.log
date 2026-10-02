@@ -1,0 +1,33 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/lib/crc-market-client.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-market-client.test.ts (3 tests | 1 failed) 53ms
+   × cancellation spends the listed carrier with wallet ALL signatures through the core session 5ms
+     → cancelCrcMarketListing is not a function
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-market-client.test.ts > cancellation spends the listed carrier with wallet ALL signatures through the core session
+TypeError: cancelCrcMarketListing is not a function
+ ❯ src/lib/crc-market-client.test.ts:94:16
+     92|     return f.request(url, init);
+     93|   });
+     94|   await expect(cancelCrcMarketListing(f.row, wallet, 1000, request)).r…
+       |                ^
+     95|   expect(signer).toHaveBeenCalledOnce();
+     96| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+   Start at  22:37:27
+   Duration  576ms (transform 153ms, setup 0ms, collect 231ms, tests 53ms, environment 0ms, prepare 42ms)
+
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 test: `vitest run --passWithNoTests src/lib/crc-market-client.test.ts`
+Exit status 1

@@ -5,8 +5,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const { config } = getCrcMutationServices();
-    return ok({ tradingActive: true, network: config.network });
+    const { config, crcVaultConfig } = getCrcMutationServices();
+    return ok({ tradingActive: true, network: config.network, protocolScriptHex: crcVaultConfig.feeScriptHex });
   } catch {
     return ok({ tradingActive: false });
   }

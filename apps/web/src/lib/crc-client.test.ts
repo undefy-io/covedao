@@ -24,22 +24,26 @@ describe("CRC wallet client paging", () => {
 });
 
 describe("CRC token quantity", () => {
-  it("converts exact 1000-token lots to atoms before requesting a quote", () => {
+  it("uses the authoritative execution quantum and preserves exact atoms", () => {
     expect(parseCrcTokenQuantity("1000")).toBe("100000000000");
     expect(parseCrcTokenQuantity("25000")).toBe("2500000000000");
-    for (const invalid of ["999", "1001", "0", "-1000", "1.5", "01000", "21001000"]) {
+    expect(parseCrcTokenQuantity("500")).toBe("50000000000");
+    expect(parseCrcTokenQuantity("400")).toBe("40000000000");
+    expect(parseCrcTokenQuantity("600")).toBe("60000000000");
+    expect(parseCrcTokenQuantity("21000000")).toBe("2100000000000000");
+    for (const invalid of ["99", "999", "1001", "0", "-1000", "1.5", "01000", "21001000"]) {
       expect(() => parseCrcTokenQuantity(invalid)).toThrow();
     }
   });
 });
 
 describe("CRC sell shortcuts", () => {
-  it("rounds each balance percentage down to a sellable 1,000-token lot", () => {
+  it("rounds each balance percentage down to a core execution quantum", () => {
     const heldAtoms = 9_500n * 100_000_000n;
-    expect(sellPresetQuantity(heldAtoms, 25)).toBe("2000");
-    expect(sellPresetQuantity(heldAtoms, 50)).toBe("4000");
-    expect(sellPresetQuantity(heldAtoms, 100)).toBe("9000");
-    expect(sellPresetQuantity(999n * 100_000_000n, 100)).toBe("0");
-    expect(parseCrcTokenQuantity(sellPresetQuantity(heldAtoms, 100))).toBe("900000000000");
+    expect(sellPresetQuantity(heldAtoms, 25)).toBe("2300");
+    expect(sellPresetQuantity(heldAtoms, 50)).toBe("4700");
+    expect(sellPresetQuantity(heldAtoms, 100)).toBe("9500");
+    expect(sellPresetQuantity(99n * 100_000_000n, 100)).toBe("0");
+    expect(parseCrcTokenQuantity(sellPresetQuantity(heldAtoms, 100))).toBe("950000000000");
   });
 });

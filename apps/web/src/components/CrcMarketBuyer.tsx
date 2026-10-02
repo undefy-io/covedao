@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { capAtoms } from "@crclaunch/crc20-protocol";
 import { useEffect, useState } from "react";
 import { useWallet } from "./WalletProvider";
 import { formatAtoms, formatVaultSats, type CrcToken } from "./CrcHome";
 import { buyCrcMarketListing, type CrcMarketListing } from "@/lib/crc-market-client";
 
 export function CrcMarketBuyer() {
-  const { connected, network, script, publicKey, ordinalsScript, address, ordinalsAddress, connect, signPsbt } = useWallet();
+  const { connected, network, script, publicKey, ordinalsPublicKey, ordinalsScript, address, ordinalsAddress, connect, signPsbt } = useWallet();
   const [active, setActive] = useState(false);
   const [listings, setListings] = useState<CrcMarketListing[]>([]);
   const [tokens, setTokens] = useState<CrcToken[]>([]);
@@ -46,7 +47,7 @@ export function CrcMarketBuyer() {
         throw new Error("Miner fee must be 1 to 20,000 sats");
       }
       const result = await buyCrcMarketListing(listing,
-        { network, script, publicKey, ordinalsScript, address, ordinalsAddress, signPsbt }, Number(minerFee));
+        { network, script, publicKey, ordinalsPublicKey, ordinalsScript, address, ordinalsAddress, signPsbt }, Number(minerFee));
       setMessage(`Sale submitted: ${result.txid}`);
       setListings((current) => current.filter((row) => row.id !== listing.id));
     } catch (cause) {
@@ -68,7 +69,7 @@ export function CrcMarketBuyer() {
       <button type="button" onClick={() => setSelected("")} aria-pressed={!selected} className={`bg-ink-2 p-4 text-left transition-colors hover:bg-ink-3 ${!selected ? "outline outline-1 outline-signal" : ""}`}><div className="text-bone">All tokens</div><div className="mt-1 text-xs text-bone-dim">{open.length} open asks</div></button>
       {cards.map((token) => {
         const tokenAsks = open.filter((listing) => `${listing.network}:${listing.deployTxid}` === token.assetId);
-        const minted = Number(BigInt(token.mintedAtoms) * 1000n / 2_100_000_000_000_000n) / 10;
+        const minted = Number(BigInt(token.mintedAtoms) * 1000n / capAtoms) / 10;
         return <button type="button" key={token.assetId} onClick={() => setSelected(selected === token.assetId ? "" : token.assetId)} aria-pressed={selected === token.assetId} className={`bg-ink-2 p-4 text-left transition-colors hover:bg-ink-3 ${selected === token.assetId ? "outline outline-1 outline-signal" : ""}`}><div className="flex items-center justify-between gap-2"><span className="truncate text-bone">${token.ticker}</span><span className={minted >= 100 ? "chip chip-signal" : "chip chip-verified"}>{minted >= 100 ? "Minted out" : `${minted}%`}</span></div><div className="mt-1 text-xs text-bone-dim">{tokenAsks.length} open asks</div><div className="mt-3 text-xs text-bone-2">Vault: {formatVaultSats(token.vault.btcSats)}</div></button>;
       })}
     </div>

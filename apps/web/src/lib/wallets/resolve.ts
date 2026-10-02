@@ -107,6 +107,7 @@ export function inputsOwnedBy(
   const owners = [connection.payments, connection.ordinals];
 
   psbt.data.inputs.forEach((input, index) => {
+    if (input.finalScriptWitness || input.finalScriptSig) return;
     const script = input.witnessUtxo?.script.toString("hex");
     if (!script) return;
     const owner = owners.find((o) => o.script === script);

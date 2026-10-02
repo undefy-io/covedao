@@ -8,7 +8,7 @@ import { Tile } from "./Tile";
 import { Sparkline } from "./Sparkline";
 import { useT } from "@/i18n/LanguageProvider";
 
-const capAtoms = 2_100_000_000_000_000n;
+import { capAtoms } from "@crclaunch/crc20-protocol";
 
 export type CrcToken = {
   assetId: string;

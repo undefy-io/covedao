@@ -1,0 +1,33 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/lib/crc-browser-session.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-browser-session.test.ts (5 tests | 1 failed) 38ms
+   × exact sell review credits released token carriers instead of using advisory economics 3ms
+     → crcBuiltWalletDelta is not a function
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-browser-session.test.ts > exact sell review credits released token carriers instead of using advisory economics
+TypeError: crcBuiltWalletDelta is not a function
+ ❯ src/lib/crc-browser-session.test.ts:78:10
+     76|   const sell = core.buildSell({ state, inputs: [tokens], funding: [inp…
+     77|   expect(core.quoteSell(state, state.issuedAtoms).economicSats - 400n)…
+     78|   expect(crcBuiltWalletDelta({ sessionId: "sell", psbtBase64: "", inte…
+       |          ^
+     79| });
+     80| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  22:32:37
+   Duration  511ms (transform 122ms, setup 0ms, collect 189ms, tests 38ms, environment 0ms, prepare 71ms)
+
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 test: `vitest run --passWithNoTests src/lib/crc-browser-session.test.ts`
+Exit status 1

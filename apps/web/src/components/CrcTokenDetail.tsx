@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { atomsPerToken, capAtoms, carrierSats, curveStepAtoms, decodeProtocolDto, type Plan } from "@crclaunch/crc20-protocol";
+import { crcBuiltWalletDelta, signCrcBuildSession } from "@/lib/crc-browser-session";
 import { useEffect, useState } from "react";
 import { formatAtoms, formatVaultSats } from "./CrcHome";
 import { Tile } from "./Tile";
@@ -17,7 +19,6 @@ type Token = {
   network: string;
   deployTxid: string;
   deployHeight: string;
-  protocolVersion: 3;
   burnedAtoms: string | null;
   mintedAtoms: string;
   inventoryAtoms: string;
@@ -33,7 +34,7 @@ type TradeQuote = Record<string, string> & {
   walletTopUpSats: string; sellerNetSats: string;
 };
 type BuiltTrade = { sessionId: string; psbtBase64: string; intent: {
-  assetId: string; amountAtoms: string; vaultOutpoint: string; feeTier: FeeTier["key"]; minerFeeSats: number;
+  [key: string]: unknown; assetId: string; amountAtoms: string; vaultOutpoint: string; feeTier: FeeTier["key"]; minerFeeSats: number;
 } };
 
 function CostLine({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
@@ -41,7 +42,7 @@ function CostLine({ label, value, strong = false }: { label: string; value: stri
 }
 
 export function CrcTokenDetail({ assetId }: { assetId: string }) {
-  const { connected, address, publicKey, ordinalsAddress, ordinalsPublicKey,
+  const { connected, network, address, publicKey, ordinalsAddress, ordinalsPublicKey,
     connect, getUtxos, signPsbt } = useWallet();
   const [token, setToken] = useState<Token | null>(null);
   const [indexedHeight, setIndexedHeight] = useState("");
@@ -72,7 +73,8 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
       if (builtTrade) {
         if (builtTrade.intent.feeTier !== feeTier || builtTrade.intent.amountAtoms !== amountAtoms ||
           builtTrade.intent.vaultOutpoint !== quote.vaultOutpoint) throw new Error("Trade changed. Review a new quote");
-        const signedPsbtBase64 = await signPsbt(builtTrade.psbtBase64, side === "buy" ? "CRC_BUY" : "CRC_SELL");
+        const signedPsbtBase64 = await signCrcBuildSession(builtTrade, { operation: side, assetId, amountAtoms, minerFeeSats: builtTrade.intent.minerFeeSats },
+          { network, address, publicKey, ordinalsAddress, ordinalsPublicKey }, signPsbt);
         const submitResponse = await fetch(`/api/crc/v1/backing/${side}/submit`, {
           method: "POST", headers: { "content-type": "application/json" },
           body: JSON.stringify({ sessionId: builtTrade.sessionId, signedPsbtBase64 }),
@@ -201,15 +203,15 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
   if (!token) return <section className="panel px-6 py-16 text-center text-sm text-bone-dim sm:px-10">Reading indexed token state…</section>;
 
   const minted = BigInt(token.mintedAtoms);
-  const cap = 2_100_000_000_000_000n;
+  const cap = capAtoms;
   const pct = Number(minted * 10_000n / cap) / 100;
   const graduated = minted >= cap;
   const estimatedMinerFee = rates
     ? BigInt(rates.tiers.find((tier) => tier.key === feeTier)?.satPerVb ?? "0") * BigInt(rates.typicalVsize[side === "buy" ? "BACKING_BUY" : "REDEEM"])
     : null;
   const reviewMinerFee = builtTrade ? BigInt(builtTrade.intent.minerFeeSats) : estimatedMinerFee;
-  const reviewTotal = quote && reviewMinerFee !== null
-    ? side === "buy" ? BigInt(quote.buyerTotalSats) + 1_000n + reviewMinerFee
+  const reviewTotal = builtTrade ? (side === "buy" ? crcBuiltWalletDelta(builtTrade) : -crcBuiltWalletDelta(builtTrade)) : quote && reviewMinerFee !== null
+    ? side === "buy" ? BigInt(quote.buyerTotalSats) + carrierSats + reviewMinerFee
       : BigInt(quote.sellerNetSats) - reviewMinerFee
     : null;
 
@@ -276,7 +278,7 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
             </div>
             {heldAtoms !== null && <p className="mt-3 text-xs text-bone-dim">You hold {formatAtoms(heldAtoms.toString())} {token.ticker}.</p>}
             {connected && heldAtoms === null && !balanceError && <p className="mt-3 text-xs text-bone-dim">Reading indexed token balance…</p>}
-            {heldAtoms !== null && heldAtoms % 100_000_000_000n !== 0n && <p className="mt-1 text-xs text-bone-dim">Sell amounts round down to 1,000-token lots.</p>}
+            {heldAtoms !== null && heldAtoms % curveStepAtoms !== 0n && <p className="mt-1 text-xs text-bone-dim">Sell amounts round down to {String(curveStepAtoms / atomsPerToken)}-token increments.</p>}
             {balanceError && <p role="alert" className="mt-3 text-xs text-danger">{balanceError}</p>}
           </>}
           {side === "sell" && !connected && <button type="button" onClick={() => void connect()} className="btn-ghost mt-3">Connect wallet to preview sell</button>}
@@ -291,9 +293,9 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
             <CostLine label="Protocol fee" value={`${side === "buy" ? "+" : "−"}${BigInt(quote.protocolFeeSats).toLocaleString()} sats`} />
             {side === "buy" ? <>
               <CostLine label="Creator fee" value={`+${BigInt(quote.creatorFeeSats).toLocaleString()} sats`} />
-              <CostLine label="Token output" value="+1,000 sats" />
+              <CostLine label="Token output" value={`+${carrierSats.toLocaleString()} sats`} />
             </> : <>
-              <CostLine label="Wallet top-up" value={`${BigInt(quote.walletTopUpSats).toLocaleString()} sats`} />
+              <CostLine label="Wallet top-up" value={`${(builtTrade ? decodeProtocolDto<Plan>(builtTrade.intent.corePlan).walletTopUpSats ?? 0n : BigInt(quote.walletTopUpSats)).toLocaleString()} sats`} />
               <CostLine label="Curve payout" value={`${BigInt(quote.sellerPayoutSats).toLocaleString()} sats`} />
             </>}
             <CostLine label="Network fee" value={reviewMinerFee === null ? "Reading…" : `${builtTrade ? "" : "≈"}${reviewMinerFee.toLocaleString()} sats`} />

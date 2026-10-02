@@ -1,0 +1,14 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/lib/crc-browser-session.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ✓ src/lib/crc-browser-session.test.ts (4 tests) 32ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  22:26:29
+   Duration  529ms (transform 153ms, setup 0ms, collect 204ms, tests 32ms, environment 0ms, prepare 60ms)
+

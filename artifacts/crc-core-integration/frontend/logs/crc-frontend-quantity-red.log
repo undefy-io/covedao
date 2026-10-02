@@ -1,0 +1,52 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/lib/crc-client.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-client.test.ts (4 tests | 2 failed) 15ms
+   × CRC token quantity > uses the authoritative execution quantum and preserves exact atoms 3ms
+     → Use 1,000-token lots up to 21,000,000 tokens
+   × CRC sell shortcuts > rounds each balance percentage down to a core execution quantum 2ms
+     → expected '2000' to be '2300' // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-client.test.ts > CRC token quantity > uses the authoritative execution quantum and preserves exact atoms
+Error: Use 1,000-token lots up to 21,000,000 tokens
+ ❯ Module.parseCrcTokenQuantity src/lib/crc-client.ts:7:11
+      5|   const tokens = BigInt(value);
+      6|   if (tokens % 1_000n !== 0n || tokens > 21_000_000n) {
+      7|     throw new Error("Use 1,000-token lots up to 21,000,000 tokens");
+       |           ^
+      8|   }
+      9|   return (tokens * 100_000_000n).toString();
+ ❯ src/lib/crc-client.test.ts:30:12
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/lib/crc-client.test.ts > CRC sell shortcuts > rounds each balance percentage down to a core execution quantum
+AssertionError: expected '2000' to be '2300' // Object.is equality
+
+Expected: "2300"
+Received: "2000"
+
+ ❯ src/lib/crc-client.test.ts:43:47
+     41|   it("rounds each balance percentage down to a core execution quantum"…
+     42|     const heldAtoms = 9_500n * 100_000_000n;
+     43|     expect(sellPresetQuantity(heldAtoms, 25)).toBe("2300");
+       |                                               ^
+     44|     expect(sellPresetQuantity(heldAtoms, 50)).toBe("4700");
+     45|     expect(sellPresetQuantity(heldAtoms, 100)).toBe("9500");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 2 passed (4)
+   Start at  22:11:22
+   Duration  359ms (transform 36ms, setup 0ms, collect 35ms, tests 15ms, environment 0ms, prepare 57ms)
+
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 test: `vitest run --passWithNoTests src/lib/crc-client.test.ts`
+Exit status 1

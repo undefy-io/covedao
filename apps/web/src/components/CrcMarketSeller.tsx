@@ -1,55 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { COVE_FEE_CONFIG } from "@crclaunch/cove-economics";
-import { crcCancelMessage, crcListingMessage, type CrcFillOptions, type CrcListing, type IndexedCrcAsset } from "@crclaunch/cove-market/crc20/browser";
+import * as core from "@crclaunch/crc20-protocol";
 import { fetchAllCrcWalletBalances, type CrcWalletBalance } from "@/lib/crc-client";
-import { makeCrcSellerListing, sellerFillTermsFromPsbt, signCrcSellerFillAfterReview, signCrcSellerListing } from "@/lib/crc-market-seller";
+import { makeCrcSellerListing, signCrcSellerListing, type CrcSellerListing } from "@/lib/crc-market-seller";
+import { crcBrowserData } from "@/lib/crc-browser-session";
+import { cancelCrcMarketListing, type CrcMarketListing } from "@/lib/crc-market-client";
 import { formatAtoms } from "./CrcHome";
 import { useWallet } from "./WalletProvider";
 
 type TokenCoin = { txid: string; vout: number; atoms: string; scriptHex: string };
-type BitcoinCoin = { txid: string; vout: number; valueSats: string };
-type Token = { assetId: string; network: CrcListing["network"]; deployTxid: string; ticker: string;
-  protocolVersion: number; protocolScriptHex: string; vault: { scriptHex: string } };
-type FillRequest = { fillId: string; listingId: string; buyerSignedPsbtBase64: string;
-  amountAtoms: string; priceSats: string; expiresAt: string;
-  listing: Omit<CrcListing, "amountAtoms" | "expiresAtHeight"> & { amountAtoms: string; expiresAtHeight: string } };
-type ListingRow = FillRequest["listing"] & { status: string };
-
-async function api<T>(url: string, body?: unknown): Promise<T> {
-  const response = await fetch(url, body === undefined ? { cache: "no-store" } : {
-    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
-  });
-  const result = await response.json();
-  if (!response.ok || result?.ok !== true) {
-    throw new Error(result?.error?.detail || result?.error?.message || `Request failed: ${response.status}`);
-  }
-  return result.data as T;
-}
-
-function decimal(value: string, name: string): bigint {
-  if (!/^(0|[1-9]\d*)$/.test(value)) throw new Error(`${name} is invalid`);
-  return BigInt(value);
-}
-
-function deserializeListing(row: FillRequest["listing"]): CrcListing {
-  return { ...row, amountAtoms: decimal(row.amountAtoms, "token amount"),
-    expiresAtHeight: decimal(row.expiresAtHeight, "expiry") };
-}
-
-function serializeListing(listing: CrcListing) {
-  return { ...listing, amountAtoms: listing.amountAtoms.toString(),
-    expiresAtHeight: listing.expiresAtHeight.toString() };
-}
-
-function sellerAsset(token: Token, coin: TokenCoin | undefined): IndexedCrcAsset {
-  return { network: token.network, deployTxid: token.deployTxid, ticker: token.ticker,
-    protocolVersion: token.protocolVersion,
-    tokenOutpoint: coin ? `${coin.txid}:${coin.vout}` : null,
-    tokenScriptHex: coin?.scriptHex ?? null, tokenAtoms: BigInt(coin?.atoms ?? "0"),
-    protocolScriptHex: token.protocolScriptHex, vaultScriptHex: token.vault.scriptHex };
-}
+type BitcoinCoin = { txid: string; vout: number; valueSats: string; confirmations?: number };
+type Token = { assetId: string; network: string; deployTxid: string; ticker: string; coreState: unknown };
+type FillRequest = { fillId: string; amountAtoms: string; priceSats: string; expiresAt: string };
+type ReviewedFillDisplay = { terms: { listing: CrcSellerListing; minerFeeSats: number; buyerScriptHex: string; buyerFunding: { scriptHex: string }[]; buyerFundingScriptHex?: string } };
+const api = <T,>(url: string, body?: unknown) => crcBrowserData<T>(fetch, url, body);
 
 export function CrcMarketSeller() {
   const wallet = useWallet();
@@ -58,29 +23,27 @@ export function CrcMarketSeller() {
   const [balances, setBalances] = useState<CrcWalletBalance[]>([]);
   const [assetId, setAssetId] = useState("");
   const [token, setToken] = useState<Token | null>(null);
-  const [height, setHeight] = useState(0n);
+  const [height, setHeight] = useState(0);
   const [coins, setCoins] = useState<TokenCoin[]>([]);
   const [btcCoins, setBtcCoins] = useState<BitcoinCoin[]>([]);
   const [selected, setSelected] = useState("");
   const [price, setPrice] = useState("");
   const [expiryBlocks, setExpiryBlocks] = useState("12");
-  const [preview, setPreview] = useState<CrcListing | null>(null);
-  const [listings, setListings] = useState<ListingRow[]>([]);
+  const [preview, setPreview] = useState<CrcSellerListing | null>(null);
+  const [listings, setListings] = useState<CrcMarketListing[]>([]);
   const [requests, setRequests] = useState<FillRequest[]>([]);
-  const [reviewedFill, setReviewedFill] = useState<{ request: FillRequest; terms: CrcFillOptions } | null>(null);
+  const [reviewedFill] = useState<ReviewedFillDisplay | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   const refreshSeller = useCallback(async () => {
-    const market = await api<{ active: boolean; listings: ListingRow[] }>("/api/crc/v1/market/listings");
+    const market = await api<{ active: boolean; listings: CrcMarketListing[] }>("/api/crc/v1/market/listings");
     setActive(market.active);
-    if (!market.active || !connected || !ordinalsAddress || !ordinalsScript) {
-      setBalances([]); setListings([]); return;
-    }
+    if (!market.active || !connected || !ordinalsAddress || !ordinalsScript) { setBalances([]); setListings([]); return; }
     const held = await fetchAllCrcWalletBalances(ordinalsAddress);
     setBalances(held);
-    setListings(market.listings.filter((listing) => listing.sellerScriptHex.toLowerCase() === ordinalsScript.toLowerCase()));
+    setListings(market.listings.filter((listing) => listing.sellerScriptHex === ordinalsScript));
     setAssetId((previous) => previous || held[0]?.assetId || "");
   }, [connected, ordinalsAddress, ordinalsScript]);
 
@@ -92,11 +55,7 @@ export function CrcMarketSeller() {
 
   useEffect(() => {
     let alive = true;
-    setPreview(null);
-    setToken(null);
-    setCoins([]);
-    setBtcCoins([]);
-    setSelected("");
+    setPreview(null); setToken(null); setCoins([]); setBtcCoins([]); setSelected("");
     if (!active || !assetId || !connected || !ordinalsAddress) return;
     void Promise.all([
       api<{ indexedTip: { height: string }; token: Token }>(`/api/crc/v1/tokens/${encodeURIComponent(assetId)}`),
@@ -105,11 +64,10 @@ export function CrcMarketSeller() {
     ]).then(([detail, tokenOutputs, bitcoinOutputs]) => {
       if (!alive) return;
       if (tokenOutputs.truncated) throw new Error("This address has more than 100 token outputs. Consolidate before listing.");
-      if (detail.token.protocolVersion !== 3 || detail.token.network !== network) throw new Error("Only Cove CRC token outputs can be listed");
-      setToken(detail.token);
-      setHeight(decimal(detail.indexedTip.height, "indexed height"));
-      setCoins(tokenOutputs.utxos);
-      setBtcCoins(bitcoinOutputs.utxos);
+      if (detail.token.network !== network) throw new Error("Wallet network differs from indexed token");
+      const indexed = Number(detail.indexedTip.height);
+      if (!Number.isSafeInteger(indexed) || indexed < 0) throw new Error("Invalid indexed height");
+      setToken(detail.token); setHeight(indexed); setCoins(tokenOutputs.utxos); setBtcCoins(bitcoinOutputs.utxos);
       setSelected(tokenOutputs.utxos[0] ? `${tokenOutputs.utxos[0].txid}:${tokenOutputs.utxos[0].vout}` : "");
     }).catch((cause) => { if (alive) setError(cause instanceof Error ? cause.message : "Could not load token outputs"); });
     return () => { alive = false; };
@@ -118,27 +76,22 @@ export function CrcMarketSeller() {
   const loadRequests = useCallback(async () => {
     if (!active || !connected || !ordinalsScript) return;
     const data = await api<{ requests: FillRequest[] }>("/api/crc/v1/market/seller-requests", { sellerScriptHex: ordinalsScript });
+    if (data.requests.length) throw new Error("Presigned offers require only the buyer's signature");
     setRequests(data.requests);
   }, [active, connected, ordinalsScript]);
 
   function buildPreview() {
-    setError("");
-    setSuccess("");
+    setError(""); setSuccess("");
     try {
       if (!token || !selected) throw new Error("Select a whole token output");
-      if (!/^[1-9]\d*$/.test(price) || !Number.isSafeInteger(Number(price))) throw new Error("Enter a whole satoshi price");
+      if (!/^[1-9]\d*$/.test(price)) throw new Error("Enter a whole satoshi price");
       if (!/^[1-9]\d*$/.test(expiryBlocks) || BigInt(expiryBlocks) > 2016n) throw new Error("Expiry must be 1 to 2,016 blocks");
       const coin = coins.find((item) => `${item.txid}:${item.vout}` === selected);
       if (!coin) throw new Error("Selected token output is unavailable");
-      const bitcoinCoin = btcCoins.find((item) => `${item.txid}:${item.vout}` === selected) ?? null;
-      const asset = sellerAsset(token, coin);
-      const listing = makeCrcSellerListing({ id: crypto.randomUUID(), network: token.network,
-        deployTxid: token.deployTxid, ticker: token.ticker, sellerScriptHex: ordinalsScript,
-        sellerPayoutScriptHex: ordinalsScript, tokenCoin: coin, bitcoinCoin,
-        priceSats: Number(price), currentHeight: height,
-        expiresAtHeight: height + BigInt(expiryBlocks), asset },
-      COVE_FEE_CONFIG.p2pFeeBps, COVE_FEE_CONFIG.p2pFeeMinSats);
-      setPreview(listing);
+      setPreview(makeCrcSellerListing({ network, coreState: token.coreState, sellerScriptHex: ordinalsScript,
+        publicKeyHex: ordinalsPublicKey || wallet.publicKey, tokenCoin: coin,
+        bitcoinCoin: btcCoins.find((item) => `${item.txid}:${item.vout}` === selected) ?? null,
+        priceSats: BigInt(price), currentHeight: height, expiryHeight: height + Number(expiryBlocks) }));
     } catch (cause) { setPreview(null); setError(cause instanceof Error ? cause.message : "Could not preview listing"); }
   }
 
@@ -146,88 +99,38 @@ export function CrcMarketSeller() {
     if (!preview || !active) return;
     setBusy(true); setError(""); setSuccess("");
     try {
-      const current = await api<{ indexedTip: { height: string }; token: Token }>(`/api/crc/v1/tokens/${encodeURIComponent(`${preview.network}:${preview.deployTxid}`)}`);
-      const tokenOutputs = await api<{ utxos: TokenCoin[] }>(`/api/crc/v1/tokens/${encodeURIComponent(`${preview.network}:${preview.deployTxid}`)}/utxos?address=${encodeURIComponent(ordinalsAddress)}`);
-      const bitcoinOutputs = await api<{ utxos: BitcoinCoin[] }>(`/api/crc/v1/wallet/utxos?address=${encodeURIComponent(ordinalsAddress)}`);
-      const coin = tokenOutputs.utxos.find((item) => item.txid === preview.sellerAnchorTxid && item.vout === preview.sellerAnchorVout);
-      if (!coin) throw new Error("Selected token output moved. Preview again.");
-      const bitcoinCoin = bitcoinOutputs.utxos.find((item) => item.txid === coin.txid && item.vout === coin.vout) ?? null;
-      const rechecked = makeCrcSellerListing({ ...preview, tokenCoin: coin, bitcoinCoin,
-        currentHeight: decimal(current.indexedTip.height, "indexed height"), asset: sellerAsset(current.token, coin) },
-      COVE_FEE_CONFIG.p2pFeeBps, COVE_FEE_CONFIG.p2pFeeMinSats);
-      if (crcListingMessage(rechecked) !== crcListingMessage(preview)) throw new Error("Listing terms changed. Preview again.");
-      const sellerPresignedPsbtBase64 = await signCrcSellerListing(preview, ordinalsScript,
-        ordinalsPublicKey, signPsbt);
-      const result = await api<{ listingId: string }>("/api/crc/v1/market/listings", {
-        listing: serializeListing(preview), sellerPresignedPsbtBase64,
-      });
-      setSuccess(`Listed token output ${result.listingId}`);
-      setPreview(null);
-      await refreshSeller();
+      const [current, tokens, bitcoins] = await Promise.all([
+        api<{ indexedTip: { height: string }; token: Token }>(`/api/crc/v1/tokens/${encodeURIComponent(assetId)}`),
+        api<{ utxos: TokenCoin[]; truncated: boolean }>(`/api/crc/v1/tokens/${encodeURIComponent(assetId)}/utxos?address=${encodeURIComponent(ordinalsAddress)}`),
+        api<{ utxos: BitcoinCoin[] }>(`/api/crc/v1/wallet/utxos?address=${encodeURIComponent(ordinalsAddress)}`),
+      ]);
+      const coin = tokens.utxos.find((item) => item.txid === preview.sellerAnchorTxid && item.vout === preview.sellerAnchorVout);
+      if (!coin || tokens.truncated) throw new Error("Selected token output moved. Preview again.");
+      const rechecked = makeCrcSellerListing({ network, coreState: current.token.coreState, sellerScriptHex: ordinalsScript,
+        publicKeyHex: ordinalsPublicKey || wallet.publicKey, tokenCoin: coin,
+        bitcoinCoin: bitcoins.utxos.find((item) => item.txid === coin.txid && item.vout === coin.vout) ?? null,
+        priceSats: preview.priceSats, currentHeight: Number(current.indexedTip.height), expiryHeight: Number(preview.expiresAtHeight) });
+      if (core.offerMessage(rechecked.terms) !== core.offerMessage(preview.terms)) throw new Error("Listing terms changed. Preview again.");
+      const offer = await signCrcSellerListing(preview, { address: ordinalsAddress, publicKey: ordinalsPublicKey || wallet.publicKey }, signPsbt, signBip322);
+      const result = await api<{ listingId: string }>("/api/crc/v1/market/listings", { offer: core.encodeProtocolDto(offer) });
+      if (result.listingId !== core.offerId(offer)) throw new Error("Listing identity changed");
+      setSuccess(`Listed token output ${result.listingId}`); setPreview(null); await refreshSeller();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not list token output"); }
     finally { setBusy(false); }
   }
 
-  async function cancelListing(row: ListingRow) {
+  async function cancelListing(row: CrcMarketListing) {
     if (!active) return;
     setBusy(true); setError(""); setSuccess("");
     try {
-      const listing = deserializeListing(row);
-      if (listing.sellerScriptHex.toLowerCase() !== ordinalsScript.toLowerCase()) throw new Error("Listing belongs to another wallet");
-      const sellerAuthorizationB64 = await signBip322(crcCancelMessage(listing));
-      await api("/api/crc/v1/market/cancel", { listingId: listing.id, sellerAuthorizationB64 });
-      setSuccess("Listing canceled");
-      await refreshSeller();
+      await cancelCrcMarketListing(row, wallet, 1000);
+      setSuccess("Listing canceled"); await refreshSeller();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not cancel listing"); }
     finally { setBusy(false); }
   }
 
-  async function reviewFill(request: FillRequest) {
-    if (!active) return;
-    setBusy(true); setError(""); setSuccess("");
-    try {
-      const listing = deserializeListing(request.listing);
-      if (listing.id !== request.listingId || listing.sellerScriptHex.toLowerCase() !== ordinalsScript.toLowerCase()) {
-        throw new Error("Fill listing does not match the connected wallet");
-      }
-      const assetId = `${listing.network}:${listing.deployTxid}`;
-      const [detail, tokenOutputs, bitcoinOutputs] = await Promise.all([
-        api<{ indexedTip: { height: string }; token: Token }>(`/api/crc/v1/tokens/${encodeURIComponent(assetId)}`),
-        api<{ utxos: TokenCoin[] }>(`/api/crc/v1/tokens/${encodeURIComponent(assetId)}/utxos?address=${encodeURIComponent(ordinalsAddress)}`),
-        api<{ utxos: BitcoinCoin[] }>(`/api/crc/v1/wallet/utxos?address=${encodeURIComponent(ordinalsAddress)}`),
-      ]);
-      const coin = tokenOutputs.utxos.find((item) => item.txid === listing.sellerAnchorTxid && item.vout === listing.sellerAnchorVout);
-      const btc = bitcoinOutputs.utxos.find((item) => item.txid === listing.sellerAnchorTxid && item.vout === listing.sellerAnchorVout);
-      if (!coin || !btc || coin.atoms !== listing.amountAtoms.toString() || btc.valueSats !== String(listing.sellerAnchorSats)) {
-        throw new Error("Listed token output no longer matches the indexed Bitcoin output");
-      }
-      const asset = sellerAsset(detail.token, coin);
-      const terms = sellerFillTermsFromPsbt(request.buyerSignedPsbtBase64, listing, asset,
-        decimal(detail.indexedTip.height, "indexed height"));
-      setReviewedFill({ request, terms });
-    } catch (cause) { setReviewedFill(null); setError(cause instanceof Error ? cause.message : "Could not review sale"); }
-    finally { setBusy(false); }
-  }
-
-  async function signFill() {
-    if (!active || !reviewedFill) return;
-    setBusy(true); setError(""); setSuccess("");
-    try {
-      const { request, terms } = reviewedFill;
-      const signedPsbtBase64 = await signCrcSellerFillAfterReview(request.buyerSignedPsbtBase64,
-        terms, ordinalsScript, signPsbt, ordinalsPublicKey);
-      const signed = await api<{ txid: string }>("/api/crc/v1/market/seller-sign", {
-        fillId: request.fillId, signedPsbtBase64,
-      });
-      const broadcast = await api<{ txid: string }>("/api/crc/v1/market/broadcast", { fillId: request.fillId });
-      if (broadcast.txid !== signed.txid) throw new Error("Broadcast transaction differs from signed sale");
-      setSuccess(`Sale submitted: ${broadcast.txid}`);
-      setReviewedFill(null);
-      await loadRequests();
-      await refreshSeller();
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not sign sale"); }
-    finally { setBusy(false); }
-  }
+  async function reviewFill(_request: FillRequest) { setError("Presigned offers require only the buyer's signature"); }
+  async function signFill() { setError("Presigned offers require only the buyer's signature"); }
 
   return <section className="space-y-4 border border-rule bg-ink-2 p-6">
     <div><h2 className="text-lg text-bone">Sell a token output</h2>

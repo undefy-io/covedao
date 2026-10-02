@@ -1,0 +1,54 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/lib/crc-browser-session.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-browser-session.test.ts (4 tests | 2 failed) 34ms
+   × validates the actual Xverse wallet-first mint response with unsigned server vault metadata 14ms
+     → Server changed signing sighash
+   × launch creator identity follows the payment account when token account differs 4ms
+     → promise rejected "Error: Reviewed launch terms changed" instead of resolving
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-browser-session.test.ts > validates the actual Xverse wallet-first mint response with unsigned server vault metadata
+Error: Server changed signing sighash
+ ❯ src/lib/crc-browser-signing.ts:58:57
+     56|       if ((input[field] || actual[field]) && !input[field]?.equals(act…
+     57|     }
+     58|     if (actual.sighashType !== input.sighashType) throw new Error("Ser…
+       |                                                         ^
+     59|   });
+     60|   const response = await signPsbt(prepared.params.psbt, context.operat…
+ ❯ Module.signCrcReviewedPlan src/lib/crc-browser-signing.ts:51:24
+ ❯ Module.signCrcBuildSession src/lib/crc-browser-session.ts:132:10
+ ❯ src/lib/crc-browser-session.test.ts:53:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/lib/crc-browser-session.test.ts > launch creator identity follows the payment account when token account differs
+AssertionError: promise rejected "Error: Reviewed launch terms changed" instead of resolving
+ ❯ src/lib/crc-browser-session.test.ts:67:83
+     65|     ? new Response(JSON.stringify({ ok: true, data: { utxos: [] } })) …
+     66|   const signer = vi.fn(async (base64: string) => { const p = bitcoin.P…
+     67|   await expect(signCrcBuildSession(built, review, dualWallet, signer, …
+       |                                                                                   ^
+     68|   expect(signer).toHaveBeenCalledOnce();
+     69| });
+
+Caused by: Error: Reviewed launch terms changed
+ ❯ Module.signCrcBuildSession src/lib/crc-browser-session.ts:75:74
+ ❯ src/lib/crc-browser-session.test.ts:67:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 2 passed (4)
+   Start at  22:26:17
+   Duration  522ms (transform 156ms, setup 0ms, collect 207ms, tests 34ms, environment 0ms, prepare 76ms)
+
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 test: `vitest run --passWithNoTests src/lib/crc-browser-session.test.ts`
+Exit status 1

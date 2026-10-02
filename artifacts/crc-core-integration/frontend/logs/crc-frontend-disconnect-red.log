@@ -1,0 +1,63 @@
+
+Running 2 tests using 1 worker
+
+  ✘  1 [desktop] › tests-crc-core/interactions.spec.ts:166:1 › disconnect during independent plan observations prevents a stale wallet prompt (6.7s)
+  ✘  2 [mobile] › tests-crc-core/interactions.spec.ts:166:1 › disconnect during independent plan observations prevents a stale wallet prompt (6.8s)
+
+
+  1) [desktop] › tests-crc-core/interactions.spec.ts:166:1 › disconnect during independent plan observations prevents a stale wallet prompt 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('alert').filter({ hasText: /wallet|connection/i })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('alert').filter({ hasText: /wallet|connection/i }) with timeout 5000ms
+      - waiting for getByRole('alert').filter({ hasText: /wallet|connection/i })
+
+
+      184 |   await page.getByTitle(`${address} — click to disconnect`).evaluate((button: HTMLButtonElement) => button.click());
+      185 |   await expect(page.getByRole("button", { name: "Connect wallet", exact: true })).toBeVisible(); release();
+    > 186 |   await expect(page.getByRole("alert").filter({ hasText: /wallet|connection/i })).toBeVisible();
+          |                                                                                   ^
+      187 |   expect(prompts).toHaveLength(0); expect(submitted).toBe(false);
+      188 | });
+      189 |
+        at /home/andefy/dev/covedao/apps/web/tests-crc-core/interactions.spec.ts:186:83
+
+    Error Context: test-results/interactions-disconnect-du-8ac1e-vents-a-stale-wallet-prompt-desktop/error-context.md
+
+  2) [mobile] › tests-crc-core/interactions.spec.ts:166:1 › disconnect during independent plan observations prevents a stale wallet prompt 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('alert').filter({ hasText: /wallet|connection/i })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('alert').filter({ hasText: /wallet|connection/i }) with timeout 5000ms
+      - waiting for getByRole('alert').filter({ hasText: /wallet|connection/i })
+
+
+      184 |   await page.getByTitle(`${address} — click to disconnect`).evaluate((button: HTMLButtonElement) => button.click());
+      185 |   await expect(page.getByRole("button", { name: "Connect wallet", exact: true })).toBeVisible(); release();
+    > 186 |   await expect(page.getByRole("alert").filter({ hasText: /wallet|connection/i })).toBeVisible();
+          |                                                                                   ^
+      187 |   expect(prompts).toHaveLength(0); expect(submitted).toBe(false);
+      188 | });
+      189 |
+        at /home/andefy/dev/covedao/apps/web/tests-crc-core/interactions.spec.ts:186:83
+
+    Error Context: test-results/interactions-disconnect-du-8ac1e-vents-a-stale-wallet-prompt-mobile/error-context.md
+
+  2 failed
+    [desktop] › tests-crc-core/interactions.spec.ts:166:1 › disconnect during independent plan observations prevents a stale wallet prompt 
+    [mobile] › tests-crc-core/interactions.spec.ts:166:1 › disconnect during independent plan observations prevents a stale wallet prompt 
+undefined
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: playwright test -c playwright.crc-core.config.ts interactions.spec.ts -g disconnect during

@@ -1,6 +1,8 @@
 "use client";
 
 import { tr } from "@/i18n";
+import { assertWalletNetwork, WalletSigningError } from "@crclaunch/crc20-adapters";
+import { protocolNetwork } from "@crclaunch/crc20-protocol";
 import * as bitcoin from "bitcoinjs-lib";
 import { Psbt } from "bitcoinjs-lib";
 import * as unisat from "@ordzaar/ordit-sdk/unisat";
@@ -84,6 +86,20 @@ async function xverseRpc<T>(method: string, params: Record<string, unknown>): Pr
   return res.result;
 }
 
+async function assertXverseNetwork(network: BrowserNetwork): Promise<void> {
+  const provider = (window as unknown as {
+    XverseProviders?: { BitcoinProvider?: { request(m: string, p: unknown): Promise<unknown> } };
+  }).XverseProviders?.BitcoinProvider;
+  if (!provider) throw new WalletError("NOT_INSTALLED", tr("wal.notInstalled", { wallet: "Xverse" }));
+  try {
+    await assertWalletNetwork(provider, protocolNetwork(network));
+  } catch (error) {
+    if (error instanceof WalletSigningError && error.code === "NETWORK") throw new WalletError("WRONG_NETWORK", error.message);
+    if (error instanceof WalletSigningError && error.code === "REJECTED") throw new WalletError("REJECTED", error.message);
+    throw error;
+  }
+}
+
 /**
  * Every wallet is asked for the same thing: sign these indexes, with
  * SIGHASH_ALL (or a listing's SINGLE|ANYONECANPAY), and do not finalize. They differ only in how they want to be
@@ -97,7 +113,7 @@ function makeAdapter(spec: {
   isInstalled: () => boolean | Promise<boolean>;
   getAddresses: (network: BrowserNetwork) => Promise<SdkAddress[]>;
   sign: (psbt: Psbt, network: BrowserNetwork, request: SignPsbtRequest) => Promise<string>;
-  signMessage: (network: BrowserNetwork, address: string, message: string) => Promise<string>;
+  signMessage: (network: BrowserNetwork, address: string, message: string, assertCurrent?: () => void) => Promise<string>;
 }): WalletAdapter {
   return {
     id: spec.id,
@@ -126,15 +142,17 @@ function makeAdapter(spec: {
       const net = browserNetwork(network);
       const psbt = Psbt.fromBase64(request.psbtBase64, { network: bitcoinNetwork(network) });
       try {
+        request.assertCurrent?.();
         return await spec.sign(psbt, net, request);
       } catch (e) {
         fail(spec.name, e);
       }
     },
-    async signMessage(network, address, message) {
+    async signMessage(network, address, message, assertCurrent) {
       const net = browserNetwork(network);
       try {
-        return await spec.signMessage(net, address, message);
+        assertCurrent?.();
+        return await spec.signMessage(net, address, message, assertCurrent);
       } catch (e) {
         fail(spec.name, e);
       }
@@ -165,7 +183,9 @@ export const ADAPTERS: WalletAdapter[] = [
     // Xverse's current RPC, not the SDK's legacy `signTransaction` token API,
     // which current Xverse builds fail on ("(intermediate value).map is not a
     // function") before the user ever sees the request.
-    sign: async (psbt, _network, request) => {
+    sign: async (psbt, network, request) => {
+      await assertXverseNetwork(network);
+      request.assertCurrent?.();
       const signInputs: Record<string, number[]> = {};
       for (const g of request.inputsByAddress) signInputs[g.address] = g.indexes;
       // Xverse reads the sighash from each input's PSBT_IN_SIGHASH_TYPE, which
@@ -177,7 +197,9 @@ export const ADAPTERS: WalletAdapter[] = [
       });
       return r.psbt;
     },
-    signMessage: async (_network, address, message) => {
+    signMessage: async (network, address, message, assertCurrent) => {
+      await assertXverseNetwork(network);
+      assertCurrent?.();
       // Once, not twice: each call is a prompt the user has to approve.
       const r = await xverseRpc<{ signature: string }>("signMessage", {
         address,
@@ -326,4 +348,3 @@ export function adapterFor(id: WalletId): WalletAdapter {
   if (!adapter) throw new WalletError("UNSUPPORTED", `unknown wallet ${id}`);
   return adapter;
 }
-

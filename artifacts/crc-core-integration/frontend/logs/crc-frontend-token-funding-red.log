@@ -1,0 +1,36 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-browser-session.test.ts (6 tests | 1 failed) 44ms
+   × rejects observed token carriers disguised as ordinary final-plan funding before any signature 10ms
+     → promise resolved "'cHNidP8BAP1hAQIAAAACqqqqqqqqqqqqqqqqq…'" instead of rejecting
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-browser-session.test.ts > rejects observed token carriers disguised as ordinary final-plan funding before any signature
+AssertionError: promise resolved "'cHNidP8BAP1hAQIAAAACqqqqqqqqqqqqqqqqq…'" instead of rejecting
+
+- Expected: 
+[Error: rejected promise]
+
++ Received: 
+"cHNidP8BAP1hAQIAAAACqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqoAAAAAAP7///+7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7uwAAAAAA/v///wUAAAAAAAAAAIBqTH17InAiOiJjcmMtMjAiLCJvcCI6ImRlcGxveSIsInRpY2siOiJURVNUIiwidHlwZSI6ImJvbmRpbmciLCJtYXgiOiIyMTAwMDAwMCIsImxpbSI6IjIxMDAwMDAwIiwibGVhZiI6IjAiLCJvcmRpIjoiMCIsImJ0YyI6IjEifegDAAAAAAAAFgAUERERERERERERERERERERERERERHoAwAAAAAAABYAFHmwAIh2JrKUqRRQGkzSJrWLI1mDWBsAAAAAAAAWABQiIiIiIiIiIiIiIiIiIiIiIiIiIlAtAAAAAAAAFgAUebAAiHYmspSpFFAaTNImtYsjWYMAAAAAAAEBHyBOAAAAAAAAFgAUebAAiHYmspSpFFAaTNImtYsjWYMBCGsCRzBEAiBFDFZnfcNE71CF+6z9CLauAYlG34tcuf508p80Vz709gIgFSj27ZzCrD/JXdKSM4VCfiJ0k/BHXuosMtFNT1TEbzUBIQMbhMVWexJkQJldPtWqugVl1x4YNGBIGf+cF/Xp1d0HjwABAR/oAwAAAAAAABYAFHmwAIh2JrKUqRRQGkzSJrWLI1mDAQhsAkgwRQIhALDTktn7GjSQ5aXp97aj9TntX2DVWRqMNv+B/VYrVkjgAiAeDwjBzkxN/l2UyXwRFANwMJWYLZxrTxyeMLRqFq4QmwEhAxuExVZ7EmRAmV0+1aq6BWXXHhg0YEgZ/5wX9enV3QePAAAAAAAA"
+
+ ❯ src/lib/crc-browser-session.test.ts:90:80
+     88|     : { utxos: [input, carrier].map((coin) => ({ txid: coin.txid, vout…
+     89|   const signer = vi.fn(async (base64: string) => { const psbt = bitcoi…
+     90|   await expect(signCrcBuildSession(malicious, review, wallet, signer, …
+       |                                                                                ^
+     91|   expect(signer).not.toHaveBeenCalled();
+     92| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed (6)
+   Start at  23:09:40
+   Duration  510ms (transform 106ms, setup 0ms, collect 171ms, tests 44ms, environment 0ms, prepare 48ms)
+
+undefined
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/lib/crc-browser-session.test.ts

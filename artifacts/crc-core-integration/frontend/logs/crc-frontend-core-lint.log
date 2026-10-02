@@ -1,0 +1,4 @@
+
+> @crclaunch/crc20-protocol@0.1.0 lint /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+> eslint *.ts *.mjs test-support/*.ts --max-warnings=0 --no-warn-ignored
+

@@ -121,3 +121,18 @@ describe("CRC market route release boundary", () => {
     expect(listing.coreOffer).toEqual(core.encodeProtocolDto(offer));
   });
 });
+
+for (const network of ["regtest", "signet", "testnet", "mainnet"] as const) {
+  it(`allows read-only funding exclusion while ${network} marketplace mutations are paused`, async () => {
+    const plainTxid = "b".repeat(64), carrierTxid = "a".repeat(64);
+    const execute = vi.fn(async () => ({ rows: [{ key: `${carrierTxid}:0` }] }));
+    const services = () => ({ db: { execute }, network, provider: {} }) as unknown as CrcMarketServices;
+    const response = await crcMarketPost(new Request("http://localhost/api/crc/v1/market/funding-check", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ outpoints: [{ txid: carrierTxid, vout: 0 }, { txid: plainTxid, vout: 1 }] }),
+    }), "funding-check", false, services);
+    expect(response.status).toBe(200);
+    expect((await response.json()).data.tokenFreeOutpoints).toEqual([{ txid: plainTxid, vout: 1 }]);
+    expect(execute).toHaveBeenCalledOnce();
+  });
+}

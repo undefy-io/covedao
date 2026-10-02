@@ -1,0 +1,37 @@
+
+> @crclaunch/crc20-protocol@0.1.0 test /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+> pnpm build && vitest run transaction-view.test.ts
+
+
+> @crclaunch/crc20-protocol@0.1.0 build /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+> tsc -p tsconfig.build.json && node build-browser.mjs
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ transaction-view.test.ts (2 tests | 1 failed) 14ms
+   × transaction views reuse signed transfer rules without asserting unobserved holder totals 12ms
+     → validateFinalTransactionView is not a function
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  transaction-view.test.ts > transaction views reuse signed transfer rules without asserting unobserved holder totals
+TypeError: validateFinalTransactionView is not a function
+ ❯ transaction-view.test.ts:20:15
+     18|   const ledger = view();
+     19|   expect(() => core.validateFinalTransaction(plan, transaction, ledger…
+     20|   expect(core.validateFinalTransactionView(plan, transaction, ledger))…
+       |               ^
+     21|   expect(Object.keys(ledger.seen)).toHaveLength(0);
+     22| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  22:22:06
+   Duration  249ms (transform 101ms, setup 0ms, collect 121ms, tests 14ms, environment 0ms, prepare 32ms)
+
+/home/andefy/dev/covedao/packages/cove-market/crc20-protocol:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/crc20-protocol@0.1.0 test: `pnpm build && vitest run transaction-view.test.ts`
+Exit status 1

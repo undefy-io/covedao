@@ -1,0 +1,12 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ✓ src/lib/crc-browser-session.test.ts (6 tests) 37ms
+ ✓ src/lib/wallets/xverse-capabilities.test.ts (11 tests) 14ms
+ ✓ src/lib/crc-market-client.test.ts (3 tests) 61ms
+
+ Test Files  3 passed (3)
+      Tests  20 passed (20)
+   Start at  23:10:14
+   Duration  584ms (transform 238ms, setup 0ms, collect 619ms, tests 112ms, environment 0ms, prepare 218ms)
+

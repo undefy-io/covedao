@@ -122,3 +122,6 @@ export interface ConfirmedEvent {
   amountAtoms?: bigint;
   grossSats?: bigint;
 }
+
+/** Read-only input-scoped observation. Omitted allocations are not asserted or persisted. */
+export type TransactionView = Omit<Ledger, "history">;

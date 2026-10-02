@@ -1,0 +1,37 @@
+
+> @crclaunch/crc20-protocol@0.1.0 test /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+> pnpm build && vitest run transaction-view.test.ts
+
+
+> @crclaunch/crc20-protocol@0.1.0 build /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+> tsc -p tsconfig.build.json && node build-browser.mjs
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ transaction-view.test.ts (3 tests | 1 failed) 63ms
+   × full-amount views bind the declared token owner and carrier sats even without token change 42ms
+     → expected [Function] to throw an error
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  transaction-view.test.ts > full-amount views bind the declared token owner and carrier sats even without token change
+AssertionError: expected [Function] to throw an error
+ ❯ transaction-view.test.ts:51:82
+     49|   expect(core.validateFinalTransactionView(plan, transaction, ledger))…
+     50|   const wrongOwner = structuredClone(ledger); wrongOwner.allocations[c…
+     51|   expect(() => core.validateFinalTransactionView(plan, transaction, wr…
+       |                                                                                  ^
+     52|   const wrongSats = structuredClone(ledger); wrongSats.allocations[cor…
+     53|   expect(() => core.validateFinalTransactionView(plan, transaction, wr…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+   Start at  22:29:31
+   Duration  312ms (transform 120ms, setup 0ms, collect 131ms, tests 63ms, environment 0ms, prepare 35ms)
+
+/home/andefy/dev/covedao/packages/cove-market/crc20-protocol:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/crc20-protocol@0.1.0 test: `pnpm build && vitest run transaction-view.test.ts`
+Exit status 1

@@ -1,0 +1,33 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/app/api/dev/wallet/route.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/app/api/dev/wallet/route.test.ts (3 tests | 1 failed) 11ms
+   × publishes only public fixture key metadata needed by core browser adapters 3ms
+     → .toMatch() expects to receive a string, but got undefined
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/app/api/dev/wallet/route.test.ts > publishes only public fixture key metadata needed by core browser adapters
+TypeError: .toMatch() expects to receive a string, but got undefined
+ ❯ src/app/api/dev/wallet/route.test.ts:53:33
+     51|   vi.stubEnv("NODE_ENV", "development"); vi.stubEnv("COVE_DEV_WALLET",…
+     52|   const result = await (await GET(new Request("http://localhost/api/de…
+     53|   expect(result.data.publicKey).toMatch(/^0[23][0-9a-f]{64}$/);
+       |                                 ^
+     54|   expect(result.data.privHex).toBeUndefined();
+     55|   const list = await (await GET(new Request("http://localhost/api/dev/…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+   Start at  22:35:54
+   Duration  886ms (transform 354ms, setup 0ms, collect 582ms, tests 11ms, environment 0ms, prepare 65ms)
+
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 test: `vitest run --passWithNoTests src/app/api/dev/wallet/route.test.ts`
+Exit status 1

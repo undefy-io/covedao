@@ -64,7 +64,7 @@ function identity(name: string) {
     pubkey: key.publicKey,
     network: bitcoin.networks.regtest,
   });
-  return { privHex, address: payment.address!, script: payment.output!.toString("hex") };
+  return { privHex, publicKey: key.publicKey.toString("hex"), address: payment.address!, script: payment.output!.toString("hex") };
 }
 
 /**
@@ -103,13 +103,14 @@ export async function GET(req: Request) {
         identity: id.name,
         address: id.address,
         script: id.script,
+        publicKey: id.publicKey,
         balanceSats: utxos.filter((u) => u.script === id.script).reduce((sum, u) => sum + u.sats, 0),
       }));
       return ok({ identities, network: "regtest" });
     }
     if (!IDENTITIES[name]) return fail("UNKNOWN_IDENTITY", `unknown identity "${name}"`, 400);
     const id = identity(name);
-    return ok({ identity: name, address: id.address, script: id.script, network: "regtest" });
+    return ok({ identity: name, address: id.address, script: id.script, publicKey: id.publicKey, network: "regtest" });
   } catch (e) {
     return handleError(e);
   }

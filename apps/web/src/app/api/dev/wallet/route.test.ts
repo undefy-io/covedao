@@ -46,3 +46,12 @@ describe("dev wallet scan gating", () => {
     expect(mocks.scan.mock.calls[1]?.[2]).toBe(post.signal);
   });
 });
+
+it("publishes only public fixture key metadata needed by core browser adapters", async () => {
+  vi.stubEnv("NODE_ENV", "development"); vi.stubEnv("COVE_DEV_WALLET", "true");
+  const result = await (await GET(new Request("http://localhost/api/dev/wallet?identity=alice"))).json();
+  expect(result.data.publicKey).toMatch(/^0[23][0-9a-f]{64}$/);
+  expect(result.data.privHex).toBeUndefined();
+  const list = await (await GET(new Request("http://localhost/api/dev/wallet"))).json();
+  expect(list.data.identities.every((id: { publicKey?: string; privHex?: string }) => /^0[23][0-9a-f]{64}$/.test(id.publicKey ?? "") && id.privHex === undefined)).toBe(true);
+});

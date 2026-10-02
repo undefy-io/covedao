@@ -1,0 +1,57 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/wallets/xverse-capabilities.test.ts (11 tests | 2 failed) 24ms
+   × disconnect during Xverse network observation prevents the psbt signing request 7ms
+     → promise resolved "'cHNidP8BAHsCAAAAAqqqqqqqqqqqqqqqqqqqq…'" instead of rejecting
+   × disconnect during Xverse network observation prevents the message signing request 1ms
+     → promise resolved "'unused'" instead of rejecting
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/wallets/xverse-capabilities.test.ts > disconnect during Xverse network observation prevents the psbt signing request
+AssertionError: promise resolved "'cHNidP8BAHsCAAAAAqqqqqqqqqqqqqqqqqqqq…'" instead of rejecting
+
+- Expected: 
+[Error: rejected promise]
+
++ Received: 
+"cHNidP8BAHsCAAAAAqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqAAAAAAD/////zMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMwBAAAAAP////8B6AMAAAAAAAAWABTd3d3d3d3d3d3d3d3d3d3d3d3d3QAAAAAAAQEr6AMAAAAAAAAiUSC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7uwEIAwEBUQABAR/oAwAAAAAAABYAFN3d3d3d3d3d3d3d3d3d3d3d3d3dAQMEAQAAAAAA"
+
+ ❯ src/lib/wallets/xverse-capabilities.test.ts:129:35
+    127|       ? adapterFor("xverse").signPsbt("signet", { psbtBase64: fixture(…
+    128|       : adapterFor("xverse").signMessage("signet", "selected-address",…
+    129|     const rejected = expect(result).rejects.toThrow(/disconnected/i);
+       |                                   ^
+    130|     await started; connected = false; release(); await rejected;
+    131|     expect(request.mock.calls.map(([method]) => method)).toEqual(["wal…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/lib/wallets/xverse-capabilities.test.ts > disconnect during Xverse network observation prevents the message signing request
+AssertionError: promise resolved "'unused'" instead of rejecting
+
+- Expected: 
+[Error: rejected promise]
+
++ Received: 
+"unused"
+
+ ❯ src/lib/wallets/xverse-capabilities.test.ts:129:35
+    127|       ? adapterFor("xverse").signPsbt("signet", { psbtBase64: fixture(…
+    128|       : adapterFor("xverse").signMessage("signet", "selected-address",…
+    129|     const rejected = expect(result).rejects.toThrow(/disconnected/i);
+       |                                   ^
+    130|     await started; connected = false; release(); await rejected;
+    131|     expect(request.mock.calls.map(([method]) => method)).toEqual(["wal…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 9 passed (11)
+   Start at  23:08:01
+   Duration  755ms (transform 170ms, setup 0ms, collect 454ms, tests 24ms, environment 0ms, prepare 119ms)
+
+undefined
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/lib/wallets/xverse-capabilities.test.ts

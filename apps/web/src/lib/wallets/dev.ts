@@ -17,6 +17,7 @@ export interface DevIdentity {
   identity: string;
   address: string;
   script: string;
+  publicKey: string;
 }
 
 export interface DevIdentityWithBalance extends DevIdentity {
@@ -57,6 +58,7 @@ export function installDevWallet(id: DevIdentity): void {
       adapterId: DEV_WALLET_ID,
       paymentAddress: id.address,
       paymentScript: id.script,
+      paymentPublicKey: id.publicKey,
       network: "regtest",
       capabilities: {
         psbt: true,

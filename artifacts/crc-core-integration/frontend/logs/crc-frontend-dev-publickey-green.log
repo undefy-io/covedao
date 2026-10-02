@@ -1,0 +1,14 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/app/api/dev/wallet/route.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ✓ src/app/api/dev/wallet/route.test.ts (3 tests) 9ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  22:36:40
+   Duration  664ms (transform 111ms, setup 0ms, collect 353ms, tests 9ms, environment 0ms, prepare 51ms)
+

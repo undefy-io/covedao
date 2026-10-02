@@ -1,18 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import { signCrcBuildSession } from "@/lib/crc-browser-session";
 import { useEffect, useState } from "react";
 import { useWallet } from "./WalletProvider";
 import { affordableFeeTier, FeePicker, type FeeRatesResponse, type FeeTier } from "./FeePicker";
 
 type LaunchBuild = { sessionId: string; psbtBase64: string; intent: {
-  ticker: string; vaultAnchorSats: number; creatorRecordSats: number; launchFeeSats: number; minerFeeSats: number;
+  [key: string]: unknown; ticker: string; vaultAnchorSats: number; creatorRecordSats: number; launchFeeSats: number; minerFeeSats: number;
   metadata: { displayName: string; description: string; websiteUrl: string | null; xUrl: string | null; imageUrl: string | null };
   feeRateSatPerVb: number | null; feeTier: FeeTier["key"] | null;
 } };
 
 export function CrcLaunchForm() {
-  const { connected, connect, address, ordinalsAddress, publicKey, getUtxos, signPsbt } = useWallet();
+  const { connected, connect, address, ordinalsAddress, publicKey, ordinalsPublicKey, network, getUtxos, signPsbt } = useWallet();
   const [active, setActive] = useState(false);
   const [ticker, setTicker] = useState("");
   const [name, setName] = useState("");
@@ -53,6 +54,14 @@ export function CrcLaunchForm() {
 
   function edit() { setReviewing(false); setBuilt(null); setRates(null); setError(""); }
 
+  function checkMetadata(metadata: LaunchBuild["intent"]["metadata"] | undefined) {
+    const reviewed = { displayName: name.trim(), description: description.trim(),
+      websiteUrl: websiteUrl.trim() || null, xUrl: xUrl.trim() || null, imageUrl: imageUrl.trim() || null };
+    if (!metadata || (Object.keys(reviewed) as (keyof typeof reviewed)[]).some((field) => metadata[field] !== reviewed[field])) {
+      throw new Error("Launch metadata changed. Review again");
+    }
+  }
+
   function review() {
     setError(""); setBuilt(null);
     const normalized = ticker.trim().toUpperCase();
@@ -73,7 +82,7 @@ export function CrcLaunchForm() {
       const body = await response.json();
       if (!response.ok || !body.ok) throw new Error(body.error?.detail || body.error?.message || "Could not prepare launch");
       if (body.data.intent?.ticker !== normalized) throw new Error("Launch ticker changed. Review again");
-      if (body.data.intent?.metadata?.displayName !== name.trim()) throw new Error("Launch name changed. Review again");
+      checkMetadata(body.data.intent?.metadata);
       if (body.data.intent?.feeTier !== feeTier) throw new Error("Mining speed changed. Review again");
       setBuilt(body.data as LaunchBuild);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not prepare launch"); }
@@ -84,7 +93,9 @@ export function CrcLaunchForm() {
     if (!built) return;
     setError(""); setBusy(true);
     try {
-      const signedPsbtBase64 = await signPsbt(built.psbtBase64, "CRC_LAUNCH");
+      checkMetadata(built.intent.metadata);
+      const signedPsbtBase64 = await signCrcBuildSession(built, { operation: "deploy", ticker: ticker.trim().toUpperCase(), minerFeeSats: built.intent.minerFeeSats },
+        { network, address, publicKey, ordinalsAddress, ordinalsPublicKey }, signPsbt);
       const response = await fetch("/api/crc/v1/launch/submit", { method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ sessionId: built.sessionId, signedPsbtBase64 }) });
       const body = await response.json();

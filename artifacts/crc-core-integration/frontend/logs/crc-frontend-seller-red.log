@@ -1,0 +1,36 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/lib/crc-market-seller.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-market-seller.test.ts (2 tests | 1 failed) 8ms
+   × projects arbitrary atom offers and uses core 83 + BIP322 wallet authorization 6ms
+     → invalid sale price
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-market-seller.test.ts > projects arbitrary atom offers and uses core 83 + BIP322 wallet authorization
+Error: invalid sale price
+ ❯ assert ../../packages/cove-market/src/crc20/browser.ts:28:25
+     26| 
+     27| function assert(condition: unknown, message: string): asserts conditio…
+     28|   if (!condition) throw new Error(message);
+       |                         ^
+     29| }
+     30| 
+ ❯ Module.crcMarketFee ../../packages/cove-market/src/crc20/browser.ts:41:3
+ ❯ Module.makeCrcSellerListing src/lib/crc-market-seller.ts:61:22
+ ❯ src/lib/crc-market-seller.test.ts:16:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  22:24:38
+   Duration  616ms (transform 201ms, setup 0ms, collect 290ms, tests 8ms, environment 0ms, prepare 53ms)
+
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 test: `vitest run --passWithNoTests src/lib/crc-market-seller.test.ts`
+Exit status 1

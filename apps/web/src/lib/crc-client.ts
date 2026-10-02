@@ -1,17 +1,21 @@
+import { atomsPerToken, capAtoms, curveAmount, curveStepAtoms } from "@crclaunch/crc20-protocol";
+
 export type CrcWalletBalance = { assetId: string; ticker: string; atoms: string };
 
 export function parseCrcTokenQuantity(value: string): string {
   if (!/^[1-9]\d{0,7}$/.test(value)) throw new Error("Enter a whole token amount");
   const tokens = BigInt(value);
-  if (tokens % 1_000n !== 0n || tokens > 21_000_000n) {
-    throw new Error("Use 1,000-token lots up to 21,000,000 tokens");
+  if (tokens * atomsPerToken > capAtoms) {
+    throw new Error("Amount exceeds the token supply");
   }
-  return (tokens * 100_000_000n).toString();
+  const atoms = tokens * atomsPerToken;
+  curveAmount(atoms);
+  return atoms.toString();
 }
 
 export function sellPresetQuantity(heldAtoms: bigint, percent: 25 | 50 | 100): string {
-  const tokens = heldAtoms * BigInt(percent) / 100n / 100_000_000n;
-  return (tokens / 1_000n * 1_000n).toString();
+  const atoms = heldAtoms * BigInt(percent) / 100n;
+  return (atoms / curveStepAtoms * curveStepAtoms / atomsPerToken).toString();
 }
 
 export async function fetchAllCrcWalletBalances(
