@@ -50,7 +50,7 @@ test("live CRC catalog, token history, and curve quote work in the browser", asy
   }
   await page.getByRole("button", { name: "Buy", exact: true }).click();
   await page.getByRole("button", { name: "Review buy" }).click();
-  await expect(page.getByText("Curve price")).toBeVisible();
+  await expect(page.getByText("Curve price", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: /Eco/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /Standard/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /Priority/i })).toBeVisible();

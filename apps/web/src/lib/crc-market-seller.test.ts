@@ -45,6 +45,15 @@ describe("CRC seller authorization", () => {
     expect(psbt.data.inputs[0]?.sighashType).toBe(0x83);
     await expect(signCrcSellerListing(listing, buyerScriptHex, undefined, signer)).rejects.toThrow();
   });
+  it("accepts the compressed Taproot public key returned by the wallet", async () => {
+    const taprootScript = `5120${"a".repeat(64)}`;
+    const taprootListing = { ...listing, sellerScriptHex: taprootScript, sellerPayoutScriptHex: taprootScript };
+    const signer = vi.fn(async (base64: string) => base64);
+    const signed = await signCrcSellerListing(taprootListing, taprootScript,
+      `02${"b".repeat(64)}`, signer);
+    const psbt = bitcoin.Psbt.fromBase64(signed, { network: bitcoin.networks.regtest });
+    expect(psbt.data.inputs[0]?.tapInternalKey?.toString("hex")).toBe("b".repeat(64));
+  });
   it("binds a whole indexed token coin, exact payout and block expiry to BIP322", () => {
     const result = makeCrcSellerListing({ id: listing.id, network: "regtest", deployTxid,
       ticker: "COVE", sellerScriptHex, sellerPayoutScriptHex: sellerScriptHex,
