@@ -1,0 +1,11 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ✓ confirmed.test.ts (13 tests) 4848ms
+   ✓ Core mines non-protocol carrier burn; production transition and durable rollback follow actual prevouts 4795ms
+
+ Test Files  1 passed (1)
+      Tests  13 passed (13)
+   Start at  18:55:34
+   Duration  5.10s (transform 90ms, setup 0ms, collect 136ms, tests 4.85s, environment 0ms, prepare 34ms)
+

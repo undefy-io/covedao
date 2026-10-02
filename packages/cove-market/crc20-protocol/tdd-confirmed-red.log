@@ -1,0 +1,92 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ confirmed.test.ts (5 tests | 5 failed) 17ms
+   × confirmed non-protocol carrier spend burns atoms and retires offer; rollback restores all 10ms
+     → applyConfirmedBlock is not a function
+   × broken vault preserves circulating carriers and refuses further curve construction 1ms
+     → applyConfirmedBlock is not a function
+   × unavailable parent data for tracked spend blocks atomically; unrelated tx does not require parents 3ms
+     → expected [Function] to throw error matching /parent/i but got 'applyConfirmedB…'
+   × durable undo is bounded without nested ledger histories and survives JSON restart 0ms
+     → applyConfirmedBlock is not a function
+   × multiple registered deployments in block order use their exact configs 3ms
+     → applyConfirmedBlock is not a function
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  confirmed.test.ts > confirmed non-protocol carrier spend burns atoms and retires offer; rollback restores all
+TypeError: applyConfirmedBlock is not a function
+ ❯ confirmed.test.ts:83:21
+     81|   ledger = await core.registerOffer(ledger, offer);
+     82|   const tx = sign([token], [{ scriptHex: bobScript, sats: 500n }]);
+     83|   const next = core.applyConfirmedBlock(ledger, block([tx]));
+       |                     ^
+     84|   expect(next.allocations).toEqual({});
+     85|   expect(next.assets[id]!.burnedAtoms).toBe(token.atoms);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  confirmed.test.ts > broken vault preserves circulating carriers and refuses further curve construction
+TypeError: applyConfirmedBlock is not a function
+ ❯ confirmed.test.ts:94:21
+     92|     vault = ledger.assets[id]!.vault;
+     93|   const tx = sign([vault], [{ scriptHex: bobScript, sats: 500n }]);
+     94|   const next = core.applyConfirmedBlock(ledger, block([tx]));
+       |                     ^
+     95|   expect(next.assets[id]!.vaultAvailable).toBe(false);
+     96|   expect(next.allocations).toEqual(ledger.allocations);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  confirmed.test.ts > unavailable parent data for tracked spend blocks atomically; unrelated tx does not require parents
+AssertionError: expected [Function] to throw error matching /parent/i but got 'applyConfirmedB…'
+
+- Expected: 
+/parent/i
+
++ Received: 
+"__vite_ssr_import_2__.applyConfirmedBlock is not a function"
+
+ ❯ confirmed.test.ts:126:84
+    124|   const ledger = seeded(),
+    125|     tx = sign([token], [{ scriptHex: bobScript, sats: 500n }]);
+    126|   expect(() => core.applyConfirmedBlock(ledger, block([{ ...tx, prevou…
+       |                                                                                    ^
+    127|     /parent/i,
+    128|   );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  confirmed.test.ts > durable undo is bounded without nested ledger histories and survives JSON restart
+TypeError: applyConfirmedBlock is not a function
+ ❯ confirmed.test.ts:140:19
+    138|   let ledger = core.emptyLedger(config);
+    139|   for (let height = 1; height <= 6; height++)
+    140|     ledger = core.applyConfirmedBlock(ledger, block([], height, ledger…
+       |                   ^
+    141|       undoLimit: 2,
+    142|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  confirmed.test.ts > multiple registered deployments in block order use their exact configs
+TypeError: applyConfirmedBlock is not a function
+ ❯ confirmed.test.ts:169:23
+    167|     transactions.map((tx, n) => [core.parseRawTransaction(tx.rawHex).t…
+    168|   );
+    169|   const ledger = core.applyConfirmedBlock(core.emptyLedger(config), bl…
+       |                       ^
+    170|     registeredDeployments,
+    171|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+ Test Files  1 failed (1)
+      Tests  5 failed (5)
+   Start at  18:42:11
+   Duration  302ms (transform 99ms, setup 0ms, collect 166ms, tests 17ms, environment 0ms, prepare 34ms)
+
+undefined
+/home/andefy/dev/covedao/packages/cove-market/crc20-protocol:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run confirmed.test.ts

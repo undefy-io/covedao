@@ -209,6 +209,7 @@ export interface TradeArgs {
   inputs?: Input[];
 }
 function vaultState(state: Asset): void {
+  if (state.vaultAvailable === false) throw new Error("vault unavailable");
   validateConfig(state.config);
   if (
     sats(state.vault.sats) !==

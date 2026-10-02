@@ -1,5 +1,16 @@
 import { hash256, hex, utf8 } from "./bytes.js";
-import type { Asset, Block, ChainTransaction, Config, Ledger, Offer, Plan } from "./types.js";
+import type {
+  Asset,
+  Block,
+  BlockUndo,
+  ChainTransaction,
+  Config,
+  ConfirmedBlockOptions,
+  Ledger,
+  LedgerState,
+  Offer,
+  Plan,
+} from "./types.js";
 import {
   buildDeploy,
   buildInventoryBuy,
@@ -319,13 +330,246 @@ export function applyBlock(ledger: Ledger, block: Block): Ledger {
   return {
     ...next,
     tip: { hash: block.hash, height: block.height, fingerprint },
-    history: { ...ledger.history, [block.hash]: ledger },
+    history: retainedUndo(ledger, next, block.hash, 32),
   };
 }
 export function rollbackBlock(ledger: Ledger, hash: string): Ledger {
   if (ledger.tip?.hash !== hash || !ledger.history[hash])
     throw new Error("rollback requires current indexed tip");
-  return ledger.history[hash]!;
+  const undo = ledger.history[hash]!;
+  const history = { ...ledger.history };
+  delete history[hash];
+  const restored: Ledger = {
+    ...ledger,
+    ...(undo.tip ? { tip: structuredClone(undo.tip) } : { tip: undefined }),
+    assets: inverse(ledger.assets, undo.assets),
+    allocations: inverse(ledger.allocations, undo.allocations),
+    offers: inverse(ledger.offers, undo.offers),
+    spent: inverse(ledger.spent, undo.spent),
+    seen: inverse(ledger.seen, undo.seen),
+    history,
+  };
+  for (const [id, offer] of Object.entries(restored.offers)) {
+    if (offer.status !== "open" && offer.status !== "cancelPending") continue;
+    const allocation = restored.allocations[outpoint(offer.listedInput)],
+      asset = restored.assets[offer.deployTxid];
+    if (
+      !allocation ||
+      !asset ||
+      allocation.deployTxid !== offer.deployTxid ||
+      allocation.atoms !== offer.listedInput.atoms ||
+      allocation.sats !== sats(offer.listedInput.sats) ||
+      allocation.scriptHex !== offer.sellerScriptHex ||
+      asset.config.network !== offer.network ||
+      asset.config.ticker !== offer.ticker
+    )
+      delete restored.offers[id];
+  }
+  return restored;
+}
+
+function diff<T>(before: Record<string, T>, after: Record<string, T>): Record<string, T | null> {
+  const changes: Record<string, T | null> = {};
+  for (const key of new Set([...Object.keys(before), ...Object.keys(after)]))
+    if (before[key] !== after[key])
+      changes[key] = before[key] === undefined ? null : structuredClone(before[key]!);
+  return changes;
+}
+function inverse<T>(
+  current: Record<string, T>,
+  changes: Record<string, T | null>,
+): Record<string, T> {
+  const result = { ...current };
+  for (const [key, value] of Object.entries(changes))
+    if (value === null) delete result[key];
+    else result[key] = structuredClone(value);
+  return result;
+}
+function retainedUndo(
+  before: Ledger,
+  after: Ledger,
+  hash: string,
+  limit: number,
+): Record<string, BlockUndo> {
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000)
+    throw new Error("invalid undo retention limit");
+  const undo: BlockUndo = {
+    ...(before.tip ? { tip: structuredClone(before.tip) } : {}),
+    assets: diff(before.assets, after.assets),
+    allocations: diff(before.allocations, after.allocations),
+    offers: diff(before.offers, after.offers),
+    spent: diff(before.spent, after.spent),
+    seen: diff(before.seen, after.seen),
+  };
+  return Object.fromEntries(
+    [...Object.entries(before.history), [hash, undo] as const].slice(-limit),
+  );
+}
+export function snapshotLedger(ledger: Ledger): LedgerState {
+  const { history: _history, ...state } = ledger;
+  return structuredClone(state);
+}
+export function restoreLedger(state: LedgerState, history: Record<string, BlockUndo> = {}): Ledger {
+  validateConfig(state.config);
+  for (const asset of Object.values(state.assets)) {
+    validateConfig(asset.config);
+    if (asset.config.network !== state.config.network)
+      throw new Error("checkpoint network mismatch");
+    const circulating = Object.values(state.allocations)
+      .filter((a) => a.deployTxid === asset.deployTxid)
+      .reduce((sum, a) => sum + a.atoms, 0n);
+    if (circulating + asset.inventoryAtoms + asset.burnedAtoms !== asset.issuedAtoms)
+      throw new Error("checkpoint atom conservation failure");
+  }
+  return { ...structuredClone(state), history: structuredClone(history) };
+}
+export class UnavailableParentError extends Error {
+  constructor(message = "unavailable or inconsistent parent data") {
+    super(message);
+    this.name = "UnavailableParentError";
+  }
+}
+function burnConfirmedInputs(ledger: Ledger, transaction: ChainTransaction): Ledger {
+  const tx = parseRawTransaction(transaction.rawHex);
+  const consumed = new Set(tx.inputs.map(outpoint));
+  const allocations = { ...ledger.allocations },
+    assets = { ...ledger.assets },
+    offers = { ...ledger.offers },
+    spent = { ...ledger.spent };
+  for (const key of consumed) {
+    const allocation = allocations[key];
+    if (allocation) {
+      const asset = assets[allocation.deployTxid]!;
+      assets[allocation.deployTxid] = {
+        ...asset,
+        burnedAtoms: asset.burnedAtoms + allocation.atoms,
+      };
+      delete allocations[key];
+      spent[key] = true;
+    }
+  }
+  for (const [id, asset] of Object.entries(assets))
+    if (consumed.has(outpoint(asset.vault))) {
+      assets[id] = {
+        ...asset,
+        vaultAvailable: false,
+        burnedAtoms: asset.burnedAtoms + asset.inventoryAtoms,
+        inventoryAtoms: 0n,
+      };
+      spent[outpoint(asset.vault)] = true;
+    }
+  for (const [id, offer] of Object.entries(offers))
+    if (consumed.has(outpoint(offer.listedInput))) offers[id] = { ...offer, status: "cancelled" };
+  return {
+    ...ledger,
+    assets,
+    allocations,
+    offers,
+    spent,
+    seen: { ...ledger.seen, [tx.txid]: true },
+  };
+}
+/** Chain observations only: Bitcoin consensus validity is established by the confirmed block.
+ * Unsupported/non-protocol tracked spends destroy allocations; missing parent observations retry. */
+export function applyConfirmedBlock(
+  ledger: Ledger,
+  block: Block,
+  options: ConfirmedBlockOptions = {},
+): Ledger {
+  const fingerprint = hex(
+    hash256(
+      utf8(
+        JSON.stringify([block.parentHash, block.height, block.transactions], (_, value) =>
+          typeof value === "bigint" ? value.toString() : value,
+        ),
+      ),
+    ),
+  );
+  if (ledger.tip?.hash === block.hash) {
+    if (ledger.tip.fingerprint !== fingerprint) throw new Error("altered block contents");
+    return ledger;
+  }
+  if (ledger.history[block.hash]) throw new Error("block replay");
+  if (
+    ledger.tip &&
+    (block.parentHash !== ledger.tip.hash || block.height !== ledger.tip.height + 1)
+  )
+    throw new Error("detached block or reorg requires rollback");
+  let next = ledger;
+  for (const transaction of block.transactions) {
+    const tx = parseRawTransaction(transaction.rawHex);
+    const consumed = new Set(tx.inputs.map(outpoint));
+    const tracked = tx.inputs.some((i) => next.allocations[outpoint(i)]);
+    const vaults = Object.values(next.assets).filter((a) => consumed.has(outpoint(a.vault)));
+    const registration = options.registeredDeployments?.[tx.txid];
+    if (!tracked && !vaults.length && !registration) continue;
+    if (
+      next.seen[tx.txid] ||
+      tx.inputs.some((i) => next.spent[outpoint(i)]) ||
+      consumed.size !== tx.inputs.length
+    )
+      throw new Error("replay or double spend");
+    if (transaction.prevouts.length !== tx.inputs.length) throw new UnavailableParentError();
+    transaction.prevouts.forEach((input, index) => {
+      if (outpoint(input) !== outpoint(tx.inputs[index]!)) throw new UnavailableParentError();
+      const allocation = next.allocations[outpoint(input)];
+      const vault = vaults.find((a) => outpoint(a.vault) === outpoint(input))?.vault;
+      const known = allocation ?? vault;
+      if (known && (known.scriptHex !== input.scriptHex || sats(known.sats) !== sats(input.sats)))
+        throw new UnavailableParentError();
+    });
+    const ordinaryParents = transaction.prevouts.filter(
+      (input) =>
+        !next.allocations[outpoint(input)] &&
+        !vaults.some((a) => outpoint(a.vault) === outpoint(input)),
+    );
+    for (const input of ordinaryParents) {
+      const parentHex = transaction.parentRawTransactions?.[input.txid];
+      if (parentHex === undefined) continue;
+      try {
+        const parent = parseRawTransaction(parentHex),
+          output = parent.outputs[input.vout];
+        if (
+          parent.txid !== input.txid ||
+          !output ||
+          output.sats !== sats(input.sats) ||
+          output.scriptHex !== input.scriptHex
+        )
+          throw new Error("parent mismatch");
+      } catch {
+        throw new UnavailableParentError();
+      }
+    }
+    const token = tx.inputs.map((i) => next.allocations[outpoint(i)]).find(Boolean);
+    const selected =
+      registration ?? (token ? next.assets[token.deployTxid]!.config : vaults[0]!.config);
+    validateConfig(selected);
+    if (selected.network !== ledger.config.network)
+      throw new Error("registered deployment network mismatch");
+    try {
+      next = {
+        ...applyTransaction({ ...next, config: selected }, transaction),
+        config: ledger.config,
+      };
+    } catch {
+      // Full parent bytes are needed before burning for unsupported funded spends.
+      // A failed signature can reflect corrupt ordinary observations, not CRC invalidity.
+      if (
+        ordinaryParents.some(
+          (input) => transaction.parentRawTransactions?.[input.txid] === undefined,
+        )
+      )
+        throw new UnavailableParentError(
+          "parent authentication required for invalid confirmed spend",
+        );
+      next = burnConfirmedInputs(next, transaction);
+    }
+  }
+  return {
+    ...next,
+    tip: { hash: block.hash, height: block.height, fingerprint },
+    history: retainedUndo(ledger, next, block.hash, options.undoLimit ?? 32),
+  };
 }
 
 /** Verify build intent; supply the current ledger to also preflight protocol allocation rules. */

@@ -28,6 +28,7 @@ export interface Asset {
   inventoryAtoms: bigint;
   burnedAtoms: bigint;
   vault: Input;
+  vaultAvailable?: boolean;
 }
 export interface Plan {
   inputWitnesses?: string[][];
@@ -62,6 +63,8 @@ export interface Offer {
 export interface ChainTransaction {
   rawHex: string;
   prevouts: Input[];
+  /** Parent bytes authenticate ordinary observations when a confirmed spend violates CRC policy. */
+  parentRawTransactions?: Record<string, string>;
 }
 export interface Block {
   hash: string;
@@ -83,7 +86,7 @@ export interface Ledger {
   spent: Record<string, true>;
   seen: Record<string, true>;
   tip?: { hash: string; height: number; fingerprint: string };
-  history: Record<string, Ledger>;
+  history: Record<string, BlockUndo>;
 }
 
 /** Trusted registration metadata; recovery hash comes from the configured custody profile. */
@@ -93,4 +96,18 @@ export interface GuardianCustody {
   executionScriptHex: string;
   controlBlockHex: string;
   recoveryLeafHashHex: string;
+}
+
+export type LedgerState = Omit<Ledger, "history">;
+export interface BlockUndo {
+  tip?: Ledger["tip"];
+  assets: Record<string, Asset | null>;
+  allocations: Record<string, Allocation | null>;
+  offers: Record<string, Offer | null>;
+  spent: Record<string, true | null>;
+  seen: Record<string, true | null>;
+}
+export interface ConfirmedBlockOptions {
+  registeredDeployments?: Record<string, Config>;
+  undoLimit?: number;
 }

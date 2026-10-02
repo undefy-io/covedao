@@ -1,0 +1,123 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ confirmed.test.ts (10 tests | 2 failed | 8 skipped) 22ms
+   × inconsistent ordinary funding observations retry rather than burn valid tokens 12ms
+     → expected [Function] to throw an error
+   × rollback removes later offers for orphaned allocations while signed terms remain external 9ms
+     → expected { config: { …(5) }, …(7) } to deeply equal { config: { …(5) }, …(6) }
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  confirmed.test.ts > inconsistent ordinary funding observations retry rather than burn valid tokens
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ confirmed.test.ts:301:66
+    299|     prevouts: tx.prevouts.map((p, n) => (n === 1 ? { ...p, sats: 10001…
+    300|   };
+    301|   expect(() => core.applyConfirmedBlock(ledger, block([wrong]))).toThr…
+       |                                                                  ^
+    302|   expect(ledger.assets[id]!.burnedAtoms).toBe(0n);
+    303| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  confirmed.test.ts > rollback removes later offers for orphaned allocations while signed terms remain external
+AssertionError: expected { config: { …(5) }, …(7) } to deeply equal { config: { …(5) }, …(6) }
+
+- Expected
++ Received
+
+  Object {
+    "allocations": Object {
+      "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:0": Object {
+        "atoms": 10000000000n,
+        "deployTxid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sats": 1000n,
+        "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+      },
+    },
+    "assets": Object {
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": Object {
+        "burnedAtoms": 0n,
+        "config": Object {
+          "creatorScriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
+          "network": "regtest",
+          "protocolScriptHex": "00146363636363636363636363636363636363636363",
+          "ticker": "TEST",
+          "vaultScriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+        },
+        "deployTxid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "inventoryAtoms": 0n,
+        "issuedAtoms": 10000000000n,
+        "vault": Object {
+          "sats": 1003n,
+          "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "txid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "vout": 1,
+        },
+      },
+    },
+    "config": Object {
+      "creatorScriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
+      "network": "regtest",
+      "protocolScriptHex": "00146363636363636363636363636363636363636363",
+      "ticker": "TEST",
+      "vaultScriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+    },
+    "history": Object {},
+-   "offers": Object {},
++   "offers": Object {
++     "regtest:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:1f9e89e3a058cbecd6fe814f3defe3d948751cbe8623f62c3ba1cec9204f5584:1": Object {
++       "deployTxid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
++       "expiryHeight": 10,
++       "listedInput": Object {
++         "atoms": 10000000000n,
++         "deployTxid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
++         "sats": 1000n,
++         "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
++         "txid": "1f9e89e3a058cbecd6fe814f3defe3d948751cbe8623f62c3ba1cec9204f5584",
++         "vout": 1,
++       },
++       "network": "regtest",
++       "priceSats": 10000n,
++       "publicKeyHex": "02e5a018b3a2e155316109d9cdc5eab739759c0e07e0c00bf9fccb8237fe4d7f02",
++       "sellerScriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
++       "sellerWitnessHex": Array [
++         "3044022068ebe69da49e4b232142a37c49ff13c9d955a6173950bd2b22cfe35d2e8c3d240220374f108db03f29e233081dcc64e1433aa8d4b8a4fb9ed9ceac8bf860ca50553683",
++         "02e5a018b3a2e155316109d9cdc5eab739759c0e07e0c00bf9fccb8237fe4d7f02",
++       ],
++       "signatureHex": "0247304402205166df6c28078b83b5feb2af310e1a3b0d8027ac625c118347143eaa803a9f1802201d737d337a420744c7cb818f025df62b908ed1e636eaa49449a2d38c812c1f29012102e5a018b3a2e155316109d9cdc5eab739759c0e07e0c00bf9fccb8237fe4d7f02",
++       "status": "open",
++       "ticker": "TEST",
++     },
++   },
+    "seen": Object {},
+    "spent": Object {},
++   "tip": undefined,
+  }
+
+ ❯ confirmed.test.ts:331:52
+    329|   );
+    330|   next = await core.registerOffer(next, offer);
+    331|   expect(core.rollbackBlock(next, next.tip!.hash)).toEqual(ledger);
+       |                                                    ^
+    332| });
+    333| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 8 skipped (10)
+   Start at  18:49:19
+   Duration  282ms (transform 96ms, setup 0ms, collect 144ms, tests 22ms, environment 0ms, prepare 32ms)
+
+undefined
+/home/andefy/dev/covedao/packages/cove-market/crc20-protocol:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run confirmed.test.ts -t inconsistent ordinary|rollback removes

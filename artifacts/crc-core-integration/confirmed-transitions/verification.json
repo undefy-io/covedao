@@ -1,0 +1,10 @@
+{
+  "fullCoreTests": 133,
+  "additionalLateFillTest": 1,
+  "confirmedScopedTests": 13,
+  "sqliteComparisons": 1950,
+  "adapterTests": 12,
+  "docker": "isolated Core mines deployment, mint and nonprotocol tracked carrier spend; exact burn and rollback verified",
+  "astra": "Two confirmed defects fixed with failing regressions: inconsistent ordinary parents and orphan offers. Independent12tests includingDocker pass afterfix; latefill separately passes.",
+  "production": "indexer/DB/checkpoints not connected yet"
+}
