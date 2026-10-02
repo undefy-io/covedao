@@ -104,7 +104,7 @@ maybe("CRC market SQL concurrency", () => {
       } as unknown as CoreRpcProvider;
       await expect(broadcastCrcFill(db, "regtest", won!.id, {
         ...broadcaster, broadcastTransaction: async () => { throw new Error("temporary Core outage"); },
-      })).rejects.toThrow("temporary Core outage");
+      } as unknown as CoreRpcProvider)).rejects.toThrow("temporary Core outage");
       await expect(completePresignedCrcFill(db, "regtest", won!.id, signed.toBase64(), core)).resolves.toEqual(accepted);
       expect(await broadcastCrcFill(db, "regtest", won!.id, broadcaster)).toBe(accepted.txid);
       expect(await broadcastCrcFill(db, "regtest", won!.id, broadcaster)).toBe(accepted.txid);
@@ -147,6 +147,36 @@ maybe("CRC market SQL concurrency", () => {
       await expect(submitBuyerSignedCrcFill(db, "regtest", canceledFill,
         canceledReservation.psbtBase64)).rejects.toThrow("no longer available");
       expect(await releaseExpiredCrcReservations(db, "regtest")).toBe(0);
+      const legacy = { ...listing, id: randomUUID(), sellerAnchorTxid: "9".repeat(64) };
+      const replacement = { ...legacy, id: randomUUID() };
+      await db.execute(sql`INSERT INTO cove_crc_token_utxos (network, deploy_txid, txid, vout, script_hex, atoms, created_height, created_block_hash)
+        VALUES ('regtest', ${deployTxid}, ${legacy.sellerAnchorTxid}, 0, ${sellerScript}, ${listing.amountAtoms.toString()}, 10, ${"a".repeat(64)})`);
+      await db.execute(sql.raw("ALTER TABLE cove_crc_market_listings DROP CONSTRAINT IF EXISTS cove_crc_market_open_presigned_ck"));
+      try {
+        await db.execute(sql`INSERT INTO cove_crc_market_listings (id, network, deploy_txid, ticker,
+          seller_script_hex, seller_payout_script_hex, seller_anchor_txid, seller_anchor_vout,
+          seller_anchor_sats, amount_atoms, price_sats, protocol_fee_sats, expires_at_height, status)
+          VALUES (${legacy.id}, 'regtest', ${deployTxid}, 'TSTX', ${sellerScript}, ${sellerScript},
+          ${legacy.sellerAnchorTxid}, 0, 10000, 100000000000, 5000, 1000, 300, 'RESERVED')`);
+      } finally {
+        await db.execute(sql.raw("ALTER TABLE cove_crc_market_listings ADD CONSTRAINT cove_crc_market_open_presigned_ck CHECK (status NOT IN ('OPEN', 'RESERVED') OR seller_presigned_psbt_base64 IS NOT NULL) NOT VALID"));
+      }
+      const legacyFillId = randomUUID();
+      await db.execute(sql`INSERT INTO cove_crc_market_fills (id, network, listing_id, buyer_script_hex,
+        unsigned_tx_digest, psbt_base64, status, expires_at)
+        VALUES (${legacyFillId}, 'regtest', ${legacy.id}, ${buyerScript}, ${"0".repeat(64)}, 'old',
+        'BUYER_SIGNED', now() - interval '1 minute')`);
+      const replacementPsbt = buildCrcListingPsbt(replacement);
+      replacementPsbt.signInput(0, sellerKey, [bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY]);
+      const replacementCore = { getTxout: async () => ({ scriptPubKeyHex: sellerScript,
+        valueSats: 10_000n, confirmations: 1 }) };
+      await createCrcListing(db, replacement, replacementPsbt.toBase64(), replacementCore, 750n);
+      const old = await db.execute(sql`SELECT status FROM cove_crc_market_listings WHERE id = ${legacy.id}`);
+      const oldFill = await db.execute(sql`SELECT status FROM cove_crc_market_fills WHERE id = ${legacyFillId}`);
+      expect(old.rows[0]).toMatchObject({ status: "STALE" });
+      expect(oldFill.rows[0]).toMatchObject({ status: "FAILED" });
+      await expect(createCrcListing(db, { ...replacement, id: randomUUID() },
+        replacementPsbt.toBase64(), replacementCore, 750n)).rejects.toThrow("already has an active listing");
     } finally {
       await db.execute(sql`DELETE FROM cove_crc_events WHERE network = 'regtest' AND deploy_txid = ${deployTxid}`);
       await db.execute(sql`DELETE FROM cove_crc_market_fills WHERE network = 'regtest' AND listing_id IN

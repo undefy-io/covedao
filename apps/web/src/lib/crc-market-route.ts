@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 import { COVE_FEE_CONFIG } from "@crclaunch/cove-economics";
 import {
-  crcMarketFee, createCrcListing, cancelCrcListing, reserveCrcFill,
+  CrcListingConflictError, crcMarketFee, createCrcListing, cancelCrcListing, reserveCrcFill,
   completePresignedCrcFill, listCrcSellerFillRequests, acceptSignedCrcFill,
   broadcastCrcFill, type CrcListing, type CrcNetwork,
 } from "@crclaunch/cove-market";
@@ -172,6 +172,9 @@ export async function crcMarketPost(
       default: return fail("NOT_FOUND", "Market operation not found", 404);
     }
   } catch (error) {
+    if (error instanceof CrcListingConflictError) {
+      return fail("LISTING_ALREADY_ACTIVE", error.message, 409);
+    }
     if (error instanceof RequestTooLargeError) return fail("REQUEST_TOO_LARGE", "Market request is too large", 413);
     if (error instanceof z.ZodError || error instanceof SyntaxError) return fail("BAD_REQUEST", "Invalid market request", 400);
     return handleError(error);

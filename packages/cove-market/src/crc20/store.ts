@@ -30,6 +30,13 @@ type ListingRow = {
   seller_presigned_psbt_base64: string | null;
 };
 
+export class CrcListingConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CrcListingConflictError";
+  }
+}
+
 function rowListing(row: ListingRow): CrcListing {
   return {
     id: row.id, network: row.network, deployTxid: row.deploy_txid, ticker: row.ticker,
@@ -118,7 +125,30 @@ export async function createCrcListing(
     await lockCrcProjection(tx, listing.network);
     const { asset, height } = await indexedAsset(tx, listing);
     validateCrcListing(listing, asset, height);
-    await tx.execute(sql`
+    const existing = await tx.execute(sql`SELECT id, status, seller_presigned_psbt_base64
+      FROM cove_crc_market_listings WHERE network = ${listing.network}
+        AND seller_anchor_txid = ${listing.sellerAnchorTxid}
+        AND seller_anchor_vout = ${listing.sellerAnchorVout}
+        AND status IN ('OPEN', 'RESERVED', 'BROADCAST') FOR UPDATE`);
+    const previous = existing.rows[0] as { id: string; status: string;
+      seller_presigned_psbt_base64: string | null } | undefined;
+    if (previous && !previous.seller_presigned_psbt_base64 && previous.status !== "BROADCAST") {
+      await tx.execute(sql`UPDATE cove_crc_market_fills SET status = 'FAILED', updated_at = now()
+        WHERE listing_id = ${previous.id} AND network = ${listing.network}
+          AND status IN ('RESERVED', 'BUYER_SIGNED') AND expires_at <= now()`);
+      const liveFill = await tx.execute(sql`SELECT 1 FROM cove_crc_market_fills
+        WHERE listing_id = ${previous.id} AND network = ${listing.network}
+          AND status IN ('RESERVED', 'BUYER_SIGNED', 'SIGNED', 'BROADCAST') LIMIT 1`);
+      if (liveFill.rows.length === 0) {
+        await tx.execute(sql`UPDATE cove_crc_market_listings SET status = 'STALE', updated_at = now()
+          WHERE id = ${previous.id} AND network = ${listing.network}`);
+      } else {
+        throw new CrcListingConflictError("This token output has a sale request still in progress");
+      }
+    } else if (previous) {
+      throw new CrcListingConflictError("This token output already has an active listing");
+    }
+    const inserted = await tx.execute(sql`
       INSERT INTO cove_crc_market_listings
         (id, network, deploy_txid, ticker, seller_script_hex, seller_payout_script_hex,
          seller_anchor_txid, seller_anchor_vout, seller_anchor_sats, amount_atoms,
@@ -128,7 +158,13 @@ export async function createCrcListing(
         ${listing.sellerAnchorVout}, ${listing.sellerAnchorSats}, ${listing.amountAtoms.toString()},
         ${listing.priceSats}, ${listing.protocolFeeSats}, ${listing.expiresAtHeight.toString()},
         ${sellerPresignedPsbtBase64})
+      ON CONFLICT (network, seller_anchor_txid, seller_anchor_vout)
+        WHERE status IN ('OPEN', 'RESERVED', 'BROADCAST') DO NOTHING
+      RETURNING id
     `);
+    if (inserted.rows.length !== 1) {
+      throw new CrcListingConflictError("This token output already has an active listing");
+    }
   });
 }
 

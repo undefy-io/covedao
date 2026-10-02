@@ -88,6 +88,7 @@ export {
   type CrcNetwork,
 } from "./crc20/market.js";
 export {
+  CrcListingConflictError,
   createCrcListing,
   cancelCrcListing,
   reserveCrcFill,
