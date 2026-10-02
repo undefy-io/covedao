@@ -3,6 +3,7 @@ export interface Input {
   vout: number;
   sats: bigint | number;
   scriptHex: string;
+  redeemScriptHex?: string;
   atoms?: bigint;
   deployTxid?: string;
 }
@@ -82,4 +83,13 @@ export interface Ledger {
   seen: Record<string, true>;
   tip?: { hash: string; height: number; fingerprint: string };
   history: Record<string, Ledger>;
+}
+
+/** Trusted registration metadata; recovery hash comes from the configured custody profile. */
+export interface GuardianCustody {
+  assetCommitmentHex: string;
+  guardianPublicKeyHex: string;
+  executionScriptHex: string;
+  controlBlockHex: string;
+  recoveryLeafHashHex: string;
 }

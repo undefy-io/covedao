@@ -1,0 +1,60 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao
+
+ ❯ packages/cove-market/crc20-protocol/scripts.test.ts (6 tests | 4 failed) 12ms
+   × verify independently signed nested input, binding actual prevout and payout 6ms
+     → expected [Function] to not throw an error but 'Error: isolated ledger requires nativ…' was thrown
+   × verify independently signed taproot input, binding actual prevout and payout 1ms
+     → expected [Function] to not throw an error but 'Error: isolated ledger requires nativ…' was thrown
+   × verify independently signed guardian input, binding actual prevout and payout 2ms
+     → expected [Function] to not throw an error but 'Error: isolated ledger requires nativ…' was thrown
+   × Taproot DEFAULT is accepted; explicit zero flag and unauthorized 0x83 are refused 1ms
+     → expected [Function] to not throw an error but 'Error: isolated ledger requires nativ…' was thrown
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/cove-market/crc20-protocol/scripts.test.ts > verify independently signed nested input, binding actual prevout and payout
+ FAIL  packages/cove-market/crc20-protocol/scripts.test.ts > verify independently signed taproot input, binding actual prevout and payout
+ FAIL  packages/cove-market/crc20-protocol/scripts.test.ts > verify independently signed guardian input, binding actual prevout and payout
+AssertionError: expected [Function] to not throw an error but 'Error: isolated ledger requires nativ…' was thrown
+
+- Expected: 
+undefined
+
++ Received: 
+"Error: isolated ledger requires native P2WPKH inputs"
+
+ ❯ packages/cove-market/crc20-protocol/scripts.test.ts:49:82
+     47| test.each(["nested", "taproot", "guardian"] as const)("verify independ…
+     48|   const { tx, prevout } = signed(kind);
+     49|   expect(() => verifySignatures(parseRawTransaction(tx.toHex()), [prev…
+       |                                                                                  ^
+     50|   const changed = tx.clone(); changed.outs[0]!.value--;
+     51|   expect(() => verifySignatures(parseRawTransaction(changed.toHex()), …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  packages/cove-market/crc20-protocol/scripts.test.ts > Taproot DEFAULT is accepted; explicit zero flag and unauthorized 0x83 are refused
+AssertionError: expected [Function] to not throw an error but 'Error: isolated ledger requires nativ…' was thrown
+
+- Expected: 
+undefined
+
++ Received: 
+"Error: isolated ledger requires native P2WPKH inputs"
+
+ ❯ packages/cove-market/crc20-protocol/scripts.test.ts:58:82
+     56| test("Taproot DEFAULT is accepted; explicit zero flag and unauthorized…
+     57|   const { tx, prevout } = signed("taproot", 0);
+     58|   expect(() => verifySignatures(parseRawTransaction(tx.toHex()), [prev…
+       |                                                                                  ^
+     59|   tx.setWitness(0, [Buffer.concat([tx.ins[0]!.witness[0]!, Buffer.from…
+     60|   expect(() => verifySignatures(parseRawTransaction(tx.toHex()), [prev…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 2 passed (6)
+   Start at  16:48:59
+   Duration  225ms (transform 47ms, setup 0ms, collect 82ms, tests 12ms, environment 0ms, prepare 32ms)
+

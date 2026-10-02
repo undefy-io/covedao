@@ -1,3 +1,4 @@
+import { guardianExecutionKey, taprootSignatureHash } from "./taproot.js";
 import { concat, compact, hash256, hex, le, sized, text, unhex, utf8 } from "./bytes.js";
 import type { Input, Output } from "./types.js";
 import * as ecc from "tiny-secp256k1";
@@ -230,7 +231,11 @@ export function nativeSignatureHash(
   const outputs = hash256(
     concat(...(anyoneCanPay ? [tx.outputs[index]!] : tx.outputs).map(encodedOutput)),
   );
-  const scriptCode = unhex(`76a914${prevout.scriptHex.slice(4)}88ac`);
+  const witnessProgram = /^0014[0-9a-f]{40}$/.test(prevout.scriptHex)
+    ? prevout.scriptHex
+    : tx.inputs[index]!.scriptHex.slice(2);
+  if (!/^0014[0-9a-f]{40}$/.test(witnessProgram)) throw new Error("unsupported witness program");
+  const scriptCode = unhex(`76a914${witnessProgram.slice(4)}88ac`);
   return hash256(
     concat(
       le(tx.version, 4),
@@ -256,16 +261,55 @@ export function verifySignatures(
   tx.inputs.forEach((input, index) => {
     const prevout = prevouts[index]!;
     if (outpoint(input) !== outpoint(prevout)) throw new Error("prevout identity mismatch");
+    if (/^5120[0-9a-f]{64}$/.test(prevout.scriptHex)) {
+      if (input.scriptHex !== "") throw new Error("Taproot scriptSig must be empty");
+      const signature = input.witness[0];
+      if (!signature || ![64, 65].includes(signature.length))
+        throw new Error("invalid Schnorr signature length");
+      const hashType = signature.length === 64 ? 0 : signature[64]!;
+      if (signature.length === 65 && hashType === 0)
+        throw new Error("explicit DEFAULT flag is invalid");
+      if (
+        hashType !== 0 &&
+        hashType !== 1 &&
+        !(
+          hashType === 131 &&
+          index === 0 &&
+          singleAnyoneCanPayOutpoint === outpoint(input) &&
+          input.witness.length === 1
+        )
+      )
+        throw new Error("unauthorized signature flag");
+      const path =
+        input.witness.length === 1
+          ? { key: unhex(prevout.scriptHex.slice(4)), leafHash: undefined }
+          : guardianExecutionKey(input.witness, prevout.scriptHex);
+      if (
+        !ecc.verifySchnorr(
+          taprootSignatureHash(tx, prevouts, index, hashType, path.leafHash),
+          path.key,
+          signature.slice(0, 64),
+        )
+      )
+        throw new Error("invalid transaction signature");
+      return;
+    }
+    const nested = /^a914[0-9a-f]{40}87$/.test(prevout.scriptHex);
+    const program = nested ? input.scriptHex.slice(2) : prevout.scriptHex;
     if (
-      !/^0014[0-9a-f]{40}$/.test(prevout.scriptHex) ||
-      input.scriptHex !== "" ||
-      input.witness.length !== 2
+      !/^0014[0-9a-f]{40}$/.test(program) ||
+      input.witness.length !== 2 ||
+      (nested
+        ? input.scriptHex !== `16${program}` ||
+          hex(hash160(unhex(program))) !== prevout.scriptHex.slice(4, -2)
+        : input.scriptHex !== "")
     )
-      throw new Error("isolated ledger requires native P2WPKH inputs");
+      throw new Error("unsupported or mismatched SegWit input script");
     const key = input.witness[1]!,
       signature = input.witness[0]!,
       hashType = signature[signature.length - 1]!;
-    if (hex(hash160(key)) !== prevout.scriptHex.slice(4)) throw new Error("witness owner mismatch");
+    if (key.length !== 33 || hex(hash160(key)) !== program.slice(4))
+      throw new Error("witness owner mismatch");
     if (
       hashType !== 1 &&
       !(hashType === 131 && index === 0 && singleAnyoneCanPayOutpoint === outpoint(input))

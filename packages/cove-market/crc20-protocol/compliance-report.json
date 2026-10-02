@@ -5,7 +5,7 @@
   "transactions": [
     {
       "action": "deploy",
-      "txid": "cc5d41b036219a3eee7bd0f77261f8e0506ef9e065c76e31c08299add095871b",
+      "txid": "522eea5cb8576e1f67d9ff234e98ebfbf6ce6a3a9de48671e797b809d624d27f",
       "archiveReference": {
         "txid": "546cc042d0f396a0d8ad67b6987d9d5c09619e6962738347ca1611a1d1841b67",
         "operation": "deploy",
@@ -23,9 +23,9 @@
           "witnessItems": 2,
           "archiveSequence": 4294967295,
           "archiveWitnessItems": 1,
-          "outpoint": "0ea3c07572c5750ad69107904276218e81b03ceab5adb507717a52f3f2d4b5c4:1",
+          "outpoint": "bd5f859a90ee248c023fdb414aeca4c3808da44458b6d93eee67c78d5721e50e:0",
           "sats": "3999999859",
-          "scriptHex": "0014bebae5b25d0f37bf9fabcb2dc56434d4d22f7ca4",
+          "scriptHex": "0014850835ee29c92e746fc017cd1a6400ecb4d314f4",
           "scriptFamily": "P2WPKH",
           "archiveReference": {
             "txid": "ff66562e35fe4e224e8e37bcf4f63192f1d925cf94f0e08ab7e1d1f97b052570",
@@ -115,7 +115,7 @@
     },
     {
       "action": "mint",
-      "txid": "da11b80e16d01523c23d2f0bed60eb1260b16ef63a92eb95bfce2072b096129d",
+      "txid": "b7c2089d40ccd852f59350ea9aa4cc144145ff64bc36cb351bd6e566125cc8ae",
       "archiveReference": {
         "txid": "17c4c6fa3a877aa42c142f4836c3cb6b10d4e588ff2150df842e2e3e3e89bde4",
         "operation": "mint",
@@ -133,7 +133,7 @@
           "witnessItems": 2,
           "archiveSequence": 4294967293,
           "archiveWitnessItems": 1,
-          "outpoint": "cc5d41b036219a3eee7bd0f77261f8e0506ef9e065c76e31c08299add095871b:1",
+          "outpoint": "522eea5cb8576e1f67d9ff234e98ebfbf6ce6a3a9de48671e797b809d624d27f:1",
           "sats": "1000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
@@ -152,8 +152,8 @@
           "witnessItems": 2,
           "archiveSequence": null,
           "archiveWitnessItems": null,
-          "outpoint": "129c13eec8089d7928252f6eb2fcc30b6e0003551a4a947aa0616d4302c56127:0",
-          "sats": "5000000000",
+          "outpoint": "522eea5cb8576e1f67d9ff234e98ebfbf6ce6a3a9de48671e797b809d624d27f:4",
+          "sats": "3999989859",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
           "archiveReference": null,
@@ -234,7 +234,7 @@
         {
           "vout": 5,
           "role": "btcChange",
-          "sats": "4999992375",
+          "sats": "3999982234",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
           "archiveReference": null,
@@ -260,7 +260,7 @@
     },
     {
       "action": "transfer",
-      "txid": "b2f7a0f49e30689c566ec89fd749287a5459456e9f46caf72535ae2f59989c03",
+      "txid": "1f4d934c26bb2981fecc979a0113d4f388751cfc6981a89c6b302a387f581721",
       "archiveReference": {
         "txid": "0027744d44f27ad7a80e67b73790cce8123b95ae2ad8dc01a561b3728241ac40",
         "operation": "transfer",
@@ -278,7 +278,7 @@
           "witnessItems": 2,
           "archiveSequence": 1000,
           "archiveWitnessItems": 3,
-          "outpoint": "da11b80e16d01523c23d2f0bed60eb1260b16ef63a92eb95bfce2072b096129d:1",
+          "outpoint": "b7c2089d40ccd852f59350ea9aa4cc144145ff64bc36cb351bd6e566125cc8ae:1",
           "sats": "1000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
@@ -297,8 +297,8 @@
           "witnessItems": 2,
           "archiveSequence": 4294967293,
           "archiveWitnessItems": 1,
-          "outpoint": "dc718d8347721a6561374fbb8100da3d27c74b7f364056768b014f974ae72120:0",
-          "sats": "5000000000",
+          "outpoint": "b7c2089d40ccd852f59350ea9aa4cc144145ff64bc36cb351bd6e566125cc8ae:5",
+          "sats": "3999982234",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
           "archiveReference": {
@@ -359,7 +359,7 @@
         {
           "vout": 3,
           "role": "btcChange",
-          "sats": "4999998000",
+          "sats": "3999980234",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
           "archiveReference": null,
@@ -384,7 +384,7 @@
     },
     {
       "action": "curveSell",
-      "txid": "45dda899178b17821c02a15098b80ed6dc2738ac552dbff9c60f6affa94551db",
+      "txid": "efd4defbfc05a38e3f714bfd1907717694d7ffed24d205178c1cc1cb5b195688",
       "archiveReference": {
         "txid": "0027744d44f27ad7a80e67b73790cce8123b95ae2ad8dc01a561b3728241ac40",
         "operation": "transfer",
@@ -402,7 +402,7 @@
           "witnessItems": 2,
           "archiveSequence": 1000,
           "archiveWitnessItems": 3,
-          "outpoint": "da11b80e16d01523c23d2f0bed60eb1260b16ef63a92eb95bfce2072b096129d:2",
+          "outpoint": "b7c2089d40ccd852f59350ea9aa4cc144145ff64bc36cb351bd6e566125cc8ae:2",
           "sats": "1054",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
@@ -421,7 +421,7 @@
           "witnessItems": 2,
           "archiveSequence": 4294967293,
           "archiveWitnessItems": 1,
-          "outpoint": "b2f7a0f49e30689c566ec89fd749287a5459456e9f46caf72535ae2f59989c03:2",
+          "outpoint": "1f4d934c26bb2981fecc979a0113d4f388751cfc6981a89c6b302a387f581721:2",
           "sats": "1000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
@@ -440,8 +440,8 @@
           "witnessItems": 2,
           "archiveSequence": null,
           "archiveWitnessItems": null,
-          "outpoint": "b2f7a0f49e30689c566ec89fd749287a5459456e9f46caf72535ae2f59989c03:3",
-          "sats": "4999998000",
+          "outpoint": "1f4d934c26bb2981fecc979a0113d4f388751cfc6981a89c6b302a387f581721:3",
+          "sats": "3999980234",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
           "archiveReference": null,
@@ -517,7 +517,7 @@
         {
           "vout": 5,
           "role": "btcChange",
-          "sats": "4999995027",
+          "sats": "3999977261",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
           "archiveReference": null,
@@ -543,7 +543,7 @@
     },
     {
       "action": "inventoryBuy",
-      "txid": "b8ae424e2b9ee655025ff10ab784c6100f7a16b4fe678a7954065f4799330260",
+      "txid": "99c34c81671c89ff4cd1721f1dea51e4bdaad6b15286e333be02f36bb7baed6b",
       "archiveReference": {
         "txid": "0027744d44f27ad7a80e67b73790cce8123b95ae2ad8dc01a561b3728241ac40",
         "operation": "transfer",
@@ -561,7 +561,7 @@
           "witnessItems": 2,
           "archiveSequence": 1000,
           "archiveWitnessItems": 3,
-          "outpoint": "45dda899178b17821c02a15098b80ed6dc2738ac552dbff9c60f6affa94551db:1",
+          "outpoint": "efd4defbfc05a38e3f714bfd1907717694d7ffed24d205178c1cc1cb5b195688:1",
           "sats": "1027",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
@@ -580,7 +580,7 @@
           "witnessItems": 2,
           "archiveSequence": 4294967293,
           "archiveWitnessItems": 1,
-          "outpoint": "0ea3c07572c5750ad69107904276218e81b03ceab5adb507717a52f3f2d4b5c4:0",
+          "outpoint": "bd5f859a90ee248c023fdb414aeca4c3808da44458b6d93eee67c78d5721e50e:1",
           "sats": "1000000000",
           "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
           "scriptFamily": "P2WPKH",
@@ -687,7 +687,7 @@
     },
     {
       "action": "mint",
-      "txid": "4333837ccd3a510e91697630bb4ca0262cd8bbbaf5dd5c3c0af791200d08301b",
+      "txid": "52a1816f554463ac3add0309a3fda1b44f7788e4a5eeee084b691e1942db0f44",
       "archiveReference": {
         "txid": "17c4c6fa3a877aa42c142f4836c3cb6b10d4e588ff2150df842e2e3e3e89bde4",
         "operation": "mint",
@@ -705,7 +705,7 @@
           "witnessItems": 2,
           "archiveSequence": 4294967293,
           "archiveWitnessItems": 1,
-          "outpoint": "b8ae424e2b9ee655025ff10ab784c6100f7a16b4fe678a7954065f4799330260:2",
+          "outpoint": "99c34c81671c89ff4cd1721f1dea51e4bdaad6b15286e333be02f36bb7baed6b:2",
           "sats": "1054",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
@@ -724,8 +724,8 @@
           "witnessItems": 2,
           "archiveSequence": null,
           "archiveWitnessItems": null,
-          "outpoint": "dbdbd93329356b2bbbe472f32adb1a833d196c6c8288b613c447dafbdb40be97:0",
-          "sats": "5000000000",
+          "outpoint": "efd4defbfc05a38e3f714bfd1907717694d7ffed24d205178c1cc1cb5b195688:5",
+          "sats": "3999977261",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
           "archiveReference": null,
@@ -806,7 +806,7 @@
         {
           "vout": 5,
           "role": "btcChange",
-          "sats": "4999992375",
+          "sats": "3999969636",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
           "archiveReference": null,
@@ -832,7 +832,7 @@
     },
     {
       "action": "listing",
-      "txid": "9c1c4f7a57b2ac575fcc781209fd7ac9d95ec95a3cf5c63225e263b364d1f8c1",
+      "txid": "2582673cf96c49360b2e01214477973286f9dbb6f2b9f9f8fe6acfa7c95c2e2c",
       "archiveReference": {
         "txid": "0027744d44f27ad7a80e67b73790cce8123b95ae2ad8dc01a561b3728241ac40",
         "operation": "transfer",
@@ -850,7 +850,7 @@
           "witnessItems": 2,
           "archiveSequence": 1000,
           "archiveWitnessItems": 3,
-          "outpoint": "4333837ccd3a510e91697630bb4ca0262cd8bbbaf5dd5c3c0af791200d08301b:1",
+          "outpoint": "52a1816f554463ac3add0309a3fda1b44f7788e4a5eeee084b691e1942db0f44:1",
           "sats": "1000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
@@ -869,8 +869,8 @@
           "witnessItems": 2,
           "archiveSequence": 4294967293,
           "archiveWitnessItems": 1,
-          "outpoint": "cc5d41b036219a3eee7bd0f77261f8e0506ef9e065c76e31c08299add095871b:4",
-          "sats": "3999989859",
+          "outpoint": "707b793c17c23d406ad37cd2a9faaa17f3e942c6a1eff9632dab79991b7e6b7e:0",
+          "sats": "5000000000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
           "archiveReference": {
@@ -931,7 +931,7 @@
         {
           "vout": 3,
           "role": "btcChange",
-          "sats": "3999987859",
+          "sats": "4999998000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
           "archiveReference": null,
@@ -956,7 +956,7 @@
     },
     {
       "action": "marketBuy",
-      "txid": "e2bf961c96805ef289ebc1501c26f5a440ea165a96b52c4e32c99206f89f2d16",
+      "txid": "120fe6b3f7eb26f776aa55d39b6ae31cb4a532d9fbdaf93e3e182bfd86f358c4",
       "archiveReference": {
         "txid": "532f22d0edcd848d28b81ddb6b089402860d01fda2ec1fdb9701ea13bb0a2dcd",
         "operation": "transfer",
@@ -974,7 +974,7 @@
           "witnessItems": 2,
           "archiveSequence": 4294967295,
           "archiveWitnessItems": 2,
-          "outpoint": "9c1c4f7a57b2ac575fcc781209fd7ac9d95ec95a3cf5c63225e263b364d1f8c1:1",
+          "outpoint": "2582673cf96c49360b2e01214477973286f9dbb6f2b9f9f8fe6acfa7c95c2e2c:1",
           "sats": "1000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
@@ -993,7 +993,7 @@
           "witnessItems": 2,
           "archiveSequence": 4294967295,
           "archiveWitnessItems": 2,
-          "outpoint": "b8ae424e2b9ee655025ff10ab784c6100f7a16b4fe678a7954065f4799330260:5",
+          "outpoint": "99c34c81671c89ff4cd1721f1dea51e4bdaad6b15286e333be02f36bb7baed6b:5",
           "sats": "999992414",
           "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
           "scriptFamily": "P2WPKH",
@@ -1101,7 +1101,7 @@
     },
     {
       "action": "listing",
-      "txid": "e1c7401ad1bf9474c5b6a8cad2a7a750df9b9398b4bdd4001b1cb9198dad1dfe",
+      "txid": "f812eda87d07a49cb14c3119eef60d9126b91834398900a446cdc569900cb205",
       "archiveReference": {
         "txid": "0027744d44f27ad7a80e67b73790cce8123b95ae2ad8dc01a561b3728241ac40",
         "operation": "transfer",
@@ -1119,7 +1119,7 @@
           "witnessItems": 2,
           "archiveSequence": 1000,
           "archiveWitnessItems": 3,
-          "outpoint": "9c1c4f7a57b2ac575fcc781209fd7ac9d95ec95a3cf5c63225e263b364d1f8c1:2",
+          "outpoint": "2582673cf96c49360b2e01214477973286f9dbb6f2b9f9f8fe6acfa7c95c2e2c:2",
           "sats": "1000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
@@ -1138,8 +1138,8 @@
           "witnessItems": 2,
           "archiveSequence": 4294967293,
           "archiveWitnessItems": 1,
-          "outpoint": "9c1c4f7a57b2ac575fcc781209fd7ac9d95ec95a3cf5c63225e263b364d1f8c1:3",
-          "sats": "3999987859",
+          "outpoint": "45b884fd40030780ecb835955bdd4b021aac9014cfa90f1a45b6fa1e1eb7baf4:0",
+          "sats": "5000000000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
           "archiveReference": {
@@ -1200,7 +1200,7 @@
         {
           "vout": 3,
           "role": "btcChange",
-          "sats": "3999985859",
+          "sats": "4999998000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
           "archiveReference": null,
@@ -1225,7 +1225,7 @@
     },
     {
       "action": "marketBuy",
-      "txid": "ee39bd17f87e945d8b8b30282659a1f4208562098f3c2b9b20c5c2fdda0fc85c",
+      "txid": "12399d1a0658f8463533a2eeccbb37fe20c51466d31a57395d241725e96e468a",
       "archiveReference": {
         "txid": "532f22d0edcd848d28b81ddb6b089402860d01fda2ec1fdb9701ea13bb0a2dcd",
         "operation": "transfer",
@@ -1243,7 +1243,7 @@
           "witnessItems": 2,
           "archiveSequence": 4294967295,
           "archiveWitnessItems": 2,
-          "outpoint": "e1c7401ad1bf9474c5b6a8cad2a7a750df9b9398b4bdd4001b1cb9198dad1dfe:1",
+          "outpoint": "f812eda87d07a49cb14c3119eef60d9126b91834398900a446cdc569900cb205:1",
           "sats": "1000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
@@ -1262,7 +1262,7 @@
           "witnessItems": 2,
           "archiveSequence": 4294967295,
           "archiveWitnessItems": 2,
-          "outpoint": "e2bf961c96805ef289ebc1501c26f5a440ea165a96b52c4e32c99206f89f2d16:4",
+          "outpoint": "120fe6b3f7eb26f776aa55d39b6ae31cb4a532d9fbdaf93e3e182bfd86f358c4:4",
           "sats": "999977067",
           "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
           "scriptFamily": "P2WPKH",
@@ -1370,7 +1370,7 @@
     },
     {
       "action": "listing",
-      "txid": "2633661b20dcd1bda5e7317f71bb4f750c515b35c720c1fa5b3bc1ba5dbda65b",
+      "txid": "405e9745f20d19561679168b7d1c7349adcf5f6acfe938855209bee0b414458d",
       "archiveReference": {
         "txid": "0027744d44f27ad7a80e67b73790cce8123b95ae2ad8dc01a561b3728241ac40",
         "operation": "transfer",
@@ -1388,7 +1388,7 @@
           "witnessItems": 2,
           "archiveSequence": 1000,
           "archiveWitnessItems": 3,
-          "outpoint": "e1c7401ad1bf9474c5b6a8cad2a7a750df9b9398b4bdd4001b1cb9198dad1dfe:2",
+          "outpoint": "f812eda87d07a49cb14c3119eef60d9126b91834398900a446cdc569900cb205:2",
           "sats": "1000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
@@ -1407,8 +1407,8 @@
           "witnessItems": 2,
           "archiveSequence": 4294967293,
           "archiveWitnessItems": 1,
-          "outpoint": "e1c7401ad1bf9474c5b6a8cad2a7a750df9b9398b4bdd4001b1cb9198dad1dfe:3",
-          "sats": "3999985859",
+          "outpoint": "f812eda87d07a49cb14c3119eef60d9126b91834398900a446cdc569900cb205:3",
+          "sats": "4999998000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
           "archiveReference": {
@@ -1469,7 +1469,7 @@
         {
           "vout": 3,
           "role": "btcChange",
-          "sats": "3999983859",
+          "sats": "4999996000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
           "archiveReference": null,
@@ -1494,7 +1494,7 @@
     },
     {
       "action": "cancel",
-      "txid": "69fff7884e28197f367362400159f691f0b9e9113da5d363d002fc2172f12fed",
+      "txid": "cf423ab5546e9432b25461e40c1da2d51e88bbefb9e71f00124c144870f56aea",
       "archiveReference": {
         "txid": "0027744d44f27ad7a80e67b73790cce8123b95ae2ad8dc01a561b3728241ac40",
         "operation": "transfer",
@@ -1512,7 +1512,7 @@
           "witnessItems": 2,
           "archiveSequence": 1000,
           "archiveWitnessItems": 3,
-          "outpoint": "2633661b20dcd1bda5e7317f71bb4f750c515b35c720c1fa5b3bc1ba5dbda65b:1",
+          "outpoint": "405e9745f20d19561679168b7d1c7349adcf5f6acfe938855209bee0b414458d:1",
           "sats": "1000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
@@ -1531,8 +1531,8 @@
           "witnessItems": 2,
           "archiveSequence": 4294967293,
           "archiveWitnessItems": 1,
-          "outpoint": "2633661b20dcd1bda5e7317f71bb4f750c515b35c720c1fa5b3bc1ba5dbda65b:3",
-          "sats": "3999983859",
+          "outpoint": "d3736f1fdf9edbd784b9c02ceffc1d13c1e9dcaa1a56479fe015537fe1f22fc0:0",
+          "sats": "5000000000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
           "archiveReference": {
@@ -1578,7 +1578,7 @@
         {
           "vout": 2,
           "role": "btcChange",
-          "sats": "3999982859",
+          "sats": "4999999000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
           "archiveReference": {
@@ -1607,7 +1607,7 @@
     },
     {
       "action": "marketBuy",
-      "txid": "09d6f18f0ffd876ac5932e63fa5e79a24f6e4f49e9e4d2114788296262495d56",
+      "txid": "d8236ec10e61dc264f02491b0c07caba70369d0089a6d1b3d2130efe4a11a4e1",
       "archiveReference": {
         "txid": "532f22d0edcd848d28b81ddb6b089402860d01fda2ec1fdb9701ea13bb0a2dcd",
         "operation": "transfer",
@@ -1625,7 +1625,7 @@
           "witnessItems": 2,
           "archiveSequence": 4294967295,
           "archiveWitnessItems": 2,
-          "outpoint": "2633661b20dcd1bda5e7317f71bb4f750c515b35c720c1fa5b3bc1ba5dbda65b:1",
+          "outpoint": "405e9745f20d19561679168b7d1c7349adcf5f6acfe938855209bee0b414458d:1",
           "sats": "1000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
@@ -1644,7 +1644,7 @@
           "witnessItems": 2,
           "archiveSequence": 4294967295,
           "archiveWitnessItems": 2,
-          "outpoint": "ee39bd17f87e945d8b8b30282659a1f4208562098f3c2b9b20c5c2fdda0fc85c:4",
+          "outpoint": "12399d1a0658f8463533a2eeccbb37fe20c51466d31a57395d241725e96e468a:4",
           "sats": "999953565",
           "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
           "scriptFamily": "P2WPKH",
@@ -1752,7 +1752,7 @@
     },
     {
       "action": "listing",
-      "txid": "27a0d74ba0169935db8163d73b1e64029b65988c68218363f7d877875ad1a6b0",
+      "txid": "ce196927f38ecd9f88e7fa5ac424d9315bdf6dc818935871c0127967db7bbd39",
       "archiveReference": {
         "txid": "0027744d44f27ad7a80e67b73790cce8123b95ae2ad8dc01a561b3728241ac40",
         "operation": "transfer",
@@ -1770,7 +1770,7 @@
           "witnessItems": 2,
           "archiveSequence": 1000,
           "archiveWitnessItems": 3,
-          "outpoint": "2633661b20dcd1bda5e7317f71bb4f750c515b35c720c1fa5b3bc1ba5dbda65b:2",
+          "outpoint": "405e9745f20d19561679168b7d1c7349adcf5f6acfe938855209bee0b414458d:2",
           "sats": "1000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
@@ -1789,8 +1789,8 @@
           "witnessItems": 2,
           "archiveSequence": 4294967293,
           "archiveWitnessItems": 1,
-          "outpoint": "da11b80e16d01523c23d2f0bed60eb1260b16ef63a92eb95bfce2072b096129d:5",
-          "sats": "4999992375",
+          "outpoint": "f3b09a5f29e266f503213ce60aa4bfa414b403ca2d95e1955d133dc0cb001bef:0",
+          "sats": "5000000000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
           "archiveReference": {
@@ -1851,7 +1851,7 @@
         {
           "vout": 3,
           "role": "btcChange",
-          "sats": "4999990375",
+          "sats": "4999998000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
           "archiveReference": null,
@@ -1876,7 +1876,7 @@
     },
     {
       "action": "marketBuy",
-      "txid": "1e3e00a65ae690ad37141ee63d68a73f9e9ba841522cab07d79a4df0ee96eb6b",
+      "txid": "a80e03cceceac2eef9304da71b2cf8f279bda98d4fa924d509a5859b60f7c429",
       "archiveReference": {
         "txid": "532f22d0edcd848d28b81ddb6b089402860d01fda2ec1fdb9701ea13bb0a2dcd",
         "operation": "transfer",
@@ -1894,7 +1894,7 @@
           "witnessItems": 2,
           "archiveSequence": 4294967295,
           "archiveWitnessItems": 2,
-          "outpoint": "27a0d74ba0169935db8163d73b1e64029b65988c68218363f7d877875ad1a6b0:1",
+          "outpoint": "ce196927f38ecd9f88e7fa5ac424d9315bdf6dc818935871c0127967db7bbd39:1",
           "sats": "1000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
@@ -1913,7 +1913,7 @@
           "witnessItems": 2,
           "archiveSequence": 4294967295,
           "archiveWitnessItems": 2,
-          "outpoint": "09d6f18f0ffd876ac5932e63fa5e79a24f6e4f49e9e4d2114788296262495d56:4",
+          "outpoint": "d8236ec10e61dc264f02491b0c07caba70369d0089a6d1b3d2130efe4a11a4e1:4",
           "sats": "999938218",
           "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
           "scriptFamily": "P2WPKH",
@@ -2021,7 +2021,7 @@
     },
     {
       "action": "deploy",
-      "txid": "0c29d499b5ad6c8de514ad7cb7b957bb5f07faf60816903dc36519194a94d5ea",
+      "txid": "ed18a512e9739bf5cf898124cf0533f4cf2ce61be2c33062d054c37997057937",
       "archiveReference": {
         "txid": "546cc042d0f396a0d8ad67b6987d9d5c09619e6962738347ca1611a1d1841b67",
         "operation": "deploy",
@@ -2039,8 +2039,8 @@
           "witnessItems": 2,
           "archiveSequence": 4294967295,
           "archiveWitnessItems": 1,
-          "outpoint": "a48c25ff791b6d3e1d66398ac28e6238a5e4ee55d73810ad9faa7f9070c7ce5c:0",
-          "sats": "5000000000",
+          "outpoint": "ce196927f38ecd9f88e7fa5ac424d9315bdf6dc818935871c0127967db7bbd39:3",
+          "sats": "4999998000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
           "archiveReference": {
@@ -2106,7 +2106,7 @@
         {
           "vout": 4,
           "role": "btcChange",
-          "sats": "4999990000",
+          "sats": "4999988000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
           "archiveReference": null,
@@ -2131,7 +2131,7 @@
     },
     {
       "action": "mint",
-      "txid": "c1cbc7abc652a4eb181690cd980830dcca866eb2f1b6b325db165b63b254b5f7",
+      "txid": "1424248161f465d79d53b272e2e893a299d2e644095670cb36f33b51ed33b93d",
       "archiveReference": {
         "txid": "17c4c6fa3a877aa42c142f4836c3cb6b10d4e588ff2150df842e2e3e3e89bde4",
         "operation": "mint",
@@ -2149,7 +2149,7 @@
           "witnessItems": 2,
           "archiveSequence": 4294967293,
           "archiveWitnessItems": 1,
-          "outpoint": "0c29d499b5ad6c8de514ad7cb7b957bb5f07faf60816903dc36519194a94d5ea:1",
+          "outpoint": "ed18a512e9739bf5cf898124cf0533f4cf2ce61be2c33062d054c37997057937:1",
           "sats": "1000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
@@ -2168,8 +2168,8 @@
           "witnessItems": 2,
           "archiveSequence": null,
           "archiveWitnessItems": null,
-          "outpoint": "0c29d499b5ad6c8de514ad7cb7b957bb5f07faf60816903dc36519194a94d5ea:4",
-          "sats": "4999990000",
+          "outpoint": "ed18a512e9739bf5cf898124cf0533f4cf2ce61be2c33062d054c37997057937:4",
+          "sats": "4999988000",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
           "archiveReference": null,
@@ -2250,7 +2250,7 @@
         {
           "vout": 5,
           "role": "btcChange",
-          "sats": "4999982375",
+          "sats": "4999980375",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
           "archiveReference": null,
@@ -2276,7 +2276,7 @@
     },
     {
       "action": "mint",
-      "txid": "49abe4d4409ba557677e5be2f723ef0cb69025b692c141798bdcd819412ccbc7",
+      "txid": "025e78151a7c9234bfe6366197dbdb39ba6e458740167f567c44b6ae6290ea81",
       "archiveReference": {
         "txid": "17c4c6fa3a877aa42c142f4836c3cb6b10d4e588ff2150df842e2e3e3e89bde4",
         "operation": "mint",
@@ -2294,7 +2294,7 @@
           "witnessItems": 2,
           "archiveSequence": 4294967293,
           "archiveWitnessItems": 1,
-          "outpoint": "c1cbc7abc652a4eb181690cd980830dcca866eb2f1b6b325db165b63b254b5f7:2",
+          "outpoint": "1424248161f465d79d53b272e2e893a299d2e644095670cb36f33b51ed33b93d:2",
           "sats": "1054",
           "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
           "scriptFamily": "P2WPKH",
@@ -2313,7 +2313,7 @@
           "witnessItems": 2,
           "archiveSequence": null,
           "archiveWitnessItems": null,
-          "outpoint": "1e3e00a65ae690ad37141ee63d68a73f9e9ba841522cab07d79a4df0ee96eb6b:4",
+          "outpoint": "a80e03cceceac2eef9304da71b2cf8f279bda98d4fa924d509a5859b60f7c429:4",
           "sats": "999922871",
           "scriptHex": "0014eaafc63e264334c6b1fc0d94e17236e8336fd871",
           "scriptFamily": "P2WPKH",

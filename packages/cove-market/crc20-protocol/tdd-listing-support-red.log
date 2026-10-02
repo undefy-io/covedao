@@ -1,0 +1,33 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao
+
+ ❯ packages/cove-market/crc20-protocol/target.test.ts (8 tests | 1 failed | 7 skipped) 6ms
+   × listing preparation refuses sellers without reusable-offer signing support 5ms
+     → expected [Function] to throw an error
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/cove-market/crc20-protocol/target.test.ts > listing preparation refuses sellers without reusable-offer signing support
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ packages/cove-market/crc20-protocol/target.test.ts:113:9
+    111|       funding: [{ txid: "c".repeat(64), vout: 0, sats: 5000n, scriptHe…
+    112|       amountAtoms: 1n, priceSats: 12347n, sellerScriptHex: input.scrip…
+    113|     })).toThrow(/unsupported seller signing script/i);
+       |         ^
+    114| });
+    115| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 skipped (8)
+   Start at  16:57:43
+   Duration  232ms (transform 65ms, setup 0ms, collect 95ms, tests 6ms, environment 0ms, prepare 31ms)
+

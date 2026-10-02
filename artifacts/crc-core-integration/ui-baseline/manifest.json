@@ -1,0 +1,63 @@
+{
+  "source_baseline": "5dded6af0952fb370637b380646f4dcd2bcc3be7",
+  "capture_date_utc": "2026-10-02",
+  "source_ui_diff_from_baseline": "",
+  "runtime_image_id": "sha256:a431ef2a30bcc7dd7fcda117dc08b1f3f3b8e68c6e2341d7c22ca7a4ce0e85e8",
+  "runtime_source_build_provenance_verified": false,
+  "capture_origin": "http://127.0.0.1:3000",
+  "scope": "Read-only pre-replacement UI; disconnected wallet. No wallet signature, broadcast, or new-core consumer evidence.",
+  "token_route": "/token/signet%3A10ac43088e2ee9d81b54f556ec1837049c57f3262e1bfd7e31f12e50a2aa0204",
+  "viewports": {
+    "desktop": [1440, 1000],
+    "mobile": [390, 844]
+  },
+  "review_launch_values": {
+    "name": "Core Baseline",
+    "ticker": "BASE"
+  },
+  "review_buy_tokens": "1000",
+  "capture_procedure": [
+    "agent-browser open route",
+    "set viewport",
+    "snapshot -i to inspect controls",
+    "screenshot; review states use --full after visible fee presets"
+  ],
+  "images": {
+    "desktop-launch-review.png": {
+      "sha256": "c85a44e421bf37601d64cd6d3d1d3aac5e457a8d5c1edffce241041c26c6fc2f"
+    },
+    "desktop-launch.png": {
+      "sha256": "d106304056a1ff9ed3c07a82ebaff66fb54bd0cfa909d8f550d1f53187b2bb2c"
+    },
+    "desktop-market.png": {
+      "sha256": "405a79bdd0b51bb829bf1b195fbd038d8184ad185b6fbb6c685808f80a313661"
+    },
+    "desktop-token-review.png": {
+      "sha256": "d49542aeb72fa8f25f314c2b6ec5265e71200f926eb7eb3f9630b600457bd35d"
+    },
+    "desktop-token.png": {
+      "sha256": "13091815a065506706be1ef06a5d09a8442400825ca774b5c37aa3ecbefe9e6d"
+    },
+    "desktop-wallet.png": {
+      "sha256": "d347baa431ad9268b3505cbe47a3adc17fc90acb23105200a08bef8ccd9cb2f8"
+    },
+    "mobile-launch-review.png": {
+      "sha256": "2e1950bc2e8fa718be99a3da7655fdf10ce86091f53f3fee1bb09e40bfc3524b"
+    },
+    "mobile-launch.png": {
+      "sha256": "8858e24a8cd53a0b0bd998d6aee1e1cdcae27a735e9d151dc60783eaeac3dd9c"
+    },
+    "mobile-market.png": {
+      "sha256": "a6e593b6d741e1fcca9144dc79ceef57ac2019e613dd09949b2667310e46c6db"
+    },
+    "mobile-token-review.png": {
+      "sha256": "a097e5dae175f1e239e5b3d423d45d8f4346f0bf215d970641ab3d9a78fd16c8"
+    },
+    "mobile-token.png": {
+      "sha256": "3bc40e4a3f0b5c7048c5a121e161e8879a79d4caa80ade6214e82b987b278dca"
+    },
+    "mobile-wallet.png": {
+      "sha256": "bd6dfadccf395cb155603e9dc708bf46b9b2860a02fa106ff77c52c071c35225"
+    }
+  }
+}

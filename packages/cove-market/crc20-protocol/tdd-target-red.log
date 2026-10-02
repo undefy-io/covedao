@@ -1,0 +1,75 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao
+
+ ❯ packages/cove-market/crc20-protocol/target.test.ts (5 tests | 4 failed) 7ms
+   × API network normalization has one core identity, without merging Bitcoin chains 3ms
+     → protocolNetwork is not a function
+   × registration identity binds the chain and canonical deployment txid, never just ticker 0ms
+     → deploymentIdentity is not a function
+   × identify required frontend scripts without treating Taproot as native custody 0ms
+     → walletScriptKind is not a function
+   × builders reject unsupported funding before returning a plan for a wallet prompt 2ms
+     → expected [Function] to throw an error
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/cove-market/crc20-protocol/target.test.ts > API network normalization has one core identity, without merging Bitcoin chains
+TypeError: protocolNetwork is not a function
+ ❯ packages/cove-market/crc20-protocol/target.test.ts:9:15
+      7| 
+      8| test("API network normalization has one core identity, without merging…
+      9|   expect(core.protocolNetwork("mainnet")).toBe("bitcoin");
+       |               ^
+     10|   for (const network of ["bitcoin", "signet", "testnet", "regtest"] as…
+     11|     expect(core.protocolNetwork(network)).toBe(network);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  packages/cove-market/crc20-protocol/target.test.ts > registration identity binds the chain and canonical deployment txid, never just ticker
+TypeError: deploymentIdentity is not a function
+ ❯ packages/cove-market/crc20-protocol/target.test.ts:18:15
+     16| test("registration identity binds the chain and canonical deployment t…
+     17|   const txid = "ab".repeat(32);
+     18|   expect(core.deploymentIdentity("mainnet", txid)).toBe(`bitcoin:${txi…
+       |               ^
+     19|   expect(core.deploymentIdentity("signet", txid)).not.toBe(core.deploy…
+     20|   for (const invalid of ["", "TEST", "a".repeat(63), txid.toUpperCase(…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  packages/cove-market/crc20-protocol/target.test.ts > identify required frontend scripts without treating Taproot as native custody
+TypeError: walletScriptKind is not a function
+ ❯ packages/cove-market/crc20-protocol/target.test.ts:41:15
+     39| 
+     40| test("identify required frontend scripts without treating Taproot as n…
+     41|   expect(core.walletScriptKind(native)).toBe("p2wpkh");
+       |               ^
+     42|   expect(core.walletScriptKind(nested)).toBe("p2sh-p2wpkh");
+     43|   expect(core.walletScriptKind(taproot)).toBe("p2tr");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  packages/cove-market/crc20-protocol/target.test.ts > builders reject unsupported funding before returning a plan for a wallet prompt
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ packages/cove-market/crc20-protocol/target.test.ts:54:9
+     52|       funding: [{ txid: "b".repeat(64), vout: 0, sats: 30000n, scriptH…
+     53|       changeScriptHex: native,
+     54|     })).toThrow(/unsupported input script/i);
+       |         ^
+     55| });
+     56| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 1 passed (5)
+   Start at  16:43:51
+   Duration  263ms (transform 105ms, setup 0ms, collect 125ms, tests 7ms, environment 0ms, prepare 32ms)
+

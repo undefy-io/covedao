@@ -1,6 +1,6 @@
 # Verification evidence
 
-The isolated suite passes 48 tests in nine files, with no skipped or unfinished cases. The full run takes approximately 40 seconds on this workspace, including Docker startup and cleanup. Blocks are generated on demand; no ten-minute block interval is used.
+The current isolated suite passes 86 tests in thirteen files, with no skipped tests. The full run takes approximately 77 seconds on this workspace, including Docker startup and cleanup. Production integration requirements remain open below. Blocks are generated on demand; no ten-minute block interval is used.
 
 `test-support/check.sh` runs the suite, strict TypeScript checks over runtime and test support, ESLint and formatting checks. `verification.log`, `typecheck.log` and `lint.log` retain the command results. A nonzero exit fails the check script.
 
@@ -64,3 +64,35 @@ Both regtest suites run the SQLite compliance checker on every confirmed transac
 | Alternatively sell 1,000 |               27 sats |   1,000 sats |           0 |
 
 A 1,000-sat miner fee is checked separately on each actual transaction. Small-sale wallet top-ups are independently pinned at 2,990 sats for the 400 sale, 983 for the remaining 600 sale, and 973 for the full 1,000 sale. Token-carrier recovery and token change explain the different funding amounts.
+
+
+## Shared-core target and script extension (2026-10-02)
+
+`target.test.ts` pins canonical network/deployment identities, the existing
+small-curve economics, arbitrary listing atoms, proven nested script
+classification, builder funding gates, and refusal to prepare listings for
+unsupported reusable-offer sellers. The native offer restriction is an open
+integration requirement, not the final target wallet support.
+
+`scripts.test.ts` independently signs nested SegWit, Taproot key-path and
+Guardian execution-path inputs using bitcoinjs-lib digests. Docker Bitcoin Core
+accepts and mines each path; independently retrieved raw transactions and actual
+prevouts verify against the core with exactly 1,000-sat miner fees. Tampering
+with prevouts, payouts, revealed commitments, execution scripts, control blocks,
+parity, annexes and signature flags is rejected. Mixed-input digest comparisons
+exercise DEFAULT, ALL and valid current-Taproot SINGLE|ANYONECANPAY cases, with
+and without the BIP342 extension. Nested replay uses raw proven redeem data,
+not caller annotations, and rollback restores the empty ledger.
+
+Custody registration tests bind the NUMS key, Guardian key, asset commitment and
+independently configured recovery-leaf hash. They do not validate selection of a
+production recovery profile or prove production Guardian integration. Invalid
+controller points fail before registration. Native-only reusable offers,
+wallet-supported bound-message signing, production custody enforcement and
+broken-vault transitions remain open Beads requirements.
+
+Fresh Astra review found and drove fixes for unproved P2SH classification,
+invalid Guardian controller points and listing preparation exceeding reusable
+offer support. Its separate 126-case bitcoinjs comparison found no Taproot digest
+mismatch. This is correctness evidence for the core extension, not an actual
+wallet or deployment gate.

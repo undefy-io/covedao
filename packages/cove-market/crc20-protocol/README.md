@@ -1,6 +1,6 @@
 # Isolated CRC protocol
 
-The public entry point is `index.ts`. Nothing outside this directory is integrated or changed. `SPEC.md` defines the protocol stories and fee policy; `VERIFICATION.md` maps them to the tests and records the evidence.
+The public entry point is `index.ts`. No production consumer is integrated yet. The replacement contract is recorded in `docs/CRC_CORE_INTEGRATION.md` at the repository root. `SPEC.md` defines the protocol stories and fee policy; `VERIFICATION.md` maps them to the tests and records the evidence.
 
 Run the isolated checks from the repository root:
 
@@ -22,7 +22,7 @@ The suite uses the existing TypeScript, Vitest, bitcoinjs-lib and tiny-secp256k1
 
 ## Boundaries
 
-This isolated implementation registers native P2WPKH deployment, vault, wallet and fee scripts. Its signature verifier supports `SIGHASH_ALL`, plus the registered market input's `SINGLE|ANYONECANPAY` authorization. The generic Garden wire decoder and raw parser also read the archive's Taproot outputs, but the isolated ledger does not claim Taproot covenant or Guardian integration. A registered vault script must still be signed by its controller; pure protocol validation does not replace Bitcoin custody or consensus enforcement.
+Builders and replay support native P2WPKH, proven nested P2SH-P2WPKH and Taproot scripts. Nested builder inputs require a matching `redeemScriptHex`; replay derives it from the already-verified raw scriptSig. Signature verification supports SegWit `ALL`, Taproot `DEFAULT`/`ALL`, and the registered market input's exact `SINGLE|ANYONECANPAY` authorization. Taproot script-path verification accepts only the Guardian execution template and proves its revealed commitment, Merkle branch, output key and parity. Annexes and other script paths are rejected. `validateGuardianCustody` additionally checks the NUMS internal key, valid Guardian key and independently configured recovery-leaf hash. It is a registration primitive, not proof that production Guardian custody is wired. Reusable offers and listing preparation still support native P2WPKH sellers only; unsupported sellers fail before a preparation plan is returned. Wallet-compatible Taproot offer authorization remains an open integration requirement. No Taproot covenant or production Guardian integration is claimed. A registered vault script must still be signed by its controller; pure protocol validation does not replace Bitcoin custody or consensus enforcement.
 
 `applyBlock` is a strict protocol replay API, not a complete Bitcoin indexer. Its transaction list contains protocol transactions with actual prevouts; the test adapter omits coinbase. Supply and ownership rules require the registered configuration and, for market fills, the previously verified offer. Raw marker JSON alone cannot reconstruct missing offer terms. Canonical block selection and prevout retrieval belong to the caller. No existing backend, frontend, indexer or Guardian has been connected to this API.
 

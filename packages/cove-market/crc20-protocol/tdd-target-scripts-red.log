@@ -1,0 +1,29 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao
+
+ ❯ packages/cove-market/crc20-protocol/target.test.ts (7 tests | 1 failed) 8ms
+   × supported native, proven nested, and Taproot funding return exact deploy plans 3ms
+     → unsupported input script
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/cove-market/crc20-protocol/target.test.ts > supported native, proven nested, and Taproot funding return exact deploy plans
+Error: unsupported input script
+ ❯ Module.requireSupportedInputScript packages/cove-market/crc20-protocol/target.ts:44:52
+     42|  */
+     43| export function requireSupportedInputScript(scriptHex: string): void {
+     44|   if (!/^0014[0-9a-f]{40}$/.test(scriptHex)) throw new Error("unsuppor…
+       |                                                    ^
+     45| }
+     46| 
+ ❯ finish packages/cove-market/crc20-protocol/builders.ts:66:5
+ ❯ Module.buildDeploy packages/cove-market/crc20-protocol/builders.ts:173:10
+ ❯ packages/cove-market/crc20-protocol/target.test.ts:91:23
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+   Start at  16:51:13
+   Duration  271ms (transform 85ms, setup 0ms, collect 126ms, tests 8ms, environment 0ms, prepare 40ms)
+

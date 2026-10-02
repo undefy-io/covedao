@@ -1,0 +1,33 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao
+
+ ❯ packages/cove-market/crc20-protocol/scripts.test.ts (11 tests | 1 failed | 10 skipped) 41ms
+   × Guardian custody rejects an execution controller that is not a curve point 40ms
+     → expected [Function] to throw an error
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/cove-market/crc20-protocol/scripts.test.ts > Guardian custody rejects an execution controller that is not a curve point
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ packages/cove-market/crc20-protocol/scripts.test.ts:337:7
+    335|     executionScriptHex: badScript.toString("hex"), controlBlockHex: ba…
+    336|     recoveryLeafHashHex: bitcoin.crypto.taggedHash("TapLeaf", Buffer.f…
+    337|   })).toThrow(/controller/i);
+       |       ^
+    338| });
+    339| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 10 skipped (11)
+   Start at  16:56:18
+   Duration  271ms (transform 76ms, setup 0ms, collect 93ms, tests 41ms, environment 0ms, prepare 34ms)
+

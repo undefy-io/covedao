@@ -1,3 +1,4 @@
+import { requireSupportedInputScript, requireSupportedOutputScript } from "./target.js";
 import type { Asset, Config, Input, Offer, Output, Plan } from "./types.js";
 import {
   capAtoms,
@@ -34,14 +35,13 @@ export function validateConfig(config: Config): void {
   )
     throw new Error("invalid deployment identity");
   for (const script of [config.vaultScriptHex, config.creatorScriptHex, config.protocolScriptHex])
-    if (!/^0014[0-9a-f]{40}$/.test(script)) throw new Error("native P2WPKH registration required");
+    requireSupportedOutputScript(script);
 }
 const output = (role: string, scriptHex: string, value: bigint, atoms?: bigint): Output => {
-  if (
-    role !== "marker" &&
-    (!/^0014[0-9a-f]{40}$/.test(scriptHex) || (value < carrierSats && role !== "creatorFee"))
-  )
-    throw new Error("unspendable/dust output");
+  if (role !== "marker") {
+    requireSupportedOutputScript(scriptHex);
+    if (value < carrierSats && role !== "creatorFee") throw new Error("unspendable/dust output");
+  }
   return { role, scriptHex, sats: value, ...(atoms === undefined ? {} : { atoms }) };
 };
 function ordinaryFunding(inputs: Input[]): Input[] {
@@ -62,6 +62,7 @@ function finish(
   if (!inputs.length || new Set(inputs.map(outpoint)).size !== inputs.length)
     throw new Error("missing or duplicate input");
   for (const input of inputs) {
+    requireSupportedInputScript(input.scriptHex, input.redeemScriptHex);
     if (
       !/^[0-9a-f]{64}$/.test(input.txid) ||
       !Number.isInteger(input.vout) ||
@@ -152,6 +153,8 @@ export function buildTransfer(args: TransferArgs): Plan {
   );
 }
 export function buildListing(args: TransferArgs): Plan {
+  if (!/^0014[0-9a-f]{40}$/.test(args.sellerScriptHex ?? ""))
+    throw new Error("unsupported seller signing script for reusable offers");
   if (tokenInputs(args).owner !== args.sellerScriptHex)
     throw new Error("listing seller must own the token inputs");
   if (!args.priceSats || args.priceSats <= 0n)

@@ -85,7 +85,13 @@ function applyTransaction(ledger: Ledger, transaction: ChainTransaction): Ledger
     tx.outputs.reduce((sum, o) => sum + o.sats, 0n);
   if (minerFeeSats < 1n || minerFeeSats > maxMinerFeeSats)
     throw new Error("miner fee outside policy");
-  const inputs = transaction.prevouts.map((i) => ({ ...i, sats: sats(i.sats) }));
+  const inputs = transaction.prevouts.map((i, index) => ({
+    ...i,
+    sats: sats(i.sats),
+    ...(/^a914[0-9a-f]{40}87$/.test(i.scriptHex)
+      ? { redeemScriptHex: tx.inputs[index]!.scriptHex.slice(2) }
+      : {}),
+  }));
   const tokens = inputs
     .filter((i) => ledger.allocations[outpoint(i)])
     .map((i) => ({ ...i, ...ledger.allocations[outpoint(i)]! }));

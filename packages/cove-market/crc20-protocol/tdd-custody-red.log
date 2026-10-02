@@ -1,0 +1,53 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao
+
+ ❯ packages/cove-market/crc20-protocol/scripts.test.ts (9 tests | 2 failed) 4862ms
+   ✓ Docker Core mines all three independently signed supported paths with exact fees 4789ms
+   × registered replay derives proven nested redeem data from raw input rather than caller annotations 54ms
+     → unsupported input script or missing matching redeem script
+   × Guardian registration pins NUMS, asset commitment, controller and selected recovery branch 3ms
+     → expected [Function] to not throw an error but 'TypeError: core.validateGuardianCusto…' was thrown
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/cove-market/crc20-protocol/scripts.test.ts > registered replay derives proven nested redeem data from raw input rather than caller annotations
+Error: unsupported input script or missing matching redeem script
+ ❯ Module.requireSupportedInputScript packages/cove-market/crc20-protocol/target.ts:47:11
+     45|     walletScriptKind(scriptHex, redeemScriptHex);
+     46|   } catch {
+     47|     throw new Error("unsupported input script or missing matching rede…
+       |           ^
+     48|   }
+     49| }
+ ❯ finish packages/cove-market/crc20-protocol/builders.ts:65:5
+ ❯ Module.buildDeploy packages/cove-market/crc20-protocol/builders.ts:172:10
+ ❯ applyTransaction packages/cove-market/crc20-protocol/replay.ts:105:12
+ ❯ Module.validateFinalTransaction packages/cove-market/crc20-protocol/replay.ts:366:15
+ ❯ packages/cove-market/crc20-protocol/scripts.test.ts:214:15
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  packages/cove-market/crc20-protocol/scripts.test.ts > Guardian registration pins NUMS, asset commitment, controller and selected recovery branch
+AssertionError: expected [Function] to not throw an error but 'TypeError: core.validateGuardianCusto…' was thrown
+
+- Expected: 
+undefined
+
++ Received: 
+"TypeError: core.validateGuardianCustody is not a function"
+
+ ❯ packages/cove-market/crc20-protocol/scripts.test.ts:227:93
+    225|     recoveryLeafHashHex: bitcoin.crypto.taggedHash("TapLeaf", Buffer.c…
+    226|   };
+    227|   expect(() => core.validateGuardianCustody(guardian.output!.toString(…
+       |                                                                                             ^
+    228|   for (const change of [
+    229|     { assetCommitmentHex: "42".repeat(32) }, { guardianPublicKeyHex: "…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 7 passed (9)
+   Start at  16:53:32
+   Duration  5.10s (transform 89ms, setup 0ms, collect 109ms, tests 4.86s, environment 0ms, prepare 32ms)
+
