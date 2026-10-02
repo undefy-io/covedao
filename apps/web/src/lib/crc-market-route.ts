@@ -3,7 +3,7 @@ import { z } from "zod";
 import { COVE_FEE_CONFIG } from "@crclaunch/cove-economics";
 import {
   crcMarketFee, createCrcListing, cancelCrcListing, reserveCrcFill,
-  submitBuyerSignedCrcFill, listCrcSellerFillRequests, acceptSignedCrcFill,
+  completePresignedCrcFill, listCrcSellerFillRequests, acceptSignedCrcFill,
   broadcastCrcFill, type CrcListing, type CrcNetwork,
 } from "@crclaunch/cove-market";
 import type { CoreRpcProvider } from "@crclaunch/bitcoin";
@@ -73,6 +73,7 @@ export async function readCrcMarketListings(db: Database, network: CrcNetwork, d
     JOIN cove_crc_token_utxos u ON u.network = l.network AND u.deploy_txid = l.deploy_txid
       AND u.txid = l.seller_anchor_txid AND u.vout = l.seller_anchor_vout
     WHERE l.network = ${network} AND l.status IN ('OPEN', 'RESERVED') AND a.protocol_version = 3
+      AND l.seller_presigned_psbt_base64 IS NOT NULL
       AND u.script_hex = l.seller_script_hex AND u.atoms = l.amount_atoms
       AND ${deployTxid ? sql`l.deploy_txid = ${deployTxid}` : sql`true`}
       AND l.expires_at_height > COALESCE((SELECT height FROM cove_crc_cursor WHERE network = ${network}), 0)
@@ -127,13 +128,13 @@ export async function crcMarketPost(
         return ok({ tokenFreeOutpoints: parsed.outpoints.filter((coin) => !carrying.has(`${coin.txid}:${coin.vout}`)) });
       }
       case "listings": {
-        const parsed = z.object({ listing, sellerAuthorizationB64: z.string().min(1).max(10_000) }).strict().parse(raw);
+        const parsed = z.object({ listing, sellerPresignedPsbtBase64: z.string().min(1).max(250_000) }).strict().parse(raw);
         if (parsed.listing.network !== network) return fail("WRONG_NETWORK", "Listing network differs from server", 400);
         const proposed: CrcListing = { ...parsed.listing,
           amountAtoms: BigInt(parsed.listing.amountAtoms), expiresAtHeight: BigInt(parsed.listing.expiresAtHeight) };
         if (proposed.protocolFeeSats !== crcMarketFee(proposed.priceSats, COVE_FEE_CONFIG.p2pFeeBps,
           COVE_FEE_CONFIG.p2pFeeMinSats)) return fail("BAD_REQUEST", "Listing fee differs from policy", 400);
-        await createCrcListing(db, proposed, parsed.sellerAuthorizationB64, provider,
+        await createCrcListing(db, proposed, parsed.sellerPresignedPsbtBase64, provider,
           COVE_FEE_CONFIG.p2pFeeBps);
         return ok({ listingId: proposed.id });
       }
@@ -145,8 +146,10 @@ export async function crcMarketPost(
       }
       case "buyer-sign": {
         const parsed = signed.parse(raw);
-        await submitBuyerSignedCrcFill(db, network, parsed.fillId, parsed.signedPsbtBase64);
-        return ok({ fillId: parsed.fillId, status: "BUYER_SIGNED" });
+        const completed = await completePresignedCrcFill(db, network, parsed.fillId, parsed.signedPsbtBase64, provider);
+        const broadcastTxid = await broadcastCrcFill(db, network, parsed.fillId, provider);
+        if (broadcastTxid !== completed.txid) throw new Error("broadcast transaction differs from buyer-signed fill");
+        return ok({ fillId: parsed.fillId, txid: broadcastTxid, status: "BROADCAST" });
       }
       case "seller-requests": {
         const parsed = z.object({ sellerScriptHex: script }).strict().parse(raw);

@@ -1,12 +1,14 @@
 import * as bitcoin from "bitcoinjs-lib";
+import * as ecc from "tiny-secp256k1";
+import { ECPairFactory } from "ecpair";
 import { isDeepStrictEqual } from "node:util";
 import { randomBytes } from "node:crypto";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { eq } from "drizzle-orm";
-import { CoreRpcProvider } from "@crclaunch/bitcoin";
+import { CoreRpcProvider, checkListingSignature, checkSpendSignature, SIGHASH_SINGLE_ANYONECANPAY } from "@crclaunch/bitcoin";
 import { quoteBuy, quoteSell } from "@crclaunch/crc20-curve";
-import { buildCoveV3MarketFill, buildCoveV3Transfer, buildCurveBuyV3, buildCurveDeployV3, buildCurveSellV3, type CoveTokenInput, type TxTemplate } from "@crclaunch/crc20-transactions";
+import { buildCoveV3MarketFill, buildCoveV3Transfer, buildCurveBuyV3, buildCurveDeployV3, buildCurveSellV3, buildUnsignedPsbt, type CoveTokenInput, type TxTemplate } from "@crclaunch/crc20-transactions";
 import { schema } from "@crclaunch/db";
 import { saveAuthorizedCrcLaunchIntent } from "./intents.js";
 import { syncCrcTip, type CrcWorkerSnapshot } from "./runner.js";
@@ -32,7 +34,7 @@ class Rpc {
     return body.result;
   }
 
-  async address(type: "bech32m" | "p2sh-segwit" = "bech32m"): Promise<{ address: string; scriptHex: string }> {
+  async address(type: "bech32m" | "bech32" | "p2sh-segwit" = "bech32m"): Promise<{ address: string; scriptHex: string }> {
     const address = await this.call<string>("getnewaddress", ["", type], true);
     const info = await this.call<{ scriptPubKey: string }>("getaddressinfo", [address], true);
     return { address, scriptHex: info.scriptPubKey };
@@ -263,7 +265,7 @@ async function main(): Promise<void> {
       synced = await syncCrcTip({ db, provider, network: "regtest", activationHeight, protocolScriptHex: protocol.scriptHex, snapshot: synced.snapshot });
       const saleFunding: Funding = { txid: splitFunding.txid, vout: 0, sats: 20_000, scriptHex: buyer.scriptHex };
       funding = splitFunding.change;
-      const withdrawnBuyer = await rpc.address("p2sh-segwit");
+      const withdrawnBuyer = await rpc.address("bech32");
       const staleSaleTemplate = buildCoveV3MarketFill({ ticker, deploymentTxid: deploy.txid,
         listedInput: oldListedInput, buyerScriptHex: withdrawnBuyer.scriptHex, recipientSats: 600,
         sellerNetPriceSats: 2_000, protocolScriptHex: protocol.scriptHex, protocolFeeSats: 1_000,
@@ -312,25 +314,75 @@ async function main(): Promise<void> {
       const listedInput: CoveTokenInput & Funding = { txid: listedTxid!, vout: Number(listedVout),
         sats: listedOutput.value, valueSats: listedOutput.value, scriptHex: withdrawnBuyer.scriptHex,
         tokenAtoms: BigInt(listed[1].atoms), tokenDeploymentTxid: deploy.txid };
-      const marketBuyer = await rpc.address();
-      const rivalBuyer = await rpc.address();
-      const buyerChangeSats = funding.sats - 4_330;
-      if (buyerChangeSats < 330) throw new Error("market buyer change below dust");
+      const keys = ECPairFactory(ecc);
+      const marketBuyerKey = keys.fromPrivateKey(Buffer.alloc(32, 0x63));
+      const rivalBuyerKey = keys.fromPrivateKey(Buffer.alloc(32, 0x64));
+      const marketBuyerScript = bitcoin.payments.p2wpkh({ pubkey: marketBuyerKey.publicKey,
+        network: bitcoin.networks.regtest }).output!.toString("hex");
+      const rivalBuyerScript = bitcoin.payments.p2wpkh({ pubkey: rivalBuyerKey.publicKey,
+        network: bitcoin.networks.regtest }).output!.toString("hex");
+      await rpc.call("lockunspent", [false, [{ txid: listedInput.txid, vout: listedInput.vout }]], true);
+      const buyerCoins: { txid: string; vout: number; valueSats: number; scriptHex: string; tokenAtoms: bigint }[] = [];
+      for (const scriptHex of [marketBuyerScript, rivalBuyerScript]) {
+        const address = bitcoin.address.fromOutputScript(Buffer.from(scriptHex, "hex"), bitcoin.networks.regtest);
+        const txid = await rpc.call<string>("sendtoaddress", [address, 0.0002], true);
+        const parent = bitcoin.Transaction.fromHex(await rpc.call<string>("getrawtransaction", [txid]));
+        const vout = parent.outs.findIndex((output) => output.script.toString("hex") === scriptHex && output.value === 20_000);
+        if (vout < 0) throw new Error("independent buyer funding output missing");
+        buyerCoins.push({ txid, vout, valueSats: 20_000, scriptHex, tokenAtoms: 0n });
+      }
+      await rpc.call("lockunspent", [true, [{ txid: listedInput.txid, vout: listedInput.vout }]], true);
+      await mine(rpc, miner.address);
+      synced = await syncCrcTip({ db, provider, network: "regtest", activationHeight, protocolScriptHex: protocol.scriptHex, snapshot: synced.snapshot });
+      const currentHeight = BigInt((await provider.getBlockchainInfo()).blocks);
+      const listing = { id: randomBytes(16).toString("hex"), network: "regtest" as const,
+        deployTxid: deploy.txid, ticker, sellerScriptHex: withdrawnBuyer.scriptHex,
+        sellerPayoutScriptHex: withdrawnBuyer.scriptHex, sellerAnchorTxid: listedInput.txid,
+        sellerAnchorVout: listedInput.vout, sellerAnchorSats: listedInput.valueSats,
+        amountAtoms: listedInput.tokenAtoms, priceSats: 2_000, protocolFeeSats: 1_000,
+        expiresAtHeight: currentHeight + 12n };
+      const sellerListing = new bitcoin.Psbt({ network: bitcoin.networks.regtest });
+      sellerListing.setVersion(2);
+      sellerListing.addInput({ hash: listedInput.txid, index: listedInput.vout,
+        sequence: 0xffffffff, witnessUtxo: { script: Buffer.from(listedInput.scriptHex, "hex"),
+          value: listedInput.valueSats }, sighashType: SIGHASH_SINGLE_ANYONECANPAY });
+      sellerListing.addOutput({ script: Buffer.from(withdrawnBuyer.scriptHex, "hex"),
+        value: listedInput.valueSats + listing.priceSats });
+      const presigned = await rpc.call<{ psbt: string }>("walletprocesspsbt",
+        [sellerListing.toBase64(), true, "SINGLE|ANYONECANPAY", true, false], true);
+      const sellerSigned = bitcoin.Psbt.fromBase64(presigned.psbt, { network: bitcoin.networks.regtest });
+      if (!checkListingSignature(sellerSigned, 0).ok || sellerSigned.data.inputs[0]!.partialSig?.length !== 1) {
+        throw new Error("seller did not presign the fixed payout");
+      }
+      const sellerSignature = sellerSigned.data.inputs[0]!.partialSig!;
+      const makeSale = (buyerScriptHex: string, buyerCoin: typeof buyerCoins[number], buyerKey: typeof marketBuyerKey) => {
+        const template = buildCoveV3MarketFill({ ticker, deploymentTxid: deploy.txid, listedInput,
+          buyerScriptHex, recipientSats: 330, sellerNetPriceSats: listing.priceSats,
+          protocolScriptHex: protocol.scriptHex, protocolFeeSats: listing.protocolFeeSats,
+          buyerChangeSats: 15_670, buyerChangeScriptHex: buyerScriptHex });
+        const psbt = buildUnsignedPsbt(template, [listedInput, buyerCoin], 1_000, bitcoin.networks.regtest);
+        psbt.data.inputs[0]!.sighashType = SIGHASH_SINGLE_ANYONECANPAY;
+        psbt.updateInput(0, { partialSig: sellerSignature });
+        psbt.signInput(1, buyerKey);
+        if (!checkListingSignature(psbt, 0).ok || !checkSpendSignature(psbt, 1).ok) {
+          throw new Error("independent seller or buyer signature is invalid");
+        }
+        psbt.finalizeAllInputs();
+        const tx = psbt.extractTransaction();
+        return { txid: tx.getId(), rawHex: tx.toHex() };
+      };
+      const sale = makeSale(marketBuyerScript, buyerCoins[0]!, marketBuyerKey);
+      const rival = makeSale(rivalBuyerScript, buyerCoins[1]!, rivalBuyerKey);
       const saleTemplate = buildCoveV3MarketFill({ ticker, deploymentTxid: deploy.txid, listedInput,
-        buyerScriptHex: marketBuyer.scriptHex, recipientSats: 330, sellerNetPriceSats: 2_000,
-        protocolScriptHex: protocol.scriptHex, protocolFeeSats: 1_000, buyerChangeSats });
-      const rivalTemplate = buildCoveV3MarketFill({ ticker, deploymentTxid: deploy.txid, listedInput,
-        buyerScriptHex: rivalBuyer.scriptHex, recipientSats: 330, sellerNetPriceSats: 2_000,
-        protocolScriptHex: protocol.scriptHex, protocolFeeSats: 1_000, buyerChangeSats });
-      const sale = await sign(rpc, saleTemplate, [listedInput, funding], marketBuyer.scriptHex);
-      const rival = await sign(rpc, rivalTemplate, [listedInput, funding], rivalBuyer.scriptHex);
+        buyerScriptHex: marketBuyerScript, recipientSats: 330, sellerNetPriceSats: 2_000,
+        protocolScriptHex: protocol.scriptHex, protocolFeeSats: 1_000, buyerChangeSats: 15_670 });
       const saleMarker = bitcoin.script.compile([bitcoin.opcodes.OP_RETURN!, Buffer.from(JSON.stringify({
         p: "crc-20", op: "transfer", tick: ticker, amt: listedInput.tokenAtoms.toString(),
       }))]);
       requireEqual(saleTemplate.tx.outs[0]?.script.toString("hex"), withdrawnBuyer.scriptHex, "market seller payout vout0");
       requireEqual(saleTemplate.tx.outs[0]?.value, listedInput.valueSats + 2_000, "market seller payout value");
       requireEqual(saleTemplate.tx.outs[1]?.script.toString("hex"), saleMarker.toString("hex"), "market marker vout1");
-      requireEqual(saleTemplate.tx.outs[2]?.script.toString("hex"), marketBuyer.scriptHex, "market buyer carrier vout2");
+      requireEqual(saleTemplate.tx.outs[2]?.script.toString("hex"), marketBuyerScript, "market buyer carrier vout2");
       requireEqual(saleTemplate.tx.outs[2]?.value, 330, "market buyer carrier value");
       requireEqual(saleTemplate.tx.outs[3]?.value, 1_000, "market protocol fee value");
       requireEqual(await rpc.call<string>("sendrawtransaction", [sale.rawHex]), sale.txid, "market fill broadcast");
@@ -343,11 +395,11 @@ async function main(): Promise<void> {
       requireEqual(minedSale.outs[0]?.script.toString("hex"), withdrawnBuyer.scriptHex, "mined market seller payout vout0");
       requireEqual(minedSale.outs[0]?.value, listedInput.valueSats + 2_000, "mined market seller payout value");
       requireEqual(minedSale.outs[1]?.script.toString("hex"), saleMarker.toString("hex"), "mined market marker vout1");
-      requireEqual(minedSale.outs[2]?.script.toString("hex"), marketBuyer.scriptHex, "mined market buyer carrier vout2");
+      requireEqual(minedSale.outs[2]?.script.toString("hex"), marketBuyerScript, "mined market buyer carrier vout2");
       requireEqual(minedSale.outs[2]?.value, 330, "mined market buyer carrier value");
       requireEqual(minedSale.outs[3]?.value, 1_000, "mined market protocol fee value");
       synced = await syncCrcTip({ db, provider, network: "regtest", activationHeight, protocolScriptHex: protocol.scriptHex, snapshot: synced.snapshot });
-      requireEqual(synced.snapshot.state.assets[assetId]?.balances[marketBuyer.scriptHex], "100000000000", "market buyer credited after vault break");
+      requireEqual(synced.snapshot.state.assets[assetId]?.balances[marketBuyerScript], "100000000000", "market buyer credited after vault break");
       requireEqual(synced.snapshot.state.assets[assetId]?.tokenUtxos?.[`${sale.txid}:2`]?.atoms, "100000000000", "market token UTXO indexed");
     }
     const eventCountBeforeReorg = (await db.select().from(schema.coveCrcEvents).where(eq(schema.coveCrcEvents.network, "regtest"))).length;
@@ -361,7 +413,7 @@ async function main(): Promise<void> {
     if (!isDeepStrictEqual(recovered.snapshot.projection, previousSnapshot!.projection)) throw new Error("reorg did not restore the prior CRC projection");
     requireEqual((await db.select().from(schema.coveCrcEvents).where(eq(schema.coveCrcEvents.network, "regtest"))).length, eventCountBeforeReorg - 1, "reorg CRC event count");
     console.log(JSON.stringify({ ok: true, version: 3, ticker, deployTxid: deploy.txid,
-      trades: operations.length, adversarial: ["ordinary-utxo", "marker-tamper", "withdrawal-conflict", "nested-seller-fill", "broken-vault-fill", "competing-fill"],
+      trades: operations.length, adversarial: ["ordinary-utxo", "marker-tamper", "withdrawal-conflict", "presigned-two-account-fill", "broken-vault-fill", "competing-fill"],
       reorgRollback: recovered.rolledBack, cursor: recovered.snapshot.cursor?.height }));
     await clean(db);
   } finally {

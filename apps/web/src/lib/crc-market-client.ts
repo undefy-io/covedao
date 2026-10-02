@@ -56,7 +56,7 @@ export async function buyCrcMarketListing(
   wallet: MarketWallet,
   minerFeeSats: number,
   request: Request = fetch,
-): Promise<{ fillId: string }> {
+): Promise<{ fillId: string; txid: string }> {
   if (!Number.isSafeInteger(minerFeeSats) || minerFeeSats < 1 || minerFeeSats > 20_000) {
     throw new Error("Miner fee must be 1 to 20,000 sats");
   }
@@ -153,9 +153,12 @@ export async function buyCrcMarketListing(
   if (reserved.fillId !== fillId) throw new Error("Market reservation identity changed");
   const signedPsbtBase64 = await signCrcMarketFillAfterReview(reserved.psbtBase64, terms,
     wallet.ordinalsScript, wallet.signPsbt);
-  await data(request, "/api/crc/v1/market/buyer-sign", {
+  const completed = await data<{ fillId: string; txid: string }>(request, "/api/crc/v1/market/buyer-sign", {
     method: "POST", headers: { "content-type": "application/json" },
     body: JSON.stringify({ fillId, signedPsbtBase64 }),
   });
-  return { fillId };
+  if (completed.fillId !== fillId || !/^[0-9a-f]{64}$/.test(completed.txid)) {
+    throw new Error("Market fill broadcast identity changed");
+  }
+  return completed;
 }

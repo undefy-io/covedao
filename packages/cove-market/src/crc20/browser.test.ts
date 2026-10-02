@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import { ECPairFactory } from "ecpair";
-import { createCrcFill, crcCancelMessage as serverCancel, crcListingMessage as serverListing,
+import { buildCrcListingPsbt as serverListingPsbt, createCrcFill, crcCancelMessage as serverCancel, crcListingMessage as serverListing,
   crcMarketFee as serverFee,
-  verifyCrcFillTransaction as serverVerify } from "./market.js";
-import { crcCancelMessage, crcListingMessage, crcMarketFee, verifyCrcFillTransaction } from "./browser.js";
+  verifyCrcFillTransaction as serverVerify, verifyCrcListingPresign } from "./market.js";
+import { buildCrcListingPsbt, crcCancelMessage, crcListingMessage, crcMarketFee, verifyCrcFillTransaction } from "./browser.js";
+
+bitcoin.initEccLib(ecc as unknown as Parameters<typeof bitcoin.initEccLib>[0]);
 
 const deployTxid = "a".repeat(64);
 const sellerScript = `0014${"b".repeat(40)}`;
@@ -33,6 +35,23 @@ const terms = { listing, asset, sellerFunding, buyerFunding: [buyerFunding],
   recipientSats: 1_000, minerFeeSats: 400, currentHeight: 100n };
 
 describe("browser market verifier and server writer", () => {
+  it("builds the exact seller listing PSBT in browser and server for SegWit and Taproot", () => {
+    const sellerKey = ECPairFactory(ecc).fromPrivateKey(Buffer.alloc(32, 0x46));
+    const xonly = Buffer.from(sellerKey.publicKey.subarray(1, 33));
+    const tapScript = bitcoin.payments.p2tr({ internalPubkey: xonly,
+      network: bitcoin.networks.regtest }).output!.toString("hex");
+    for (const sellerScriptHex of [bitcoin.payments.p2wpkh({ pubkey: sellerKey.publicKey }).output!.toString("hex"), tapScript]) {
+      const terms = { ...listing, sellerScriptHex, sellerPayoutScriptHex: sellerScriptHex };
+      const publicKey = sellerScriptHex === tapScript ? xonly.toString("hex") : undefined;
+      const browser = buildCrcListingPsbt(terms, publicKey);
+      const server = serverListingPsbt(terms, publicKey);
+      expect(browser.data.globalMap.unsignedTx.toBuffer().equals(server.data.globalMap.unsignedTx.toBuffer())).toBe(true);
+      const signer = sellerScriptHex === tapScript
+        ? sellerKey.tweak(bitcoin.crypto.taggedHash("TapTweak", xonly)) : sellerKey;
+      browser.signInput(0, signer, [bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY]);
+      expect(verifyCrcListingPresign(browser.toBase64(), terms)).toBeTruthy();
+    }
+  });
   it("share exact authorization messages and accept the same valid fill", () => {
     expect(crcListingMessage(listing)).toBe(serverListing(listing));
     expect(crcCancelMessage(listing)).toBe(serverCancel(listing));

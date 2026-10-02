@@ -1,5 +1,6 @@
 import * as bitcoin from "bitcoinjs-lib";
-import { checkSpendSignature } from "@crclaunch/bitcoin/spend";
+import { checkListingSignature, checkSpendSignature, SIGHASH_SINGLE_ANYONECANPAY } from "@crclaunch/bitcoin/spend";
+import { unfinalizeKeyInputs } from "@crclaunch/bitcoin";
 import type { CoreRpcProvider } from "@crclaunch/bitcoin";
 import { buildCoveV3MarketFill, buildUnsignedPsbt, type CoveTokenInput } from "@crclaunch/crc20-transactions";
 import { deterministicFee } from "@crclaunch/cove-economics";
@@ -120,6 +121,50 @@ export function verifyCrcListingAuthorization(listing: CrcListing, signatureB64:
     "seller did not authorize listing terms");
 }
 
+export function buildCrcListingPsbt(listing: CrcListing, sellerPublicKeyHex?: string): bitcoin.Psbt {
+  if (!Number.isSafeInteger(listing.sellerAnchorSats + listing.priceSats) ||
+    listing.sellerAnchorSats <= 0 || listing.priceSats <= 0) throw new Error("invalid seller payout");
+  const psbt = new bitcoin.Psbt({ network: networkParams(listing.network) });
+  psbt.setVersion(2);
+  psbt.setLocktime(0);
+  const script = Buffer.from(listing.sellerScriptHex, "hex");
+  const taproot = /^5120[0-9a-f]{64}$/i.test(listing.sellerScriptHex);
+  if (taproot && sellerPublicKeyHex && !/^[0-9a-f]{64}$/i.test(sellerPublicKeyHex)) {
+    throw new Error("invalid seller Taproot public key");
+  }
+  psbt.addInput({ hash: listing.sellerAnchorTxid, index: listing.sellerAnchorVout,
+    sequence: 0xffffffff, witnessUtxo: { script, value: listing.sellerAnchorSats },
+    sighashType: SIGHASH_SINGLE_ANYONECANPAY,
+    ...(taproot && sellerPublicKeyHex ? { tapInternalKey: Buffer.from(sellerPublicKeyHex, "hex") } : {}) });
+  psbt.addOutput({ script: Buffer.from(listing.sellerPayoutScriptHex, "hex"),
+    value: listing.sellerAnchorSats + listing.priceSats });
+  return psbt;
+}
+
+export function verifyCrcListingPresign(signedBase64: string, listing: CrcListing): {
+  tapKeySig?: Buffer; partialSig?: { pubkey: Buffer; signature: Buffer }[];
+} {
+  const signed = bitcoin.Psbt.fromBase64(signedBase64, { network: networkParams(listing.network) });
+  unfinalizeKeyInputs(signed);
+  const expected = buildCrcListingPsbt(listing);
+  if (!signed.data.globalMap.unsignedTx.toBuffer().equals(expected.data.globalMap.unsignedTx.toBuffer()) ||
+    signed.data.inputs.length !== 1 || signed.data.outputs.length !== 1) {
+    throw new Error("seller presign changed the listing transaction");
+  }
+  const input = signed.data.inputs[0]!;
+  if (input.witnessUtxo?.value !== listing.sellerAnchorSats ||
+    !input.witnessUtxo.script.equals(Buffer.from(listing.sellerScriptHex, "hex")) ||
+    input.sighashType !== SIGHASH_SINGLE_ANYONECANPAY) {
+    throw new Error("seller presign changed trusted funding");
+  }
+  const check = checkListingSignature(signed, 0);
+  if (!check.ok) throw new Error(`seller presign is invalid: ${check.detail}`);
+  if (input.tapKeySig) return { tapKeySig: Buffer.from(input.tapKeySig) };
+  if (input.partialSig?.length === 1) return { partialSig: input.partialSig.map((entry) =>
+    ({ pubkey: Buffer.from(entry.pubkey), signature: Buffer.from(entry.signature) })) };
+  throw new Error("seller presign has no usable signature");
+}
+
 export function crcCancelMessage(listing: CrcListing): string {
   return `Cove CRC marketplace cancellation v3\n${listing.network}:${listing.deployTxid}:${listing.id}:${listing.sellerScriptHex}`;
 }
@@ -177,8 +222,10 @@ function expectedFill(options: CrcFillOptions): bitcoin.Psbt {
     buyerChangeSats: Number(change),
     buyerChangeScriptHex: fundingScriptHex,
   });
-  return buildUnsignedPsbt(template, [sellerFunding, ...buyerFunding], options.minerFeeSats,
+  const psbt = buildUnsignedPsbt(template, [sellerFunding, ...buyerFunding], options.minerFeeSats,
     networkParams(listing.network));
+  psbt.data.inputs[0]!.sighashType = SIGHASH_SINGLE_ANYONECANPAY;
+  return psbt;
 }
 
 export function createCrcFill(options: CrcFillOptions): { psbt: bitcoin.Psbt } {
@@ -213,8 +260,8 @@ export function verifyCrcFillTransaction(psbt: bitcoin.Psbt, options: CrcFillOpt
       (actual.redeemScript?.toString("hex") ?? null) === (trusted.redeemScript?.toString("hex") ?? null) &&
       (actual.tapInternalKey?.toString("hex") ?? null) === (trusted.tapInternalKey?.toString("hex") ?? null),
     "fill funding differs from trusted inputs");
-    assert(actual.sighashType === bitcoin.Transaction.SIGHASH_ALL,
-      "fill input must use SIGHASH_ALL");
+    assert(actual.sighashType === (index === 0 ? SIGHASH_SINGLE_ANYONECANPAY : bitcoin.Transaction.SIGHASH_ALL),
+      "fill input uses the wrong sighash");
   }
 }
 
@@ -222,7 +269,7 @@ export function verifyCrcFillSignatures(psbt: bitcoin.Psbt, buyerInputCount: num
   assert(psbt.data.inputs.length === buyerInputCount + 1 && buyerInputCount > 0,
     "seller and buyer input count mismatch");
   for (let index = 0; index < psbt.data.inputs.length; index++) {
-    const result = checkSpendSignature(psbt, index);
+    const result = index === 0 ? checkListingSignature(psbt, index) : checkSpendSignature(psbt, index);
     assert(result.ok, `input ${index}: ${result.ok ? "" : result.detail}`);
   }
 }

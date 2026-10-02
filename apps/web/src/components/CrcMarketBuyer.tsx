@@ -47,7 +47,7 @@ export function CrcMarketBuyer() {
       }
       const result = await buyCrcMarketListing(listing,
         { network, script, publicKey, ordinalsScript, address, ordinalsAddress, signPsbt }, Number(minerFee));
-      setMessage(`Buyer signature submitted for fill ${result.fillId}. The seller must sign the same transaction before broadcast.`);
+      setMessage(`Sale submitted: ${result.txid}`);
       setListings((current) => current.filter((row) => row.id !== listing.id));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not fill listing");

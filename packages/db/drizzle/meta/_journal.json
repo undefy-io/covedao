@@ -260,6 +260,13 @@
       "when": 1790858000000,
       "tag": "0036_crc_token_metadata",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1790944000000,
+      "tag": "0037_crc_market_presign",
+      "breakpoints": true
     }
   ]
 }

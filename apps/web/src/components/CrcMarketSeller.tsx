@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { COVE_FEE_CONFIG } from "@crclaunch/cove-economics";
 import { crcCancelMessage, crcListingMessage, type CrcFillOptions, type CrcListing, type IndexedCrcAsset } from "@crclaunch/cove-market/crc20/browser";
 import { fetchAllCrcWalletBalances, type CrcWalletBalance } from "@/lib/crc-client";
-import { makeCrcSellerListing, sellerFillTermsFromPsbt, signCrcSellerFillAfterReview } from "@/lib/crc-market-seller";
+import { makeCrcSellerListing, sellerFillTermsFromPsbt, signCrcSellerFillAfterReview, signCrcSellerListing } from "@/lib/crc-market-seller";
 import { formatAtoms } from "./CrcHome";
 import { useWallet } from "./WalletProvider";
 
@@ -156,9 +156,10 @@ export function CrcMarketSeller() {
         currentHeight: decimal(current.indexedTip.height, "indexed height"), asset: sellerAsset(current.token, coin) },
       COVE_FEE_CONFIG.p2pFeeBps, COVE_FEE_CONFIG.p2pFeeMinSats);
       if (crcListingMessage(rechecked) !== crcListingMessage(preview)) throw new Error("Listing terms changed. Preview again.");
-      const sellerAuthorizationB64 = await signBip322(crcListingMessage(preview));
+      const sellerPresignedPsbtBase64 = await signCrcSellerListing(preview, ordinalsScript,
+        ordinalsPublicKey, signPsbt);
       const result = await api<{ listingId: string }>("/api/crc/v1/market/listings", {
-        listing: serializeListing(preview), sellerAuthorizationB64,
+        listing: serializeListing(preview), sellerPresignedPsbtBase64,
       });
       setSuccess(`Listed token output ${result.listingId}`);
       setPreview(null);
@@ -230,7 +231,7 @@ export function CrcMarketSeller() {
 
   return <section className="space-y-4 border border-rule bg-ink-2 p-6">
     <div><h2 className="text-lg text-bone">Sell a token output</h2>
-      <p className="mt-1 text-sm text-bone-dim">Each listing sells one whole confirmed token output. You approve the complete sale transaction when a buyer is ready.</p></div>
+      <p className="mt-1 text-sm text-bone-dim">Each listing sells one whole confirmed token output. Sign once now; a buyer can complete the sale without another approval.</p></div>
     {!connected && active && <button type="button" className="btn" onClick={() => void connect()}>Connect wallet</button>}
     {connected && active && <>
       <label className="block text-sm text-bone-dim">Token

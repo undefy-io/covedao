@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import { ECPairFactory } from "ecpair";
-import { createCrcFill, crcCancelMessage, crcListingMessage, validateCrcListing, verifyCrcCancellation, verifyCrcFillSignatures, verifyCrcFillTransaction, verifyCrcListingAuthorization, verifyCurrentCrcFunding } from "./market.js";
+import { buildCrcListingPsbt, createCrcFill, crcCancelMessage, crcListingMessage, validateCrcListing, verifyCrcCancellation, verifyCrcFillSignatures, verifyCrcFillTransaction, verifyCrcListingAuthorization, verifyCrcListingPresign, verifyCurrentCrcFunding } from "./market.js";
 import { signBip322P2wpkh } from "../order/signature.js";
 
 bitcoin.initEccLib(ecc as unknown as Parameters<typeof bitcoin.initEccLib>[0]);
@@ -39,6 +39,26 @@ const buyerFunding = { txid: "c".repeat(64), vout: 1, valueSats: 10_000, scriptH
 const options = { listing, asset, sellerFunding, buyerFunding: [buyerFunding], buyerScriptHex: buyerScript, protocolScriptHex: protocolScript, recipientSats: 1_000, minerFeeSats: 400, currentHeight: 100n };
 
 describe("Cove CRC marketplace exact fill", () => {
+  it("lets the seller presign once and a separate buyer complete the exact sale", () => {
+    const listingPsbt = buildCrcListingPsbt(listing);
+    listingPsbt.signInput(0, seller, [bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY]);
+    const presig = verifyCrcListingPresign(listingPsbt.toBase64(), listing);
+    const fill = createCrcFill(options).psbt;
+    fill.updateInput(0, presig);
+    fill.signInput(1, buyer);
+    expect(() => verifyCrcFillSignatures(fill, 1)).not.toThrow();
+    fill.finalizeAllInputs();
+    const tx = fill.extractTransaction();
+    expect(tx.outs[0]?.script.toString("hex")).toBe(sellerScript);
+    expect(tx.outs[0]?.value).toBe(listing.sellerAnchorSats + listing.priceSats);
+    expect(tx.outs[2]?.script.toString("hex")).toBe(buyerScript);
+
+    const changedPayout = buildCrcListingPsbt({ ...listing, priceSats: listing.priceSats + 1 });
+    expect(() => verifyCrcListingPresign(listingPsbt.toBase64(), { ...listing, priceSats: listing.priceSats + 1 })).toThrow();
+    changedPayout.updateInput(0, presig);
+    expect(() => verifyCrcListingPresign(changedPayout.toBase64(), { ...listing, priceSats: listing.priceSats + 1 })).toThrow();
+  });
+
   it("accepts a registered Cove asset with the exact indexed token outpoint", () => {
     expect(() => validateCrcListing(listing, asset, 100n)).not.toThrow();
     const signed = signBip322P2wpkh(Buffer.alloc(32, 0x32), Buffer.from(sellerScript, "hex"), crcListingMessage(listing));
@@ -124,10 +144,12 @@ describe("Cove CRC marketplace exact fill", () => {
     ]) expect(() => verifyCrcFillTransaction(fill.psbt, { ...options, ...patch })).toThrow();
   });
 
-  it("requires both online signatures over every input and output", () => {
+  it("requires seller presign and buyer signature", () => {
     const fill = createCrcFill(options);
     expect(() => verifyCrcFillSignatures(fill.psbt, 1)).toThrow();
-    fill.psbt.signInput(0, seller);
+    const listingPsbt = buildCrcListingPsbt(listing);
+    listingPsbt.signInput(0, seller, [bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY]);
+    fill.psbt.updateInput(0, verifyCrcListingPresign(listingPsbt.toBase64(), listing));
     expect(() => verifyCrcFillSignatures(fill.psbt, 1)).toThrow();
     fill.psbt.signInput(1, buyer);
     expect(() => verifyCrcFillSignatures(fill.psbt, 1)).not.toThrow();
@@ -139,12 +161,19 @@ describe("Cove CRC marketplace exact fill", () => {
     expect(() => verifyCrcFillSignatures(other.psbt, 1)).toThrow();
   });
 
-  it("rejects a reused seller signature with a different buyer input", () => {
+  it("reuses seller signature for a different buyer input but rejects changed payout", () => {
     const fill = createCrcFill(options);
-    fill.psbt.signInput(0, seller);
+    const listingPsbt = buildCrcListingPsbt(listing);
+    listingPsbt.signInput(0, seller, [bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY]);
+    fill.psbt.updateInput(0, verifyCrcListingPresign(listingPsbt.toBase64(), listing));
     const competing = createCrcFill({ ...options, buyerFunding: [{ ...buyerFunding, txid: "e".repeat(64) }] });
     competing.psbt.data.inputs[0]!.partialSig = fill.psbt.data.inputs[0]!.partialSig;
-    expect(() => verifyCrcFillSignatures(competing.psbt, 1)).toThrow();
+    competing.psbt.signInput(1, buyer);
+    expect(() => verifyCrcFillSignatures(competing.psbt, 1)).not.toThrow();
+    const changedPayout = createCrcFill({ ...options, listing: { ...listing, priceSats: 5_001 } });
+    changedPayout.psbt.data.inputs[0]!.partialSig = fill.psbt.data.inputs[0]!.partialSig;
+    changedPayout.psbt.signInput(1, buyer);
+    expect(() => verifyCrcFillSignatures(changedPayout.psbt, 1)).toThrow();
   });
 
   it("checks every funding outpoint against Core's current UTXO set", async () => {

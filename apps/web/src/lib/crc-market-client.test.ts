@@ -32,7 +32,9 @@ function psbt(priceSats = 5_000, recipientScript = buyerScript) {
     sellerNetPriceSats: priceSats, protocolScriptHex: protocolScript,
     protocolFeeSats: 1_000, buyerChangeSats: 2_600 - (priceSats - 5_000),
     buyerChangeScriptHex: buyerScript });
-  return buildUnsignedPsbt(template, [seller, buyer], 400, bitcoin.networks.regtest).toBase64();
+  const built = buildUnsignedPsbt(template, [seller, buyer], 400, bitcoin.networks.regtest);
+  built.data.inputs[0]!.sighashType = bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY;
+  return built.toBase64();
 }
 
 function response(data: unknown) {
@@ -63,7 +65,8 @@ function requests(fillPsbt = psbt(), tokenAtoms = listing.amountAtoms,
     if (url.endsWith("/market/reserve")) {
       return response({ fillId: JSON.parse(String(init?.body)).fillId, psbtBase64: fillPsbt });
     }
-    if (url.endsWith("/market/buyer-sign")) return response({ status: "BUYER_SIGNED" });
+    if (url.endsWith("/market/buyer-sign")) return response({ fillId: JSON.parse(String(init?.body)).fillId,
+      txid: "a".repeat(64), status: "BROADCAST" });
     throw new Error(`unexpected URL ${url}`);
   });
   return { fetcher, requested };
@@ -73,7 +76,7 @@ describe("CRC buyer market flow", () => {
   it("fetches indexed allocation and BTC anchors, then reviews the exact PSBT before wallet signing", async () => {
     wallet.signPsbt.mockClear();
     const { fetcher, requested } = requests();
-    await expect(buyCrcMarketListing(listing, wallet, 400, fetcher)).resolves.toHaveProperty("fillId");
+    await expect(buyCrcMarketListing(listing, wallet, 400, fetcher)).resolves.toHaveProperty("txid", "a".repeat(64));
     expect(wallet.signPsbt).toHaveBeenCalledOnce();
     expect(wallet.signPsbt).toHaveBeenCalledWith(expect.any(String), "CRC_MARKET_BUY");
     expect(requested.some((url) => url.endsWith("/market/buyer-sign"))).toBe(true);

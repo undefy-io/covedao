@@ -1,11 +1,20 @@
 import * as bitcoin from "bitcoinjs-lib";
 import {
-  crcMarketFee, verifyCrcFillTransaction,
+  buildCrcListingPsbt, crcMarketFee, verifyCrcFillTransaction,
   type CrcFillOptions, type CrcListing, type CrcNetwork, type IndexedCrcAsset,
 } from "@crclaunch/cove-market/crc20/browser";
 
 type TokenCoin = { txid: string; vout: number; atoms: string; scriptHex: string };
 type BitcoinCoin = { txid: string; vout: number; valueSats: string } | null;
+
+export async function signCrcSellerListing(listing: CrcListing, walletScriptHex: string,
+  sellerPublicKeyHex: string | undefined,
+  signPsbt: (psbtBase64: string, operation: string) => Promise<string>): Promise<string> {
+  if (listing.sellerScriptHex.toLowerCase() !== walletScriptHex.toLowerCase()) {
+    throw new Error("Listing seller does not match the connected wallet");
+  }
+  return signPsbt(buildCrcListingPsbt(listing, sellerPublicKeyHex).toBase64(), "P2P_LIST");
+}
 
 export function makeCrcSellerListing(options: {
   id: string;
@@ -122,7 +131,7 @@ export function sellerFillTermsFromPsbt(
     recipientSats: recipient.value, minerFeeSats, currentHeight,
     ...(buyerFundingScriptHex === buyerScriptHex ? {} : { buyerFundingScriptHex }),
   };
-  verifyCrcFillTransaction(psbt, terms);
+  verifyCrcFillTransaction(psbt, terms, true);
   return terms;
 }
 
@@ -137,7 +146,7 @@ export async function signCrcSellerFillAfterReview(
     throw new Error("Market fill seller does not match the connected wallet");
   }
   const psbt = bitcoin.Psbt.fromBase64(psbtBase64, { network: networkParams(terms.listing.network) });
-  verifyCrcFillTransaction(psbt, terms);
+  verifyCrcFillTransaction(psbt, terms, true);
   if (/^5120[0-9a-f]{64}$/i.test(walletScriptHex) && sellerPublicKeyHex) {
     if (!/^[0-9a-f]{64}$/i.test(sellerPublicKeyHex)) {
       throw new Error("Seller Taproot public key is invalid");

@@ -1,6 +1,7 @@
 import * as bitcoin from "bitcoinjs-lib";
 import { sql } from "drizzle-orm";
 import { broadcastRecordedTransaction, checkSpendSignature } from "@crclaunch/bitcoin";
+import { SIGHASH_SINGLE_ANYONECANPAY } from "@crclaunch/bitcoin/spend";
 import type { CoreRpcProvider } from "@crclaunch/bitcoin";
 import type { Database, DbTransaction } from "@crclaunch/db";
 import type { CoveTokenInput } from "@crclaunch/crc20-transactions";
@@ -10,7 +11,7 @@ import {
   validateCrcListing,
   verifyCrcFillSignatures,
   verifyCrcCancellation,
-  verifyCrcListingAuthorization,
+  verifyCrcListingPresign,
   verifyCurrentCrcFunding,
   type CrcFillOptions,
   type CrcListing,
@@ -26,6 +27,7 @@ type ListingRow = {
   seller_anchor_txid: string; seller_anchor_vout: number; seller_anchor_sats: string;
   amount_atoms: string; price_sats: string; protocol_fee_sats: string;
   expires_at_height: string; status: string;
+  seller_presigned_psbt_base64: string | null;
 };
 
 function rowListing(row: ListingRow): CrcListing {
@@ -103,11 +105,11 @@ async function assertTokenFreePsbtBuyerFunding(tx: DbTransaction, network: CrcNe
 export async function createCrcListing(
   db: Database,
   listing: CrcListing,
-  sellerAuthorizationB64: string,
+  sellerPresignedPsbtBase64: string,
   core: CoreUtxo,
   feeBps: bigint,
 ): Promise<void> {
-  verifyCrcListingAuthorization(listing, sellerAuthorizationB64);
+  verifyCrcListingPresign(sellerPresignedPsbtBase64, listing);
   if (listing.protocolFeeSats !== crcMarketFee(listing.priceSats, feeBps)) {
     throw new Error("listing protocol fee does not match market policy");
   }
@@ -120,11 +122,12 @@ export async function createCrcListing(
       INSERT INTO cove_crc_market_listings
         (id, network, deploy_txid, ticker, seller_script_hex, seller_payout_script_hex,
          seller_anchor_txid, seller_anchor_vout, seller_anchor_sats, amount_atoms,
-         price_sats, protocol_fee_sats, expires_at_height)
+         price_sats, protocol_fee_sats, expires_at_height, seller_presigned_psbt_base64)
       VALUES (${listing.id}, ${listing.network}, ${listing.deployTxid}, ${listing.ticker},
         ${listing.sellerScriptHex}, ${listing.sellerPayoutScriptHex}, ${listing.sellerAnchorTxid},
         ${listing.sellerAnchorVout}, ${listing.sellerAnchorSats}, ${listing.amountAtoms.toString()},
-        ${listing.priceSats}, ${listing.protocolFeeSats}, ${listing.expiresAtHeight.toString()})
+        ${listing.priceSats}, ${listing.protocolFeeSats}, ${listing.expiresAtHeight.toString()},
+        ${sellerPresignedPsbtBase64})
     `);
   });
 }
@@ -203,6 +206,7 @@ export async function reserveCrcFill(
     const row = selected.rows[0] as ListingRow | undefined;
     if (!row) throw new Error("Cove listing not found on this network");
     if (row.status !== "OPEN") throw new Error("listing is already reserved or closed");
+    if (!row.seller_presigned_psbt_base64) throw new Error("listing has no seller presignature");
     const listing = rowListing(row);
     const { asset, height, protocolScriptHex } = await indexedAsset(tx, listing);
     await assertTokenFreeBuyerFunding(tx, request.network, request.buyerFunding);
@@ -233,7 +237,7 @@ function assertSameTrustedPsbt(original: bitcoin.Psbt, signed: bitcoin.Psbt): vo
     const a = signed.data.inputs[i]!.witnessUtxo;
     const b = original.data.inputs[i]!.witnessUtxo;
     if (!a || !b || a.value !== b.value || !a.script.equals(b.script) ||
-      signed.data.inputs[i]!.sighashType !== bitcoin.Transaction.SIGHASH_ALL) {
+      signed.data.inputs[i]!.sighashType !== original.data.inputs[i]!.sighashType) {
       throw new Error("signed fill changed trusted funding");
     }
   }
@@ -276,6 +280,73 @@ export async function submitBuyerSignedCrcFill(
     await tx.execute(sql`UPDATE cove_crc_market_fills SET status = 'BUYER_SIGNED',
       buyer_signed_psbt_base64 = ${signed.toBase64()}, updated_at = now()
       WHERE id = ${fillId} AND status = 'RESERVED'`);
+  });
+}
+
+export async function completePresignedCrcFill(
+  db: Database,
+  network: CrcNetwork,
+  fillId: string,
+  buyerSignedPsbtBase64: string,
+  core: CoreUtxo,
+): Promise<{ txid: string; rawHex: string }> {
+  return db.transaction(async (tx) => {
+    await lockCrcProjection(tx, network);
+    const selected = await tx.execute(sql`SELECT f.status AS fill_status, f.psbt_base64, f.expires_at,
+      f.buyer_signed_psbt_base64, f.signed_psbt_base64, f.txid,
+      l.*, l.status AS listing_status FROM cove_crc_market_fills f JOIN cove_crc_market_listings l ON l.id = f.listing_id
+      WHERE f.id = ${fillId} AND f.network = ${network} FOR UPDATE OF f, l`);
+    const row = selected.rows[0] as (ListingRow & { fill_status: string; listing_status: string;
+      psbt_base64: string; expires_at: string | Date; buyer_signed_psbt_base64: string | null;
+      signed_psbt_base64: string | null; txid: string | null }) | undefined;
+    if (row && (row.fill_status === "SIGNED" || row.fill_status === "BROADCAST")) {
+      if (row.buyer_signed_psbt_base64 !== buyerSignedPsbtBase64 || !row.signed_psbt_base64 || !row.txid) {
+        throw new Error("fill was already signed with a different buyer transaction");
+      }
+      const signed = parsePsbt(row.signed_psbt_base64, bitcoinNetwork(network));
+      signed.finalizeAllInputs();
+      const transaction = signed.extractTransaction();
+      if (transaction.getId() !== row.txid) throw new Error("recorded fill identity mismatch");
+      return { txid: row.txid, rawHex: transaction.toHex() };
+    }
+    if (!row || row.fill_status !== "RESERVED" || row.listing_status !== "RESERVED" ||
+      new Date(row.expires_at).getTime() <= Date.now()) throw new Error("fill reservation is no longer available");
+    if (!row.seller_presigned_psbt_base64) throw new Error("listing has no seller presignature");
+    const listing = rowListing(row);
+    const { asset, height } = await indexedAsset(tx, listing);
+    validateCrcListing(listing, asset, height);
+    const original = parsePsbt(row.psbt_base64, bitcoinNetwork(network));
+    await assertTokenFreePsbtBuyerFunding(tx, network, original);
+    const signed = parsePsbt(buyerSignedPsbtBase64, bitcoinNetwork(network));
+    assertSameTrustedPsbt(original, signed);
+    if (signed.data.inputs.length < 2 || signed.data.inputs[0]!.tapKeySig ||
+      signed.data.inputs[0]!.partialSig?.length || signed.data.inputs[0]!.finalScriptWitness) {
+      throw new Error("buyer changed the seller input signature");
+    }
+    for (let i = 1; i < signed.data.inputs.length; i++) {
+      const result = checkSpendSignature(signed, i);
+      if (!result.ok) throw new Error(`buyer signature invalid: ${result.detail}`);
+    }
+    signed.updateInput(0, verifyCrcListingPresign(row.seller_presigned_psbt_base64, listing));
+    verifyCrcFillSignatures(signed, signed.data.inputs.length - 1);
+    const unsigned = bitcoin.Transaction.fromBuffer(original.data.globalMap.unsignedTx.toBuffer());
+    for (let i = 0; i < unsigned.ins.length; i++) {
+      const funding = original.data.inputs[i]!.witnessUtxo!;
+      const outpoint = Buffer.from(unsigned.ins[i]!.hash).reverse().toString("hex");
+      const current = await core.getTxout(outpoint, unsigned.ins[i]!.index, true);
+      if (!current || current.valueSats !== BigInt(funding.value) ||
+        current.scriptPubKeyHex.toLowerCase() !== funding.script.toString("hex")) {
+        throw new Error("fill funding is spent or changed");
+      }
+    }
+    const signedForBroadcast = signed.toBase64();
+    signed.finalizeAllInputs();
+    const transaction = signed.extractTransaction();
+    const txid = transaction.getId();
+    await tx.execute(sql`UPDATE cove_crc_market_fills SET status = 'SIGNED',
+      buyer_signed_psbt_base64 = ${buyerSignedPsbtBase64}, signed_psbt_base64 = ${signedForBroadcast},
+      txid = ${txid}, updated_at = now() WHERE id = ${fillId} AND status = 'RESERVED'`);
+    return { txid, rawHex: transaction.toHex() };
   });
 }
 
@@ -326,7 +397,14 @@ export async function acceptSignedCrcFill(
     await assertTokenFreePsbtBuyerFunding(tx, network, original);
     const signed = parsePsbt(signedPsbtBase64, bitcoinNetwork(network));
     assertSameTrustedPsbt(original, signed);
-    verifyCrcFillSignatures(signed, signed.data.inputs.length - 1);
+    if (original.data.inputs[0]!.sighashType === SIGHASH_SINGLE_ANYONECANPAY) {
+      verifyCrcFillSignatures(signed, signed.data.inputs.length - 1);
+    } else if (original.data.inputs[0]!.sighashType === bitcoin.Transaction.SIGHASH_ALL) {
+      for (let i = 0; i < signed.data.inputs.length; i++) {
+        const checked = checkSpendSignature(signed, i);
+        if (!checked.ok) throw new Error(`input ${i}: ${checked.detail}`);
+      }
+    } else throw new Error("seller signature uses an unsupported sighash");
     const unsigned = bitcoin.Transaction.fromBuffer(original.data.globalMap.unsignedTx.toBuffer());
     for (let i = 0; i < unsigned.ins.length; i++) {
       const funding = original.data.inputs[i]!.witnessUtxo!;

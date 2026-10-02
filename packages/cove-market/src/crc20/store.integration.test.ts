@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest";
 import { sql } from "drizzle-orm";
 import { createDb } from "@crclaunch/db";
 import { signBip322P2wpkh } from "../order/signature.js";
-import { crcCancelMessage, crcListingMessage, type CrcListing } from "./market.js";
-import { acceptSignedCrcFill, broadcastCrcFill, cancelCrcListing, createCrcListing, listCrcSellerFillRequests, reconcileCrcFill, releaseExpiredCrcReservations, reserveCrcFill, submitBuyerSignedCrcFill } from "./store.js";
+import { buildCrcListingPsbt, crcCancelMessage, type CrcListing } from "./market.js";
+import { broadcastCrcFill, cancelCrcListing, completePresignedCrcFill, createCrcListing, reconcileCrcFill, releaseExpiredCrcReservations, reserveCrcFill, submitBuyerSignedCrcFill } from "./store.js";
 import type { CoreRpcProvider } from "@crclaunch/bitcoin";
 import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
@@ -29,6 +29,10 @@ maybe("CRC market SQL concurrency", () => {
     const v2Migration = readFileSync(resolve(import.meta.dirname, "../../../db/drizzle/0032_crc_token_utxos.sql"), "utf8");
     const hasV2 = await db.execute(sql`SELECT to_regclass('cove_crc_token_utxos') AS relation`);
     if (!(hasV2.rows[0] as { relation: string | null }).relation) await db.execute(sql.raw(v2Migration));
+    const presignMigration = readFileSync(resolve(import.meta.dirname, "../../../db/drizzle/0037_crc_market_presign.sql"), "utf8");
+    const hasPresign = await db.execute(sql`SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'cove_crc_market_listings' AND column_name = 'seller_presigned_psbt_base64'`);
+    if (hasPresign.rows.length === 0) await db.execute(sql.raw(presignMigration));
     const deployTxid = Buffer.from(randomUUID().replaceAll("-", "").repeat(2), "hex").toString("hex");
     const listing: CrcListing = {
       id: randomUUID(), network: "regtest", deployTxid, ticker: "TSTX",
@@ -37,7 +41,9 @@ maybe("CRC market SQL concurrency", () => {
       amountAtoms: 100_000_000_000n, priceSats: 5_000, protocolFeeSats: 1_000,
       expiresAtHeight: 300n,
     };
-    const auth = signBip322P2wpkh(Buffer.alloc(32, 0x51), Buffer.from(sellerScript, "hex"), crcListingMessage(listing));
+    const presigned = buildCrcListingPsbt(listing);
+    presigned.signInput(0, sellerKey, [bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY]);
+    const auth = presigned.toBase64();
     const core = { getTxout: async (txid: string) => ({
       scriptPubKeyHex: txid === listing.sellerAnchorTxid ? sellerScript : buyerScript,
       valueSats: 10_000n, confirmations: 1,
@@ -85,22 +91,24 @@ maybe("CRC market SQL concurrency", () => {
       await expect(submitBuyerSignedCrcFill(db, "regtest", won!.id, signed.toBase64()))
         .rejects.toThrow("buyer funding carries a Cove token allocation");
       await db.execute(sql`DELETE FROM cove_crc_token_utxos WHERE network = 'regtest' AND txid = ${"e".repeat(64)} AND vout = 0`);
-      await submitBuyerSignedCrcFill(db, "regtest", won!.id, signed.toBase64());
+      const accepted = await completePresignedCrcFill(db, "regtest", won!.id, signed.toBase64(), core);
       const mainCancelAuth = signBip322P2wpkh(Buffer.alloc(32, 0x51), Buffer.from(sellerScript, "hex"), crcCancelMessage(listing));
       await expect(cancelCrcListing(db, "regtest", listing.id, mainCancelAuth))
-        .rejects.toThrow("buyer-signed fill");
-      const requests = await listCrcSellerFillRequests(db, "regtest", sellerScript);
-      expect(requests.some((entry) => entry.fillId === won!.id)).toBe(true);
-      signed.signInput(0, sellerKey);
-      const accepted = await acceptSignedCrcFill(db, "regtest", won!.id, signed.toBase64(), core);
-      await expect(acceptSignedCrcFill(db, "regtest", won!.id, signed.toBase64(), core)).rejects.toThrow();
+        .rejects.toThrow();
+      await expect(completePresignedCrcFill(db, "regtest", won!.id, signed.toBase64(), core)).resolves.toEqual(accepted);
+      await expect(completePresignedCrcFill(db, "regtest", won!.id, won!.value.psbtBase64, core)).rejects.toThrow();
       const broadcaster = {
         getBlockchainInfo: async () => ({ chain: "regtest", blocks: 100, bestBlockHash: "f".repeat(64) }),
         testMempoolAccept: async () => ({ allowed: true }),
         broadcastTransaction: async () => accepted.txid,
       } as unknown as CoreRpcProvider;
+      await expect(broadcastCrcFill(db, "regtest", won!.id, {
+        ...broadcaster, broadcastTransaction: async () => { throw new Error("temporary Core outage"); },
+      })).rejects.toThrow("temporary Core outage");
+      await expect(completePresignedCrcFill(db, "regtest", won!.id, signed.toBase64(), core)).resolves.toEqual(accepted);
       expect(await broadcastCrcFill(db, "regtest", won!.id, broadcaster)).toBe(accepted.txid);
       expect(await broadcastCrcFill(db, "regtest", won!.id, broadcaster)).toBe(accepted.txid);
+      await expect(completePresignedCrcFill(db, "regtest", won!.id, signed.toBase64(), core)).resolves.toEqual(accepted);
       expect(await reconcileCrcFill(db, "regtest", won!.id)).toBe("pending");
       await db.execute(sql`INSERT INTO cove_crc_events (network, txid, block_height, block_hash, tx_index, operation, status, valid, deploy_txid, amount_atoms)
         VALUES ('regtest', ${accepted.txid}, 101, ${"f".repeat(64)}, 0, 'transfer', 'applied', true, ${deployTxid}, 100000000000)`);
@@ -114,7 +122,9 @@ maybe("CRC market SQL concurrency", () => {
       }) };
       await db.execute(sql`INSERT INTO cove_crc_token_utxos (network, deploy_txid, txid, vout, script_hex, atoms, created_height, created_block_hash)
         VALUES ('regtest', ${deployTxid}, ${canceledListing.sellerAnchorTxid}, 0, ${sellerScript}, ${listing.amountAtoms.toString()}, 10, ${"a".repeat(64)})`);
-      const canceledAuth = signBip322P2wpkh(Buffer.alloc(32, 0x51), Buffer.from(sellerScript, "hex"), crcListingMessage(canceledListing));
+      const canceledPsbt = buildCrcListingPsbt(canceledListing);
+      canceledPsbt.signInput(0, sellerKey, [bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY]);
+      const canceledAuth = canceledPsbt.toBase64();
       await createCrcListing(db, canceledListing, canceledAuth, canceledCore, 750n);
       const canceledFill = randomUUID();
       const canceledRequest = {

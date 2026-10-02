@@ -77,6 +77,8 @@ export { assertMarketReady, assertMarketEnabled, healthErrorFor, marketEnabledFl
 export { readStoredFeeObservation } from "./fee-observation.js";
 export {
   crcMarketFee,
+  buildCrcListingPsbt,
+  verifyCrcListingPresign,
   crcListingMessage,
   crcCancelMessage,
   verifyCrcFillTransaction,
@@ -90,6 +92,7 @@ export {
   cancelCrcListing,
   reserveCrcFill,
   submitBuyerSignedCrcFill,
+  completePresignedCrcFill,
   listCrcSellerFillRequests,
   acceptSignedCrcFill,
   broadcastCrcFill,

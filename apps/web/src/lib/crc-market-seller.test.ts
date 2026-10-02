@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import * as bitcoin from "bitcoinjs-lib";
 import { buildCoveV3MarketFill, buildUnsignedPsbt } from "@crclaunch/crc20-transactions";
 import { crcListingMessage } from "@crclaunch/cove-market";
-import { makeCrcSellerListing, sellerFillTermsFromPsbt, signCrcSellerFillAfterReview } from "./crc-market-seller";
+import { makeCrcSellerListing, sellerFillTermsFromPsbt, signCrcSellerFillAfterReview, signCrcSellerListing } from "./crc-market-seller";
 
 const deployTxid = "a".repeat(64);
 const sellerScriptHex = `0014${"b".repeat(40)}`;
@@ -22,7 +22,7 @@ const asset = { network: "regtest" as const, deployTxid, ticker: "COVE",
   protocolVersion: 3, tokenOutpoint: `${sellerFunding.txid}:0`, tokenScriptHex: sellerScriptHex,
   tokenAtoms: 100n, protocolScriptHex, vaultScriptHex };
 
-function psbt(priceSats = 5_000, sighash = bitcoin.Transaction.SIGHASH_ALL,
+function psbt(priceSats = 5_000, sighash = bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY,
   funding = buyerFunding) {
   const template = buildCoveV3MarketFill({ ticker: "COVE", deploymentTxid: deployTxid,
     listedInput: sellerFunding, buyerScriptHex, recipientSats: 1_000,
@@ -35,6 +35,16 @@ function psbt(priceSats = 5_000, sighash = bitcoin.Transaction.SIGHASH_ALL,
 }
 
 describe("CRC seller authorization", () => {
+  it("asks the connected seller to presign the one-input fixed-payout listing", async () => {
+    const signer = vi.fn(async (base64: string) => base64);
+    const signed = await signCrcSellerListing(listing, sellerScriptHex, undefined, signer);
+    expect(signer).toHaveBeenCalledWith(expect.any(String), "P2P_LIST");
+    const psbt = bitcoin.Psbt.fromBase64(signed, { network: bitcoin.networks.regtest });
+    expect(psbt.txInputs).toHaveLength(1);
+    expect(psbt.txOutputs[0]?.value).toBe(15_000);
+    expect(psbt.data.inputs[0]?.sighashType).toBe(0x83);
+    await expect(signCrcSellerListing(listing, buyerScriptHex, undefined, signer)).rejects.toThrow();
+  });
   it("binds a whole indexed token coin, exact payout and block expiry to BIP322", () => {
     const result = makeCrcSellerListing({ id: listing.id, network: "regtest", deployTxid,
       ticker: "COVE", sellerScriptHex, sellerPayoutScriptHex: sellerScriptHex,
@@ -60,7 +70,7 @@ describe("CRC seller authorization", () => {
     expect(() => makeCrcSellerListing({ ...options, asset: { ...asset, protocolVersion: 1 } }, 750n, 1_000n)).toThrow();
   });
 
-  it("verifies full transaction and SIGHASH_ALL before opening seller wallet", async () => {
+  it("verifies full transaction and seller presign sighash before opening seller wallet", async () => {
     const signer = vi.fn(async () => "signed");
     const terms = { listing, asset, sellerFunding, buyerFunding: [buyerFunding], buyerScriptHex,
       protocolScriptHex, recipientSats: 1_000, minerFeeSats: 400, currentHeight: 100n };
@@ -69,7 +79,7 @@ describe("CRC seller authorization", () => {
     signer.mockClear();
     await expect(signCrcSellerFillAfterReview(psbt(5_001), terms, sellerScriptHex, signer)).rejects.toThrow();
     await expect(signCrcSellerFillAfterReview(psbt(), terms, buyerScriptHex, signer)).rejects.toThrow();
-    await expect(signCrcSellerFillAfterReview(psbt(5_000, 0x83), terms, sellerScriptHex, signer)).rejects.toThrow();
+    await expect(signCrcSellerFillAfterReview(psbt(5_000, 0x02), terms, sellerScriptHex, signer)).rejects.toThrow();
     expect(signer).not.toHaveBeenCalled();
   });
 
@@ -79,7 +89,8 @@ describe("CRC seller authorization", () => {
     expect(terms.buyerScriptHex).toBe(buyerScriptHex);
     expect(terms.minerFeeSats).toBe(400);
     expect(() => sellerFillTermsFromPsbt(psbt(5_001), listing, asset, 100n)).toThrow();
-    expect(() => sellerFillTermsFromPsbt(psbt(5_000, 0x83), listing, asset, 100n)).toThrow();
+    expect(() => sellerFillTermsFromPsbt(psbt(5_000, 0x02), listing, asset, 100n)).toThrow();
+    expect(() => sellerFillTermsFromPsbt(psbt(5_000, 0x01), listing, asset, 100n)).not.toThrow();
     expect(() => sellerFillTermsFromPsbt(psbt(), listing,
       { ...asset, tokenOutpoint: `${"1".repeat(64)}:0` }, 100n)).toThrow();
     expect(() => sellerFillTermsFromPsbt(psbt(), { ...listing, protocolFeeSats: 1_001 }, asset, 100n)).toThrow();
@@ -87,7 +98,7 @@ describe("CRC seller authorization", () => {
 
   it("reviews Xverse payment funding separately from the token recipient", () => {
     const funding = { ...buyerFunding, scriptHex: buyerPaymentScriptHex };
-    const terms = sellerFillTermsFromPsbt(psbt(5_000, bitcoin.Transaction.SIGHASH_ALL, funding),
+    const terms = sellerFillTermsFromPsbt(psbt(5_000, bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY, funding),
       listing, asset, 100n);
     expect(terms.buyerScriptHex).toBe(buyerScriptHex);
     expect(terms.buyerFundingScriptHex).toBe(buyerPaymentScriptHex);
@@ -100,7 +111,7 @@ describe("CRC seller authorization", () => {
       pubkey: Buffer.from(publicKeyHex, "hex"), network: bitcoin.networks.regtest,
     }), network: bitcoin.networks.regtest });
     const funding = { ...buyerFunding, scriptHex: nested.output!.toString("hex"), publicKeyHex };
-    const unsigned = psbt(5_000, bitcoin.Transaction.SIGHASH_ALL, funding);
+    const unsigned = psbt(5_000, bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY, funding);
     expect(() => sellerFillTermsFromPsbt(unsigned, listing, asset, 100n)).toThrow(/public key/);
     const signed = bitcoin.Psbt.fromBase64(unsigned, { network: bitcoin.networks.regtest });
     signed.data.inputs[1]!.partialSig = [{ pubkey: Buffer.from(publicKeyHex, "hex"),
@@ -120,6 +131,7 @@ describe("CRC seller authorization", () => {
       sellerNetPriceSats: 5_000, protocolScriptHex, protocolFeeSats: 1_000,
       buyerChangeSats: 2_600 });
     const built = buildUnsignedPsbt(template, [tapFunding, buyerFunding], 400, bitcoin.networks.regtest);
+    built.data.inputs[0]!.sighashType = bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY;
     const terms = { listing: tapListing, asset: tapAsset, sellerFunding: tapFunding,
       buyerFunding: [buyerFunding], buyerScriptHex, protocolScriptHex,
       recipientSats: 1_000, minerFeeSats: 400, currentHeight: 100n };

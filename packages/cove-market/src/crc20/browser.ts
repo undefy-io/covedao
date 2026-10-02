@@ -56,6 +56,28 @@ export function crcListingMessage(listing: CrcListing): string {
   })}`;
 }
 
+export function buildCrcListingPsbt(listing: CrcListing, sellerPublicKeyHex?: string): bitcoin.Psbt {
+  if (!Number.isSafeInteger(listing.sellerAnchorSats + listing.priceSats) ||
+    listing.sellerAnchorSats <= 0 || listing.priceSats <= 0) throw new Error("invalid seller payout");
+  const network = listing.network === "mainnet" ? bitcoin.networks.bitcoin :
+    listing.network === "regtest" ? bitcoin.networks.regtest : bitcoin.networks.testnet;
+  const psbt = new bitcoin.Psbt({ network });
+  psbt.setVersion(2);
+  psbt.setLocktime(0);
+  const taproot = /^5120[0-9a-f]{64}$/i.test(listing.sellerScriptHex);
+  if (taproot && sellerPublicKeyHex && !/^[0-9a-f]{64}$/i.test(sellerPublicKeyHex)) {
+    throw new Error("invalid seller Taproot public key");
+  }
+  psbt.addInput({ hash: listing.sellerAnchorTxid, index: listing.sellerAnchorVout,
+    sequence: 0xffffffff,
+    witnessUtxo: { script: Buffer.from(listing.sellerScriptHex, "hex"), value: listing.sellerAnchorSats },
+    sighashType: bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY,
+    ...(taproot && sellerPublicKeyHex ? { tapInternalKey: Buffer.from(sellerPublicKeyHex, "hex") } : {}) });
+  psbt.addOutput({ script: Buffer.from(listing.sellerPayoutScriptHex, "hex"),
+    value: listing.sellerAnchorSats + listing.priceSats });
+  return psbt;
+}
+
 export function crcCancelMessage(listing: CrcListing): string {
   return `Cove CRC marketplace cancellation v3\n${listing.network}:${listing.deployTxid}:${listing.id}:${listing.sellerScriptHex}`;
 }
@@ -107,7 +129,8 @@ function inputMetadata(coin: CrcFunding): { redeemScript: string | null; tapInte
   return { redeemScript: null, tapInternalKey: null };
 }
 
-export function verifyCrcFillTransaction(psbt: bitcoin.Psbt, options: CrcFillOptions): void {
+export function verifyCrcFillTransaction(psbt: bitcoin.Psbt, options: CrcFillOptions,
+  allowLegacySellerAll = false): void {
   const { listing, asset, sellerFunding, buyerFunding } = options;
   validateCrcListing(listing, asset, options.currentHeight);
   assert(sellerFunding.txid === listing.sellerAnchorTxid &&
@@ -151,7 +174,10 @@ export function verifyCrcFillTransaction(psbt: bitcoin.Psbt, options: CrcFillOpt
     const expected = inputMetadata(coin);
     assert(funding.witnessUtxo?.value === coin.valueSats &&
       funding.witnessUtxo.script.equals(script(coin.scriptHex)) &&
-      funding.sighashType === bitcoin.Transaction.SIGHASH_ALL &&
+      (index === 0 && allowLegacySellerAll && funding.sighashType === bitcoin.Transaction.SIGHASH_ALL ||
+        funding.sighashType === (index === 0
+          ? bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY
+          : bitcoin.Transaction.SIGHASH_ALL)) &&
       (funding.redeemScript?.toString("hex") ?? null) === expected.redeemScript &&
       (funding.tapInternalKey?.toString("hex") ?? null) === expected.tapInternalKey,
     "fill funding differs from trusted inputs");

@@ -26,7 +26,9 @@ function psbt(price = 5_000): string {
   const template = buildCoveV3MarketFill({ ticker: "COVE", deploymentTxid, listedInput: sellerFunding,
     buyerScriptHex, recipientSats: 1_000, sellerNetPriceSats: price,
     protocolScriptHex, protocolFeeSats: 1_000, buyerChangeSats: 10_000 - price - 1_000 - 1_000 - 400 });
-  return buildUnsignedPsbt(template, [sellerFunding, buyerFunding], 400, bitcoin.networks.regtest).toBase64();
+  const built = buildUnsignedPsbt(template, [sellerFunding, buyerFunding], 400, bitcoin.networks.regtest);
+  built.data.inputs[0]!.sighashType = bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY;
+  return built.toBase64();
 }
 
 describe("CRC buyer signing boundary", () => {
