@@ -1,0 +1,61 @@
+
+> @crclaunch/crc20-protocol@0.1.0 test /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+> pnpm build && vitest run
+
+
+> @crclaunch/crc20-protocol@0.1.0 build /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+> tsc -p tsconfig.build.json && node build-browser.mjs
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ✓ regtest.test.ts (2 tests) 20200ms
+   ✓ two-wallet raw-chain lifecycle, invalid transitions, signatures, competitors, both cancel races, replay and reorg 15152ms
+   ✓ Bob independently mints and raw-chain ownership never credits Alice with Bob's carrier 2004ms
+ ✓ confirmed.test.ts (16 tests) 5104ms
+   ✓ Core mines non-protocol carrier burn; production transition and durable rollback follow actual prevouts 5032ms
+ ✓ scripts.test.ts (12 tests) 5131ms
+   ✓ Docker Core mines all three independently signed supported paths with exact fees 5088ms
+ ✓ wallet-offers.test.ts (7 tests) 6800ms
+   ✓ Core confirms a fractional Taproot listing and buyer-only presigned fill with exact allocations 6740ms
+ ✓ market-settlement.test.ts (11 tests) 30475ms
+   ✓ purchase confirmed 0 blocks after expiry still pays and allocates tokens 2431ms
+   ✓ purchase confirmed 2 blocks after expiry still pays and allocates tokens 2510ms
+   ✓ new signed-offer purchases require height and reject expired or unavailable offers 1461ms
+   ✓ owner transfer 100000000000n, expired=false preserves allocation and retires listing 2646ms
+   ✓ owner transfer 50000000000n, expired=false preserves allocation and retires listing 2455ms
+   ✓ owner transfer 1n, expired=true preserves allocation and retires listing 2619ms
+   ✓ one owner transfer can consume multiple registered token outputs 3126ms
+   ✓ curve sale of a listed carrier retires its offer 2317ms
+   ✓ ledger-aware final validation rejects unannotated token funding before broadcast 3391ms
+   ✓ a correctly signed ALL authorization is not a reusable offer witness 1668ms
+   ✓ verified 0x83 offers still fill with only buyer signing and SQLite-compatible outputs 2499ms
+ ✓ small-curve.test.ts (3 tests) 12297ms
+   ✓ confirmed 500 + 500 buys followed by sells [ 400, 600 ] check creator/platform fees and every input/output 4922ms
+   ✓ confirmed 500 + 500 buys followed by sells [ 1000 ] check creator/platform fees and every input/output 4140ms
+ ✓ rules.test.ts (22 tests) 21ms
+ ✓ archive.test.ts (1 test) 2594ms
+   ✓ all 1950 Garden raw transactions reproduce txids, every exact output, marker and spendable recipient; archived parents reproduce input values 2593ms
+ ✓ protocol.test.ts (4 tests) 219ms
+ ✓ compliance.test.ts (9 tests) 34ms
+ ✓ target.test.ts (8 tests) 6ms
+ ✓ hardening.test.ts (5 tests) 22ms
+ ✓ browser.test.ts (1 test) 315ms
+   ✓ production package import executes WASM and verifies external offers in Chromium 315ms
+ ✓ dto.test.ts (13 tests) 5ms
+ ✓ wallet-evidence.test.ts (7 tests) 27ms
+ ✓ guardian-preflight.test.ts (3 tests) 21ms
+ ✓ funding.test.ts (8 tests) 40ms
+ ✓ package.test.ts (5 tests) 62ms
+ ✓ confirmed-events.test.ts (1 test) 18ms
+ ✓ partial-signature.test.ts (1 test) 12ms
+ ✓ wallet-key.test.ts (2 tests) 7ms
+ ✓ asset-vault.test.ts (1 test) 3ms
+ ✓ hash.test.ts (1 test) 4ms
+ ✓ core-funding.test.ts (1 test) 2ms
+
+ Test Files  24 passed (24)
+      Tests  144 passed (144)
+   Start at  21:09:01
+   Duration  87.28s (transform 342ms, setup 0ms, collect 1.18s, tests 83.42s, environment 3ms, prepare 754ms)
+

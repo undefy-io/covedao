@@ -1,0 +1,16 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/lib/crc-trade-build-route.test.ts src/lib/crc-quote.test.ts src/lib/crc-quote-route.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ✓ src/lib/crc-quote.test.ts (4 tests) 4ms
+ ✓ src/lib/crc-trade-build-route.test.ts (2 tests) 7ms
+ ✓ src/lib/crc-quote-route.test.ts (4 tests) 10ms
+
+ Test Files  3 passed (3)
+      Tests  10 passed (10)
+   Start at  21:07:58
+   Duration  1.91s (transform 1.18s, setup 0ms, collect 3.41s, tests 20ms, environment 0ms, prepare 103ms)
+

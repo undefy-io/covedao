@@ -1,0 +1,46 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/lib/crc-core-submit.integration.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP unsigned or changed wallet response never reaches Core live checks or custody
+[api] WALLET_SIGNATURE_INVALID
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP unsigned or changed wallet response never reaches Core live checks or custody
+[api] WALLET_SIGNATURE_INVALID
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP re-signed retry uses cached Guardian witness after lost response
+[api] GUARDIAN_UNAVAILABLE
+
+ ❯ src/lib/crc-core-submit.integration.test.ts (6 tests | 1 failed) 18497ms
+   ✓ HTTP submit registers exact signed core deployment before actual broadcast and is idempotent 1492ms
+   ✓ HTTP API sends verified wallet first to actual shared Guardian and mines indexed core mint 2542ms
+   ✓ HTTP sell and inventory buy mine exact core plans, fees and allocations 5990ms
+   ✓ HTTP re-signed retry uses cached Guardian witness after lost response 3252ms
+   × HTTP arbitrary transfer and one-transaction listing preserve exact core allocations 184ms
+     → buildCrcTokenSession is not a function
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-core-submit.integration.test.ts > HTTP arbitrary transfer and one-transaction listing preserve exact core allocations
+TypeError: buildCrcTokenSession is not a function
+ ❯ src/lib/crc-core-submit.integration.test.ts:381:25
+    379|     const tokenFunding = Object.entries(before.allocations).filter(([,…
+    380|       .map(([key]) => ({ txid: key.split(":")[0]!, vout: Number(key.sp…
+    381|     const built = await buildCrcTokenSession({
+       |                         ^
+    382|       db: database.db, network: "regtest", bitcoinNetwork: bitcoin.net…
+    383|       deployTxid: deployId, operation, amountAtoms: 1n,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed (6)
+   Start at  21:09:46
+   Duration  20.10s (transform 742ms, setup 0ms, collect 1.31s, tests 18.50s, environment 0ms, prepare 70ms)
+
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 test: `vitest run --passWithNoTests src/lib/crc-core-submit.integration.test.ts`
+Exit status 1

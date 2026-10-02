@@ -1,0 +1,36 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ asset-vault.test.ts (1 test | 1 failed) 5ms
+   × public asset quote preflight uses the builder's vault validation 5ms
+     → expected [Function] to not throw an error but 'TypeError: vali…' was thrown
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  asset-vault.test.ts > public asset quote preflight uses the builder's vault validation
+AssertionError: expected [Function] to not throw an error but 'TypeError: vali…' was thrown
+
+- Expected: 
+undefined
+
++ Received: 
+"TypeError: __vite_ssr_import_1__.validateAssetVault is not a function"
+
+ ❯ asset-vault.test.ts:8:52
+      6|     deployTxid: "a".repeat(64), issuedAtoms: 100000000000n, inventoryA…
+      7|     vault: {txid: "b".repeat(64), vout: 2, sats: 1027n, scriptHex: scr…
+      8|   expect(() => core.validateAssetVault(state)).not.toThrow();
+       |                                                    ^
+      9|   expect(() => core.validateAssetVault({...state, vault: {...state.vau…
+     10|   expect(() => core.validateAssetVault({...state, vaultAvailable: fals…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  20:34:17
+   Duration  223ms (transform 82ms, setup 0ms, collect 98ms, tests 5ms, environment 0ms, prepare 32ms)
+
+undefined
+/home/andefy/dev/covedao/packages/cove-market/crc20-protocol:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run asset-vault.test.ts

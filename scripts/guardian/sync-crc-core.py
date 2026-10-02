@@ -74,7 +74,7 @@ put(Path("packages/db/src/schema.ts"), prefix + "\n\n" + suffix)
 source_journal = json.loads((ROOT / "packages/db/drizzle/meta/_journal.json").read_text())
 target_journal = json.loads((TARGET / "packages/db/drizzle/meta/_journal.json").read_text())
 for entry in source_journal["entries"]:
-    if entry["tag"] not in {"0038_crc_shared_core", "0039_crc_guardian_journal"}:
+    if entry["tag"] not in {"0038_crc_shared_core", "0039_crc_guardian_journal", "0040_crc_api"}:
         continue
     matches = [item for item in target_journal["entries"] if item["idx"] == entry["idx"]]
     if matches and matches[0] != entry:

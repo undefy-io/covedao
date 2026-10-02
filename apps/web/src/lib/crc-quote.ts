@@ -1,8 +1,4 @@
-import { dustThreshold } from "@crclaunch/bitcoin";
-import { CurveTransitionError, quoteBuy, quoteSell, requiredBacking, type CurveState } from "@crclaunch/crc20-curve";
-
-const ATOMS_PER_TOKEN = 100_000_000n;
-
+import * as core from "@crclaunch/crc20-protocol";
 export type CrcQuoteAsset = {
   assetId: string;
   mintedAtoms: string;
@@ -11,84 +7,91 @@ export type CrcQuoteAsset = {
   vaultAnchorSats: string;
   availability: "active" | "unavailable";
   vault: { txid: string; vout: number; btcSats: string };
+  coreState: core.ProtocolDto<core.Asset>;
 };
-
 export class CrcQuoteError extends Error {
-  constructor(readonly code: "ASSET_UNAVAILABLE" | "INVALID_STATE" | "TOKEN_AMOUNT_INVALID", message: string) {
+  constructor(
+    readonly code: "ASSET_UNAVAILABLE" | "INVALID_STATE" | "TOKEN_AMOUNT_INVALID",
+    message: string,
+  ) {
     super(message);
     this.name = "CrcQuoteError";
   }
 }
-
-export function crcCurveStateFromAsset(asset: CrcQuoteAsset): CurveState {
-  if (asset.availability !== "active") throw new CrcQuoteError("ASSET_UNAVAILABLE", "Cove CRC vault is unavailable");
-  const mintedAtoms = BigInt(asset.mintedAtoms);
-  const vaultAtoms = BigInt(asset.inventoryAtoms);
-  const circulatingAtoms = BigInt(asset.circulatingAtoms);
-  const vaultSats = BigInt(asset.vault.btcSats);
-  if (circulatingAtoms < 0n || circulatingAtoms % ATOMS_PER_TOKEN !== 0n) {
-    throw new CrcQuoteError("INVALID_STATE", "Cove CRC supply is inconsistent");
-  }
-  let reserveSats: bigint;
+export function crcCoreAssetFromQuote(asset: CrcQuoteAsset): core.Asset {
+  if (asset.availability !== "active")
+    throw new CrcQuoteError("ASSET_UNAVAILABLE", "Cove CRC vault is unavailable");
   try {
-    reserveSats = requiredBacking(circulatingAtoms / ATOMS_PER_TOKEN);
+    const state = core.decodeProtocolDto<core.Asset>(asset.coreState);
+    core.validateAssetVault(state);
+    const [network, deployId] = asset.assetId.split(":");
+    if (
+      !network ||
+      core.protocolNetwork(network) !== state.config.network ||
+      deployId !== state.deployTxid
+    )
+      throw new Error("CRC asset identity mismatch");
+    return state;
   } catch (error) {
-    if (error instanceof CurveTransitionError) throw new CrcQuoteError("INVALID_STATE", "Cove CRC supply is inconsistent");
-    throw error;
+    throw new CrcQuoteError(
+      "INVALID_STATE",
+      error instanceof Error ? error.message : "CRC state unavailable",
+    );
   }
-  const vaultAnchorSats = BigInt(asset.vaultAnchorSats);
-  if (vaultAnchorSats < 0n || vaultSats !== vaultAnchorSats + reserveSats) {
-    throw new CrcQuoteError("INVALID_STATE", "Cove CRC backing does not match its registered anchor");
-  }
-  return {
-    version: "cove-curve-v3",
-    mintedAtoms,
-    vaultAtoms,
-    circulatingAtoms,
-    vaultAnchorSats,
-    vaultSats,
-    vaultOutpoint: `${asset.vault.txid}:${asset.vault.vout}`,
-  };
 }
-
-function tokensFromAtoms(amountAtoms: bigint): bigint {
-  if (amountAtoms <= 0n || amountAtoms % ATOMS_PER_TOKEN !== 0n) {
-    throw new CrcQuoteError("TOKEN_AMOUNT_INVALID", "Amount must be a positive whole number of tokens");
+function amountQuote<T>(quote: () => T): T {
+  try {
+    return quote();
+  } catch (error) {
+    throw new CrcQuoteError(
+      "TOKEN_AMOUNT_INVALID",
+      error instanceof Error ? error.message : "Invalid amount",
+    );
   }
-  return amountAtoms / ATOMS_PER_TOKEN;
 }
-
+function checkedAmount(amount: bigint) {
+  try {
+    core.curveAmount(amount);
+  } catch (error) {
+    throw new CrcQuoteError(
+      "TOKEN_AMOUNT_INVALID",
+      error instanceof Error ? error.message : "Invalid amount",
+    );
+  }
+}
 export function quoteCrcBuy(asset: CrcQuoteAsset, amountAtoms: bigint) {
-  const state = crcCurveStateFromAsset(asset);
-  const quote = quoteBuy(state, tokensFromAtoms(amountAtoms));
+  const state = crcCoreAssetFromQuote(asset);
+  checkedAmount(amountAtoms);
+  const quote = amountQuote(() => core.quoteBuy(state, amountAtoms));
   return {
     assetId: asset.assetId,
-    vaultOutpoint: state.vaultOutpoint,
-    operation: quote.operation,
-    amountAtoms: quote.amountAtoms.toString(),
+    vaultOutpoint: core.outpoint(state.vault),
+    operation: state.inventoryAtoms ? "transfer" : "mint",
+    amountAtoms: amountAtoms.toString(),
     grossSats: quote.grossSats.toString(),
     protocolFeeSats: quote.protocolFeeSats.toString(),
     creatorFeeSats: quote.creatorFeeSats.toString(),
-    buyerTotalSats: quote.buyerTotalSats.toString(),
+    buyerTotalSats: (quote.grossSats + quote.protocolFeeSats + quote.creatorFeeSats).toString(),
     minerFeeExcluded: true,
   };
 }
-
 export function quoteCrcSell(asset: CrcQuoteAsset, amountAtoms: bigint, payoutScriptHex: string) {
-  const state = crcCurveStateFromAsset(asset);
-  const payoutDustSats = dustThreshold(Buffer.from(payoutScriptHex, "hex"));
-  const quote = quoteSell(state, tokensFromAtoms(amountAtoms), payoutDustSats);
+  const state = crcCoreAssetFromQuote(asset);
+  checkedAmount(amountAtoms);
+  core.requireSupportedOutputScript(payoutScriptHex);
+  const quote = amountQuote(() => core.quoteSell(state, amountAtoms));
   return {
     assetId: asset.assetId,
-    vaultOutpoint: state.vaultOutpoint,
-    operation: quote.operation,
-    amountAtoms: quote.amountAtoms.toString(),
+    vaultOutpoint: core.outpoint(state.vault),
+    operation: "transfer",
+    amountAtoms: amountAtoms.toString(),
     grossSats: quote.grossSats.toString(),
     protocolFeeSats: quote.protocolFeeSats.toString(),
     sellerPayoutSats: quote.sellerPayoutSats.toString(),
     walletTopUpSats: quote.walletTopUpSats.toString(),
-    sellerNetSats: quote.sellerNetSats.toString(),
-    payoutDustSats: payoutDustSats.toString(),
+    sellerNetSats: quote.economicSats.toString(),
+    payoutDustSats: core.carrierSats.toString(),
     minerFeeExcluded: true,
+    walletTopUpExcludesCarrierCredits: true,
   };
 }

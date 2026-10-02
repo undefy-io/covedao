@@ -37,6 +37,7 @@ export interface PreparedSigning {
   walletInputs: WalletInput[];
   plan?: Plan;
   terms?: OfferTerms;
+  guardianPending?: true;
 }
 const networkFor = (network: ProtocolNetwork) =>
   network === "bitcoin"
@@ -63,6 +64,50 @@ function accountScript(address: string, network: ProtocolNetwork): string {
   }
   return bitcoin.address.toOutputScript(address, networkFor(network)).toString("hex");
 }
+/** Server transport construction; authorization is verified separately against the current core ledger. */
+export function createPlanPsbt(
+  plan: Plan,
+  networkName: string,
+  options: { publicKeys?: Record<number, string> } = {},
+): bitcoin.Psbt {
+  const psbt = new bitcoin.Psbt({ network: networkFor(core.protocolNetwork(networkName)) });
+  psbt.setVersion(2);
+  psbt.setLocktime(0);
+  plan.inputs.forEach((input, index) => {
+    const publicKey = options.publicKeys?.[index];
+    const witness = plan.inputWitnesses?.[index];
+    const kind = core.walletScriptKind(input.scriptHex, input.redeemScriptHex);
+    if (publicKey)
+      core.canonicalOfferPublicKey(
+        publicKey,
+        kind === "p2sh-p2wpkh" ? input.redeemScriptHex! : input.scriptHex,
+      );
+    psbt.addInput({
+      hash: input.txid,
+      index: input.vout,
+      sequence: 0xfffffffe,
+      witnessUtxo: { script: fromHex(input.scriptHex), value: Number(core.sats(input.sats)) },
+      ...(witness?.length
+        ? { finalScriptWitness: fromHex(core.encodeWitness(witness.map(fromHex))) }
+        : { sighashType: 1 }),
+      ...(input.redeemScriptHex
+        ? {
+            redeemScript: fromHex(input.redeemScriptHex),
+            ...(witness?.length
+              ? { finalScriptSig: bitcoin.script.compile([fromHex(input.redeemScriptHex)]) }
+              : {}),
+          }
+        : {}),
+      ...(kind === "p2tr" && publicKey
+        ? { tapInternalKey: fromHex(publicKey.length === 64 ? publicKey : publicKey.slice(2)) }
+        : {}),
+    });
+  });
+  plan.outputs.forEach((output) =>
+    psbt.addOutput({ script: fromHex(output.scriptHex), value: Number(core.sats(output.sats)) }),
+  );
+  return psbt;
+}
 function walletMetadata(input: Input, account: WalletAccount, network: ProtocolNetwork) {
   if (accountScript(account.address, network) !== input.scriptHex)
     throw new Error("wallet address/input script mismatch");
@@ -87,6 +132,7 @@ function preparedPsbt(
   options: SigningOptions,
   sighash: number,
   witnesses: Record<number, string[]> = {},
+  guardianPending = false,
 ): PreparedSigning {
   const network = core.protocolNetwork(options.network);
   const psbt = new bitcoin.Psbt({ network: networkFor(network) });
@@ -103,6 +149,8 @@ function preparedPsbt(
     )
       throw new Error("invalid or duplicate wallet input index");
     if (witnesses[account.index]) throw new Error("cannot sign finalized external input");
+    if (guardianPending && account.index === 0)
+      throw new Error("custody input is not a wallet input");
     indexed.set(account.index, account);
     (signInputs[account.address] ??= []).push(account.index);
   }
@@ -120,7 +168,8 @@ function preparedPsbt(
       throw new Error("invalid prevout");
     const account = indexed.get(index);
     const witness = witnesses[index];
-    if (!account && !witness) throw new Error("unassigned signing input");
+    const unsignedGuardian = guardianPending && index === 0;
+    if (!account && !witness && !unsignedGuardian) throw new Error("unassigned signing input");
     psbt.addInput({
       hash: input.txid,
       index: input.vout,
@@ -128,12 +177,14 @@ function preparedPsbt(
       witnessUtxo: { script: fromHex(input.scriptHex), value: Number(core.sats(input.sats)) },
       ...(account
         ? { sighashType: sighash, ...walletMetadata(input, account, network) }
-        : {
-            finalScriptWitness: fromHex(core.encodeWitness(witness!.map(fromHex))),
-            ...(input.redeemScriptHex
-              ? { finalScriptSig: bitcoin.script.compile([fromHex(input.redeemScriptHex)]) }
-              : {}),
-          }),
+        : unsignedGuardian
+          ? {}
+          : {
+              finalScriptWitness: fromHex(core.encodeWitness(witness!.map(fromHex))),
+              ...(input.redeemScriptHex
+                ? { finalScriptSig: bitcoin.script.compile([fromHex(input.redeemScriptHex)]) }
+                : {}),
+            }),
     });
   });
   outputs.forEach((output) =>
@@ -166,6 +217,34 @@ export function preparePlanSigning(plan: Plan, options: SigningOptions): Prepare
   return {
     ...preparedPsbt(plan.inputs, plan.outputs, options, 1, witnesses),
     plan: structuredClone(plan),
+  };
+}
+/** Wallet signs first; authoritative Guardian preflight runs once those signatures exist. */
+export function prepareGuardianPlanSigning(
+  plan: Plan,
+  ledger: Ledger,
+  options: SigningOptions,
+): PreparedSigning {
+  const first = plan.inputs[0];
+  const asset = Object.values(ledger.assets).find(
+    (asset) => first && core.outpoint(asset.vault) === core.outpoint(first),
+  );
+  if (!asset?.config.guardianCustody || asset.vaultAvailable === false)
+    throw new Error("current registered Guardian vault required");
+  core.validateConfig(asset.config);
+  if (
+    core.protocolNetwork(options.network) !== asset.config.network ||
+    ledger.config.network !== asset.config.network ||
+    first!.scriptHex !== asset.vault.scriptHex ||
+    first!.sats !== asset.vault.sats
+  )
+    throw new Error("Guardian vault or network mismatch");
+  if (options.finalizedWitnesses?.[0] || plan.inputWitnesses?.some((witness) => witness.length))
+    throw new Error("wallet-first Guardian plan must be unsigned");
+  return {
+    ...preparedPsbt(plan.inputs, plan.outputs, options, 1, options.finalizedWitnesses, true),
+    plan: structuredClone(plan),
+    guardianPending: true,
   };
 }
 export function prepareOfferSigning(terms: OfferTerms, account: WalletAccount): PreparedSigning {
@@ -239,7 +318,8 @@ export function completePlanSigning(
   response: string,
   ledger?: Ledger,
 ): ChainTransaction {
-  if (!prepared.plan || prepared.terms) throw new Error("plan signing context required");
+  if (!prepared.plan || prepared.terms || prepared.guardianPending)
+    throw new Error("complete plan signing context required");
   const psbt = checkedResponse(prepared, response);
   finalizeWalletInputs(psbt, prepared);
   const transaction = {
@@ -248,6 +328,69 @@ export function completePlanSigning(
   };
   core.validateFinalTransaction(prepared.plan, transaction, ledger);
   return transaction;
+}
+export function completeGuardianWalletSigning(
+  prepared: PreparedSigning,
+  response: string,
+  ledger: Ledger,
+): { psbtBase64: string; transaction: ChainTransaction; transition: core.ValidatedTransition } {
+  if (!prepared.guardianPending || !prepared.plan || prepared.terms)
+    throw new Error("wallet-first Guardian context required");
+  const psbt = checkedResponse(prepared, response);
+  finalizeWalletInputs(psbt, prepared);
+  const transaction = {
+    rawHex: rawWithWitnesses(psbt).toHex(),
+    prevouts: structuredClone(prepared.prevouts),
+  };
+  const transition = core.validateGuardianTransaction(ledger, transaction);
+  return { psbtBase64: psbt.toBase64(), transaction, transition };
+}
+/** Server-side verification uses the stored plan; key ownership is proven by core signatures. */
+export function completeServerWalletSigning(
+  plan: Plan,
+  networkName: string,
+  originalPsbtBase64: string,
+  response: string,
+  ledger: Ledger,
+  guardianPending = false,
+): { psbtBase64: string; transaction: ChainTransaction; transition?: core.ValidatedTransition } {
+  const original = bitcoin.Psbt.fromBase64(originalPsbtBase64);
+  if (
+    !original.data.globalMap.unsignedTx
+      .toBuffer()
+      .equals(createPlanPsbt(plan, networkName).data.globalMap.unsignedTx.toBuffer())
+  )
+    throw new Error("stored PSBT differs from core plan");
+  original.data.inputs.forEach((input, index) => {
+    if (
+      !input.witnessUtxo ||
+      BigInt(input.witnessUtxo.value) !== core.sats(plan.inputs[index]!.sats) ||
+      input.witnessUtxo.script.toString("hex") !== plan.inputs[index]!.scriptHex
+    )
+      throw new Error("stored prevout differs from core plan");
+  });
+  const prepared: PreparedSigning = {
+    network: core.protocolNetwork(networkName),
+    params: { psbt: originalPsbtBase64, signInputs: {}, broadcast: false },
+    prevouts: structuredClone(plan.inputs),
+    plan: structuredClone(plan),
+    // Only input positions are used for finalization; wallet keys come from the verified witness.
+    walletInputs: original.data.inputs.flatMap((input, index) =>
+      input.finalScriptWitness || (guardianPending && index === 0)
+        ? []
+        : [{ index, address: "", publicKey: "" }],
+    ),
+    ...(guardianPending ? { guardianPending: true } : {}),
+  };
+  if (guardianPending) return completeGuardianWalletSigning(prepared, response, ledger);
+  const psbt = checkedResponse(prepared, response);
+  finalizeWalletInputs(psbt, prepared);
+  const transaction = {
+    rawHex: rawWithWitnesses(psbt).toHex(),
+    prevouts: structuredClone(plan.inputs),
+  };
+  core.validateFinalTransaction(plan, transaction, ledger);
+  return { psbtBase64: psbt.toBase64(), transaction };
 }
 export function completeOfferSigning(
   prepared: PreparedSigning,

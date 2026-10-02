@@ -1,0 +1,63 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/lib/crc-core-submit.integration.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP unsigned or changed wallet response never reaches Core live checks or custody
+[api] WALLET_SIGNATURE_INVALID
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP unsigned or changed wallet response never reaches Core live checks or custody
+[api] WALLET_SIGNATURE_INVALID
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP re-signed retry uses cached Guardian witness after lost response
+[api] GUARDIAN_UNAVAILABLE
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP re-signed retry uses cached Guardian witness after lost response
+[api] GUARDIAN_REJECTED
+
+ ❯ src/lib/crc-core-submit.integration.test.ts (5 tests | 1 failed) 19337ms
+   ✓ HTTP submit registers exact signed core deployment before actual broadcast and is idempotent 1817ms
+   ✓ HTTP API sends verified wallet first to actual shared Guardian and mines indexed core mint 3074ms
+   ✓ HTTP sell and inventory buy mine exact core plans, fees and allocations 7189ms
+   × HTTP re-signed retry uses cached Guardian witness after lost response 1840ms
+     → {"ok":false,"error":{"code":"GUARDIAN_REJECTED","message":"The backing transition was rejected by validation.","retryable":false,"detail":"Guardian changed wallet witness"}}: expected { ok: false, error: { …(4) } } to match object { ok: true, …(1) }
+(5 matching properties omitted from actual)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-core-submit.integration.test.ts > HTTP re-signed retry uses cached Guardian witness after lost response
+AssertionError: {"ok":false,"error":{"code":"GUARDIAN_REJECTED","message":"The backing transition was rejected by validation.","retryable":false,"detail":"Guardian changed wallet witness"}}: expected { ok: false, error: { …(4) } } to match object { ok: true, …(1) }
+(5 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  Object {
+-   "data": Object {
+-     "status": "BROADCAST",
+-   },
+-   "ok": true,
++   "ok": false,
+  }
+
+ ❯ submit src/lib/crc-core-submit.integration.test.ts:134:38
+    132|   );
+    133|   const body = await response.json();
+    134|   expect(body, JSON.stringify(body)).toMatchObject({ ok: true, data: {…
+       |                                      ^
+    135|   return body.data as { txid: string; status: string };
+    136| }
+ ❯ src/lib/crc-core-submit.integration.test.ts:365:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  21:06:13
+   Duration  21.47s (transform 1.14s, setup 0ms, collect 1.84s, tests 19.34s, environment 0ms, prepare 78ms)
+
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 test: `vitest run --passWithNoTests src/lib/crc-core-submit.integration.test.ts`
+Exit status 1

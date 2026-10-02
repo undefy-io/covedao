@@ -171,6 +171,7 @@ export class Core {
       hash,
       parentHash: block.previousblockhash ?? "",
       height: block.height,
+      timestamp: block.time,
       transactions: block.tx.slice(1).map((id: string) => this.transaction(id)),
     };
   }

@@ -6,7 +6,8 @@ import { getCrcMutationServices } from "@/lib/crc-mutation";
 import { checkCrcRateLimit } from "@/lib/crc-rate-limit";
 import { normalizeCrcWalletPublicKey } from "@/lib/crc-wallet-key";
 import { parseCrcLaunchMetadata } from "@/lib/crc-metadata";
-import { readFeeObservation } from "@crclaunch/cove-app";
+import { readCrcBuildFeeRate } from "@/lib/crc-build-fee";
+import { parseCrcFundingOutpoints } from "@/lib/crc-funding";
 
 export const dynamic = "force-dynamic";
 
@@ -25,13 +26,10 @@ export async function POST(req: Request) {
     }
     const feeTier = strField(body, "feeTier");
     if (feeTier !== "eco" && feeTier !== "standard" && feeTier !== "priority") return fail("BAD_REQUEST", "Choose a mining speed", 400);
-    const rates = await readFeeObservation(db, config.network);
-    const rate = rates.tiers.find((tier) => tier.key === feeTier)?.satPerVb;
-    if (!rate || rate > rates.ceilingSatPerVb || rate < rates.floorSatPerVb) return fail("BAD_REQUEST", "Mining speed is unavailable", 400);
-    const funding = body.funding;
-    if (!Array.isArray(funding)) return fail("FUNDING_INPUT_INVALID", "Wallet funding candidates are required", 400);
     const idempotencyKey = strField(body, "idempotencyKey");
     if (!idempotencyKey || idempotencyKey.length > 128) return fail("BAD_REQUEST", "Idempotency key is required", 400);
+    const rate = await readCrcBuildFeeRate(db, config.network, idempotencyKey, feeTier);
+    const funding = parseCrcFundingOutpoints(body.funding);
     const bitcoinNetwork = config.network === "mainnet" ? bitcoin.networks.bitcoin : config.network === "regtest" ? bitcoin.networks.regtest : bitcoin.networks.testnet;
     const ticker = strField(body, "ticker").toUpperCase();
     const metadata = parseCrcLaunchMetadata(body.metadata, ticker);

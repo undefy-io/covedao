@@ -1,0 +1,14 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/lib/crc-core-read.integration.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ✓ src/lib/crc-core-read.integration.test.ts (5 tests) 1863ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  21:08:59
+   Duration  3.43s (transform 807ms, setup 0ms, collect 1.25s, tests 1.86s, environment 0ms, prepare 74ms)
+

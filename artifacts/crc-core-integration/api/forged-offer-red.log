@@ -1,0 +1,69 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/lib/crc-core-submit.integration.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP unsigned or changed wallet response never reaches Core live checks or custody
+[api] WALLET_SIGNATURE_INVALID
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP unsigned or changed wallet response never reaches Core live checks or custody
+[api] WALLET_SIGNATURE_INVALID
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP re-signed retry uses cached Guardian witness after lost response
+[api] GUARDIAN_UNAVAILABLE
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP forged offer terms and wrong network reject before live RPC or custody
+[api] error: Error: invalid transaction signature
+    at verifyInputSignature (/home/andefy/dev/covedao/packages/cove-market/crc20-protocol/wire.ts:359:11)
+    at /home/andefy/dev/covedao/packages/cove-market/crc20-protocol/wire.ts:274:5
+    at Array.forEach (<anonymous>)
+    at Module.verifySignatures (/home/andefy/dev/covedao/packages/cove-market/crc20-protocol/wire.ts:273:13)
+    at Module.verifyMessageAuthorization (/home/andefy/dev/covedao/packages/cove-market/crc20-protocol/bip322.ts:79:3)
+    at Module.verifyOffer (/home/andefy/dev/covedao/packages/cove-market/crc20-protocol/offers.ts:105:3)
+    at Module.activateCrcCoreOffer (/home/andefy/dev/covedao/apps/web/src/lib/crc-market-core.ts:13:8)
+    at Module.crcMarketPost (/home/andefy/dev/covedao/apps/web/src/lib/crc-market-route.ts:102:36)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at /home/andefy/dev/covedao/apps/web/src/lib/crc-core-submit.integration.test.ts:505:22
+
+ ❯ src/lib/crc-core-submit.integration.test.ts (9 tests | 1 failed) 36356ms
+   ✓ HTTP submit registers exact signed core deployment before actual broadcast and is idempotent 1874ms
+   ✓ HTTP API sends verified wallet first to actual shared Guardian and mines indexed core mint 3027ms
+   ✓ HTTP sell and inventory buy mine exact core plans, fees and allocations 7273ms
+   ✓ HTTP re-signed retry uses cached Guardian witness after lost response 3820ms
+   ✓ HTTP arbitrary transfer and one-transaction listing preserve exact core allocations 5355ms
+   ✓ core offer activation and buyer-only API fill preserve seller presign and exact fees 2954ms
+   ✓ API cancellation mines, rolls back with actual reorg, and rebroadcasts its persisted receipt 6533ms
+   × HTTP forged offer terms and wrong network reject before live RPC or custody 160ms
+     → expected 500 to be 400 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-core-submit.integration.test.ts > HTTP forged offer terms and wrong network reject before live RPC or custody
+AssertionError: expected 500 to be 400 // Object.is equality
+
+- Expected
++ Received
+
+- 400
++ 500
+
+ ❯ src/lib/crc-core-submit.integration.test.ts:509:29
+    507|       body: JSON.stringify({ offer: { ...core.encodeProtocolDto(offer)…
+    508|     }), "listings", true, () => ({ db: database.db, network: "regtest"…
+    509|     expect(response.status).toBe(400);
+       |                             ^
+    510|     expect((await response.json()).error.code).toBe(code);
+    511|   }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 8 passed (9)
+   Start at  21:21:52
+   Duration  38.29s (transform 997ms, setup 0ms, collect 1.64s, tests 36.36s, environment 0ms, prepare 73ms)
+
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 test: `vitest run --passWithNoTests src/lib/crc-core-submit.integration.test.ts`
+Exit status 1

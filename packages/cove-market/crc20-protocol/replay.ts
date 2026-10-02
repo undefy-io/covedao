@@ -6,6 +6,7 @@ import type {
   ChainTransaction,
   Config,
   ConfirmedBlockOptions,
+  ConfirmedEvent,
   Ledger,
   LedgerState,
   Offer,
@@ -75,7 +76,10 @@ function compare(plan: Plan, outputs: { sats: bigint; scriptHex: string }[]): vo
 export interface ValidatedTransition {
   ledger: Ledger;
   plan: Plan;
-  kind: string;
+  kind: Exclude<ConfirmedEvent["kind"], "burn">;
+  deployTxid: string;
+  amountAtoms?: bigint;
+  grossSats?: bigint;
 }
 function applyTransaction(ledger: Ledger, transaction: ChainTransaction): Ledger {
   return transitionTransaction(ledger, transaction).ledger;
@@ -129,7 +133,7 @@ function transitionTransaction(
     inputs.some((i) => outpoint(i) === outpoint(a.vault)),
   );
   if (vaultEntries.length > 1) throw new Error("multiple vaults");
-  let plan: Plan, asset: Asset, kind: string;
+  let plan: Plan, asset: Asset, kind: ValidatedTransition["kind"];
   let usedOffer: Offer | undefined;
   if (marker.operation === "deploy") {
     if (
@@ -318,6 +322,21 @@ function transitionTransaction(
   return {
     plan,
     kind,
+    deployTxid: asset.deployTxid,
+    amountAtoms:
+      kind === "deploy"
+        ? undefined
+        : kind === "mint"
+          ? asset.issuedAtoms - ledger.assets[asset.deployTxid]!.issuedAtoms
+          : marker.amountAtoms!,
+    grossSats:
+      kind === "mint" || kind === "inventoryBuy"
+        ? sats(asset.vault.sats) - sats(ledger.assets[asset.deployTxid]!.vault.sats)
+        : kind === "sell"
+          ? sats(ledger.assets[asset.deployTxid]!.vault.sats) - sats(asset.vault.sats)
+          : kind === "fill"
+            ? usedOffer!.priceSats
+            : undefined,
     ledger: {
       ...ledger,
       assets: { ...ledger.assets, [asset.deployTxid]: asset },
@@ -534,18 +553,38 @@ export function applyConfirmedBlock(
   block: Block,
   options: ConfirmedBlockOptions = {},
 ): Ledger {
+  return applyConfirmedBlockDetailed(ledger, block, options).ledger;
+}
+/** Presentation facts come from the accepted core transition, never a second parser's decisions. */
+export function applyConfirmedBlockDetailed(
+  ledger: Ledger,
+  block: Block,
+  options: ConfirmedBlockOptions = {},
+): { ledger: Ledger; events: ConfirmedEvent[] } {
+  const events: ConfirmedEvent[] = [];
+  if (
+    block.timestamp !== undefined &&
+    (!Number.isSafeInteger(block.timestamp) || block.timestamp < 1)
+  )
+    throw new Error("invalid confirmed timestamp");
   const fingerprint = hex(
     hash256(
       utf8(
-        JSON.stringify([block.parentHash, block.height, block.transactions], (_, value) =>
-          typeof value === "bigint" ? value.toString() : value,
+        JSON.stringify(
+          [
+            block.parentHash,
+            block.height,
+            block.transactions,
+            ...(block.timestamp === undefined ? [] : [block.timestamp]),
+          ],
+          (_, value) => (typeof value === "bigint" ? value.toString() : value),
         ),
       ),
     ),
   );
   if (ledger.tip?.hash === block.hash) {
     if (ledger.tip.fingerprint !== fingerprint) throw new Error("altered block contents");
-    return ledger;
+    return { ledger, events };
   }
   if (ledger.history[block.hash]) throw new Error("block replay");
   if (
@@ -555,7 +594,7 @@ export function applyConfirmedBlock(
     throw new Error("detached block or reorg requires rollback");
   const rehydrate = prepareOfferRehydration(ledger, options.authorizations ?? []);
   let next = rehydrate(ledger);
-  for (const transaction of block.transactions) {
+  for (const [txIndex, transaction] of block.transactions.entries()) {
     const tx = parseRawTransaction(transaction.rawHex);
     const consumed = new Set(tx.inputs.map(outpoint));
     const tracked = tx.inputs.some((i) => next.allocations[outpoint(i)]);
@@ -606,10 +645,20 @@ export function applyConfirmedBlock(
     if (selected.network !== ledger.config.network)
       throw new Error("registered deployment network mismatch");
     try {
+      const transition = transitionTransaction({ ...next, config: selected }, transaction);
       next = {
-        ...applyTransaction({ ...next, config: selected }, transaction),
+        ...transition.ledger,
         config: ledger.config,
       };
+      events.push({
+        txid: tx.txid,
+        txIndex,
+        deployTxid: transition.deployTxid,
+        kind: transition.kind,
+        valid: true,
+        amountAtoms: transition.amountAtoms,
+        grossSats: transition.grossSats,
+      });
     } catch {
       // Full parent bytes are needed before burning for unsupported funded spends.
       // A failed signature can reflect corrupt ordinary observations, not CRC invalidity.
@@ -621,7 +670,21 @@ export function applyConfirmedBlock(
         throw new UnavailableParentError(
           "parent authentication required for invalid confirmed spend",
         );
-      next = burnConfirmedInputs(next, transaction);
+      const burned = burnConfirmedInputs(next, transaction);
+      for (const [id, asset] of Object.entries(burned.assets)) {
+        const previous = next.assets[id]!;
+        if (asset !== previous)
+          events.push({
+            txid: tx.txid,
+            txIndex,
+            deployTxid: id,
+            kind: "burn",
+            valid: false,
+            amountAtoms: asset.burnedAtoms - previous.burnedAtoms,
+            grossSats: undefined,
+          });
+      }
+      next = burned;
     }
     next = rehydrate(
       next,
@@ -629,9 +692,12 @@ export function applyConfirmedBlock(
     );
   }
   return {
-    ...next,
-    tip: { hash: block.hash, height: block.height, fingerprint },
-    history: retainedUndo(ledger, next, block.hash, options.undoLimit ?? 32),
+    events,
+    ledger: {
+      ...next,
+      tip: { hash: block.hash, height: block.height, fingerprint },
+      history: retainedUndo(ledger, next, block.hash, options.undoLimit ?? 32),
+    },
   };
 }
 

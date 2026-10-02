@@ -1,0 +1,31 @@
+
+> cove-guardian-service@0.1.0 test /home/andefy/dev/guardian
+> pnpm --filter @crclaunch/guardian test
+
+
+> @crclaunch/guardian@0.1.0 test /home/andefy/dev/guardian/apps/guardian
+> vitest run
+
+
+ RUN  v2.1.9 /home/andefy/dev/guardian/apps/guardian
+
+ ✓ src/auth.test.ts (5 tests) 9ms
+stderr | src/http.test.ts > Guardian request lifecycle > disconnect aborts in-flight work and later requests regain signing capacity
+guardian request failed: Guardian client disconnected
+guardian request failed: Guardian client disconnected
+
+stderr | src/http.test.ts > Guardian request lifecycle > an incomplete disconnected request never enters signing
+guardian request failed: Guardian client disconnected
+
+ ✓ src/http.test.ts (5 tests) 230ms
+ ✓ src/custody.test.ts (7 tests) 34ms
+ ✓ src/boot.test.ts (6 tests) 61ms
+ ✓ src/crc20-service.test.ts (3 tests) 44ms
+ ✓ src/service.test.ts (4 tests) 4ms
+ ↓ src/pending.integration.test.ts (14 tests | 14 skipped)
+
+ Test Files  6 passed | 1 skipped (7)
+      Tests  30 passed | 14 skipped (44)
+   Start at  21:42:36
+   Duration  2.44s (transform 3.85s, setup 0ms, collect 10.70s, tests 381ms, environment 1ms, prepare 583ms)
+

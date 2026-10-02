@@ -79,5 +79,11 @@ export async function observeCrcBlock(
     } else transactions.push({ rawHex, prevouts: [] });
     earlier.set(tx.txid, rawHex);
   }
-  return { hash: block.hash, parentHash: block.parentHash, height: block.height, transactions };
+  return {
+    hash: block.hash,
+    parentHash: block.parentHash,
+    height: block.height,
+    timestamp: block.timestamp,
+    transactions,
+  };
 }

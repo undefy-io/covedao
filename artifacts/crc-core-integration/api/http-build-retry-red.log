@@ -1,0 +1,73 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/lib/crc-core-submit.integration.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP unsigned or changed wallet response never reaches Core live checks or custody
+[api] WALLET_SIGNATURE_INVALID
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP unsigned or changed wallet response never reaches Core live checks or custody
+[api] WALLET_SIGNATURE_INVALID
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP re-signed retry uses cached Guardian witness after lost response
+[api] GUARDIAN_UNAVAILABLE
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP forged offer terms and wrong network reject before live RPC or custody
+[api] WALLET_SIGNATURE_INVALID
+[api] WRONG_NETWORK
+
+stderr | src/lib/crc-core-submit.integration.test.ts > API persists READY before failed broadcast and retries exact saved bytes without custody
+[api] BROADCAST_FAILED
+
+stderr | src/lib/crc-core-submit.integration.test.ts > API admits competing advisory builds but rejects the spent vault before second custody
+[api] STATE_CHANGED
+
+ ❯ src/lib/crc-core-submit.integration.test.ts (13 tests | 1 failed) 54082ms
+   ✓ HTTP submit registers exact signed core deployment before actual broadcast and is idempotent 2183ms
+   ✓ HTTP API sends verified wallet first to actual shared Guardian and mines indexed core mint 3282ms
+   ✓ HTTP sell and inventory buy mine exact core plans, fees and allocations 7514ms
+   ✓ HTTP re-signed retry uses cached Guardian witness after lost response 3872ms
+   ✓ HTTP arbitrary transfer and one-transaction listing preserve exact core allocations 6041ms
+   ✓ core offer activation and buyer-only API fill preserve seller presign and exact fees 3108ms
+   ✓ API cancellation mines, rolls back with actual reorg, and rebroadcasts its persisted receipt 7133ms
+   ✓ API accepts an already signed paid fill after advisory expiry and rejects new expired builds 3370ms
+   ✓ API persists READY before failed broadcast and retries exact saved bytes without custody 4268ms
+   ✓ API admits competing advisory builds but rejects the spent vault before second custody 3585ms
+   × HTTP sell build replay survives consumed token inputs, funding refresh and fee changes 4406ms
+     → {"ok":false,"error":{"code":"TOKEN_OUTPOINT_INVALID","message":"Selected output has no indexed token allocation","retryable":false}}: expected { ok: false, error: { …(3) } } to match object { ok: true }
+(4 matching properties omitted from actual)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-core-submit.integration.test.ts > HTTP sell build replay survives consumed token inputs, funding refresh and fee changes
+AssertionError: {"ok":false,"error":{"code":"TOKEN_OUTPOINT_INVALID","message":"Selected output has no indexed token allocation","retryable":false}}: expected { ok: false, error: { …(3) } } to match object { ok: true }
+(4 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  Object {
+-   "ok": true,
++   "ok": false,
+  }
+
+ ❯ src/lib/crc-core-submit.integration.test.ts:619:44
+    617|   const rpcCount = node.calls.length;
+    618|   const retry = await crcTradeBuildRoute(request(), "sell"), retried =…
+    619|   expect(retried, JSON.stringify(retried)).toMatchObject({ ok: true });
+       |                                            ^
+    620|   expect(retried.data.sessionId).toBe(built.sessionId);
+    621|   expect(retried.data.psbtBase64).toBe(built.psbtBase64);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 12 passed (13)
+   Start at  21:34:32
+   Duration  56.10s (transform 1.05s, setup 0ms, collect 1.70s, tests 54.08s, environment 0ms, prepare 49ms)
+
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 test: `vitest run --passWithNoTests src/lib/crc-core-submit.integration.test.ts`
+Exit status 1

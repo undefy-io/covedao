@@ -1,0 +1,58 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/lib/crc-core-submit.integration.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP unsigned or changed wallet response never reaches Core live checks or custody
+[api] WALLET_SIGNATURE_INVALID
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP unsigned or changed wallet response never reaches Core live checks or custody
+[api] WALLET_SIGNATURE_INVALID
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP re-signed retry uses cached Guardian witness after lost response
+[api] GUARDIAN_UNAVAILABLE
+
+ ❯ src/lib/crc-core-submit.integration.test.ts (7 tests | 1 failed) 26439ms
+   ✓ HTTP submit registers exact signed core deployment before actual broadcast and is idempotent 1869ms
+   ✓ HTTP API sends verified wallet first to actual shared Guardian and mines indexed core mint 2999ms
+   ✓ HTTP sell and inventory buy mine exact core plans, fees and allocations 7225ms
+   ✓ HTTP re-signed retry uses cached Guardian witness after lost response 3709ms
+   ✓ HTTP arbitrary transfer and one-transaction listing preserve exact core allocations 5062ms
+   × core offer activation and buyer-only API fill preserve seller presign and exact fees 186ms
+     → {"ok":false,"error":{"code":"BAD_REQUEST","message":"Invalid market request","retryable":false}}: expected { ok: false, error: { …(3) } } to match object { ok: true }
+(4 matching properties omitted from actual)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-core-submit.integration.test.ts > core offer activation and buyer-only API fill preserve seller presign and exact fees
+AssertionError: {"ok":false,"error":{"code":"BAD_REQUEST","message":"Invalid market request","retryable":false}}: expected { ok: false, error: { …(3) } } to match object { ok: true }
+(4 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  Object {
+-   "ok": true,
++   "ok": false,
+  }
+
+ ❯ src/lib/crc-core-submit.integration.test.ts:421:38
+    419|   }), "listings", true, () => ({ db: database.db, network: "regtest", …
+    420|   const body = await response.json();
+    421|   expect(body, JSON.stringify(body)).toMatchObject({ ok: true });
+       |                                      ^
+    422|   const id = body.data.listingId as string;
+    423|   expect(await activateCrcCoreOffer({ db: database.db, network: "regte…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+   Start at  21:15:02
+   Duration  28.55s (transform 1.14s, setup 0ms, collect 1.82s, tests 26.44s, environment 0ms, prepare 62ms)
+
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 test: `vitest run --passWithNoTests src/lib/crc-core-submit.integration.test.ts`
+Exit status 1

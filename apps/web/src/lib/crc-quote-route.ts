@@ -1,7 +1,12 @@
-import { CurveTransitionError } from "@crclaunch/crc20-curve";
 import { addressToScript } from "./address";
 import { bigintField, fail, handleError, ok, readJson, strField } from "./api";
-import { parseCrcAssetId, readCrcAsset, readCrcQuoteAsset, readCrcBalance, readCrcCursor } from "./crc-read";
+import {
+  parseCrcAssetId,
+  readCrcAsset,
+  readCrcQuoteAsset,
+  readCrcBalance,
+  readCrcCursor,
+} from "./crc-read";
 import { CrcQuoteError, quoteCrcBuy, quoteCrcSell } from "./crc-quote";
 import { getCrcReadServices } from "./crc-server";
 
@@ -21,8 +26,8 @@ export async function crcQuoteRoute(req: Request, operation: "buy" | "sell"): Pr
         ? fail("INVALID_STATE", "Trusted launch state is unavailable", 503, true)
         : fail("TOKEN_NOT_FOUND", "Token not found", 404);
     }
-    if (token.protocolVersion !== 3) return fail("CRC_UNSUPPORTED", "This token uses an unsupported CRC format", 409);
-    if (token.availability !== "active") return fail("ASSET_UNAVAILABLE", "This token's vault is unavailable", 503, true);
+    if (token.availability !== "active")
+      return fail("ASSET_UNAVAILABLE", "This token's vault is unavailable", 503, true);
 
     if (operation === "buy") return ok({ indexedTip, quote: quoteCrcBuy(token, amountAtoms) });
 
@@ -30,16 +35,25 @@ export async function crcQuoteRoute(req: Request, operation: "buy" | "sell"): Pr
     const payoutAddress = strField(body, "payoutAddress") || sellerAddress;
     const sellerScriptHex = addressToScript(sellerAddress, network);
     const payoutScriptHex = addressToScript(payoutAddress, network);
-    if (payoutScriptHex !== sellerScriptHex) return fail("PAYOUT_ADDRESS_INVALID", "Sale payout must use the token owner address", 400);
+    if (payoutScriptHex !== sellerScriptHex)
+      return fail("PAYOUT_ADDRESS_INVALID", "Sale payout must use the token owner address", 400);
     const balanceAtoms = await readCrcBalance(db, network, id.deployTxid, sellerScriptHex);
-    if (amountAtoms > balanceAtoms) return fail("INSUFFICIENT_BALANCE", "Sell amount exceeds indexed wallet balance", 400);
-    return ok({ indexedTip, sellerBalanceAtoms: balanceAtoms.toString(), quote: quoteCrcSell(token, amountAtoms, sellerScriptHex) });
+    if (amountAtoms > balanceAtoms)
+      return fail("INSUFFICIENT_BALANCE", "Sell amount exceeds indexed wallet balance", 400);
+    return ok({
+      indexedTip,
+      sellerBalanceAtoms: balanceAtoms.toString(),
+      quote: quoteCrcSell(token, amountAtoms, sellerScriptHex),
+    });
   } catch (error) {
     if (error instanceof CrcQuoteError) {
-      return fail(error.code, error.message, error.code === "ASSET_UNAVAILABLE" || error.code === "INVALID_STATE" ? 503 : 400,
-        error.code === "ASSET_UNAVAILABLE" || error.code === "INVALID_STATE");
+      return fail(
+        error.code,
+        error.message,
+        error.code === "ASSET_UNAVAILABLE" || error.code === "INVALID_STATE" ? 503 : 400,
+        error.code === "ASSET_UNAVAILABLE" || error.code === "INVALID_STATE",
+      );
     }
-    if (error instanceof CurveTransitionError) return fail(error.code, error.message, 400);
     return handleError(error);
   }
 }

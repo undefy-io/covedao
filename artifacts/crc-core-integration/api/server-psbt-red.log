@@ -1,0 +1,29 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/crc20-adapters
+
+ ❯ src/guardian-wallet.test.ts (3 tests | 1 failed) 28ms
+   × server serializes the core plan and exact nested metadata without manufacturing signatures 3ms
+     → createPlanPsbt is not a function
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/guardian-wallet.test.ts > server serializes the core plan and exact nested metadata without manufacturing signatures
+TypeError: createPlanPsbt is not a function
+ ❯ src/guardian-wallet.test.ts:68:24
+     66| test("server serializes the core plan and exact nested metadata withou…
+     67|   const f = fixture();
+     68|   const psbt = adapter.createPlanPsbt(f.plan, "signet", {publicKeys: {…
+       |                        ^
+     69|   expect(psbt.txInputs).toHaveLength(f.plan.inputs.length);
+     70|   expect(psbt.txOutputs.map(output => BigInt(output.value))).toEqual(f…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+   Start at  20:36:22
+   Duration  365ms (transform 100ms, setup 0ms, collect 139ms, tests 28ms, environment 0ms, prepare 60ms)
+
+undefined
+/home/andefy/dev/covedao/packages/crc20-adapters:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/guardian-wallet.test.ts

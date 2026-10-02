@@ -1404,6 +1404,9 @@ export const crcRecords = pgTable(
     index("crc_records_wallet_idx")
       .on(t.network, t.scriptHex, t.deployTxid)
       .where(sql`${t.kind} = 'allocations'`),
+    index("crc_records_vault_idx")
+      .on(t.network, sql`${t.valueJson}->'vault'->>'txid'`)
+      .where(sql`${t.kind} = 'assets'`),
     index("crc_records_market_idx")
       .on(t.network, t.deployTxid, t.status)
       .where(sql`${t.kind} = 'offers'`),
@@ -1501,5 +1504,77 @@ export const crcSignatures = pgTable(
   (t) => [
     primaryKey({ columns: [t.network, t.backingOutpoint, t.unsignedDigest] }),
     uniqueIndex("crc_signatures_claim_idx").on(t.claimId),
+  ],
+);
+
+export const crcMetadata = pgTable(
+  "crc_metadata",
+  {
+    network: text("network").notNull(),
+    deployTxid: text("deploy_txid").notNull(),
+    displayName: text("display_name").notNull(),
+    description: text("description").notNull().default(""),
+    websiteUrl: text("website_url"),
+    xUrl: text("x_url"),
+    imageUrl: text("image_url"),
+    submittedByScript: text("submitted_by_script").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.network, t.deployTxid] })],
+);
+
+export const crcSessions = pgTable(
+  "crc_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    network: text("network").notNull(),
+    operation: text("operation").notNull(),
+    deploymentTxid: text("deployment_txid"),
+    idempotencyKey: text("idempotency_key").notNull(),
+    requestHash: text("request_hash").notNull(),
+    unsignedTxDigest: text("unsigned_tx_digest").notNull(),
+    psbtBase64: text("psbt_base64").notNull(),
+    walletScriptHex: text("wallet_script_hex").notNull(),
+    tokenScriptHex: text("token_script_hex").notNull(),
+    trustedJson: jsonb("trusted_json").notNull(),
+    status: text("status").notNull().default("BUILT"),
+    signedPsbtSha256: text("signed_psbt_sha256"),
+    claimId: uuid("claim_id"),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    signedRawHex: text("signed_raw_hex"),
+    txid: text("txid"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true })
+      .notNull()
+      .default(sql`now() + interval '15 minutes'`),
+  },
+  (t) => [
+    uniqueIndex("crc_sessions_idempotency_uq").on(t.network, t.idempotencyKey),
+    index("crc_sessions_status_idx").on(t.network, t.status, t.createdAt),
+  ],
+);
+
+export const crcEvents = pgTable(
+  "crc_events",
+  {
+    network: text("network").notNull(),
+    txid: text("txid").notNull(),
+    deployTxid: text("deploy_txid").notNull(),
+    blockHeight: atoms("block_height").notNull(),
+    blockHash: text("block_hash").notNull(),
+    txIndex: integer("tx_index").notNull(),
+    confirmedTime: integer("confirmed_time"),
+    eventJson: jsonb("event_json").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.network, t.txid, t.deployTxid] }),
+    index("crc_events_asset_idx").on(
+      t.network,
+      t.deployTxid,
+      t.blockHeight.desc(),
+      t.txIndex.desc(),
+    ),
+    index("crc_events_block_idx").on(t.network, t.blockHeight),
   ],
 );

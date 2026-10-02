@@ -169,3 +169,13 @@ mined trades with exact fees and indexed/core equality, rejection cases, journal
 recovery, fresh Astra review, and the standalone Docker package import check.
 API and browser wallet-first preparation remain dependent gates. No replacement
 deployment, application reset, production custody or live-wallet canary is claimed.
+
+## API integration
+
+CRC API reads project fresh core records and core-generated confirmed events. Quotes call core economics; builders independently load trusted state and persist exact core plans/configs in fresh sessions. Confirmed funding comes from shared server observations, excludes every tracked allocation/vault, and uses bounded indexed queries. Construction is advisory and performs no external RPC.
+
+Deployment records its exact signed registration before broadcast. Curve submission verifies wallet signatures before live network/UTXO checks and custody, verifies the returned Guardian witness through the core, and performs ledger-aware final verification before broadcast. Transfer, listing, purchase and cancellation use the same immutable-plan submit flow without custody. Offer activation requires both core BIP322 terms and the reusable 0x83 witness; confirmed spends determine retirement and paid fills, including delayed fills after advisory expiry.
+
+Build idempotency retrieves validated saved requests before current funding/state construction. Selected fee rates remain frozen for that request. API signing leases use UUID fences; expired leases can recover using a freshly verified wallet signature. Guardian journal replay contributes only its verified vault witness, retaining current wallet witnesses/scriptSigs. READY receipts survive broadcast failures and reorgs and are revalidated before rebroadcast.
+
+[API evidence](../artifacts/crc-core-integration/api/README.md) records owned PostgreSQL/Core lifecycles, exact plans/fees/allocations, persistence/reorg/retry cases, and fresh Astra findings and fixes. Frontend components/layout/styles/controls remain at the baseline; replacing browser internals is the next task. This milestone does not deploy, reset CRC state, enable mainnet, or perform a user-wallet spend.

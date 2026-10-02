@@ -1,0 +1,33 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/lib/crc-core-read.integration.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-core-read.integration.test.ts (5 tests | 1 failed) 1927ms
+   × expired API signing leases cannot complete or release a newer claim 5ms
+     → Cannot read properties of null (reading 'claimId')
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-core-read.integration.test.ts > expired API signing leases cannot complete or release a newer claim
+TypeError: Cannot read properties of null (reading 'claimId')
+ ❯ src/lib/crc-core-read.integration.test.ts:231:17
+    229|   );
+    230|   const second = (await claimCrcBuildSession(database.db, "regtest", s…
+    231|   expect(second.claimId).not.toBe(first.claimId);
+       |                 ^
+    232|   await expect(
+    233|     markCrcBuildReady(database.db, "regtest", session.id, "00", "dd".r…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  21:27:39
+   Duration  3.84s (transform 1.04s, setup 0ms, collect 1.61s, tests 1.93s, environment 0ms, prepare 68ms)
+
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 test: `vitest run --passWithNoTests src/lib/crc-core-read.integration.test.ts`
+Exit status 1

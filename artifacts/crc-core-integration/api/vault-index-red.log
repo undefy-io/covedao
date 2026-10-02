@@ -1,0 +1,40 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/lib/crc-core-read.integration.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-core-read.integration.test.ts (5 tests | 1 failed) 2171ms
+   × fresh CRC vault lookup has a bounded network and vault txid index 10ms
+     → expected [] to have a length of 1 but got +0
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-core-read.integration.test.ts > fresh CRC vault lookup has a bounded network and vault txid index
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/lib/crc-core-read.integration.test.ts:254:16
+    252| test("fresh CRC vault lookup has a bounded network and vault txid inde…
+    253|   const rows = (await database.pool.query("select indexdef from pg_ind…
+    254|   expect(rows).toHaveLength(1);
+       |                ^
+    255|   expect(rows[0].indexdef).toMatch(/network.*value_json.*vault.*txid/);
+    256|   expect(rows[0].indexdef).toMatch(/WHERE.*kind.*assets/);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  21:08:20
+   Duration  4.15s (transform 1.12s, setup 0ms, collect 1.68s, tests 2.17s, environment 0ms, prepare 72ms)
+
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 test: `vitest run --passWithNoTests src/lib/crc-core-read.integration.test.ts`
+Exit status 1

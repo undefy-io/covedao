@@ -1,0 +1,33 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ dto.test.ts (13 tests | 1 failed) 7ms
+   × core small sell plans transport signed economic deltas without permitting negative BTC values 3ms
+     → invalid DTO amount: economicSats
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  dto.test.ts > core small sell plans transport signed economic deltas without permitting negative BTC values
+Error: invalid DTO amount: economicSats
+ ❯ map dto.ts:27:13
+     25|       BigInt(value) < 0n
+     26|     )
+     27|       throw new Error(`invalid DTO amount: ${key}`);
+       |             ^
+     28|     return value.toString();
+     29|   }
+ ❯ dto.ts:37:30
+ ❯ map dto.ts:37:10
+ ❯ Module.encodeProtocolDto dto.ts:51:10
+ ❯ dto.test.ts:75:38
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 12 passed (13)
+   Start at  20:32:07
+   Duration  230ms (transform 89ms, setup 0ms, collect 105ms, tests 7ms, environment 0ms, prepare 33ms)
+
+undefined
+/home/andefy/dev/covedao/packages/cove-market/crc20-protocol:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run dto.test.ts

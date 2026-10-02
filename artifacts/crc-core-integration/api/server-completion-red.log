@@ -1,0 +1,29 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/crc20-adapters
+
+ ❯ src/guardian-wallet.test.ts (4 tests | 1 failed) 39ms
+   × server completes wallet-first signatures against the exact stored plan and current ledger 4ms
+     → completeServerWalletSigning is not a function
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/guardian-wallet.test.ts > server completes wallet-first signatures against the exact stored plan and current ledger
+TypeError: completeServerWalletSigning is not a function
+ ❯ src/guardian-wallet.test.ts:84:18
+     82|   const f = fixture();
+     83|   const original = adapter.createPlanPsbt(f.plan,"signet",{publicKeys:…
+     84|   expect(adapter.completeServerWalletSigning(f.plan,"signet",original,…
+       |                  ^
+     85|   const changed = bitcoin.Psbt.fromBase64(f.response.toBase64());
+     86|   changed.data.inputs[1]!.witnessUtxo!.value--;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  20:49:45
+   Duration  355ms (transform 99ms, setup 0ms, collect 130ms, tests 39ms, environment 0ms, prepare 78ms)
+
+undefined
+/home/andefy/dev/covedao/packages/crc20-adapters:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/guardian-wallet.test.ts

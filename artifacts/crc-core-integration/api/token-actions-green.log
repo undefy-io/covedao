@@ -1,0 +1,28 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/lib/crc-core-submit.integration.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP unsigned or changed wallet response never reaches Core live checks or custody
+[api] WALLET_SIGNATURE_INVALID
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP unsigned or changed wallet response never reaches Core live checks or custody
+[api] WALLET_SIGNATURE_INVALID
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP re-signed retry uses cached Guardian witness after lost response
+[api] GUARDIAN_UNAVAILABLE
+
+ ✓ src/lib/crc-core-submit.integration.test.ts (6 tests) 26212ms
+   ✓ HTTP submit registers exact signed core deployment before actual broadcast and is idempotent 1962ms
+   ✓ HTTP API sends verified wallet first to actual shared Guardian and mines indexed core mint 2805ms
+   ✓ HTTP sell and inventory buy mine exact core plans, fees and allocations 7035ms
+   ✓ HTTP re-signed retry uses cached Guardian witness after lost response 3541ms
+   ✓ HTTP arbitrary transfer and one-transaction listing preserve exact core allocations 5410ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  21:10:47
+   Duration  28.11s (transform 978ms, setup 0ms, collect 1.60s, tests 26.21s, environment 0ms, prepare 67ms)
+

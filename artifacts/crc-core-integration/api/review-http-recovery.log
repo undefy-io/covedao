@@ -1,0 +1,40 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP unsigned or changed wallet response never reaches Core live checks or custody
+[api] WALLET_SIGNATURE_INVALID
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP unsigned or changed wallet response never reaches Core live checks or custody
+[api] WALLET_SIGNATURE_INVALID
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP re-signed retry uses cached Guardian witness after lost response
+[api] GUARDIAN_UNAVAILABLE
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP forged offer terms and wrong network reject before live RPC or custody
+[api] WALLET_SIGNATURE_INVALID
+[api] WRONG_NETWORK
+
+stderr | src/lib/crc-core-submit.integration.test.ts > API persists READY before failed broadcast and retries exact saved bytes without custody
+[api] BROADCAST_FAILED
+
+stderr | src/lib/crc-core-submit.integration.test.ts > API admits competing advisory builds but rejects the spent vault before second custody
+[api] STATE_CHANGED
+
+ ✓ src/lib/crc-core-submit.integration.test.ts (13 tests) 54463ms
+   ✓ HTTP submit registers exact signed core deployment before actual broadcast and is idempotent 1982ms
+   ✓ HTTP API sends verified wallet first to actual shared Guardian and mines indexed core mint 3365ms
+   ✓ HTTP sell and inventory buy mine exact core plans, fees and allocations 7593ms
+   ✓ HTTP re-signed retry uses cached Guardian witness after lost response 3970ms
+   ✓ HTTP arbitrary transfer and one-transaction listing preserve exact core allocations 5886ms
+   ✓ core offer activation and buyer-only API fill preserve seller presign and exact fees 3147ms
+   ✓ API cancellation mines, rolls back with actual reorg, and rebroadcasts its persisted receipt 7078ms
+   ✓ API accepts an already signed paid fill after advisory expiry and rejects new expired builds 3321ms
+   ✓ API persists READY before failed broadcast and retries exact saved bytes without custody 4187ms
+   ✓ API admits competing advisory builds but rejects the spent vault before second custody 3666ms
+   ✓ HTTP sell build replay survives consumed token inputs, funding refresh and fee changes 4438ms
+
+ Test Files  1 passed (1)
+      Tests  13 passed (13)
+   Start at  21:39:40
+   Duration  56.72s (transform 1.24s, setup 0ms, collect 1.95s, tests 54.46s, environment 0ms, prepare 70ms)
+

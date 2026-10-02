@@ -3,7 +3,10 @@ import { getCrcMutationServices } from "./crc-mutation";
 import { checkCrcRateLimit } from "./crc-rate-limit";
 import { submitCrcSession } from "./crc-submit";
 
-export async function crcSubmitRoute(req: Request, expectedOperation: "deploy" | "buy" | "sell"): Promise<Response> {
+export async function crcSubmitRoute(
+  req: Request,
+  expectedOperation: "deploy" | "buy" | "sell" | "transfer" | "listing" | "purchase" | "cancel",
+): Promise<Response> {
   try {
     const limited = checkCrcRateLimit(req, true);
     if (limited) return limited;
@@ -14,10 +17,18 @@ export async function crcSubmitRoute(req: Request, expectedOperation: "deploy" |
     if (!/^[0-9a-fA-F-]{36}$/.test(sessionId) || !signedPsbtBase64) {
       return fail("BAD_REQUEST", "A build session and signed PSBT are required", 400);
     }
-    return ok(await submitCrcSession({
-      db, network: config.network, provider, guardianEndpoint, guardianAuthToken,
-      sessionId, signedPsbtBase64, expectedOperation,
-    }));
+    return ok(
+      await submitCrcSession({
+        db,
+        network: config.network,
+        provider,
+        guardianEndpoint,
+        guardianAuthToken,
+        sessionId,
+        signedPsbtBase64,
+        expectedOperation,
+      }),
+    );
   } catch (error) {
     return handleError(error);
   }

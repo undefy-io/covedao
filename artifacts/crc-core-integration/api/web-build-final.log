@@ -1,0 +1,116 @@
+
+> @crclaunch/web@0.1.0 build /home/andefy/dev/covedao/apps/web
+> pnpm --filter @crclaunch/docs build:web && next build
+
+
+> @crclaunch/docs@0.1.0 build:web /home/andefy/dev/covedao/apps/docs
+> DOCS_HASH_ROUTER=1 DOCS_BASE_URL=/ DOCS_LOCALE=en docusaurus build --out-dir ../web/public/docs && DOCS_HASH_ROUTER=1 DOCS_BASE_URL=/ DOCS_LOCALE=zh-Hans docusaurus build --locale zh-Hans --out-dir ../web/public/docs/zh-Hans
+
+[INFO] [en] Creating an optimized production build...
+[WARNING] docusaurus-plugin-sitemap does not support the Hash Router and will be disabled.
+[webpackbar] ℹ Compiling Client
+[webpackbar] ✔ Client: Compiled successfully in 424.77ms
+[SUCCESS] Generated static files in "../web/public/docs".
+[INFO] Use `npm run serve` command to test your build locally.
+[INFO] [zh-Hans] Creating an optimized production build...
+[WARNING] docusaurus-plugin-sitemap does not support the Hash Router and will be disabled.
+[webpackbar] ℹ Compiling Client
+[webpackbar] ✔ Client: Compiled successfully in 394.92ms
+[SUCCESS] Generated static files in "../web/public/docs/zh-Hans".
+[INFO] Use `npm run serve` command to test your build locally.
+   ▲ Next.js 15.5.26
+   - Experiments (use with caution):
+     · clientTraceMetadata
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 7.6s
+   Skipping linting
+   Checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/11) ...
+   Generating static pages (2/11) 
+   Generating static pages (5/11) 
+   Generating static pages (8/11) 
+ ✓ Generating static pages (11/11)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                                 Size  First Load JS
+┌ ƒ /                                                    3.98 kB         213 kB
+├ ƒ /_not-found                                          1.01 kB         176 kB
+├ ƒ /activity                                            3.23 kB         213 kB
+├ ƒ /api/crc/v1/activity                                   276 B         175 kB
+├ ƒ /api/crc/v1/backing/buy/build                          276 B         175 kB
+├ ƒ /api/crc/v1/backing/buy/quote                          276 B         175 kB
+├ ƒ /api/crc/v1/backing/buy/submit                         276 B         175 kB
+├ ƒ /api/crc/v1/backing/sell/build                         276 B         175 kB
+├ ƒ /api/crc/v1/backing/sell/quote                         276 B         175 kB
+├ ƒ /api/crc/v1/backing/sell/submit                        276 B         175 kB
+├ ƒ /api/crc/v1/fees                                       276 B         175 kB
+├ ƒ /api/crc/v1/launch/build                               276 B         175 kB
+├ ƒ /api/crc/v1/launch/submit                              276 B         175 kB
+├ ƒ /api/crc/v1/market/[operation]                         276 B         175 kB
+├ ƒ /api/crc/v1/market/status                              276 B         175 kB
+├ ƒ /api/crc/v1/tokens                                     276 B         175 kB
+├ ƒ /api/crc/v1/tokens/[assetId]                           276 B         175 kB
+├ ƒ /api/crc/v1/tokens/[assetId]/activity                  276 B         175 kB
+├ ƒ /api/crc/v1/tokens/[assetId]/candles                   276 B         175 kB
+├ ƒ /api/crc/v1/tokens/[assetId]/market                    276 B         175 kB
+├ ƒ /api/crc/v1/tokens/[assetId]/utxos                     276 B         175 kB
+├ ƒ /api/crc/v1/trading/status                             276 B         175 kB
+├ ƒ /api/crc/v1/wallet/[address]/balances                  276 B         175 kB
+├ ƒ /api/crc/v1/wallet/utxos                               276 B         175 kB
+├ ƒ /api/dev/wallet                                        276 B         175 kB
+├ ƒ /api/v3/activity                                       276 B         175 kB
+├ ƒ /api/v3/backing/buy/build                              276 B         175 kB
+├ ƒ /api/v3/backing/buy/plan                               276 B         175 kB
+├ ƒ /api/v3/backing/buy/quote                              276 B         175 kB
+├ ƒ /api/v3/backing/buy/quote-sats                         276 B         175 kB
+├ ƒ /api/v3/backing/buy/submit                             276 B         175 kB
+├ ƒ /api/v3/backing/redeem/build                           276 B         175 kB
+├ ƒ /api/v3/backing/redeem/quote                           276 B         175 kB
+├ ƒ /api/v3/backing/redeem/submit                          276 B         175 kB
+├ ƒ /api/v3/fees                                           276 B         175 kB
+├ ƒ /api/v3/launch/build                                   276 B         175 kB
+├ ƒ /api/v3/launch/prepare                                 276 B         175 kB
+├ ƒ /api/v3/launch/submit                                  276 B         175 kB
+├ ƒ /api/v3/market/fills/[fillId]                          276 B         175 kB
+├ ƒ /api/v3/market/fills/[fillId]/build                    276 B         175 kB
+├ ƒ /api/v3/market/fills/[fillId]/buyer-signature          276 B         175 kB
+├ ƒ /api/v3/market/fills/[fillId]/finalize                 276 B         175 kB
+├ ƒ /api/v3/market/listings                                276 B         175 kB
+├ ƒ /api/v3/market/listings/[listingId]/cancel             276 B         175 kB
+├ ƒ /api/v3/market/listings/[listingId]/cancel/prepare     276 B         175 kB
+├ ƒ /api/v3/market/listings/[listingId]/reserve            276 B         175 kB
+├ ƒ /api/v3/market/listings/[listingId]/reserve/prepare    276 B         175 kB
+├ ƒ /api/v3/market/listings/prepare                        276 B         175 kB
+├ ƒ /api/v3/status                                         276 B         175 kB
+├ ƒ /api/v3/tokens                                         276 B         175 kB
+├ ƒ /api/v3/tokens/[tokenId]                               276 B         175 kB
+├ ƒ /api/v3/tokens/[tokenId]/activity                      276 B         175 kB
+├ ƒ /api/v3/tokens/[tokenId]/buy/routes                    276 B         175 kB
+├ ƒ /api/v3/tokens/[tokenId]/candles                       276 B         175 kB
+├ ƒ /api/v3/tokens/[tokenId]/holders                       276 B         175 kB
+├ ƒ /api/v3/tokens/[tokenId]/market                        276 B         175 kB
+├ ƒ /api/v3/tokens/sparklines                              276 B         175 kB
+├ ƒ /api/v3/transfer/build                                 276 B         175 kB
+├ ƒ /api/v3/transfer/submit                                276 B         175 kB
+├ ƒ /api/v3/tx/[txid]                                      276 B         175 kB
+├ ƒ /api/v3/wallet/[address]/portfolio                     276 B         175 kB
+├ ƒ /api/v3/wallet/utxos                                   276 B         175 kB
+├ ○ /apple-icon.png                                          0 B            0 B
+├ ƒ /explore                                             7.04 kB         216 kB
+├ ○ /icon.png                                                0 B            0 B
+├ ƒ /launch                                              5.41 kB         410 kB
+├ ƒ /market                                              7.33 kB         427 kB
+├ ƒ /token/[tokenId]                                       19 kB         434 kB
+└ ƒ /wallet                                              9.01 kB         429 kB
++ First Load JS shared by all                             175 kB
+  ├ chunks/298fdf74-aa6ccb9e05c98900.js                  54.2 kB
+  ├ chunks/8166-122499e88a9644cc.js                       117 kB
+  └ other shared chunks (total)                          3.32 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

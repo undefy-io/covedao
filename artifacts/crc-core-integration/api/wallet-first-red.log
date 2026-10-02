@@ -1,0 +1,43 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/crc20-adapters
+
+ ❯ src/guardian-wallet.test.ts (2 tests | 2 failed) 14ms
+   × wallet-first Guardian preparation leaves only custody unsigned and verifies actual Xverse response 11ms
+     → prepareGuardianPlanSigning is not a function
+   × Guardian preparation never skips another wallet, signs custody as wallet, or accepts a stale vault 2ms
+     → prepareGuardianPlanSigning is not a function
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/guardian-wallet.test.ts > wallet-first Guardian preparation leaves only custody unsigned and verifies actual Xverse response
+TypeError: prepareGuardianPlanSigning is not a function
+ ❯ src/guardian-wallet.test.ts:19:28
+     17| test("wallet-first Guardian preparation leaves only custody unsigned a…
+     18|   const f = fixture();
+     19|   const prepared = adapter.prepareGuardianPlanSigning(f.plan, f.ledger…
+       |                            ^
+     20|   const psbt = bitcoin.Psbt.fromBase64(prepared.params.psbt);
+     21|   expect(psbt.data.inputs[0]!.finalScriptWitness).toBeUndefined();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/guardian-wallet.test.ts > Guardian preparation never skips another wallet, signs custody as wallet, or accepts a stale vault
+TypeError: prepareGuardianPlanSigning is not a function
+ ❯ src/guardian-wallet.test.ts:34:28
+     32|   expect(() => adapter.prepareGuardianPlanSigning(f.plan, f.ledger, { …
+     33|   expect(() => adapter.prepareGuardianPlanSigning(f.plan, core.emptyLe…
+     34|   const prepared = adapter.prepareGuardianPlanSigning(f.plan, f.ledger…
+       |                            ^
+     35|   delete f.response.data.inputs[1]!.partialSig;
+     36|   delete f.response.data.inputs[1]!.finalScriptWitness;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  20:19:07
+   Duration  456ms (transform 236ms, setup 0ms, collect 265ms, tests 14ms, environment 0ms, prepare 70ms)
+
+undefined
+/home/andefy/dev/covedao/packages/crc20-adapters:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/guardian-wallet.test.ts

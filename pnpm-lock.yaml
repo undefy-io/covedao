@@ -159,9 +159,18 @@ importers:
       '@crclaunch/cove-wire':
         specifier: workspace:*
         version: link:../../packages/cove-wire
+      '@crclaunch/crc20-adapters':
+        specifier: workspace:*
+        version: link:../../packages/crc20-adapters
       '@crclaunch/crc20-curve':
         specifier: workspace:*
         version: link:../../packages/crc20-curve
+      '@crclaunch/crc20-protocol':
+        specifier: workspace:*
+        version: link:../../packages/cove-market/crc20-protocol
+      '@crclaunch/crc20-state':
+        specifier: workspace:*
+        version: link:../../packages/crc20-state
       '@crclaunch/crc20-transactions':
         specifier: workspace:*
         version: link:../../packages/crc20-transactions

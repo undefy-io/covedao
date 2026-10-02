@@ -1,303 +1,591 @@
 import { createHash, randomBytes } from "node:crypto";
-import type * as bitcoin from "bitcoinjs-lib";
+import * as bitcoin from "bitcoinjs-lib";
+import * as core from "@crclaunch/crc20-protocol";
+import { createPlanPsbt } from "@crclaunch/crc20-adapters";
+import { loadCrcCoreLedger } from "@crclaunch/crc20-state";
 import { AppError, unsignedTxDigest } from "@crclaunch/cove-app";
-import { estimateVsize } from "@crclaunch/bitcoin";
-import { buildCoveDeployWithVaultV3, buildCurveBuyV3, buildCurveSellV3, buildUnsignedPsbt, selectCrcFunding, type CoveTokenInput } from "@crclaunch/crc20-transactions";
-import type { VaultRecoveryProfile } from "@crclaunch/cove-vault";
+import {
+  buildCrc20AssetVault,
+  crc20DeploymentTag,
+  crc20AssetCommitment,
+  type VaultRecoveryProfile,
+} from "@crclaunch/cove-vault";
 import type { Database } from "@crclaunch/db";
-import { loadCrcFundingCandidates, type CrcFundingOutpoint } from "./crc-funding";
-import { createCrcBuildSession } from "./crc-session";
-import { crcCurveStateFromAsset, quoteCrcBuy, quoteCrcSell, type CrcQuoteAsset } from "./crc-quote";
-import { readCrcTokenUtxo } from "./crc-read";
+import {
+  loadCrcFundingCandidates,
+  crcWalletMetadata,
+  type CrcFundingOutpoint,
+  type CrcObservedInput,
+} from "./crc-funding";
+import { createCrcBuildSession, findCrcBuildSessionByKey } from "./crc-session";
+import { quoteCrcBuy, quoteCrcSell, type CrcQuoteAsset } from "./crc-quote";
 import { parseCrcLaunchMetadata, type CrcLaunchMetadata } from "./crc-metadata";
-
-function selectObservedFunding(params: Parameters<typeof selectCrcFunding>[0]) {
-  try {
-    return selectCrcFunding(params);
-  } catch (error) {
-    if (error instanceof Error && error.message === "insufficient CRC wallet funding") {
-      throw new AppError("INSUFFICIENT_BTC", error.message);
-    }
-    throw error;
-  }
-}
-
-function estimateCrcDeployVsize(inputScripts: readonly string[], outputScripts: readonly string[]): number {
-  return estimateVsize({
-    vaultInputs: 0,
-    p2wpkhInputs: inputScripts.filter((script) => script.startsWith("0014") && script.length === 44).length,
-    p2trInputs: inputScripts.filter((script) => script.startsWith("5120") && script.length === 68).length,
-    p2shP2wpkhInputs: inputScripts.filter((script) => script.startsWith("a914") && script.endsWith("87") && script.length === 46).length,
-    outputScriptBytes: outputScripts.map((script) => script.length / 2),
-  });
-}
-
-export async function buildCrcLaunchSession(params: {
+type Common = {
   db: Database;
   network: "regtest" | "signet" | "testnet" | "mainnet";
   bitcoinNetwork: bitcoin.networks.Network;
-  ticker: string;
-  metadata?: CrcLaunchMetadata;
   walletScriptHex: string;
   tokenScriptHex: string;
   walletPublicKeyHex?: string;
-  funding: CrcFundingOutpoint[];
   minerFeeSats?: number;
   feeRateSatPerVb?: number;
   feeTier?: "eco" | "standard" | "priority";
   idempotencyKey: string;
   feeScriptHex: string;
-  guardianXOnly: Buffer;
-  recoveryProfile: VaultRecoveryProfile;
-}) {
-  if (!/^[A-Z0-9]{1,16}$/.test(params.ticker)) throw new Error("ticker must be 1-16 uppercase letters or digits");
-  if ((params.minerFeeSats === undefined) === (params.feeRateSatPerVb === undefined)) throw new Error("select one CRC miner fee method");
-  if (params.feeRateSatPerVb !== undefined && (!Number.isSafeInteger(params.feeRateSatPerVb) || params.feeRateSatPerVb < 1 || params.feeRateSatPerVb > 500)) {
+};
+function feeMethod(params: Common) {
+  if ((params.minerFeeSats === undefined) === (params.feeRateSatPerVb === undefined))
+    throw new Error("select one CRC miner fee method");
+  if (
+    params.minerFeeSats !== undefined &&
+    (!Number.isSafeInteger(params.minerFeeSats) || params.minerFeeSats < 1)
+  )
+    throw new Error("invalid miner fee");
+  if (
+    params.feeRateSatPerVb !== undefined &&
+    (!Number.isSafeInteger(params.feeRateSatPerVb) ||
+      params.feeRateSatPerVb < 1 ||
+      params.feeRateSatPerVb > 500)
+  )
     throw new AppError("MINER_FEE_TOO_HIGH", "invalid CRC mining speed");
-  }
-  const metadata = parseCrcLaunchMetadata(params.metadata, params.ticker);
-  const launchSalt = randomBytes(32);
-  const base = {
-    ticker: params.ticker,
-    launchSalt,
-    guardianXOnly: params.guardianXOnly,
-    recoveryProfile: params.recoveryProfile,
-    creatorScriptHex: params.walletScriptHex,
-    protocolScriptHex: params.feeScriptHex,
-    vaultAnchorSats: 330,
-    network: params.bitcoinNetwork,
-  };
-  const first = buildCoveDeployWithVaultV3(base);
-  const candidates = await loadCrcFundingCandidates(params.db, params.network, params.walletScriptHex, params.funding, {
-    publicKeyHex: params.walletPublicKeyHex,
+}
+/** Mechanical upper-bound witness sizing; the core remains responsible for exact amounts/fees. */
+function signedVsize(plan: core.Plan, custody?: core.GuardianCustody) {
+  const tx = new bitcoin.Transaction();
+  tx.version = 2;
+  plan.inputs.forEach((input, index) => {
+    tx.addInput(
+      Buffer.from(input.txid, "hex").reverse(),
+      input.vout,
+      0xfffffffe,
+      input.redeemScriptHex
+        ? bitcoin.script.compile([Buffer.from(input.redeemScriptHex, "hex")])
+        : undefined,
+    );
+    const witness = plan.inputWitnesses?.[index];
+    tx.setWitness(
+      index,
+      witness?.length
+        ? witness.map((hex) => Buffer.from(hex, "hex"))
+        : index === 0 && custody
+          ? [
+              Buffer.alloc(65),
+              Buffer.from(custody.assetCommitmentHex, "hex"),
+              Buffer.from(custody.executionScriptHex, "hex"),
+              Buffer.from(custody.controlBlockHex, "hex"),
+            ]
+          : /^5120/.test(input.scriptHex)
+            ? [Buffer.alloc(65)]
+            : [Buffer.alloc(73), Buffer.alloc(33)],
+    );
   });
-  const outputsSats = first.template.outputs.reduce((sum, output) => sum + output.valueSats, 0);
-  let targetFee = params.minerFeeSats ?? params.feeRateSatPerVb! * estimateCrcDeployVsize(
-    [params.walletScriptHex], first.template.outputs.map((output) => output.scriptHex));
-  let selected: ReturnType<typeof selectCrcFunding> | undefined;
-  let built: ReturnType<typeof buildCoveDeployWithVaultV3> | undefined;
+  plan.outputs.forEach((output) =>
+    tx.addOutput(Buffer.from(output.scriptHex, "hex"), Number(output.sats)),
+  );
+  return tx.virtualSize();
+}
+function selectPlan(
+  params: Common,
+  candidates: CrcObservedInput[],
+  build: (funding: core.Input[], fee: bigint) => core.Plan,
+  custody?: core.GuardianCustody,
+) {
+  feeMethod(params);
+  let target = BigInt(params.minerFeeSats ?? 1);
   for (let attempt = 0; attempt < 42; attempt++) {
-    if (targetFee > 20_000) throw new AppError("MINER_FEE_TOO_HIGH", "selected mining speed exceeds the 20,000-sat cap");
-    selected = selectObservedFunding({ mandatoryInputs: [], candidates, outputsSats,
-      minerFeeSats: targetFee, changeScriptHex: params.walletScriptHex });
-    built = buildCoveDeployWithVaultV3({ ...base,
-      changeSats: selected.changeSats, changeScriptHex: params.walletScriptHex });
-    if (params.feeRateSatPerVb === undefined) break;
-    const required = params.feeRateSatPerVb * estimateCrcDeployVsize(
-      selected.inputs.map((input) => input.scriptHex), built.template.outputs.map((output) => output.scriptHex));
-    if (selected.minerFeeSats >= required) break;
-    targetFee = required;
+    if (target > core.maxMinerFeeSats)
+      throw new AppError("MINER_FEE_TOO_HIGH", "selected mining speed exceeds the miner fee cap");
+    let plan: core.Plan | undefined;
+    for (let count = 0; count <= candidates.length; count++) {
+      try {
+        plan = build(candidates.slice(0, count), target);
+        break;
+      } catch (error) {
+        if (
+          !(error instanceof Error) ||
+          ![
+            "insufficient BTC funding",
+            "unspendable/dust output",
+            "missing or duplicate input",
+          ].includes(error.message)
+        )
+          throw error;
+      }
+    }
+    if (!plan) throw new AppError("INSUFFICIENT_BTC", "insufficient CRC wallet funding");
+    if (params.feeRateSatPerVb === undefined) return plan;
+    const required = BigInt(params.feeRateSatPerVb * signedVsize(plan, custody));
+    if (target >= required) return plan;
+    target = required;
   }
-  if (!selected || !built || selected.minerFeeSats < targetFee) throw new Error("CRC deploy fee sizing did not converge");
-  const psbt = buildUnsignedPsbt(built.template, selected.inputs, selected.minerFeeSats, params.bitcoinNetwork);
-  const psbtBase64 = psbt.toBase64();
-  const digest = unsignedTxDigest(psbt);
-  const requestHash = createHash("sha256").update(JSON.stringify({
-    network: params.network, ticker: params.ticker, metadata, walletScriptHex: params.walletScriptHex,
-    tokenScriptHex: params.tokenScriptHex, funding: params.funding,
-    minerFeeSats: params.minerFeeSats, feeRateSatPerVb: params.feeRateSatPerVb, feeTier: params.feeTier,
-    feeScriptHex: params.feeScriptHex,
+  throw new Error("CRC fee sizing did not converge");
+}
+function requestHash(params: Common, values: Record<string, unknown>) {
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        network: params.network,
+        walletScriptHex: params.walletScriptHex,
+        tokenScriptHex: params.tokenScriptHex,
+        walletPublicKeyHex: params.walletPublicKeyHex,
+        minerFeeSats: params.minerFeeSats,
+        feeRateSatPerVb: params.feeRateSatPerVb,
+        feeTier: params.feeTier,
+        feeScriptHex: params.feeScriptHex,
+        ...values,
+      }),
+    )
+    .digest("hex");
+}
+async function replayBuild(params: Common, hash: string) {
+  const session = await findCrcBuildSessionByKey(params.db, params.network, params.idempotencyKey);
+  if (!session) return null;
+  if (
+    session.requestHash !== hash ||
+    session.walletScriptHex !== params.walletScriptHex ||
+    session.tokenScriptHex !== params.tokenScriptHex
+  )
+    throw new AppError(
+      "IDEMPOTENCY_CONFLICT",
+      "CRC idempotency key already belongs to a different request",
+    );
+  return {
+    sessionId: session.id,
+    psbtBase64: session.psbtBase64,
+    intent: session.trustedJson as Record<string, unknown>,
+  };
+}
+function publicKeys(plan: core.Plan, candidates: CrcObservedInput[]) {
+  const byKey = new Map(
+    candidates
+      .filter((input) => input.publicKeyHex)
+      .map((input) => [core.outpoint(input), input.publicKeyHex!]),
+  );
+  return Object.fromEntries(
+    plan.inputs.flatMap((input, index) =>
+      byKey.has(core.outpoint(input)) ? [[index, byKey.get(core.outpoint(input))!]] : [],
+    ),
+  );
+}
+export async function buildCrcLaunchSession(
+  params: Common & {
+    ticker: string;
+    metadata?: CrcLaunchMetadata;
+    funding: CrcFundingOutpoint[];
+    guardianXOnly: Buffer;
+    recoveryProfile: VaultRecoveryProfile;
+  },
+) {
+  const metadata = parseCrcLaunchMetadata(params.metadata, params.ticker);
+  const hash = requestHash(params, {
+    ticker: params.ticker,
+    metadata,
+    funding: params.funding,
     guardianXOnly: params.guardianXOnly.toString("hex"),
     recoveryProfile: {
       version: params.recoveryProfile.profileVersion,
-      csvBlocks: params.recoveryProfile.recoveryCsvBlocks,
+      csv: params.recoveryProfile.recoveryCsvBlocks,
       threshold: params.recoveryProfile.recoveryThreshold,
-      pubkeys: params.recoveryProfile.recoveryPubkeys.map((key) => key.toString("hex")),
+      keys: params.recoveryProfile.recoveryPubkeys.map((key) => key.toString("hex")),
     },
-  })).digest("hex");
+  });
+  const existing = await replayBuild(params, hash);
+  if (existing) return existing;
+  const launchSalt = randomBytes(32);
+  const identity = {
+    deploymentTag: crc20DeploymentTag(Buffer.from(core.deployMarker(params.ticker))),
+    launchSalt,
+  };
+  const vault = buildCrc20AssetVault({
+    asset: identity,
+    guardianXOnly: params.guardianXOnly,
+    recoveryProfile: params.recoveryProfile,
+    network: params.bitcoinNetwork,
+  });
+  const config = core.guardianConfig(
+    {
+      network: core.protocolNetwork(params.network),
+      ticker: params.ticker,
+      vaultScriptHex: vault.scriptPubKey.toString("hex"),
+      creatorScriptHex: params.walletScriptHex,
+      protocolScriptHex: params.feeScriptHex,
+    },
+    {
+      assetCommitmentHex: crc20AssetCommitment(identity).toString("hex"),
+      guardianPublicKeyHex: params.guardianXOnly.toString("hex"),
+      executionScriptHex: vault.executionLeaf.script.toString("hex"),
+      controlBlockHex: vault.executionControlBlock.toString("hex"),
+      recoveryLeafHashHex: vault.recoveryLeaf.tapleafHash.toString("hex"),
+    },
+  );
+  const candidates = await loadCrcFundingCandidates(
+    params.db,
+    params.network,
+    params.walletScriptHex,
+    params.funding,
+    { publicKeyHex: params.walletPublicKeyHex },
+  );
+  const plan = selectPlan(params, candidates, (funding, minerFeeSats) =>
+    core.buildDeploy({ config, funding, minerFeeSats, changeScriptHex: params.walletScriptHex }),
+  );
+  const psbt = createPlanPsbt(plan, params.network, { publicKeys: publicKeys(plan, candidates) });
+  const digest = unsignedTxDigest(psbt);
   const intent = {
     operation: "deploy" as const,
     ticker: params.ticker,
     metadata,
-    vaultScriptHex: built.vault.scriptPubKey.toString("hex"),
-    creatorScriptHex: params.walletScriptHex,
-    protocolScriptHex: params.feeScriptHex,
-    vaultAnchorSats: 330,
-    creatorRecordSats: 1_000,
-    launchFeeSats: 7_000,
-    minerFeeSats: selected.minerFeeSats,
+    vaultScriptHex: config.vaultScriptHex,
+    creatorScriptHex: config.creatorScriptHex,
+    protocolScriptHex: config.protocolScriptHex,
+    vaultAnchorSats: Number(core.carrierSats),
+    creatorRecordSats: Number(core.carrierSats),
+    launchFeeSats: Number(core.launchFeeSats),
+    minerFeeSats: Number(plan.minerFeeSats),
     feeRateSatPerVb: params.feeRateSatPerVb ?? null,
     feeTier: params.feeTier ?? null,
-    changeSats: selected.changeSats,
+    changeSats: Number(plan.outputs.find((output) => output.role === "btcChange")?.sats ?? 0n),
     unsignedTxDigest: digest,
+    launchSaltHex: launchSalt.toString("hex"),
+    coreConfig: core.encodeProtocolDto(config),
+    corePlan: core.encodeProtocolDto(plan),
   };
   const session = await createCrcBuildSession(params.db, {
     network: params.network,
     operation: "deploy",
     deploymentTxid: null,
     idempotencyKey: params.idempotencyKey,
-    requestHash,
+    requestHash: hash,
     unsignedTxDigest: digest,
-    psbtBase64,
+    psbtBase64: psbt.toBase64(),
     walletScriptHex: params.walletScriptHex,
     tokenScriptHex: params.tokenScriptHex,
-    trustedJson: { ...intent, metadata, launchSaltHex: launchSalt.toString("hex") },
+    trustedJson: intent,
   });
   return {
     sessionId: session.id,
     psbtBase64: session.psbtBase64,
-    intent: session.trustedJson as typeof intent & { launchSaltHex: string },
+    intent: session.trustedJson as typeof intent,
+  };
+}
+export async function buildCrcTradeSession(
+  params: Common & {
+    asset: { assetId: string; deployTxid: string };
+    operation: "buy" | "sell";
+    amountAtoms: bigint;
+    tokenPublicKeyHex?: string;
+    sellerFunding?: CrcFundingOutpoint[];
+    paymentFunding: CrcFundingOutpoint[];
+  },
+) {
+  const hash = requestHash(params, {
+    assetId: params.asset.assetId,
+    operation: params.operation,
+    amountAtoms: params.amountAtoms.toString(),
+    sellerFunding: params.sellerFunding,
+    paymentFunding: params.paymentFunding,
+    tokenPublicKeyHex: params.tokenPublicKeyHex,
+  });
+  const existing = await replayBuild(params, hash);
+  if (existing) return existing;
+  const ledger = await loadCrcCoreLedger(params.db, params.network);
+  const state = ledger?.assets[params.asset.deployTxid];
+  if (
+    !state ||
+    params.asset.assetId !== `${params.network}:${state.deployTxid}` ||
+    state.config.protocolScriptHex !== params.feeScriptHex
+  )
+    throw new Error("CRC asset does not match trusted launch configuration");
+  const asset: CrcQuoteAsset = {
+    ...params.asset,
+    mintedAtoms: state.issuedAtoms.toString(),
+    inventoryAtoms: state.inventoryAtoms.toString(),
+    circulatingAtoms: (state.issuedAtoms - state.inventoryAtoms - state.burnedAtoms).toString(),
+    vaultAnchorSats: core.carrierSats.toString(),
+    vault: {
+      txid: state.vault.txid,
+      vout: state.vault.vout,
+      btcSats: core.sats(state.vault.sats).toString(),
+    },
+    coreState: core.encodeProtocolDto(state),
+    availability: state.vaultAvailable === false ? ("unavailable" as const) : ("active" as const),
+  };
+  const quote =
+    params.operation === "sell"
+      ? quoteCrcSell(asset, params.amountAtoms, params.tokenScriptHex)
+      : quoteCrcBuy(asset, params.amountAtoms);
+  const tokens: CrcObservedInput[] =
+    params.operation === "sell"
+      ? (params.sellerFunding ?? []).map((input) => {
+          const allocation = ledger!.allocations[core.outpoint(input)];
+          if (
+            !allocation ||
+            allocation.deployTxid !== state.deployTxid ||
+            allocation.scriptHex !== params.tokenScriptHex
+          )
+            throw new AppError("FUNDING_INPUT_INVALID", "indexed token owner or asset mismatch");
+          return {
+            ...input,
+            ...allocation,
+            ...crcWalletMetadata(allocation.scriptHex, params.tokenPublicKeyHex),
+          };
+        })
+      : [];
+  const candidates = await loadCrcFundingCandidates(
+    params.db,
+    params.network,
+    params.walletScriptHex,
+    params.paymentFunding,
+    { publicKeyHex: params.walletPublicKeyHex },
+  );
+  const plan = selectPlan(
+    params,
+    candidates,
+    (funding, minerFeeSats) =>
+      params.operation === "sell"
+        ? core.buildSell({
+            state,
+            inputs: tokens,
+            funding,
+            amountAtoms: params.amountAtoms,
+            recipientScriptHex: params.tokenScriptHex,
+            changeScriptHex: params.walletScriptHex,
+            minerFeeSats,
+          })
+        : (state.inventoryAtoms ? core.buildInventoryBuy : core.buildMint)({
+            state,
+            funding,
+            amountAtoms: params.amountAtoms,
+            recipientScriptHex: params.tokenScriptHex,
+            changeScriptHex: params.walletScriptHex,
+            minerFeeSats,
+          }),
+    state.config.guardianCustody,
+  );
+  const psbt = createPlanPsbt(plan, params.network, {
+    publicKeys: publicKeys(plan, [...tokens, ...candidates]),
+  });
+  const digest = unsignedTxDigest(psbt);
+  const operation =
+    params.operation === "sell" ? "sell" : state.inventoryAtoms ? "inventory-buy" : "mint-buy";
+  const intent = {
+    operation,
+    assetId: params.asset.assetId,
+    amountAtoms: params.amountAtoms.toString(),
+    vaultOutpoint: core.outpoint(state.vault),
+    walletScriptHex: params.walletScriptHex,
+    tokenScriptHex: params.tokenScriptHex,
+    minerFeeSats: Number(plan.minerFeeSats),
+    feeRateSatPerVb: params.feeRateSatPerVb ?? null,
+    feeTier: params.feeTier ?? null,
+    changeSats: Number(plan.outputs.find((output) => output.role === "btcChange")?.sats ?? 0n),
+    unsignedTxDigest: digest,
+    quote,
+    corePlan: core.encodeProtocolDto(plan),
+    coreConfig: core.encodeProtocolDto(state.config),
+  };
+  const session = await createCrcBuildSession(params.db, {
+    network: params.network,
+    operation,
+    deploymentTxid: state.deployTxid,
+    idempotencyKey: params.idempotencyKey,
+    requestHash: hash,
+    unsignedTxDigest: digest,
+    psbtBase64: psbt.toBase64(),
+    walletScriptHex: params.walletScriptHex,
+    tokenScriptHex: params.tokenScriptHex,
+    trustedJson: intent,
+  });
+  return {
+    sessionId: session.id,
+    psbtBase64: session.psbtBase64,
+    intent: session.trustedJson as typeof intent,
   };
 }
 
-export type CrcTradeAsset = CrcQuoteAsset & {
-  protocolVersion: 3;
-  network: "regtest" | "signet" | "testnet" | "mainnet";
-  deployTxid: string;
-  ticker: string;
-  creatorScriptHex: string;
-  protocolScriptHex: string;
-  registeredVaultScriptHex: string;
-  vault: CrcQuoteAsset["vault"] & { scriptHex: string };
-};
-
-export async function buildCrcTradeSession(params: {
-  db: Database;
-  network: "regtest" | "signet" | "testnet" | "mainnet";
-  bitcoinNetwork: bitcoin.networks.Network;
-  asset: CrcTradeAsset;
-  operation: "buy" | "sell";
-  amountAtoms: bigint;
-  walletScriptHex: string;
-  tokenScriptHex: string;
-  walletPublicKeyHex?: string;
-  tokenPublicKeyHex?: string;
-  sellerFunding?: CrcFundingOutpoint[];
-  verifiedSellerInputs?: CoveTokenInput[];
-  paymentFunding: CrcFundingOutpoint[];
-  minerFeeSats?: number;
-  feeRateSatPerVb?: number;
-  feeTier?: "eco" | "standard" | "priority";
-  idempotencyKey: string;
-  feeScriptHex: string;
-}) {
-  const { asset } = params;
-  if ((params.minerFeeSats === undefined) === (params.feeRateSatPerVb === undefined)) throw new Error("select one CRC miner fee method");
-  if (params.feeRateSatPerVb !== undefined && (!Number.isSafeInteger(params.feeRateSatPerVb) || params.feeRateSatPerVb < 1 || params.feeRateSatPerVb > 500)) {
-    throw new AppError("MINER_FEE_TOO_HIGH", "invalid CRC mining speed");
-  }
-  if (asset.protocolVersion !== 3) throw new Error("unsupported Cove CRC asset");
-  if (asset.network !== params.network || asset.assetId !== `${params.network}:${asset.deployTxid}` ||
-    asset.vault.scriptHex !== asset.registeredVaultScriptHex ||
-    asset.protocolScriptHex !== params.feeScriptHex) {
-    throw new Error("CRC asset does not match trusted launch configuration");
-  }
-  if (params.amountAtoms <= 0n || params.amountAtoms % 100_000_000n !== 0n) {
-    throw new Error("CRC trade amount must contain whole tokens");
-  }
-  const state = crcCurveStateFromAsset(asset);
-  const quote = params.operation === "buy"
-    ? quoteCrcBuy(asset, params.amountAtoms)
-    : quoteCrcSell(asset, params.amountAtoms, params.walletScriptHex);
-  const vaultInput: CoveTokenInput = {
-    txid: asset.vault.txid, vout: asset.vault.vout,
-    valueSats: Number(asset.vault.btcSats), scriptHex: asset.vault.scriptHex,
-    tokenAtoms: BigInt(asset.inventoryAtoms),
-    ...(BigInt(asset.inventoryAtoms) > 0n ? { tokenDeploymentTxid: asset.deployTxid } : {}),
-  };
-  if (!Number.isSafeInteger(vaultInput.valueSats)) throw new Error("CRC vault value exceeds safe integer");
-  const vaultCoin = await readCrcTokenUtxo(params.db, params.network, asset.deployTxid, vaultInput.txid, vaultInput.vout);
-  if (BigInt(asset.inventoryAtoms) > 0n
-    ? !vaultCoin || vaultCoin.scriptHex !== vaultInput.scriptHex || vaultCoin.atoms !== vaultInput.tokenAtoms
-    : vaultCoin !== null) {
-    throw new Error("indexed CRC vault inventory does not match its token outpoint");
-  }
-  const sellerInputs = params.operation === "sell" ? params.verifiedSellerInputs ?? [] : [];
-  if (params.operation === "sell" && (!sellerInputs.length || sellerInputs.length > 32 ||
-    sellerInputs.length !== params.sellerFunding?.length)) throw new Error("verified CRC seller token inputs are required");
-  for (let index = 0; index < sellerInputs.length; index++) {
-    const input = sellerInputs[index]!;
-    const intended = params.sellerFunding![index]!;
-    const coin = await readCrcTokenUtxo(params.db, params.network, asset.deployTxid, input.txid, input.vout);
-    if (input.txid !== intended.txid || input.vout !== intended.vout ||
-      input.scriptHex !== params.tokenScriptHex || input.tokenDeploymentTxid !== asset.deployTxid ||
-      !coin || coin.scriptHex !== input.scriptHex || coin.atoms !== input.tokenAtoms) {
-      throw new Error("verified CRC seller input does not match indexed token authority");
-    }
-  }
-  if (params.operation === "sell" && sellerInputs.reduce((sum, input) => sum + input.tokenAtoms, 0n) < params.amountAtoms) {
-    throw new Error("seller token outpoints do not cover the sale amount");
-  }
-  const paymentOutpoints = params.paymentFunding.filter((coin) =>
-    !params.sellerFunding?.some((seller) => coin.txid === seller.txid && coin.vout === seller.vout));
-  const candidates = await loadCrcFundingCandidates(params.db, params.network, params.walletScriptHex, paymentOutpoints, {
-    publicKeyHex: params.walletPublicKeyHex,
-  });
-  const btcCandidates: CoveTokenInput[] = candidates.map((input) => ({ ...input, tokenAtoms: 0n }));
-  const scripts = {
-    buyer: params.tokenScriptHex,
-    seller: params.tokenScriptHex,
-    vault: asset.vault.scriptHex,
-    protocol: asset.protocolScriptHex,
-    creator: asset.creatorScriptHex,
-  };
-  const common = {
-    ticker: asset.ticker, deploymentTxid: asset.deployTxid, state,
-    amountTokens: params.amountAtoms / 100_000_000n, scripts,
-  };
-  const makeTemplate = (changeSats?: number) => params.operation === "buy"
-    ? buildCurveBuyV3({ ...common, vaultInput, recipientSats: 1_000, changeSats, changeScriptHex: params.walletScriptHex })
-    : buildCurveSellV3({ ...common, vaultInput, sellerTokenInputs: sellerInputs,
-      ...(sellerInputs.reduce((sum, input) => sum + input.tokenAtoms, 0n) > params.amountAtoms ? { tokenChangeSats: 1_000 } : {}),
-      sellerPayoutScriptHex: params.tokenScriptHex, changeSats, changeScriptHex: params.walletScriptHex });
-  const base = makeTemplate();
-  const mandatoryInputs = [vaultInput, ...sellerInputs];
-  const outputsSats = base.outputs.reduce((sum, output) => sum + output.valueSats, 0);
-  const estimatedVsize = (inputs: readonly { scriptHex: string }[], outputs: typeof base.outputs) => estimateVsize({
-    vaultInputs: 1,
-    p2wpkhInputs: inputs.slice(1).filter((input) => input.scriptHex.startsWith("0014") && input.scriptHex.length === 44).length,
-    p2trInputs: inputs.slice(1).filter((input) => input.scriptHex.startsWith("5120") && input.scriptHex.length === 68).length,
-    p2shP2wpkhInputs: inputs.slice(1).filter((input) => input.scriptHex.startsWith("a914") && input.scriptHex.endsWith("87") && input.scriptHex.length === 46).length,
-    outputScriptBytes: outputs.map((output) => output.scriptHex.length / 2),
-  });
-  let targetFee = params.minerFeeSats ?? params.feeRateSatPerVb! * estimatedVsize(mandatoryInputs, base.outputs);
-  let selected: ReturnType<typeof selectCrcFunding> | undefined;
-  let built: typeof base | undefined;
-  for (let attempt = 0; attempt < 42; attempt++) {
-    if (targetFee > 20_000) throw new AppError("MINER_FEE_TOO_HIGH", "selected mining speed exceeds the 20,000-sat cap");
-    selected = selectObservedFunding({ mandatoryInputs, candidates: btcCandidates, outputsSats,
-      minerFeeSats: targetFee, changeScriptHex: params.walletScriptHex });
-    built = makeTemplate(selected.changeSats);
-    if (params.feeRateSatPerVb === undefined) break;
-    const required = params.feeRateSatPerVb * estimatedVsize(selected.inputs, built.outputs);
-    if (selected.minerFeeSats >= required) break;
-    targetFee = required;
-  }
-  if (!selected || !built || selected.minerFeeSats < targetFee) throw new Error("CRC trade fee sizing did not converge");
-  const psbt = buildUnsignedPsbt(built, selected.inputs, selected.minerFeeSats, params.bitcoinNetwork);
-  const psbtBase64 = psbt.toBase64();
-  const digest = unsignedTxDigest(psbt);
-  const requestHash = createHash("sha256").update(JSON.stringify({
-    network: params.network, assetId: asset.assetId, vaultOutpoint: quote.vaultOutpoint,
-    operation: params.operation, amountAtoms: params.amountAtoms.toString(),
-    walletScriptHex: params.walletScriptHex, tokenScriptHex: params.tokenScriptHex,
-    sellerFunding: params.sellerFunding, paymentFunding: params.paymentFunding,
-    minerFeeSats: params.minerFeeSats, feeRateSatPerVb: params.feeRateSatPerVb, feeTier: params.feeTier,
-    feeScriptHex: params.feeScriptHex,
-  })).digest("hex");
-  const sessionOperation = params.operation === "sell" ? "sell"
-    : quote.operation === "mint" ? "mint-buy" : "inventory-buy";
-  const intent = {
-    operation: sessionOperation,
-    assetId: asset.assetId,
+export async function buildCrcTokenSession(
+  params: Common & {
+    deployTxid: string;
+    operation: "transfer" | "listing";
+    amountAtoms: bigint;
+    recipientScriptHex: string;
+    priceSats?: bigint;
+    tokenFunding: CrcFundingOutpoint[];
+    paymentFunding: CrcFundingOutpoint[];
+    tokenPublicKeyHex?: string;
+  },
+) {
+  const hash = requestHash(params, {
+    deployTxid: params.deployTxid,
+    operation: params.operation,
     amountAtoms: params.amountAtoms.toString(),
-    vaultOutpoint: quote.vaultOutpoint,
+    recipientScriptHex: params.recipientScriptHex,
+    priceSats: params.priceSats?.toString(),
+    tokenFunding: params.tokenFunding,
+    paymentFunding: params.paymentFunding,
+    tokenPublicKeyHex: params.tokenPublicKeyHex,
+  });
+  const existing = await replayBuild(params, hash);
+  if (existing) return existing;
+  const ledger = await loadCrcCoreLedger(params.db, params.network);
+  const asset = ledger?.assets[params.deployTxid];
+  if (!asset || asset.config.protocolScriptHex !== params.feeScriptHex)
+    throw new AppError("STATE_CHANGED", "CRC asset registration is unavailable");
+  if (!params.tokenFunding.length || params.tokenFunding.length > 32)
+    throw new AppError("FUNDING_INPUT_INVALID", "Select one to 32 indexed token inputs");
+  const tokens: CrcObservedInput[] = params.tokenFunding.map((input) => {
+    const allocation = ledger!.allocations[core.outpoint(input)];
+    if (
+      !allocation ||
+      allocation.deployTxid !== asset.deployTxid ||
+      allocation.scriptHex !== params.tokenScriptHex
+    )
+      throw new AppError("FUNDING_INPUT_INVALID", "Indexed token owner or asset mismatch");
+    return {
+      ...input,
+      ...allocation,
+      ...crcWalletMetadata(allocation.scriptHex, params.tokenPublicKeyHex),
+    };
+  });
+  const candidates = await loadCrcFundingCandidates(
+    params.db,
+    params.network,
+    params.walletScriptHex,
+    params.paymentFunding,
+    { publicKeyHex: params.walletPublicKeyHex },
+  );
+  const plan = selectPlan(params, candidates, (funding, minerFeeSats) =>
+    (params.operation === "listing" ? core.buildListing : core.buildTransfer)({
+      network: asset.config.network,
+      deployTxid: asset.deployTxid,
+      ticker: asset.config.ticker,
+      inputs: tokens,
+      funding,
+      amountAtoms: params.amountAtoms,
+      recipientScriptHex: params.recipientScriptHex,
+      sellerScriptHex: params.tokenScriptHex,
+      changeScriptHex: params.walletScriptHex,
+      minerFeeSats,
+      priceSats: params.priceSats,
+    }),
+  );
+  const psbt = createPlanPsbt(plan, params.network, {
+    publicKeys: publicKeys(plan, [...tokens, ...candidates]),
+  });
+  const digest = unsignedTxDigest(psbt);
+  const intent = {
+    operation: params.operation,
+    assetId: `${params.network}:${asset.deployTxid}`,
+    amountAtoms: params.amountAtoms.toString(),
+    recipientScriptHex: params.recipientScriptHex,
+    priceSats: params.priceSats?.toString(),
     walletScriptHex: params.walletScriptHex,
     tokenScriptHex: params.tokenScriptHex,
-    minerFeeSats: selected.minerFeeSats,
-    feeRateSatPerVb: params.feeRateSatPerVb ?? null,
-    feeTier: params.feeTier ?? null,
-    changeSats: selected.changeSats,
+    minerFeeSats: Number(plan.minerFeeSats),
     unsignedTxDigest: digest,
-    quote,
+    corePlan: core.encodeProtocolDto(plan),
+    coreConfig: core.encodeProtocolDto(asset.config),
   };
   const session = await createCrcBuildSession(params.db, {
-    network: params.network, operation: sessionOperation,
+    network: params.network,
+    operation: params.operation,
     deploymentTxid: asset.deployTxid,
     idempotencyKey: params.idempotencyKey,
-    requestHash, unsignedTxDigest: digest, psbtBase64,
-    walletScriptHex: params.walletScriptHex, tokenScriptHex: params.tokenScriptHex,
+    requestHash: hash,
+    unsignedTxDigest: digest,
+    psbtBase64: psbt.toBase64(),
+    walletScriptHex: params.walletScriptHex,
+    tokenScriptHex: params.tokenScriptHex,
     trustedJson: intent,
   });
-  return { sessionId: session.id, psbtBase64: session.psbtBase64, intent: session.trustedJson as typeof intent };
+  return {
+    sessionId: session.id,
+    psbtBase64: session.psbtBase64,
+    intent: session.trustedJson as typeof intent,
+  };
+}
+
+export async function buildCrcOfferSession(
+  params: Common & {
+    offerId: string;
+    operation: "purchase" | "cancel";
+    paymentFunding: CrcFundingOutpoint[];
+    tokenPublicKeyHex?: string;
+  },
+) {
+  const hash = requestHash(params, {
+    operation: params.operation,
+    offerId: params.offerId,
+    paymentFunding: params.paymentFunding,
+    tokenPublicKeyHex: params.tokenPublicKeyHex,
+  });
+  const existing = await replayBuild(params, hash);
+  if (existing) return existing;
+  const ledger = await loadCrcCoreLedger(params.db, params.network);
+  const offer = ledger?.offers[params.offerId],
+    asset = offer && ledger?.assets[offer.deployTxid];
+  if (!offer || !asset || asset.config.protocolScriptHex !== params.feeScriptHex)
+    throw new AppError("STATE_CHANGED", "CRC signed offer is unavailable");
+  if (params.operation === "cancel" && offer.sellerScriptHex !== params.tokenScriptHex)
+    throw new AppError("CLIENT_INTENT_MISMATCH", "Cancellation must use the offer owner");
+  const candidates = await loadCrcFundingCandidates(
+    params.db,
+    params.network,
+    params.walletScriptHex,
+    params.paymentFunding,
+    { publicKeyHex: params.walletPublicKeyHex },
+  );
+  const plan = selectPlan(params, candidates, (funding, minerFeeSats) =>
+    params.operation === "purchase"
+      ? core.buildPurchase({
+          offer,
+          currentHeight: ledger!.tip?.height ?? 0,
+          buyerFunding: funding,
+          buyerScriptHex: params.tokenScriptHex,
+          protocolScriptHex: asset.config.protocolScriptHex,
+          changeScriptHex: params.walletScriptHex,
+          minerFeeSats,
+        })
+      : core.buildCancel({ offer, funding, changeScriptHex: params.walletScriptHex, minerFeeSats }),
+  );
+  const inputs =
+    params.operation === "cancel"
+      ? [
+          {
+            ...offer.listedInput,
+            ...crcWalletMetadata(offer.sellerScriptHex, params.tokenPublicKeyHex),
+          },
+          ...candidates,
+        ]
+      : candidates;
+  const psbt = createPlanPsbt(plan, params.network, { publicKeys: publicKeys(plan, inputs) });
+  const digest = unsignedTxDigest(psbt);
+  const intent = {
+    operation: params.operation,
+    offerId: params.offerId,
+    assetId: `${params.network}:${asset.deployTxid}`,
+    walletScriptHex: params.walletScriptHex,
+    tokenScriptHex: params.tokenScriptHex,
+    amountAtoms: offer.listedInput.atoms.toString(),
+    minerFeeSats: Number(plan.minerFeeSats),
+    unsignedTxDigest: digest,
+    corePlan: core.encodeProtocolDto(plan),
+    coreConfig: core.encodeProtocolDto(asset.config),
+  };
+  const session = await createCrcBuildSession(params.db, {
+    network: params.network,
+    operation: params.operation,
+    deploymentTxid: asset.deployTxid,
+    idempotencyKey: params.idempotencyKey,
+    requestHash: hash,
+    unsignedTxDigest: digest,
+    psbtBase64: psbt.toBase64(),
+    walletScriptHex: params.walletScriptHex,
+    tokenScriptHex: params.tokenScriptHex,
+    trustedJson: intent,
+  });
+  return {
+    sessionId: session.id,
+    psbtBase64: session.psbtBase64,
+    intent: session.trustedJson as typeof intent,
+  };
 }

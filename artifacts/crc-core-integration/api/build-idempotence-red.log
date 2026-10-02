@@ -1,0 +1,36 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/lib/crc-core-read.integration.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-core-read.integration.test.ts (5 tests | 1 failed) 2067ms
+   × launch builds persist the exact shared-core plan in fresh sessions and keep idempotent custody 20ms
+     → [FUNDING_INPUT_INVALID] CRC funding outpoint was not observed for this wallet
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-core-read.integration.test.ts > launch builds persist the exact shared-core plan in fresh sessions and keep idempotent custody
+AppError: [FUNDING_INPUT_INVALID] CRC funding outpoint was not observed for this wallet
+ ❯ src/lib/crc-funding.ts:82:15
+     80|       const coin = byOutpoint.get(key);
+     81|       if (!coin)
+     82|         throw new AppError(
+       |               ^
+     83|           "FUNDING_INPUT_INVALID",
+     84|           "CRC funding outpoint was not observed for this wallet",
+ ❯ Module.loadCrcFundingCandidates src/lib/crc-funding.ts:67:6
+ ❯ Module.buildCrcLaunchSession src/lib/crc-build.ts:198:22
+ ❯ src/lib/crc-core-read.integration.test.ts:152:10
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  21:29:06
+   Duration  3.90s (transform 976ms, setup 0ms, collect 1.52s, tests 2.07s, environment 0ms, prepare 51ms)
+
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 test: `vitest run --passWithNoTests src/lib/crc-core-read.integration.test.ts`
+Exit status 1

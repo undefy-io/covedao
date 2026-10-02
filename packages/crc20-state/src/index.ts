@@ -265,14 +265,28 @@ export async function persistCrcCoreBlock(
       JSON.stringify(stable(core.encodeProtocolDto(registeredDeployments)))
     )
       throw new Error("CRC registrations changed during observation; retry");
-    const next = core.applyConfirmedBlock(before, block, {
+    const accepted = core.applyConfirmedBlockDetailed(before, block, {
       registeredDeployments: currentRegistrations,
       undoLimit,
       authorizations: await authorizations(tx, selected),
     });
+    const next = accepted.ledger;
     if (next === before) return { state: before, changed: false };
     const undo = next.history[block.hash]!;
     await writeRecords(tx, selected, next, undo);
+    if (accepted.events.length)
+      await tx.insert(schema.crcEvents).values(
+        accepted.events.map((event) => ({
+          network: selected,
+          txid: event.txid,
+          deployTxid: event.deployTxid,
+          blockHeight: BigInt(block.height),
+          blockHash: block.hash,
+          txIndex: event.txIndex,
+          confirmedTime: block.timestamp ?? null,
+          eventJson: core.encodeProtocolDto(event),
+        })),
+      );
     await tx.insert(schema.crcUndo).values({
       network: selected,
       height: BigInt(block.height),
@@ -370,6 +384,11 @@ export async function rollbackCrcCoreTip(db: Database, network: string): Promise
         and(eq(schema.crcUndo.network, selected), eq(schema.crcUndo.blockHash, state.tip.hash)),
       );
     await tx
+      .delete(schema.crcEvents)
+      .where(
+        and(eq(schema.crcEvents.network, selected), eq(schema.crcEvents.blockHash, state.tip.hash)),
+      );
+    await tx
       .delete(schema.crcIndexedBlocks)
       .where(
         and(
@@ -418,6 +437,14 @@ export async function restoreCrcCheckpoint(
     await tx.delete(schema.crcRecords).where(eq(schema.crcRecords.network, selected));
     await writeRecords(tx, selected, state);
     await tx.delete(schema.crcUndo).where(eq(schema.crcUndo.network, selected));
+    await tx
+      .delete(schema.crcEvents)
+      .where(
+        and(
+          eq(schema.crcEvents.network, selected),
+          gt(schema.crcEvents.blockHeight, checkpoint.height),
+        ),
+      );
     await tx
       .delete(schema.crcIndexedBlocks)
       .where(

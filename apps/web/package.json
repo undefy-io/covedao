@@ -43,7 +43,10 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "tiny-secp256k1": "^2.2.3",
-    "zod": "^3.24.1"
+    "zod": "^3.24.1",
+    "@crclaunch/crc20-protocol": "workspace:*",
+    "@crclaunch/crc20-adapters": "workspace:*",
+    "@crclaunch/crc20-state": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.1",

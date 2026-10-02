@@ -8,12 +8,25 @@ export const dynamic = "force-dynamic";
 type Context = { params: Promise<{ operation: string }> };
 
 export async function GET(req: Request, context: Context) {
-  return crcMarketGet(req, (await context.params).operation, isCrcMarketReleased(), getCrcReadServices);
+  return crcMarketGet(
+    req,
+    (await context.params).operation,
+    isCrcMarketReleased(),
+    getCrcReadServices,
+  );
 }
 
 export async function POST(req: Request, context: Context) {
   return crcMarketPost(req, (await context.params).operation, isCrcMarketReleased(), () => {
-    const { db, provider, config } = getCrcMutationServices();
-    return { db, provider, network: config.network };
+    const { db, provider, config, crcVaultConfig, guardianEndpoint, guardianAuthToken } =
+      getCrcMutationServices();
+    return {
+      db,
+      provider,
+      network: config.network,
+      feeScriptHex: crcVaultConfig.feeScriptHex,
+      guardianEndpoint,
+      guardianAuthToken,
+    };
   });
 }

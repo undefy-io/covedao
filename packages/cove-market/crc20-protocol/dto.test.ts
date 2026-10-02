@@ -64,3 +64,42 @@ test("nested protocol DTOs preserve network identity and signed offer fields", (
     core.decodeProtocolDto<typeof value>(JSON.parse(JSON.stringify(core.encodeProtocolDto(value)))),
   ).toEqual(value);
 });
+test("core small sell plans transport signed economic deltas without permitting negative BTC values", () => {
+  const config = {
+    network: "regtest",
+    ticker: "TEST",
+    vaultScriptHex: script,
+    creatorScriptHex: script,
+    protocolScriptHex: script,
+  };
+  const state = {
+    config,
+    deployTxid: "a".repeat(64),
+    issuedAtoms: 100000000000n,
+    inventoryAtoms: 0n,
+    burnedAtoms: 0n,
+    vault: { txid: "b".repeat(64), vout: 2, sats: 1027n, scriptHex: script },
+  };
+  const sell = core.buildSell({
+    state,
+    inputs: [
+      {
+        txid: "c".repeat(64),
+        vout: 1,
+        sats: 1000n,
+        scriptHex: script,
+        atoms: 100000000000n,
+        deployTxid: state.deployTxid,
+      },
+    ],
+    funding: [{ txid: "d".repeat(64), vout: 0, sats: 100000n, scriptHex: script }],
+    amountAtoms: 100000000000n,
+    recipientScriptHex: script,
+    minerFeeSats: 1000n,
+  });
+  expect(core.decodeProtocolDto(core.encodeProtocolDto(sell))).toEqual(sell);
+  expect(core.encodeProtocolDto(sell)).toMatchObject({ economicSats: "-973" });
+  expect(() => core.decodeProtocolDto({ economicSats: "-0" })).toThrow();
+  expect(() => core.decodeProtocolDto({ economicSats: "-01" })).toThrow();
+  expect(() => core.decodeProtocolDto({ minerFeeSats: "-973" })).toThrow();
+});

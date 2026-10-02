@@ -1,20 +1,42 @@
 import { describe, expect, it } from "vitest";
-import { quoteCrcBuy, quoteCrcSell } from "./crc-quote";
-
-const txid = "a".repeat(64);
-const base = {
-  assetId: `signet:${txid}`,
-  mintedAtoms: "0",
-  inventoryAtoms: "0",
-  circulatingAtoms: "0",
-  availability: "active" as const,
-  vaultAnchorSats: "330",
-  vault: { txid, vout: 1, btcSats: "330" },
+import * as core from "@crclaunch/crc20-protocol";
+import { CrcQuoteError, quoteCrcBuy, quoteCrcSell } from "./crc-quote";
+const txid = "a".repeat(64),
+  script = "0014" + "11".repeat(20);
+const config = {
+  network: "signet",
+  ticker: "TEST",
+  vaultScriptHex: script,
+  creatorScriptHex: script,
+  protocolScriptHex: script,
 };
-
-describe("CRC DB-backed quote math", () => {
-  it("quotes a 1000-token mint with fees outside the reserve", () => {
-    expect(quoteCrcBuy(base, 100_000_000_000n)).toMatchObject({
+const state: core.Asset = {
+  config,
+  deployTxid: txid,
+  issuedAtoms: 0n,
+  inventoryAtoms: 0n,
+  burnedAtoms: 0n,
+  vault: { txid, vout: 1, sats: 1000n, scriptHex: script },
+};
+function asset(input = state) {
+  return {
+    assetId: `signet:${txid}`,
+    mintedAtoms: input.issuedAtoms.toString(),
+    inventoryAtoms: input.inventoryAtoms.toString(),
+    circulatingAtoms: (input.issuedAtoms - input.inventoryAtoms).toString(),
+    availability: "active" as const,
+    vaultAnchorSats: "1000",
+    vault: {
+      txid: input.vault.txid,
+      vout: input.vault.vout,
+      btcSats: core.sats(input.vault.sats).toString(),
+    },
+    coreState: core.encodeProtocolDto(input),
+  };
+}
+describe("CRC shared-core quotes", () => {
+  it("maps exact core mint economics without RPC", () => {
+    expect(quoteCrcBuy(asset(), 100000000000n)).toMatchObject({
       operation: "mint",
       amountAtoms: "100000000000",
       grossSats: "27",
@@ -24,23 +46,41 @@ describe("CRC DB-backed quote math", () => {
       vaultOutpoint: `${txid}:1`,
     });
   });
-
-  it("quotes a sell with script-specific dust and wallet top-up", () => {
-    const minted = { ...base, mintedAtoms: "100000000000", circulatingAtoms: "100000000000", vault: { ...base.vault, btcSats: "357" } };
-    expect(quoteCrcSell(minted, 100_000_000_000n, "0014" + "1".repeat(40))).toMatchObject({
+  it("maps the core sell settlement and explicitly excludes miner fees/carrier credits", () => {
+    const minted = { ...state, issuedAtoms: 100000000000n, vault: { ...state.vault, sats: 1027n } };
+    expect(quoteCrcSell(asset(minted), 100000000000n, script)).toMatchObject({
       operation: "transfer",
       grossSats: "27",
       protocolFeeSats: "1000",
-      sellerPayoutSats: "294",
-      walletTopUpSats: "1267",
+      sellerPayoutSats: "1000",
+      walletTopUpSats: "1973",
       sellerNetSats: "-973",
+      minerFeeExcluded: true,
+      walletTopUpExcludesCarrierCredits: true,
     });
   });
-
-  it("rejects unavailable, inconsistent, and inventory-crossing states", () => {
-    expect(() => quoteCrcBuy({ ...base, availability: "unavailable" }, 100_000_000_000n)).toThrow(/unavailable/i);
-    expect(() => quoteCrcBuy({ ...base, vault: { ...base.vault, btcSats: "329" } }, 100_000_000_000n)).toThrow(/backing|anchor|state/i);
-    const inventory = { ...base, mintedAtoms: "100000000000", inventoryAtoms: "100000000000" };
-    expect(() => quoteCrcBuy(inventory, 200_000_000_000n)).toThrow(/split/i);
+  it("rejects unavailable, inconsistent and inventory-crossing state through the core", () => {
+    expect(() => quoteCrcBuy({ ...asset(), availability: "unavailable" }, 100000000000n)).toThrow(
+      /unavailable/i,
+    );
+    expect(() =>
+      quoteCrcBuy(asset({ ...state, vault: { ...state.vault, sats: 999n } }), 100000000000n),
+    ).toThrow(/backing/i);
+    expect(() =>
+      quoteCrcBuy(
+        asset({ ...state, issuedAtoms: 100000000000n, inventoryAtoms: 100000000000n }),
+        200000000000n,
+      ),
+    ).toThrow(/split/i);
+    expect(() => quoteCrcBuy(asset(), 1n)).toThrow(/increments/i);
   });
+});
+
+it("maps core amount refusal to a client quote error", () => {
+  expect(() =>
+    quoteCrcBuy(
+      asset({ ...state, issuedAtoms: 100000000000n, inventoryAtoms: 100000000000n }),
+      200000000000n,
+    ),
+  ).toThrow(CrcQuoteError);
 });

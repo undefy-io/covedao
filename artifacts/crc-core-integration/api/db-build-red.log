@@ -1,0 +1,81 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests src/lib/crc-trade-build-route.test.ts src/lib/crc-quote.test.ts
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-quote.test.ts (4 tests | 1 failed) 8ms
+   × maps core amount refusal to a client quote error 3ms
+     → expected error to be instance of CrcQuoteError
+ ❯ src/lib/crc-trade-build-route.test.ts (2 tests | 1 failed) 7ms
+   × CRC sell build authority > builds from indexed token outpoints without external RPC 3ms
+     → expected "spy" to not be called at all, but actually been called 1 times
+
+Received: 
+
+  1st spy call:
+
+    Array [
+      "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      1,
+    ]
+
+
+Number of calls: 1
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-quote.test.ts > maps core amount refusal to a client quote error
+AssertionError: expected error to be instance of CrcQuoteError
+
+- Expected: 
+[Function CrcQuoteError]
+
++ Received: 
+[Error: split inventory buy from new issuance]
+
+ ❯ src/lib/crc-quote.test.ts:80:124
+     78| 
+     79| it("maps core amount refusal to a client quote error", () => {
+     80|   expect(() => quoteCrcBuy(asset({ ...state, issuedAtoms: 100000000000…
+       |                                                                                                                            ^
+     81| });
+     82| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/lib/crc-trade-build-route.test.ts > CRC sell build authority > builds from indexed token outpoints without external RPC
+AssertionError: expected "spy" to not be called at all, but actually been called 1 times
+
+Received: 
+
+  1st spy call:
+
+    Array [
+      "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      1,
+    ]
+
+
+Number of calls: 1
+
+ ❯ src/lib/crc-trade-build-route.test.ts:66:32
+     64|     const response = await crcTradeBuildRoute(request(body), "sell");
+     65|     expect(response.status).toBe(200);
+     66|     expect(mocks.getTxout).not.toHaveBeenCalled();
+       |                                ^
+     67|     expect(mocks.build).toHaveBeenCalledWith(expect.objectContaining({
+     68|       feeTier: "standard", feeRateSatPerVb: 5,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 4 passed (6)
+   Start at  21:07:23
+   Duration  1.65s (transform 823ms, setup 0ms, collect 1.43s, tests 15ms, environment 0ms, prepare 126ms)
+
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 test: `vitest run --passWithNoTests src/lib/crc-trade-build-route.test.ts src/lib/crc-quote.test.ts`
+Exit status 1

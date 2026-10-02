@@ -4,23 +4,49 @@ import { GET } from "../status/route";
 
 const gate = vi.hoisted(() => ({ network: "mainnet", testingEnabled: false }));
 const db = vi.hoisted(() => ({ execute: vi.fn(async () => ({ rows: [] })) }));
-vi.mock("@/lib/server-env", () => ({ serverEnv: {
-  get COVE_NETWORK() { return gate.network; },
-  get COVE_CRC_MARKET_TESTING_ENABLED() { return gate.testingEnabled; },
-  COVE_PROTOCOL_MODE: "crc20",
-  COVE_CRC_TRADING_ACTIVE: true,
-} }));
+vi.mock("@/lib/server-env", () => ({
+  serverEnv: {
+    get COVE_NETWORK() {
+      return gate.network;
+    },
+    get COVE_CRC_MARKET_TESTING_ENABLED() {
+      return gate.testingEnabled;
+    },
+    COVE_PROTOCOL_MODE: "crc20",
+    COVE_CRC_TRADING_ACTIVE: true,
+  },
+}));
 vi.mock("@/lib/crc-server", () => ({ getCrcReadServices: () => ({ db, network: gate.network }) }));
-vi.mock("@/lib/crc-mutation", () => ({ getCrcMutationServices: () => ({ db,
-  provider: {}, config: { network: gate.network } }) }));
+vi.mock("@/lib/crc-mutation", () => ({
+  getCrcMutationServices: () => ({
+    db,
+    crcVaultConfig: { feeScriptHex: "0014" + "11".repeat(20) },
+    provider: {},
+    config: { network: gate.network },
+  }),
+}));
 
 describe("CRC market settlement gate", () => {
-  beforeEach(() => { gate.network = "mainnet"; gate.testingEnabled = false; db.execute.mockClear(); });
+  beforeEach(() => {
+    gate.network = "mainnet";
+    gate.testingEnabled = false;
+    db.execute.mockClear();
+  });
 
   it("fails closed for every market mutation without touching DB or Core", async () => {
-    for (const operation of ["listings", "reserve", "buyer-sign", "seller-sign", "broadcast", "cancel", "withdraw"]) {
-      const response = await POST(new Request(`http://localhost/api/crc/v1/market/${operation}`, { method: "POST" }),
-        { params: Promise.resolve({ operation }) });
+    for (const operation of [
+      "listings",
+      "reserve",
+      "buyer-sign",
+      "seller-sign",
+      "broadcast",
+      "cancel",
+      "withdraw",
+    ]) {
+      const response = await POST(
+        new Request(`http://localhost/api/crc/v1/market/${operation}`, { method: "POST" }),
+        { params: Promise.resolve({ operation }) },
+      );
       const body = await response.json();
       expect(operation).toBeTruthy();
       expect(response.status).toBe(503);
@@ -45,16 +71,24 @@ describe("CRC market settlement gate", () => {
   it("serves signet listings and funding checks through the market services", async () => {
     gate.network = "signet";
     gate.testingEnabled = true;
-    const listings = await GET_OPERATION(new Request("http://localhost/api/crc/v1/market/listings"),
-      { params: Promise.resolve({ operation: "listings" }) });
+    const listings = await GET_OPERATION(
+      new Request("http://localhost/api/crc/v1/market/listings"),
+      { params: Promise.resolve({ operation: "listings" }) },
+    );
     expect(listings.status).toBe(200);
     expect((await listings.json()).data).toEqual({ active: true, listings: [] });
-    const funding = await POST(new Request("http://localhost/api/crc/v1/market/funding-check", {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ outpoints: [{ txid: "a".repeat(64), vout: 0 }] }),
-    }), { params: Promise.resolve({ operation: "funding-check" }) });
+    const funding = await POST(
+      new Request("http://localhost/api/crc/v1/market/funding-check", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ outpoints: [{ txid: "a".repeat(64), vout: 0 }] }),
+      }),
+      { params: Promise.resolve({ operation: "funding-check" }) },
+    );
     expect(funding.status).toBe(200);
-    expect((await funding.json()).data.tokenFreeOutpoints).toEqual([{ txid: "a".repeat(64), vout: 0 }]);
+    expect((await funding.json()).data.tokenFreeOutpoints).toEqual([
+      { txid: "a".repeat(64), vout: 0 },
+    ]);
     expect(db.execute).toHaveBeenCalledTimes(2);
   });
 });

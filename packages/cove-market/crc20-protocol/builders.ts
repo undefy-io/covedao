@@ -208,7 +208,7 @@ export interface TradeArgs {
   minerFeeSats?: bigint;
   inputs?: Input[];
 }
-function vaultState(state: Asset): void {
+export function validateAssetVault(state: Asset): void {
   if (state.vaultAvailable === false) throw new Error("vault unavailable");
   validateConfig(state.config);
   if (
@@ -221,7 +221,7 @@ function vaultState(state: Asset): void {
     throw new Error("invalid vault state or insufficient backing");
 }
 function buy(args: TradeArgs, inventory: boolean): Plan {
-  vaultState(args.state);
+  validateAssetVault(args.state);
   const state = args.state,
     c = state.config;
   if (
@@ -250,7 +250,7 @@ function buy(args: TradeArgs, inventory: boolean): Plan {
 export const buildMint = (args: TradeArgs): Plan => buy(args, false);
 export const buildInventoryBuy = (args: TradeArgs): Plan => buy(args, true);
 export function buildSell(args: TradeArgs): Plan {
-  vaultState(args.state);
+  validateAssetVault(args.state);
   const state = args.state,
     c = state.config,
     tokens = tokenInputs({
@@ -260,7 +260,7 @@ export function buildSell(args: TradeArgs): Plan {
     });
   const quote = quoteSell(state, args.amountAtoms),
     markerJson = transferMarker(c.ticker, args.amountAtoms);
-  const payout = quote.economicSats >= carrierSats ? quote.economicSats : carrierSats;
+  const payout = quote.sellerPayoutSats;
   const outputs = [
     output("marker", markerScript(markerJson), 0n),
     output("vault", c.vaultScriptHex, sats(state.vault.sats) - quote.grossSats, args.amountAtoms),

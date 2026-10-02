@@ -47,10 +47,14 @@ export function quoteSell(state: Pick<Asset, "issuedAtoms" | "inventoryAtoms">, 
   const grossSats = backingSats(before) - backingSats(before - amount);
   if (grossSats <= 0n) throw new Error("economic dust");
   const protocolFeeSats = maximum(ceil(grossSats * 750n, 10000n), 1000n);
+  const sellerPayoutSats = maximum(grossSats - protocolFeeSats, carrierSats);
   return {
     grossSats,
     protocolFeeSats,
     creatorFeeSats: 0n,
     economicSats: grossSats - protocolFeeSats,
+    sellerPayoutSats,
+    /** Advisory settlement requirement, excluding miner fees and released token carriers. */
+    walletTopUpSats: sellerPayoutSats + protocolFeeSats - grossSats,
   };
 }

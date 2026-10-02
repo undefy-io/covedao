@@ -70,6 +70,7 @@ export interface Block {
   hash: string;
   parentHash: string;
   height: number;
+  timestamp?: number;
   transactions: ChainTransaction[];
 }
 export interface Allocation {
@@ -111,4 +112,13 @@ export interface ConfirmedBlockOptions {
   authorizations?: readonly Offer[];
   registeredDeployments?: Record<string, Config>;
   undoLimit?: number;
+}
+export interface ConfirmedEvent {
+  txid: string;
+  deployTxid: string;
+  txIndex: number;
+  kind: "deploy" | "mint" | "sell" | "inventoryBuy" | "transfer" | "fill" | "burn";
+  valid: boolean;
+  amountAtoms?: bigint;
+  grossSats?: bigint;
 }

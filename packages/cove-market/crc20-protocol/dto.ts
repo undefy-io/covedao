@@ -14,15 +14,20 @@ export type ProtocolDto<T> = T extends bigint
 const amountField = (key: string) => /^(?:sats|atoms|.*Sats|.*Atoms)$/.test(key);
 function map(value: unknown, decode: boolean, key = ""): unknown {
   if (amountField(key)) {
+    // Economic deltas can be negative; BTC amounts, fees and atom balances cannot.
+    const signedDelta = key === "economicSats";
     if (decode) {
-      if (typeof value !== "string" || !/^(?:0|[1-9][0-9]*)$/.test(value))
+      if (
+        typeof value !== "string" ||
+        !(signedDelta ? /^(?:0|-?[1-9][0-9]*)$/ : /^(?:0|[1-9][0-9]*)$/).test(value)
+      )
         throw new Error(`noncanonical DTO amount: ${key}`);
       return BigInt(value);
     }
     if (
       (typeof value !== "bigint" && typeof value !== "number") ||
       (typeof value === "number" && !Number.isSafeInteger(value)) ||
-      BigInt(value) < 0n
+      (!signedDelta && BigInt(value) < 0n)
     )
       throw new Error(`invalid DTO amount: ${key}`);
     return value.toString();
