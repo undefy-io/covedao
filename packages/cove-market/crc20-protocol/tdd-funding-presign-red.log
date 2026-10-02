@@ -1,0 +1,99 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ market-settlement.test.ts (11 tests | 2 failed) 32472ms
+   ✓ purchase confirmed 0 blocks after expiry still pays and allocates tokens 2483ms
+   ✓ purchase confirmed 2 blocks after expiry still pays and allocates tokens 2994ms
+   ✓ new signed-offer purchases require height and reject expired or unavailable offers 1769ms
+   ✓ owner transfer 100000000000n, expired=false preserves allocation and retires listing 2908ms
+   ✓ owner transfer 50000000000n, expired=false preserves allocation and retires listing 2887ms
+   ✓ owner transfer 1n, expired=true preserves allocation and retires listing 3030ms
+   ✓ one owner transfer can consume multiple registered token outputs 3631ms
+   ✓ curve sale of a listed carrier retires its offer 2442ms
+   × ledger-aware final validation rejects unannotated token funding before broadcast 2755ms
+     → expected [Function] to throw an error
+   × a correctly signed ALL authorization is not a reusable offer witness 1573ms
+     → expected [Function] to throw an error
+   ✓ verified 0x83 offers still fill with only buyer signing and SQLite-compatible outputs 2564ms
+ ❯ funding.test.ts (8 tests | 8 failed) 22ms
+   × deploy rejects annotated token funding while preserving ordinary funding 7ms
+     → expected [Function] to throw an error
+   × mint rejects annotated token funding while preserving ordinary funding 3ms
+     → expected [Function] to throw an error
+   × inventoryBuy rejects annotated token funding while preserving ordinary funding 2ms
+     → expected [Function] to throw an error
+   × sell rejects annotated token funding while preserving ordinary funding 2ms
+     → expected [Function] to throw an error
+   × transfer rejects annotated token funding while preserving ordinary funding 2ms
+     → expected [Function] to throw an error
+   × listing rejects annotated token funding while preserving ordinary funding 1ms
+     → expected [Function] to throw an error
+   × purchase rejects annotated token funding while preserving ordinary funding 3ms
+     → expected [Function] to throw an error
+   × cancel rejects annotated token funding while preserving ordinary funding 3ms
+     → expected [Function] to throw an error
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 10 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  funding.test.ts > deploy rejects annotated token funding while preserving ordinary funding
+ FAIL  funding.test.ts > mint rejects annotated token funding while preserving ordinary funding
+ FAIL  funding.test.ts > inventoryBuy rejects annotated token funding while preserving ordinary funding
+ FAIL  funding.test.ts > sell rejects annotated token funding while preserving ordinary funding
+ FAIL  funding.test.ts > transfer rejects annotated token funding while preserving ordinary funding
+ FAIL  funding.test.ts > listing rejects annotated token funding while preserving ordinary funding
+ FAIL  funding.test.ts > purchase rejects annotated token funding while preserving ordinary funding
+ FAIL  funding.test.ts > cancel rejects annotated token funding while preserving ordinary funding
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ funding.test.ts:47:36
+     45|       const funding = [{ ...ordinary, txid: "e".repeat(64), sats: 1000…
+     46|       const saved = structuredClone(funding);
+     47|       expect(() => build(funding)).toThrow(/token.*funding/i);
+       |                                    ^
+     48|       expect(funding).toEqual(saved);
+     49|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/10]⎯
+
+ FAIL  market-settlement.test.ts > ledger-aware final validation rejects unannotated token funding before broadcast
+AssertionError: expected [Function] to throw an error
+ ❯ market-settlement.test.ts:269:71
+    267|   expect(p.validateFinalTransaction(plan, transaction)).toBeTruthy();
+    268|   const saved = structuredClone(ledger);
+    269|   expect(() => p.validateFinalTransaction(plan, transaction, ledger)).…
+       |                                                                       ^
+    270|   expect(ledger).toEqual(saved);
+    271|   const correct = p.buildTransfer({
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/10]⎯
+
+ FAIL  market-settlement.test.ts > a correctly signed ALL authorization is not a reusable offer witness
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ market-settlement.test.ts:296:36
+    294|   expect(() => p.verifySignatures(p.parseRawTransaction(tx.toHex()), […
+    295|   const bad = { ...offer, sellerWitnessHex: witness.map((item) => item…
+    296|   expect(() => p.verifyOffer(bad)).toThrow(/SINGLE.*ANYONECANPAY/i);
+       |                                    ^
+    297|   await expect(p.registerOffer(ledger, bad)).rejects.toThrow(/SINGLE.*…
+    298|   expect(() => p.buildPurchase(purchase(bad, ledger.tip!.height))).toT…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/10]⎯
+
+ Test Files  2 failed (2)
+      Tests  10 failed | 9 passed (19)
+   Start at  15:11:16
+   Duration  32.92s (transform 97ms, setup 0ms, collect 190ms, tests 32.49s, environment 0ms, prepare 64ms)
+

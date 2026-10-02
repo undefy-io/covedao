@@ -322,8 +322,12 @@ export function rollbackBlock(ledger: Ledger, hash: string): Ledger {
   return ledger.history[hash]!;
 }
 
-/** Verify the finalized spend against the user's quote/build intent before broadcasting. */
-export function validateFinalTransaction(plan: Plan, transaction: ChainTransaction): string {
+/** Verify build intent; supply the current ledger to also preflight protocol allocation rules. */
+export function validateFinalTransaction(
+  plan: Plan,
+  transaction: ChainTransaction,
+  ledger?: Ledger,
+): string {
   const tx = parseRawTransaction(transaction.rawHex);
   if (
     tx.version !== 2 ||
@@ -359,5 +363,6 @@ export function validateFinalTransaction(plan: Plan, transaction: ChainTransacti
     tx.outputs.reduce((sum, o) => sum + o.sats, 0n);
   if (minerFee !== plan.minerFeeSats || minerFee < 1n || minerFee > maxMinerFeeSats)
     throw new Error("final miner fee differs from quote");
+  if (ledger) applyTransaction(ledger, transaction);
   return tx.txid;
 }

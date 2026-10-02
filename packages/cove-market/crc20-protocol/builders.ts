@@ -44,6 +44,11 @@ const output = (role: string, scriptHex: string, value: bigint, atoms?: bigint):
     throw new Error("unspendable/dust output");
   return { role, scriptHex, sats: value, ...(atoms === undefined ? {} : { atoms }) };
 };
+function ordinaryFunding(inputs: Input[]): Input[] {
+  if (inputs.some((input) => input.atoms !== undefined || input.deployTxid !== undefined))
+    throw new Error("token carriers cannot be used as ordinary BTC funding");
+  return inputs;
+}
 function finish(
   inputs: Input[],
   outputs: Output[],
@@ -138,7 +143,7 @@ export function buildTransfer(args: TransferArgs): Plan {
   if (tokens.changeAtoms)
     outputs.push(output("tokenChange", tokens.owner, carrierSats, tokens.changeAtoms));
   return finish(
-    [...tokens.inputs, ...(args.funding ?? [])],
+    [...tokens.inputs, ...ordinaryFunding(args.funding ?? [])],
     outputs,
     markerJson,
     args.changeScriptHex ?? tokens.owner,
@@ -164,7 +169,7 @@ export function buildDeploy(args: {
   const c = args.config,
     markerJson = deployMarker(c.ticker);
   return finish(
-    args.funding,
+    ordinaryFunding(args.funding),
     [
       output("marker", markerScript(markerJson), 0n),
       output("vault", c.vaultScriptHex, carrierSats),
@@ -210,7 +215,7 @@ function buy(args: TradeArgs, inventory: boolean): Plan {
   const quote = quoteBuy(state, args.amountAtoms);
   const markerJson = inventory ? transferMarker(c.ticker, args.amountAtoms) : mintMarker(c.ticker);
   return finish(
-    [state.vault, ...args.funding],
+    [state.vault, ...ordinaryFunding(args.funding)],
     [
       output("marker", markerScript(markerJson), 0n),
       output("recipient", args.recipientScriptHex, carrierSats, args.amountAtoms),
@@ -255,7 +260,7 @@ export function buildSell(args: TradeArgs): Plan {
     quote.grossSats -
     recovered;
   return finish(
-    [state.vault, ...tokens.inputs, ...args.funding],
+    [state.vault, ...tokens.inputs, ...ordinaryFunding(args.funding)],
     outputs,
     markerJson,
     args.changeScriptHex ?? tokens.owner,
@@ -303,7 +308,7 @@ export function buildPurchase(args: PurchaseArgs): Plan {
   const protocolFeeSats = marketFee(price),
     markerJson = transferMarker(ticker, input.atoms);
   const plan = finish(
-    [input, ...args.buyerFunding],
+    [input, ...ordinaryFunding(args.buyerFunding)],
     [
       output("sellerPayout", seller, price + sats(input.sats)),
       output("marker", markerScript(markerJson), 0n),

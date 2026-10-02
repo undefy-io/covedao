@@ -124,6 +124,9 @@ test("two-wallet raw-chain lifecycle, invalid transitions, signatures, competito
     action?: CoveAction,
   ) {
     const hex = core.sign(plan, wallets);
+    expect(
+      p.validateFinalTransaction(plan, { rawHex: hex, prevouts: plan.inputs }, ledger),
+    ).toBeTruthy();
     expect(core.accepted(hex).allowed).toBe(true);
     const txid = core.broadcast(hex);
     const [hash] = core.mine();
@@ -564,6 +567,9 @@ test("Bob independently mints and raw-chain ownership never credits Alice with B
   let confirmed = 0;
   async function confirm(plan: any, wallets: ("alice" | "bob")[], values: bigint[]) {
     const rawHex = core.sign(plan, wallets);
+    expect(
+      p.validateFinalTransaction(plan, { rawHex, prevouts: plan.inputs }, ledger),
+    ).toBeTruthy();
     expect(core.accepted(rawHex).allowed).toBe(true);
     const txid = core.broadcast(rawHex);
     const [hash] = core.mine();

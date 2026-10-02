@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "vitest";
+import { Transaction, script } from "bitcoinjs-lib";
 import * as p from "./index.ts";
 import type { Ledger, Offer, Plan } from "./types.js";
 import { checkGardenCompliance } from "./test-support/compliance.ts";
@@ -29,7 +30,7 @@ function mine(ledger: Ledger, count = 1): Ledger {
 }
 function confirm(ledger: Ledger, plan: Plan, wallets: ("alice" | "bob")[] = ["alice"]) {
   const rawHex = core.sign(plan, wallets);
-  expect(p.validateFinalTransaction(plan, { rawHex, prevouts: plan.inputs })).toBeTruthy();
+  expect(p.validateFinalTransaction(plan, { rawHex, prevouts: plan.inputs }, ledger)).toBeTruthy();
   expect(core.accepted(rawHex).allowed).toBe(true);
   const txid = core.broadcast(rawHex);
   const next = mine(ledger);
@@ -241,4 +242,110 @@ test("curve sale of a listed carrier retires its offer", async () => {
   );
   expect(result.ledger.offers[p.offerId(offer)]!.status).toBe("cancelled");
   expect(result.ledger.assets[start.deployTxid]!.inventoryAtoms).toBe(atoms);
+});
+
+test("ledger-aware final validation rejects unannotated token funding before broadcast", () => {
+  const start = setup();
+  const split = confirm(
+    start.ledger,
+    p.buildTransfer({
+      ...config,
+      deployTxid: start.deployTxid,
+      input: token(start.ledger),
+      amountAtoms: atoms / 2n,
+      recipientScriptHex: aliceScript,
+      funding: [core.funding("alice")],
+    }),
+  );
+  const ledger = split.ledger;
+  const inputs = Object.entries(ledger.allocations).map(([point, allocation]) => {
+    const [txid, vout] = point.split(":");
+    return { txid: txid!, vout: Number(vout), ...allocation };
+  });
+  const second = inputs[1]!;
+  const hidden = {
+    txid: second.txid,
+    vout: second.vout,
+    sats: second.sats,
+    scriptHex: second.scriptHex,
+  };
+  const plan = p.buildTransfer({
+    ...config,
+    deployTxid: start.deployTxid,
+    input: inputs[0],
+    amountAtoms: atoms / 2n,
+    recipientScriptHex: bobScript,
+    funding: [hidden, core.funding("alice")],
+  });
+  const rawHex = core.sign(plan);
+  const transaction = { rawHex, prevouts: plan.inputs };
+  expect(core.accepted(rawHex).allowed).toBe(true);
+  // The plan alone cannot know that stripped funding metadata concealed a token allocation.
+  expect(p.validateFinalTransaction(plan, transaction)).toBeTruthy();
+  const saved = structuredClone(ledger);
+  expect(() => p.validateFinalTransaction(plan, transaction, ledger)).toThrow();
+  expect(ledger).toEqual(saved);
+  const correct = p.buildTransfer({
+    ...config,
+    deployTxid: start.deployTxid,
+    inputs,
+    amountAtoms: atoms,
+    recipientScriptHex: bobScript,
+    funding: [core.funding("alice")],
+  });
+  const correctHex = core.sign(correct);
+  expect(
+    p.validateFinalTransaction(correct, { rawHex: correctHex, prevouts: correct.inputs }, ledger),
+  ).toBeTruthy();
+  const result = confirm(ledger, correct);
+  expect(token(result.ledger, bobScript).atoms).toBe(atoms);
+});
+
+test("a correctly signed ALL authorization is not a reusable offer witness", async () => {
+  const { ledger, offer } = await register(setup().ledger);
+  const tx = new Transaction();
+  tx.version = 2;
+  tx.addInput(
+    Buffer.from(offer.listedInput.txid, "hex").reverse(),
+    offer.listedInput.vout,
+    0xfffffffe,
+  );
+  tx.addOutput(
+    Buffer.from(aliceScript, "hex"),
+    Number(offer.priceSats + BigInt(offer.listedInput.sats)),
+  );
+  const scriptCode = Buffer.from(`76a914${aliceScript.slice(4)}88ac`, "hex");
+  const digest = tx.hashForWitnessV0(
+    0,
+    scriptCode,
+    Number(offer.listedInput.sats),
+    Transaction.SIGHASH_ALL,
+  );
+  const witness = [
+    script.signature.encode(aliceKey.sign(digest), Transaction.SIGHASH_ALL),
+    aliceKey.publicKey,
+  ];
+  tx.setWitness(0, witness);
+  // Independent bitcoinjs signature and the generic verifier prove this is valid ALL,
+  // rather than the old test's unsigned flag-byte mutation.
+  expect(aliceKey.verify(digest, script.signature.decode(witness[0]!).signature)).toBe(true);
+  expect(() =>
+    p.verifySignatures(p.parseRawTransaction(tx.toHex()), [offer.listedInput]),
+  ).not.toThrow();
+  const bad = { ...offer, sellerWitnessHex: witness.map((item) => item.toString("hex")) };
+  expect(() => p.verifyOffer(bad)).toThrow(/SINGLE.*ANYONECANPAY/i);
+  await expect(p.registerOffer(ledger, bad)).rejects.toThrow(/SINGLE.*ANYONECANPAY/i);
+  expect(() => p.buildPurchase(purchase(bad, ledger.tip!.height))).toThrow(/SINGLE.*ANYONECANPAY/i);
+});
+
+test("verified 0x83 offers still fill with only buyer signing and SQLite-compatible outputs", async () => {
+  const { ledger, offer } = await register(setup().ledger);
+  expect(offer.sellerWitnessHex[0]!.slice(-2)).toBe("83");
+  expect(() => p.verifyOffer(offer)).not.toThrow();
+  const plan = p.buildPurchase(purchase(offer, ledger.tip!.height));
+  const rawHex = core.sign(plan, ["bob"]);
+  expect(p.validateFinalTransaction(plan, { rawHex, prevouts: plan.inputs }, ledger)).toBeTruthy();
+  const result = confirm(ledger, plan, ["bob"]);
+  expect(token(result.ledger, bobScript).atoms).toBe(atoms);
+  expect(result.ledger.offers[p.offerId(offer)]!.status).toBe("filled");
 });

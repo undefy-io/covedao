@@ -118,6 +118,9 @@ test.each([{ sells: [400, 600] }, { sells: [1000] }])(
       expect(plan.protocolFeeSats).toBe(BigInt(expected.platform));
       expect(plan.creatorFeeSats).toBe(BigInt(expected.creator));
       const rawHex = core.sign(plan, wallets);
+      expect(
+        p.validateFinalTransaction(plan, { rawHex, prevouts: plan.inputs }, ledger),
+      ).toBeTruthy();
       expect(core.accepted(rawHex).allowed).toBe(true);
       const txid = core.broadcast(rawHex),
         [hash] = core.mine(),

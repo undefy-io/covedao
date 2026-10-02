@@ -59,6 +59,8 @@ export function verifyOffer(o: Offer): void {
   )
     throw new Error("offer signature/owner mismatch");
   const tx = authorizationTransaction(o);
+  if (tx.inputs[0]!.witness[0]?.at(-1) !== 131)
+    throw new Error("offer requires SINGLE|ANYONECANPAY seller signature");
   verifySignatures(tx, [o.listedInput], outpoint(o.listedInput));
 }
 export async function authorizeOffer(
