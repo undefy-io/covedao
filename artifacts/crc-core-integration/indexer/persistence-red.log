@@ -1,0 +1,57 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-indexer
+
+ ❯ src/crc20/store-core.integration.test.ts (3 tests | 3 failed) 1960ms
+   × database empty-block commit, idempotence and restart equal exact core state 6ms
+     → initializeCrcLedger is not a function
+   × rejected database write leaves cursor, state and undo unchanged 1ms
+     → loadCrcCoreLedger is not a function
+   × bounded undo and checkpoint restore persist across database restart 1ms
+     → loadCrcCoreLedger is not a function
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/crc20/store-core.integration.test.ts > database empty-block commit, idempotence and restart equal exact core state
+TypeError: initializeCrcLedger is not a function
+ ❯ src/crc20/store-core.integration.test.ts:23:15
+     21| const hash = (n: number) => n.toString(16).padStart(64, "0");
+     22| test("database empty-block commit, idempotence and restart equal exact…
+     23|   await store.initializeCrcLedger(fixture.db, config, { activationHeig…
+       |               ^
+     24|   const before = (await store.loadCrcCoreLedger(fixture.db, "regtest")…
+     25|   expect(before).toEqual(core.emptyLedger(config));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/crc20/store-core.integration.test.ts > rejected database write leaves cursor, state and undo unchanged
+TypeError: loadCrcCoreLedger is not a function
+ ❯ src/crc20/store-core.integration.test.ts:36:31
+     34| });
+     35| test("rejected database write leaves cursor, state and undo unchanged"…
+     36|   const before = (await store.loadCrcCoreLedger(fixture.db, "regtest")…
+       |                               ^
+     37|   await fixture.db.execute(
+     38|     sql.raw(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/crc20/store-core.integration.test.ts > bounded undo and checkpoint restore persist across database restart
+TypeError: loadCrcCoreLedger is not a function
+ ❯ src/crc20/store-core.integration.test.ts:63:28
+     61| });
+     62| test("bounded undo and checkpoint restore persist across database rest…
+     63|   let state = (await store.loadCrcCoreLedger(fixture.db, "regtest"))!;
+       |                            ^
+     64|   for (let height = 1; height <= 6; height++) {
+     65|     const block = {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Start at  19:09:39
+   Duration  2.58s (transform 148ms, setup 0ms, collect 392ms, tests 1.96s, environment 0ms, prepare 65ms)
+
+undefined
+/home/andefy/dev/covedao/packages/cove-indexer:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/crc20/store-core.integration.test.ts

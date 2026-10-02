@@ -1,0 +1,55 @@
+Scope: 28 of 29 workspace projects
+packages/config typecheck$ tsc -p tsconfig.json --noEmit
+packages/cove-market/crc20-protocol typecheck$ tsc --noEmit --incremental false --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution bundler --allowImportingTsExtensions --types node *.ts test-support/*.ts
+packages/cove-wire typecheck$ tsc -p tsconfig.json --noEmit
+packages/crc20-base typecheck$ tsc -p tsconfig.json --noEmit
+packages/config typecheck: Done
+packages/curve typecheck$ tsc -p tsconfig.json --noEmit
+packages/crc20-base typecheck: Done
+packages/schemas typecheck$ tsc -p tsconfig.json --noEmit
+packages/cove-wire typecheck: Done
+packages/schemas typecheck: Done
+packages/curve typecheck: Done
+packages/cove-market/crc20-protocol typecheck: Done
+packages/bitcoin typecheck$ tsc -p tsconfig.json --noEmit
+packages/crc20-adapters typecheck$ tsc -p tsconfig.json --noEmit
+packages/db typecheck$ tsc -p tsconfig.json --noEmit
+packages/cove-economics typecheck$ tsc -p tsconfig.json --noEmit
+packages/cove-economics typecheck: Done
+packages/bitcoin typecheck: Done
+packages/crc20-adapters typecheck: Done
+packages/db typecheck: Done
+packages/cove-covenant typecheck$ tsc -p tsconfig.json --noEmit
+packages/crc20-curve typecheck$ tsc -p tsconfig.json --noEmit
+packages/protocol typecheck$ tsc -p tsconfig.json --noEmit
+packages/protocol typecheck: Done
+packages/cove-covenant typecheck: Done
+packages/crc20-curve typecheck: Done
+packages/cove-simplicity typecheck$ tsc -p tsconfig.json --noEmit
+packages/wallets typecheck$ tsc -p tsconfig.json --noEmit
+packages/cove-vault typecheck$ tsc -p tsconfig.json --noEmit
+packages/wallets typecheck: Done
+packages/cove-vault typecheck: Done
+packages/cove-simplicity typecheck: Done
+packages/cove-mainnet typecheck$ tsc -p tsconfig.json --noEmit
+packages/cove-recovery typecheck$ tsc -p tsconfig.json --noEmit
+packages/crc20-transactions typecheck$ tsc -p tsconfig.json --noEmit
+packages/cove-mainnet typecheck: Done
+packages/cove-recovery typecheck: Done
+packages/crc20-transactions typecheck: Done
+packages/cove-guardian typecheck$ tsc -p tsconfig.json --noEmit
+packages/crc20-ledger typecheck$ tsc -p tsconfig.json --noEmit
+packages/crc20-ledger typecheck: Done
+packages/cove-guardian typecheck: Done
+packages/cove-indexer typecheck$ tsc -p tsconfig.json --noEmit
+packages/cove-indexer typecheck: Done
+packages/cove-market typecheck$ tsc -p tsconfig.json --noEmit
+packages/cove-market typecheck: Done
+packages/cove-app typecheck$ tsc -p tsconfig.json --noEmit
+packages/cove-app typecheck: Done
+apps/guardian typecheck$ tsc -p tsconfig.json --noEmit
+apps/worker typecheck$ tsc -p tsconfig.json --noEmit
+apps/web typecheck$ tsc -p tsconfig.json --noEmit
+apps/guardian typecheck: Done
+apps/worker typecheck: Done
+apps/web typecheck: Done

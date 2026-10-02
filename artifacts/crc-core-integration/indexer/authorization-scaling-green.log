@@ -1,0 +1,10 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ✓ confirmed.test.ts (16 tests | 13 skipped) 33ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed | 13 skipped (16)
+   Start at  19:33:00
+   Duration  345ms (transform 127ms, setup 0ms, collect 196ms, tests 33ms, environment 0ms, prepare 33ms)
+

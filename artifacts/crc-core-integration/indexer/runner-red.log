@@ -1,0 +1,46 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-indexer
+
+ ❯ src/crc20/runner-core.integration.test.ts (2 tests | 2 failed) 5901ms
+   × actual mined deploy/mint and offer retirement persist exact core state across restart/reorg 561ms
+     → Cannot read properties of undefined (reading 'vaultAvailable')
+   × deep actual reorg uses canonical checkpoint and replays when bounded undo is exhausted 148ms
+     → Cannot convert undefined or null to object
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/crc20/runner-core.integration.test.ts > actual mined deploy/mint and offer retirement persist exact core state across restart/reorg
+TypeError: Cannot read properties of undefined (reading 'vaultAvailable')
+ ❯ vaultState ../cove-market/crc20-protocol/builders.ts:212:13
+ ❯ buy ../cove-market/crc20-protocol/builders.ts:224:3
+ ❯ Module.buildMint ../cove-market/crc20-protocol/builders.ts:250:53
+ ❯ src/crc20/runner-core.integration.test.ts:34:21
+     32|   node.broadcast(raw); node.mine();
+     33|   const deployed = (await sync()).snapshot.state!;
+     34|   const mint = core.buildMint({state: deployed.assets[deployId]!, fund…
+       |                     ^
+     35|   const mintRaw = node.sign(mint);
+     36|   expect(node.accepted(mintRaw).allowed).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/crc20/runner-core.integration.test.ts > deep actual reorg uses canonical checkpoint and replays when bounded undo is exhausted
+TypeError: Cannot convert undefined or null to object
+ ❯ src/crc20/runner-core.integration.test.ts:67:17
+     65|   node.mine(5);
+     66|   const before = (await sync()).snapshot.state!;
+     67|   expect(Object.keys(before.history)).toHaveLength(2);
+       |                 ^
+     68|   const forkHeight = activationHeight + 2;
+     69|   node.rpc("invalidateblock", [node.rpc("getblockhash", [forkHeight])]…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  19:25:32
+   Duration  6.76s (transform 354ms, setup 0ms, collect 659ms, tests 5.90s, environment 0ms, prepare 59ms)
+
+undefined
+/home/andefy/dev/covedao/packages/cove-indexer:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/crc20/runner-core.integration.test.ts

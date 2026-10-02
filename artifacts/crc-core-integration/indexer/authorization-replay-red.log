@@ -1,0 +1,51 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ confirmed.test.ts (15 tests | 2 failed | 13 skipped) 37ms
+   × durable signed authorizations rehydrate between intra-block creation and expired paid fill 29ms
+     → parent authentication required for invalid confirmed spend
+   × rehydration rejects conflicting durable terms and ignores absent allocation 8ms
+     → expected [Function] to throw an error
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  confirmed.test.ts > durable signed authorizations rehydrate between intra-block creation and expired paid fill
+UnavailableParentError: parent authentication required for invalid confirmed spend
+ ❯ Module.applyConfirmedBlock replay.ts:562:15
+    560|         )
+    561|       )
+    562|         throw new UnavailableParentError(
+       |               ^
+    563|           "parent authentication required for invalid confirmed spend",
+    564|         );
+ ❯ confirmed.test.ts:425:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  confirmed.test.ts > rehydration rejects conflicting durable terms and ignores absent allocation
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ confirmed.test.ts:435:90
+    433|   const other = await authorizeOffer({...offer, priceSats: 20000n}, al…
+    434|   const admitted = await core.registerOffer(seeded(), offer);
+    435|   expect(() => core.applyConfirmedBlock(admitted, block([]), {authoriz…
+       |                                                                                          ^
+    436|   expect(core.applyConfirmedBlock(core.emptyLedger(config), block([]),…
+    437| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 13 skipped (15)
+   Start at  19:22:01
+   Duration  348ms (transform 130ms, setup 0ms, collect 203ms, tests 37ms, environment 0ms, prepare 31ms)
+
+undefined
+/home/andefy/dev/covedao/packages/cove-market/crc20-protocol:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run confirmed.test.ts -t durable signed|rehydration rejects

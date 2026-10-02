@@ -1,0 +1,29 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ confirmed.test.ts (16 tests | 1 failed | 15 skipped) 39ms
+   × confirmed block authenticates durable terms once despite unrelated Bitcoin transactions 39ms
+     → expected "verifyMessageAuthorization" to be called 1 times, but got 22 times
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  confirmed.test.ts > confirmed block authenticates durable terms once despite unrelated Bitcoin transactions
+AssertionError: expected "verifyMessageAuthorization" to be called 1 times, but got 22 times
+ ❯ confirmed.test.ts:496:20
+    494|     const next = core.applyConfirmedBlock(seeded(), block(transactions…
+    495|     expect(next.offers[core.offerId(offer)]!.status).toBe("open");
+    496|     expect(verify).toHaveBeenCalledTimes(1);
+       |                    ^
+    497|   } finally { verify.mockRestore(); }
+    498| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 15 skipped (16)
+   Start at  19:32:07
+   Duration  319ms (transform 100ms, setup 0ms, collect 158ms, tests 39ms, environment 0ms, prepare 35ms)
+
+undefined
+/home/andefy/dev/covedao/packages/cove-market/crc20-protocol:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run confirmed.test.ts -t authenticates durable terms once
