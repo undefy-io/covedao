@@ -1,0 +1,23 @@
+{
+  "isolatedProductionFailure": {
+    "status": 503,
+    "body": {
+      "ok": false,
+      "error": {
+        "code": "ADDRESS_INDEX_UNAVAILABLE",
+        "message": "Wallet funding data is temporarily unavailable. Please retry shortly.",
+        "retryable": true
+      }
+    },
+    "retryAfter": "2"
+  },
+  "network": "signet",
+  "walletTransactions": 0,
+  "tunnelVerification": {
+    "httpStatus": 200,
+    "ok": true,
+    "utxoCount": 26,
+    "source": "esplora"
+  },
+  "appImage": "sha256:9d97b3a31beb8f280e429269a61429e25578b61216ee45aeb46539afa783d302"
+}

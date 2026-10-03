@@ -1,0 +1,213 @@
+ Image covedao-signet-app Building
+#1 [internal] load local bake definitions
+#1 reading from stdin 2.37kB done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile.prod
+#2 transferring dockerfile: 1.09kB done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/rust:1.94-bookworm
+#3 DONE 1.3s
+
+#4 [internal] load metadata for docker.io/library/node:24-bookworm-slim
+#4 DONE 1.4s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 159B done
+#5 DONE 0.0s
+
+#6 [app-builder  1/11] FROM docker.io/library/node:24-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6
+#6 DONE 0.0s
+
+#7 [rust-builder 1/4] FROM docker.io/library/rust:1.94-bookworm@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
+#7 DONE 0.0s
+
+#8 [internal] load build context
+#8 transferring context: 18.24MB 0.1s done
+#8 DONE 0.1s
+
+#9 [app-builder  2/11] WORKDIR /app
+#9 CACHED
+
+#10 [app-builder  3/11] RUN npm install --global pnpm@10.33.0
+#10 CACHED
+
+#11 [app-builder  4/11] COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
+#11 CACHED
+
+#12 [rust-builder 2/4] WORKDIR /build
+#12 CACHED
+
+#13 [rust-builder 3/4] COPY packages/cove-simplicity/rust packages/cove-simplicity/rust
+#13 CACHED
+
+#14 [rust-builder 4/4] RUN cargo build --release --locked --manifest-path packages/cove-simplicity/rust/Cargo.toml
+#14 CACHED
+
+#15 [app-builder  5/11] COPY apps ./apps
+#15 DONE 0.0s
+
+#16 [app-builder  6/11] COPY packages ./packages
+#16 DONE 0.1s
+
+#17 [app-builder  7/11] RUN pnpm install --frozen-lockfile
+#17 0.390 Scope: all 27 workspace projects
+#17 0.445 Lockfile is up to date, resolution step is skipped
+#17 0.494 Progress: resolved 1, reused 0, downloaded 0, added 0
+#17 0.582 Packages: +1492
+#17 0.582 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#17 0.684
+#17 0.684    ╭─────────────────────────────────────────╮
+#17 0.684    │                                         │
+#17 0.684    │   Update available! 10.33.0 → 12.8.1.   │
+#17 0.684    │   Changelog: https://pnpm.io/v/12.8.1   │
+#17 0.684    │    To update, run: pnpm add -g pnpm     │
+#17 0.684    │                                         │
+#17 0.684    ╰─────────────────────────────────────────╯
+#17 0.684
+#17 1.494 Progress: resolved 1492, reused 0, downloaded 639, added 641
+#17 2.495 Progress: resolved 1492, reused 0, downloaded 1124, added 1125
+#17 3.494 Progress: resolved 1492, reused 0, downloaded 1402, added 1404
+#17 4.494 Progress: resolved 1492, reused 0, downloaded 1487, added 1488
+#17 5.495 Progress: resolved 1492, reused 0, downloaded 1488, added 1490
+#17 6.159 Progress: resolved 1492, reused 0, downloaded 1490, added 1492, done
+#17 6.542
+#17 6.542 devDependencies:
+#17 6.542 + @eslint/js 9.39.5
+#17 6.542 + @types/node 22.20.4
+#17 6.542 + eslint 9.39.5
+#17 6.542 + eslint-config-prettier 9.1.2
+#17 6.542 + prettier 3.9.8
+#17 6.542 + turbo 2.11.2
+#17 6.542 + typescript 5.9.3
+#17 6.542 + typescript-eslint 8.70.1
+#17 6.542
+#17 6.603 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+#17 6.603 │                                                                              │
+#17 6.603 │   Ignored build scripts: core-js@3.50.0, esbuild@0.18.20, esbuild@0.19.12,   │
+#17 6.603 │   esbuild@0.21.5, esbuild@0.28.2, msgpackr-extract@3.0.4, secp256k1@3.8.1.   │
+#17 6.603 │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+#17 6.603 │   to run scripts.                                                            │
+#17 6.603 │                                                                              │
+#17 6.603 ╰──────────────────────────────────────────────────────────────────────────────╯
+#17 6.637 Done in 6.4s using pnpm v10.33.0
+#17 DONE 7.2s
+
+#18 [app-builder  8/11] RUN pnpm --filter @crclaunch/crc20-protocol build
+#18 0.313
+#18 0.313 > @crclaunch/crc20-protocol@0.1.0 build /app/packages/cove-market/crc20-protocol
+#18 0.313 > tsc -p tsconfig.build.json && node build-browser.mjs
+#18 0.313
+#18 DONE 1.1s
+
+#19 [app-builder  9/11] RUN pnpm --filter @crclaunch/crc20-adapters build
+#19 0.425
+#19 0.425 > @crclaunch/crc20-adapters@0.1.0 build /app/packages/crc20-adapters
+#19 0.425 > tsc -p tsconfig.build.json && node build-browser.mjs
+#19 0.425
+#19 DONE 1.0s
+
+#20 [app-builder 10/11] COPY --from=rust-builder /build/packages/cove-simplicity/rust/target/release/cove-simplicity /app/packages/cove-simplicity/rust/target/release/cove-simplicity
+#20 DONE 0.0s
+
+#21 [app-builder 11/11] RUN COVE_NETWORK="signet" SENTRY_DSN="https://421068cb5bb534115c7743c304482d3a@o1206341.ingest.us.sentry.io/4512159121997824" SENTRY_ENVIRONMENT="dev" pnpm --filter @crclaunch/web build
+#21 0.329
+#21 0.329 > @crclaunch/web@0.1.0 build /app/apps/web
+#21 0.329 > pnpm --filter @crclaunch/docs build:web && next build
+#21 0.329
+#21 0.529
+#21 0.529 > @crclaunch/docs@0.1.0 build:web /app/apps/docs
+#21 0.529 > DOCS_HASH_ROUTER=1 DOCS_BASE_URL=/ DOCS_LOCALE=en docusaurus build --out-dir ../web/public/docs && DOCS_HASH_ROUTER=1 DOCS_BASE_URL=/ DOCS_LOCALE=zh-Hans docusaurus build --locale zh-Hans --out-dir ../web/public/docs/zh-Hans
+#21 0.529
+#21 1.080 [INFO] [en] Creating an optimized production build...
+#21 1.253 [WARNING] docusaurus-plugin-sitemap does not support the Hash Router and will be disabled.
+#21 1.472 [webpackbar] ℹ Compiling Client
+#21 6.097 [webpackbar] ✔ Client: Compiled successfully in 4.63s
+#21 7.094 [SUCCESS] Generated static files in "../web/public/docs".
+#21 7.094 [INFO] Use `npm run serve` command to test your build locally.
+#21 7.777 [INFO] [zh-Hans] Creating an optimized production build...
+#21 7.969 [WARNING] docusaurus-plugin-sitemap does not support the Hash Router and will be disabled.
+#21 8.234 [webpackbar] ℹ Compiling Client
+#21 13.68 [webpackbar] ✔ Client: Compiled successfully in 5.45s
+#21 14.74 [SUCCESS] Generated static files in "../web/public/docs/zh-Hans".
+#21 14.74 [INFO] Use `npm run serve` command to test your build locally.
+#21 15.41 Attention: Next.js now collects completely anonymous telemetry regarding usage.
+#21 15.41 This information is used to shape Next.js' roadmap and prioritize features.
+#21 15.41 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+#21 15.41 https://nextjs.org/telemetry
+#21 15.41
+#21 15.48    ▲ Next.js 15.5.26
+#21 15.48    - Experiments (use with caution):
+#21 15.48      · clientTraceMetadata
+#21 15.48
+#21 15.51    Creating an optimized production build ...
+#21 34.30  ✓ Compiled successfully in 18.4s
+#21 34.30    Skipping linting
+#21 34.30    Checking validity of types ...
+#21 39.61    Collecting page data ...
+#21 43.36    Generating static pages (0/11) ...
+#21 44.28    Generating static pages (2/11)
+#21 44.28    Generating static pages (5/11)
+#21 44.28    Generating static pages (8/11)
+#21 44.32  ✓ Generating static pages (11/11)
+#21 44.85    Finalizing page optimization ...
+#21 44.85    Collecting build traces ...
+#21 51.11
+#21 51.11 Route (app)                                   Size  First Load JS
+#21 51.11 ┌ ƒ /                                        181 B         1.4 MB
+#21 51.11 ├ ƒ /_not-found                               1 kB         176 kB
+#21 51.11 ├ ƒ /activity                              1.25 kB         1.4 MB
+#21 51.11 ├ ƒ /api/crc/v1/activity                     192 B         175 kB
+#21 51.11 ├ ƒ /api/crc/v1/backing/buy/build            192 B         175 kB
+#21 51.11 ├ ƒ /api/crc/v1/backing/buy/quote            192 B         175 kB
+#21 51.11 ├ ƒ /api/crc/v1/backing/buy/submit           192 B         175 kB
+#21 51.11 ├ ƒ /api/crc/v1/backing/sell/build           192 B         175 kB
+#21 51.11 ├ ƒ /api/crc/v1/backing/sell/quote           192 B         175 kB
+#21 51.11 ├ ƒ /api/crc/v1/backing/sell/submit          192 B         175 kB
+#21 51.11 ├ ƒ /api/crc/v1/fees                         192 B         175 kB
+#21 51.11 ├ ƒ /api/crc/v1/launch/build                 192 B         175 kB
+#21 51.11 ├ ƒ /api/crc/v1/launch/submit                192 B         175 kB
+#21 51.11 ├ ƒ /api/crc/v1/market/[operation]           192 B         175 kB
+#21 51.11 ├ ƒ /api/crc/v1/market/status                192 B         175 kB
+#21 51.11 ├ ƒ /api/crc/v1/tokens                       192 B         175 kB
+#21 51.11 ├ ƒ /api/crc/v1/tokens/[assetId]             192 B         175 kB
+#21 51.11 ├ ƒ /api/crc/v1/tokens/[assetId]/activity    192 B         175 kB
+#21 51.11 ├ ƒ /api/crc/v1/tokens/[assetId]/candles     192 B         175 kB
+#21 51.11 ├ ƒ /api/crc/v1/tokens/[assetId]/market      192 B         175 kB
+#21 51.11 ├ ƒ /api/crc/v1/tokens/[assetId]/utxos       192 B         175 kB
+#21 51.11 ├ ƒ /api/crc/v1/trading/status               192 B         175 kB
+#21 51.11 ├ ƒ /api/crc/v1/wallet/[address]/balances    192 B         175 kB
+#21 51.11 ├ ƒ /api/crc/v1/wallet/utxos                 192 B         175 kB
+#21 51.11 ├ ƒ /api/dev/wallet                          192 B         175 kB
+#21 51.11 ├ ○ /apple-icon.png                            0 B            0 B
+#21 51.11 ├ ƒ /explore                               1.81 kB         1.4 MB
+#21 51.11 ├ ○ /icon.png                                  0 B            0 B
+#21 51.11 ├ ƒ /launch                                 2.9 kB        2.84 MB
+#21 51.11 ├ ƒ /market                                2.37 kB        2.85 MB
+#21 51.11 ├ ƒ /token/[tokenId]                          8 kB        2.86 MB
+#21 51.11 └ ƒ /wallet                                4.66 kB        2.85 MB
+#21 51.11 + First Load JS shared by all               175 kB
+#21 51.11   ├ chunks/2079-d5adc15fc8ef121b.js         117 kB
+#21 51.11   ├ chunks/298fdf74-aa6ccb9e05c98900.js    54.2 kB
+#21 51.11   └ other shared chunks (total)            3.29 kB
+#21 51.11
+#21 51.11
+#21 51.11 ○  (Static)   prerendered as static content
+#21 51.11 ƒ  (Dynamic)  server-rendered on demand
+#21 51.11
+#21 DONE 51.2s
+
+#22 [runtime 1/1] WORKDIR /app
+#22 DONE 0.0s
+
+#23 exporting to image
+#23 exporting layers
+#23 exporting layers 13.6s done
+#23 writing image sha256:9d97b3a31beb8f280e429269a61429e25578b61216ee45aeb46539afa783d302 done
+#23 naming to docker.io/library/covedao-signet-app done
+#23 DONE 13.6s
+
+#24 resolving provenance for metadata file
+#24 DONE 0.0s
+ Image covedao-signet-app Built

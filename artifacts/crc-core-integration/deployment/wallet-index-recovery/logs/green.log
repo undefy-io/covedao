@@ -1,0 +1,24 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+stderr | src/app/api/crc/v1/wallet/utxos/route.test.ts > CRC wallet funding observation > returns retryable unavailable on lookup failure without replacing funding: DOMException{ stack: 'TimeoutError: upstream timeout\n    at new DOMException (node:internal/per_context/domexception:76:18)\n    at /home/andefy/dev/covedao/apps/web/src/app/api/crc/v1/wallet/utxos/route.test.ts:19:12\n    at file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:514:43\n    at runWithSuite (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:29:9)\n    at Object.collect (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:514:13)\n    at Object.collect (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:518:57)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at collectTests (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:852:28)\n    at startTests (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1268:17)\n    at file:///home/andefy/dev/covedao/node_modules/.pnpm/vitest@2.1.9_@types+node@22.20.4_terser@5.51.2/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11' }
+[api] ADDRESS_INDEX_UNAVAILABLE
+
+stderr | src/app/api/crc/v1/wallet/utxos/route.test.ts > CRC wallet funding observation > returns retryable unavailable on lookup failure without replacing funding: TypeError: fetch failed
+[api] ADDRESS_INDEX_UNAVAILABLE
+
+stderr | src/app/api/crc/v1/wallet/utxos/route.test.ts > CRC wallet funding observation > returns retryable unavailable on lookup failure without replacing funding: Error: Esplora utxo HTTP 502
+[api] ADDRESS_INDEX_UNAVAILABLE
+
+stderr | src/app/api/crc/v1/wallet/utxos/route.test.ts > CRC wallet funding observation > returns retryable unavailable on lookup failure without replacing funding: SyntaxError: invalid upstream JSON
+[api] ADDRESS_INDEX_UNAVAILABLE
+
+stderr | src/app/api/crc/v1/wallet/utxos/route.test.ts > CRC wallet funding observation > saves an exact successful observation after a transient lookup failure
+[api] ADDRESS_INDEX_UNAVAILABLE
+
+ ✓ src/app/api/crc/v1/wallet/utxos/route.test.ts (6 tests) 10ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  03:07:14
+   Duration  1.96s (transform 975ms, setup 0ms, collect 1.58s, tests 10ms, environment 0ms, prepare 113ms)

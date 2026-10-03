@@ -1,0 +1,105 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+stderr | src/app/api/crc/v1/wallet/utxos/route.test.ts > CRC wallet funding observation > returns retryable unavailable on lookup failure without replacing funding: DOMException{ stack: 'TimeoutError: upstream timeout\n    at new DOMException (node:internal/per_context/domexception:76:18)\n    at /home/andefy/dev/covedao/apps/web/src/app/api/crc/v1/wallet/utxos/route.test.ts:19:12\n    at file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:514:43\n    at runWithSuite (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:29:9)\n    at Object.collect (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:514:13)\n    at Object.collect (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:518:57)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at collectTests (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:852:28)\n    at startTests (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1268:17)\n    at file:///home/andefy/dev/covedao/node_modules/.pnpm/vitest@2.1.9_@types+node@22.20.4_terser@5.51.2/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11' }
+[api] error: TimeoutError: upstream timeout
+    at new DOMException (node:internal/per_context/domexception:76:18)
+    at /home/andefy/dev/covedao/apps/web/src/app/api/crc/v1/wallet/utxos/route.test.ts:19:12
+    at file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:514:43
+    at runWithSuite (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:29:9)
+    at Object.collect (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:514:13)
+    at Object.collect (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:518:57)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at collectTests (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:852:28)
+    at startTests (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1268:17)
+    at file:///home/andefy/dev/covedao/node_modules/.pnpm/vitest@2.1.9_@types+node@22.20.4_terser@5.51.2/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11
+
+stderr | src/app/api/crc/v1/wallet/utxos/route.test.ts > CRC wallet funding observation > returns retryable unavailable on lookup failure without replacing funding: TypeError: fetch failed
+[api] error: TypeError: fetch failed
+    at /home/andefy/dev/covedao/apps/web/src/app/api/crc/v1/wallet/utxos/route.test.ts:19:66
+    at file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:514:43
+    at runWithSuite (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:29:9)
+    at Object.collect (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:514:13)
+    at Object.collect (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:518:57)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at collectTests (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:852:28)
+    at startTests (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1268:17)
+    at file:///home/andefy/dev/covedao/node_modules/.pnpm/vitest@2.1.9_@types+node@22.20.4_terser@5.51.2/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11
+    at withEnv (file:///home/andefy/dev/covedao/node_modules/.pnpm/vitest@2.1.9_@types+node@22.20.4_terser@5.51.2/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)
+
+stderr | src/app/api/crc/v1/wallet/utxos/route.test.ts > CRC wallet funding observation > returns retryable unavailable on lookup failure without replacing funding: Error: Esplora utxo HTTP 502
+[api] error: Error: Esplora utxo HTTP 502
+    at /home/andefy/dev/covedao/apps/web/src/app/api/crc/v1/wallet/utxos/route.test.ts:19:97
+    at file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:514:43
+    at runWithSuite (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:29:9)
+    at Object.collect (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:514:13)
+    at Object.collect (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:518:57)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at collectTests (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:852:28)
+    at startTests (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1268:17)
+    at file:///home/andefy/dev/covedao/node_modules/.pnpm/vitest@2.1.9_@types+node@22.20.4_terser@5.51.2/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11
+    at withEnv (file:///home/andefy/dev/covedao/node_modules/.pnpm/vitest@2.1.9_@types+node@22.20.4_terser@5.51.2/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)
+
+stderr | src/app/api/crc/v1/wallet/utxos/route.test.ts > CRC wallet funding observation > returns retryable unavailable on lookup failure without replacing funding: SyntaxError: invalid upstream JSON
+[api] error: SyntaxError: invalid upstream JSON
+    at /home/andefy/dev/covedao/apps/web/src/app/api/crc/v1/wallet/utxos/route.test.ts:19:133
+    at file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:514:43
+    at runWithSuite (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:29:9)
+    at Object.collect (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:514:13)
+    at Object.collect (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:518:57)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at collectTests (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:852:28)
+    at startTests (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1268:17)
+    at file:///home/andefy/dev/covedao/node_modules/.pnpm/vitest@2.1.9_@types+node@22.20.4_terser@5.51.2/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11
+    at withEnv (file:///home/andefy/dev/covedao/node_modules/.pnpm/vitest@2.1.9_@types+node@22.20.4_terser@5.51.2/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)
+
+stderr | src/app/api/crc/v1/wallet/utxos/route.test.ts > CRC wallet funding observation > saves an exact successful observation after a transient lookup failure
+[api] error: TimeoutError: timeout
+    at new DOMException (node:internal/per_context/domexception:76:18)
+    at /home/andefy/dev/covedao/apps/web/src/app/api/crc/v1/wallet/utxos/route.test.ts:35:38
+    at file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:146:14
+    at file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:533:11
+    at runWithTimeout (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:39:7)
+    at runTest (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1056:17)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at runSuite (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1262:5)
+
+ ❯ src/app/api/crc/v1/wallet/utxos/route.test.ts (6 tests | 4 failed) 11ms
+   × CRC wallet funding observation > returns retryable unavailable on lookup failure without replacing funding: DOMException{ stack: 'TimeoutError: upstream timeout\n    at new DOMException (node:internal/per_context/domexception:76:18)\n    at /home/andefy/dev/covedao/apps/web/src/app/api/crc/v1/wallet/utxos/route.test.ts:19:12\n    at file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:514:43\n    at runWithSuite (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:29:9)\n    at Object.collect (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:514:13)\n    at Object.collect (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:518:57)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at collectTests (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:852:28)\n    at startTests (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1268:17)\n    at file:///home/andefy/dev/covedao/node_modules/.pnpm/vitest@2.1.9_@types+node@22.20.4_terser@5.51.2/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11' } 6ms
+     → expected 500 to be 503 // Object.is equality
+   × CRC wallet funding observation > returns retryable unavailable on lookup failure without replacing funding: TypeError: fetch failed 1ms
+     → expected 500 to be 503 // Object.is equality
+   × CRC wallet funding observation > returns retryable unavailable on lookup failure without replacing funding: Error: Esplora utxo HTTP 502 1ms
+     → expected 500 to be 503 // Object.is equality
+   × CRC wallet funding observation > returns retryable unavailable on lookup failure without replacing funding: SyntaxError: invalid upstream JSON 1ms
+     → expected 500 to be 503 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/app/api/crc/v1/wallet/utxos/route.test.ts > CRC wallet funding observation > returns retryable unavailable on lookup failure without replacing funding: DOMException{ stack: 'TimeoutError: upstream timeout\n    at new DOMException (node:internal/per_context/domexception:76:18)\n    at /home/andefy/dev/covedao/apps/web/src/app/api/crc/v1/wallet/utxos/route.test.ts:19:12\n    at file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:514:43\n    at runWithSuite (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:29:9)\n    at Object.collect (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:514:13)\n    at Object.collect (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:518:57)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at collectTests (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:852:28)\n    at startTests (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1268:17)\n    at file:///home/andefy/dev/covedao/node_modules/.pnpm/vitest@2.1.9_@types+node@22.20.4_terser@5.51.2/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11' }
+ FAIL  src/app/api/crc/v1/wallet/utxos/route.test.ts > CRC wallet funding observation > returns retryable unavailable on lookup failure without replacing funding: TypeError: fetch failed
+ FAIL  src/app/api/crc/v1/wallet/utxos/route.test.ts > CRC wallet funding observation > returns retryable unavailable on lookup failure without replacing funding: Error: Esplora utxo HTTP 502
+ FAIL  src/app/api/crc/v1/wallet/utxos/route.test.ts > CRC wallet funding observation > returns retryable unavailable on lookup failure without replacing funding: SyntaxError: invalid upstream JSON
+AssertionError: expected 500 to be 503 // Object.is equality
+
+- Expected
++ Received
+
+- 503
++ 500
+
+ ❯ src/app/api/crc/v1/wallet/utxos/route.test.ts:22:29
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 2 passed (6)
+   Start at  03:05:03
+   Duration  1.60s (transform 728ms, setup 0ms, collect 1.29s, tests 11ms, environment 0ms, prepare 61ms)
+
+undefined
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/app/api/crc/v1/wallet/utxos/route.test.ts

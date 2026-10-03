@@ -24,3 +24,8 @@ docker compose --env-file .env.signet.local -f docker-compose.signet.yml up -d -
 ```
 
 Committed startup order is migration, explicit bootstrap, then worker/Guardian and web. The bootstrap command refuses mainnet. The previous service containers were replaced; the previous Signet database is inactive. Temporary regtest preparation services were stopped. Mainnet and user funds were untouched. This Signet stack is intentionally left running for manual testing.
+
+Manual testing subsequently exposed an external address-index timeout. The deployed
+[wallet-index recovery fix](../wallet-index-recovery/README.md) preserves observations
+and returns a retryable 503 for upstream failures; the exact reported tunnel wallet
+request is verified HTTP 200 after redeployment.

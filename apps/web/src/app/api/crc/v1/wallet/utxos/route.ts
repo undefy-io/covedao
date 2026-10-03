@@ -37,7 +37,10 @@ export async function GET(req: Request) {
       );
     } catch (error) {
       if (error instanceof AddressLookupBusy) return fail("ADDRESS_INDEX_BUSY", "Please retry shortly", 503, true);
-      throw error;
+      const response = fail("ADDRESS_INDEX_UNAVAILABLE", "Wallet funding data is temporarily unavailable. Please retry shortly.", 503, true);
+      response.headers.set("retry-after", "2");
+      console.warn("[api] ADDRESS_INDEX_UNAVAILABLE");
+      return response;
     }
     const utxos = found.map((coin) => ({
       txid: coin.txid, vout: coin.vout, valueSats: coin.valueSats.toString(), confirmations: coin.confirmations,
