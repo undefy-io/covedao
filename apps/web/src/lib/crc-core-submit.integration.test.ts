@@ -24,7 +24,7 @@ import {
 import { TestGuardianCustodyBackend } from "../../../../packages/cove-guardian/src/v3/custody.js";
 import { CrcGuardianSigningService } from "../../../../packages/crc20-guardian/src/index.js";
 import { syncCrcTip } from "@crclaunch/cove-indexer/crc20";
-import { buildCrcLaunchSession, buildCrcTradeSession, buildCrcOfferSession } from "./crc-build";
+import { buildCrcLaunchSession, buildCrcTradeSession, buildCrcOfferSession, buildCrcTokenSession } from "./crc-build";
 import { crcMarketPost } from "./crc-market-route";
 import { activateCrcCoreOffer } from "./crc-market-core";
 import { authorizeOffer } from "../../../../packages/cove-market/crc20-protocol/test-support/signing.js";
@@ -918,3 +918,229 @@ test("HTTP sell build replay survives consumed token inputs, funding refresh and
   expect(retried.data.intent).toEqual(built.intent);
   expect(node.calls).toHaveLength(rpcCount);
 }, 60000);
+
+const invAtoms = (n: number) => BigInt(n) * core.atomsPerToken;
+async function inventoryTrade(
+  operation: "buy" | "sell",
+  quantity: number,
+  owner: "alice" | "bob",
+  tag: string,
+) {
+  const ledger = await sync(),
+    script = owner === "alice" ? aliceScript : bobScript,
+    key = owner === "alice" ? aliceKey : bobKey;
+  const funding = await cacheFunding(owner);
+  const args = {
+    db: database.db,
+    network: "regtest" as const,
+    bitcoinNetwork: bitcoin.networks.regtest,
+    asset: (await readCrcQuoteAsset(database.db, "regtest", deployId))!,
+    operation,
+    amountAtoms: invAtoms(quantity),
+    walletScriptHex: script,
+    tokenScriptHex: script,
+    walletPublicKeyHex: Buffer.from(key.publicKey).toString("hex"),
+    tokenPublicKeyHex: Buffer.from(key.publicKey).toString("hex"),
+    paymentFunding: funding,
+    minerFeeSats: 1000,
+    idempotencyKey: tag,
+    feeScriptHex: protocolScript,
+    ...(operation === "sell"
+      ? {
+          sellerFunding: Object.entries(ledger.allocations)
+            .filter(([, a]) => a.deployTxid === deployId && a.scriptHex === script)
+            .map(([point]) => ({ txid: point.split(":")[0]!, vout: Number(point.split(":")[1]) })),
+        }
+      : {}),
+  };
+  const built = await buildCrcTradeSession(args);
+  expect(await buildCrcTradeSession(args)).toEqual(built);
+  const plan = core.decodeProtocolDto<core.Plan>(built.intent.corePlan);
+  const count = sign.mock.calls.length;
+  const signed = walletSign(built.psbtBase64, true, undefined, key);
+  const result = await submit(built.sessionId, signed, operation);
+  expect(sign.mock.calls.length).toBe(count + 1);
+  expect(await submit(built.sessionId, signed, operation)).toEqual(result);
+  expect(sign.mock.calls.length).toBe(count + 1);
+  const [blockHash] = node.mine();
+  expect(node.block(blockHash).transactions).toHaveLength(1);
+  const after = await sync();
+  const actual = node.transaction(result.txid);
+  core.validateFinalTransaction(plan, actual, {
+    ...ledger,
+    config: ledger.assets[deployId]!.config,
+  });
+  expect(
+    plan.inputs.reduce((n, i) => n + core.sats(i.sats), 0n) -
+      plan.outputs.reduce((n, o) => n + o.sats, 0n),
+  ).toBe(1000n);
+  return { built, plan, result, after, blockHash, before: ledger, actual };
+}
+test("full consumer buy400/sell400/buy1000 records total1000, inventory400 and new600, then repeat100 and reorg", async () => {
+  const launch = await buildCrcLaunchSession({
+    db: database.db,
+    network: "regtest",
+    bitcoinNetwork: bitcoin.networks.regtest,
+    ticker: "INVT",
+    walletScriptHex: aliceScript,
+    tokenScriptHex: aliceScript,
+    walletPublicKeyHex: Buffer.from(aliceKey.publicKey).toString("hex"),
+    funding: await cacheFunding(),
+    minerFeeSats: 1000,
+    idempotencyKey: "inventory-deploy",
+    feeScriptHex: protocolScript,
+    guardianXOnly: await backend.xOnlyPubkey(),
+    recoveryProfile,
+  });
+  const launched = await submit(launch.sessionId, walletSign(launch.psbtBase64), "deploy");
+  deployId = launched.txid;
+  node.mine();
+  await sync();
+  await inventoryTrade("buy", 400, "alice", "inventory-initial400");
+  await inventoryTrade("sell", 400, "alice", "inventory-sell400");
+  const mixed = await inventoryTrade("buy", 1000, "bob", "inventory-mixed1000");
+  expect(mixed.built.intent).toMatchObject({
+    operation: "mint-buy",
+    amountAtoms: "100000000000",
+    inventoryBuyAtoms: "40000000000",
+    newlyMintedAtoms: "60000000000",
+  });
+  expect(mixed.plan).toMatchObject({
+    inventoryBuyAtoms: invAtoms(400),
+    newlyMintedAtoms: invAtoms(600),
+    grossSats: 27n,
+    protocolFeeSats: 5013n,
+    creatorFeeSats: 546n,
+  });
+  expect(mixed.after.assets[deployId]).toMatchObject({
+    issuedAtoms: invAtoms(1000),
+    inventoryAtoms: 0n,
+  });
+  expect(mixed.after.allocations[`${mixed.result.txid}:1`]).toMatchObject({
+    atoms: invAtoms(1000),
+    scriptHex: bobScript,
+  });
+  const { readCrcActivity, readCrcTrades, readCrcBalance } = await import("./crc-read");
+  expect(await readCrcBalance(database.db, "regtest", deployId, bobScript)).toBe(invAtoms(1000));
+  expect((await readCrcActivity(database.db, "regtest", deployId))[0]).toMatchObject({
+    kind: "mint",
+    tradeSide: "buy",
+    amountAtoms: "100000000000",
+    inventoryBuyAtoms: "40000000000",
+    newlyMintedAtoms: "60000000000",
+  });
+  expect((await readCrcTrades(database.db, "regtest", deployId)).at(-1)).toMatchObject({
+    amountAtoms: "100000000000",
+    totalPriceSats: "27",
+  });
+  expect((await state.loadCrcCoreLedger(database.db, "regtest"))!.assets).toEqual(
+    mixed.after.assets,
+  );
+  await inventoryTrade("buy", 100, "bob", "inventory-repeat100");
+  expect(await readCrcBalance(database.db, "regtest", deployId, bobScript)).toBe(invAtoms(1100));
+  node.rpc("invalidateblock", [mixed.blockHash]);
+  const restored = await sync();
+  expect(restored.assets[deployId]).toMatchObject({
+    issuedAtoms: invAtoms(400),
+    inventoryAtoms: invAtoms(400),
+  });
+  expect(await readCrcBalance(database.db, "regtest", deployId, bobScript)).toBe(0n);
+  expect(
+    (await readCrcActivity(database.db, "regtest", deployId)).some(
+      (x) => x.txid === mixed.result.txid,
+    ),
+  ).toBe(false);
+  node.clearOrphanMempool();
+  node.rpc("abandontransaction", [mixed.result.txid], "bob");
+  const replacement = await inventoryTrade("buy", 500, "bob", "inventory-replacement500");
+  expect(replacement.after.tip!.height).toBe(mixed.after.tip!.height);
+  expect(replacement.after.tip!.hash).not.toBe(mixed.after.tip!.hash);
+  expect(replacement.after.assets[deployId]).toMatchObject({
+    issuedAtoms: invAtoms(500),
+    inventoryAtoms: 0n,
+  });
+}, 120000);
+
+test("stored buy intent cannot misstate receipt or split while wallet/Guardian signing is pending", async () => {
+  const asset = (await readCrcQuoteAsset(database.db, "regtest", deployId))!;
+  const built = await buildCrcTradeSession({
+    db: database.db,
+    network: "regtest",
+    bitcoinNetwork: bitcoin.networks.regtest,
+    asset,
+    operation: "buy",
+    amountAtoms: invAtoms(100),
+    walletScriptHex: bobScript,
+    tokenScriptHex: bobScript,
+    walletPublicKeyHex: Buffer.from(bobKey.publicKey).toString("hex"),
+    paymentFunding: await cacheFunding("bob"),
+    minerFeeSats: 1000,
+    idempotencyKey: "inventory-forged-intent",
+    feeScriptHex: protocolScript,
+  });
+  const signed = walletSign(built.psbtBase64, true, undefined, bobKey);
+  const count = sign.mock.calls.length,
+    rpcCount = node.calls.length;
+  try {
+    for (const changed of [
+      { amountAtoms: "60000000000" },
+      { inventoryBuyAtoms: "10000000000" },
+      { newlyMintedAtoms: "0" },
+      { operation: "inventory-buy" },
+    ]) {
+      await database.pool.query("update crc_sessions set trusted_json=$2 where id=$1", [
+        built.sessionId,
+        JSON.stringify({ ...built.intent, ...changed }),
+      ]);
+      const response = await crcSubmitRoute(
+        new Request("http://localhost/api/crc/v1/submit", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ sessionId: built.sessionId, signedPsbtBase64: signed }),
+        }),
+        "buy",
+      );
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: "CLIENT_INTENT_MISMATCH" },
+      });
+    }
+    expect(sign.mock.calls.length).toBe(count);
+    expect(node.calls.length).toBe(rpcCount);
+  } finally {
+    await database.pool.query("update crc_sessions set trusted_json=$2 where id=$1", [
+      built.sessionId,
+      JSON.stringify(built.intent),
+    ]);
+  }
+}, 60000);
+
+
+test("consumer buy400/list300/buyer-only fill returns100 without an extra split transaction", async () => {
+  await inventoryTrade("buy",400,"alice","inventory-market-buy400");
+  const before=await sync();
+  const tokens=Object.entries(before.allocations).filter(([,a])=>a.deployTxid===deployId&&a.scriptHex===aliceScript).map(([p])=>({txid:p.split(":")[0]!,vout:Number(p.split(":")[1])}));
+  const common={db:database.db,network:"regtest" as const,bitcoinNetwork:bitcoin.networks.regtest,walletScriptHex:aliceScript,tokenScriptHex:aliceScript,walletPublicKeyHex:Buffer.from(aliceKey.publicKey).toString("hex"),tokenPublicKeyHex:Buffer.from(aliceKey.publicKey).toString("hex"),paymentFunding:await cacheFunding(),minerFeeSats:1000,feeScriptHex:protocolScript};
+  const built=await buildCrcTokenSession({...common,deployTxid:deployId,operation:"listing",amountAtoms:invAtoms(300),recipientScriptHex:aliceScript,priceSats:5000n,tokenFunding:tokens,idempotencyKey:"inventory-list300"});
+  const custodyCount=sign.mock.calls.length;
+  const listing=await submit(built.sessionId,walletSign(built.psbtBase64),"listing");
+  const [hash]=node.mine(); expect(node.block(hash).transactions).toHaveLength(1);
+  const listed=await sync();
+  const {readCrcBalance}=await import("./crc-read");
+  expect(await readCrcBalance(database.db,"regtest",deployId,aliceScript)).toBe(invAtoms(400));
+  const allocation=listed.allocations[`${listing.txid}:1`]!;
+  expect(allocation.atoms).toBe(invAtoms(300));
+  expect(Object.values(listed.allocations).filter(a=>a.deployTxid===deployId&&a.scriptHex===aliceScript&&a.atoms===invAtoms(100))).toHaveLength(1);
+  const offer=await authorizeOffer({network:"regtest",deployTxid:deployId,ticker:listed.assets[deployId]!.config.ticker,listedInput:{...allocation,txid:listing.txid,vout:1},sellerScriptHex:aliceScript,priceSats:5000n,expiryHeight:listed.tip!.height+10},aliceKey.privateKey!);
+  const id=await activateCrcCoreOffer({db:database.db,network:"regtest",provider,offer:core.encodeProtocolDto(offer)});
+  const purchase=await buildCrcOfferSession({...common,offerId:id,operation:"purchase",walletScriptHex:bobScript,tokenScriptHex:bobScript,walletPublicKeyHex:Buffer.from(bobKey.publicKey).toString("hex"),tokenPublicKeyHex:Buffer.from(bobKey.publicKey).toString("hex"),paymentFunding:await cacheFunding("bob"),idempotencyKey:"inventory-market-fill300"});
+  const fill=await submit(purchase.sessionId,walletSign(purchase.psbtBase64,true,undefined,bobKey),"purchase");
+  const [fillHash]=node.mine(); expect(node.block(fillHash).transactions).toHaveLength(1);
+  const after=await sync();
+  expect(sign.mock.calls.length).toBe(custodyCount);
+  expect(after.allocations[`${fill.txid}:2`]).toMatchObject({atoms:invAtoms(300),scriptHex:bobScript});
+  expect(await readCrcBalance(database.db,"regtest",deployId,aliceScript)).toBe(invAtoms(100));
+  expect(after.assets[deployId]).toEqual(listed.assets[deployId]);
+  expect(after.offers[id]!.status).toBe("filled");
+},60000);

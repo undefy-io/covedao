@@ -1,0 +1,36 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-core-submit.integration.test.ts (14 tests | 1 failed | 12 skipped) 17271ms
+   ✓ HTTP submit registers exact signed core deployment before actual broadcast and is idempotent 1789ms
+   × full consumer buy400/sell400/buy1000 records total1000, inventory400 and new600, then repeat100 and reorg 10364ms
+     → buy builder does not match inventory/issuance transition
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-core-submit.integration.test.ts > full consumer buy400/sell400/buy1000 records total1000, inventory400 and new600, then repeat100 and reorg
+Error: buy builder does not match inventory/issuance transition
+ ❯ buy ../../packages/cove-market/crc20-protocol/builders.ts:230:11
+ ❯ buildInventoryBuy ../../packages/cove-market/crc20-protocol/builders.ts:249:61
+ ❯ src/lib/crc-build.ts:356:65
+    354|             minerFeeSats,
+    355|           })
+    356|         : (state.inventoryAtoms ? core.buildInventoryBuy : core.buildM…
+       |                                                                 ^
+    357|             state,
+    358|             funding,
+ ❯ selectPlan src/lib/crc-build.ts:101:16
+ ❯ Module.buildCrcTradeSession src/lib/crc-build.ts:342:16
+ ❯ inventoryTrade src/lib/crc-core-submit.integration.test.ts:928:15
+ ❯ src/lib/crc-core-submit.integration.test.ts:951:15
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed | 12 skipped (14)
+   Start at  05:41:25
+   Duration  18.96s (transform 764ms, setup 0ms, collect 1.37s, tests 17.27s, environment 0ms, prepare 34ms)
+
+undefined
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/lib/crc-core-submit.integration.test.ts -t HTTP submit registers|full consumer

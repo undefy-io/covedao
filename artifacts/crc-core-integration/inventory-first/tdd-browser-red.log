@@ -1,0 +1,32 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-browser-session.test.ts (9 tests | 1 failed) 55ms
+   × mixed inventory-first buy opens one signing request for the full reviewed receipt 6ms
+     → buy builder does not match inventory/issuance transition
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-browser-session.test.ts > mixed inventory-first buy opens one signing request for the full reviewed receipt
+Error: buy builder does not match inventory/issuance transition
+ ❯ buy ../../packages/cove-market/crc20-protocol/builders.ts:230:11
+ ❯ buildInventoryBuy ../../packages/cove-market/crc20-protocol/builders.ts:249:61
+ ❯ Module.signCrcBuildSession src/lib/crc-browser-session.ts:122:124
+    120|   else if (guardianPending) {
+    121|     const args = { state: asset!, inputs: tokens, funding, amountAtoms…
+    122|     expected = review.operation === "sell" ? core.buildSell(args) : (a…
+       |                                                                                                                            ^
+    123|     const operation = review.operation === "sell" ? "sell" : asset!.in…
+    124|     if (built.intent.operation !== operation) throw new Error("Trade o…
+ ❯ src/lib/crc-browser-session.test.ts:120:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 8 passed (9)
+   Start at  05:39:14
+   Duration  510ms (transform 111ms, setup 0ms, collect 170ms, tests 55ms, environment 0ms, prepare 60ms)
+
+undefined
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/lib/crc-browser-session.test.ts

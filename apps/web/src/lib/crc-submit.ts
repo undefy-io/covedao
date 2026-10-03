@@ -169,6 +169,26 @@ export async function submitCrcSession(
       )[session.operation]
   )
     throw new AppError("CLIENT_INTENT_MISMATCH", "CRC operation differs from core transition");
+  if (["mint-buy", "inventory-buy"].includes(session.operation)) {
+    const transition = verified.transition!;
+    if (
+      data.operation !== session.operation ||
+      data.amountAtoms !== transition.amountAtoms!.toString()
+    )
+      throw new AppError(
+        "CLIENT_INTENT_MISMATCH",
+        "CRC buy receipt differs from signed transition",
+      );
+    const asset = ledger.assets[session.deploymentTxid!]!;
+    const amounts = core.curveBuyAmounts(asset, transition.amountAtoms!);
+    const mixed = amounts.inventoryBuyAtoms > 0n && amounts.newlyMintedAtoms > 0n;
+    for (const field of ["inventoryBuyAtoms", "newlyMintedAtoms"] as const)
+      if ((mixed || field in data) && data[field] !== amounts[field].toString())
+        throw new AppError(
+          "CLIENT_INTENT_MISMATCH",
+          "CRC buy inventory breakdown differs from signed transition",
+        );
+  }
   await assertLive(params, ledger, verified.transaction);
   const signedHash = createHash("sha256").update(params.signedPsbtBase64).digest("hex");
   const claim = await claimCrcBuildSession(params.db, params.network, params.sessionId, signedHash);

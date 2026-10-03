@@ -1,0 +1,127 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-quote.test.ts (9 tests | 5 failed) 11ms
+   × inventory-first quote delivers 100 with one fee set 5ms
+     → expected { …(9) } to match object { operation: 'transfer', …(6) }
+(4 matching properties omitted from actual)
+   × inventory-first quote delivers 400 with one fee set 1ms
+     → expected { …(9) } to match object { operation: 'transfer', …(6) }
+(4 matching properties omitted from actual)
+   × inventory-first quote delivers 500 with one fee set 1ms
+     → expected { …(9) } to match object { operation: 'mint', …(6) }
+(4 matching properties omitted from actual)
+   × inventory-first quote delivers 1000 with one fee set 0ms
+     → expected { …(9) } to match object { operation: 'mint', …(6) }
+(4 matching properties omitted from actual)
+   × at the cap inventory remains buyable but only newly issued supply is capped 0ms
+     → expected { …(9) } to match object { operation: 'transfer', …(1) }
+(8 matching properties omitted from actual)
+ ❯ src/lib/crc-quote-route.test.ts (5 tests | 1 failed) 15ms
+   × HTTP mixed buy quotes total receipt instead of rejecting or calling it inventory-only 5ms
+     → expected { ok: true, data: { …(2) } } to match object { ok: true, data: { quote: { …(8) } } }
+(6 matching properties omitted from actual)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-quote-route.test.ts > HTTP mixed buy quotes total receipt instead of rejecting or calling it inventory-only
+AssertionError: expected { ok: true, data: { …(2) } } to match object { ok: true, data: { quote: { …(8) } } }
+(6 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  Object {
+    "data": Object {
+      "quote": Object {
+        "amountAtoms": "100000000000",
+        "buyerTotalSats": "5586",
+        "creatorFeeSats": "546",
+        "grossSats": "27",
+-       "inventoryBuyAtoms": "40000000000",
+-       "newlyMintedAtoms": "60000000000",
+-       "operation": "mint",
++       "operation": "transfer",
+        "protocolFeeSats": "5013",
+      },
+    },
+    "ok": true,
+  }
+
+ ❯ src/lib/crc-quote-route.test.ts:161:33
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  src/lib/crc-quote.test.ts > inventory-first quote delivers 100 with one fee set
+ FAIL  src/lib/crc-quote.test.ts > inventory-first quote delivers 400 with one fee set
+AssertionError: expected { …(9) } to match object { operation: 'transfer', …(6) }
+(4 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  Object {
+    "amountAtoms": "10000000000",
+    "creatorFeeSats": "546",
+    "grossSats": "3",
+-   "inventoryBuyAtoms": "10000000000",
+-   "newlyMintedAtoms": "0",
+    "operation": "transfer",
+    "protocolFeeSats": "5002",
+  }
+
+ ❯ src/lib/crc-quote.test.ts:82:17
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  src/lib/crc-quote.test.ts > inventory-first quote delivers 500 with one fee set
+ FAIL  src/lib/crc-quote.test.ts > inventory-first quote delivers 1000 with one fee set
+AssertionError: expected { …(9) } to match object { operation: 'mint', …(6) }
+(4 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  Object {
+    "amountAtoms": "50000000000",
+    "creatorFeeSats": "546",
+    "grossSats": "14",
+-   "inventoryBuyAtoms": "40000000000",
+-   "newlyMintedAtoms": "10000000000",
+-   "operation": "mint",
++   "operation": "transfer",
+    "protocolFeeSats": "5007",
+  }
+
+ ❯ src/lib/crc-quote.test.ts:82:17
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  src/lib/crc-quote.test.ts > at the cap inventory remains buyable but only newly issued supply is capped
+AssertionError: expected { …(9) } to match object { operation: 'transfer', …(1) }
+(8 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  Object {
+-   "newlyMintedAtoms": "0",
+    "operation": "transfer",
+  }
+
+ ❯ src/lib/crc-quote.test.ts:86:63
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ Test Files  2 failed (2)
+      Tests  6 failed | 8 passed (14)
+   Start at  05:36:41
+   Duration  1.84s (transform 911ms, setup 0ms, collect 1.65s, tests 25ms, environment 0ms, prepare 143ms)
+
+undefined
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/lib/crc-quote.test.ts src/lib/crc-quote-route.test.ts

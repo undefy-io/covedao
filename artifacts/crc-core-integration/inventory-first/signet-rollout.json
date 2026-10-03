@@ -1,0 +1,141 @@
+{
+  "network": "signet",
+  "actualExtension": false,
+  "status": "passed",
+  "verifiedAt": "2026-10-03T06:09:01.833367+00:00",
+  "runtimeFilesMatched": 21,
+  "images": {
+    "web": "sha256:29a61275a54350012f8e85d7e1c655bdb1bb08ab9aafcb72b36558cc624fd442",
+    "worker": "sha256:29a61275a54350012f8e85d7e1c655bdb1bb08ab9aafcb72b36558cc624fd442",
+    "guardian": "sha256:d379071e091653ba7170ea88d132efc1482980912ed356c24e789daa2c84b0a2"
+  },
+  "guardianHealth": {
+    "reachable": true,
+    "profileHash": "8d89c2b4f285dfa16991a75a6e12c6e4210c289debd9a17d61c54a040ad7fa6b",
+    "guardianXOnly": "fa24fc756cb674c9d26f109d15fef22026e8c3467d3d7e604645dda6b607e24e",
+    "releaseId": "local",
+    "auditHeadHash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "auditHealthy": true,
+    "signingJournalHealthy": true,
+    "custodyBackendReady": true,
+    "signingEnabled": true
+  },
+  "trading": {
+    "ok": true,
+    "data": {
+      "tradingActive": true,
+      "network": "signet",
+      "protocolScriptHex": "0014a760aba32ec431908bcac87b8456ab99b080f0e2"
+    }
+  },
+  "tokens": {
+    "ok": true,
+    "data": {
+      "network": "signet",
+      "indexedTip": {
+        "height": "324740",
+        "blockHash": "00000000ba70d586b0ec2910a95292ec3cb662b49064ee11da26e707919cf08a"
+      },
+      "tokens": [
+        {
+          "assetId": "signet:b7b3faa32c7de8f122c1482fcbee3a67255af573e7f1894c94501511fff95c1e",
+          "network": "signet",
+          "deployTxid": "b7b3faa32c7de8f122c1482fcbee3a67255af573e7f1894c94501511fff95c1e",
+          "ticker": "ASDF",
+          "metadata": {
+            "displayName": "asdf",
+            "description": "",
+            "websiteUrl": null,
+            "xUrl": null,
+            "imageUrl": null
+          },
+          "deployHeight": "324730",
+          "deployBlockHash": "0000001073c1d3881a7ceee8d4ec257d90ea7566f5bad320e15f2cb8ce2d44bf",
+          "creatorScriptHex": "001444687443fd8bdab32947e445d3aa9114f01135d6",
+          "protocolScriptHex": "0014a760aba32ec431908bcac87b8456ab99b080f0e2",
+          "protocolVersion": 3,
+          "burnedAtoms": "0",
+          "mintedAtoms": "40000000000",
+          "inventoryAtoms": "40000000000",
+          "circulatingAtoms": "0",
+          "availability": "active",
+          "vault": {
+            "txid": "b0ed552fae5a34634349c75bf02aec495a9b889a18a8368318088295ad9ea89e",
+            "vout": 1,
+            "scriptHex": "51206908d00045a4711b3ace6fff60a2fa8e031c74d17f9fc81a4ff7a4640ab909a4",
+            "btcSats": "1000"
+          },
+          "coreState": {
+            "vault": {
+              "sats": "1000",
+              "txid": "b0ed552fae5a34634349c75bf02aec495a9b889a18a8368318088295ad9ea89e",
+              "vout": 1,
+              "scriptHex": "51206908d00045a4711b3ace6fff60a2fa8e031c74d17f9fc81a4ff7a4640ab909a4"
+            },
+            "config": {
+              "ticker": "ASDF",
+              "network": "signet",
+              "vaultScriptHex": "51206908d00045a4711b3ace6fff60a2fa8e031c74d17f9fc81a4ff7a4640ab909a4",
+              "guardianCustody": {
+                "controlBlockHex": "c050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0de0f2694a75be3c72649f4a5b7710b5ea531a6ec1098a058720b540b1232b329",
+                "assetCommitmentHex": "74ed0375a399f66ade10006b2a4224ca2f9b6626f41421660ffd3620944f5ec6",
+                "executionScriptHex": "2074ed0375a399f66ade10006b2a4224ca2f9b6626f41421660ffd3620944f5ec68820fa24fc756cb674c9d26f109d15fef22026e8c3467d3d7e604645dda6b607e24eac",
+                "recoveryLeafHashHex": "de0f2694a75be3c72649f4a5b7710b5ea531a6ec1098a058720b540b1232b329",
+                "guardianPublicKeyHex": "fa24fc756cb674c9d26f109d15fef22026e8c3467d3d7e604645dda6b607e24e"
+              },
+              "creatorScriptHex": "001444687443fd8bdab32947e445d3aa9114f01135d6",
+              "protocolScriptHex": "0014a760aba32ec431908bcac87b8456ab99b080f0e2"
+            },
+            "deployTxid": "b7b3faa32c7de8f122c1482fcbee3a67255af573e7f1894c94501511fff95c1e",
+            "burnedAtoms": "0",
+            "issuedAtoms": "40000000000",
+            "inventoryAtoms": "40000000000"
+          }
+        }
+      ],
+      "nextCursor": null
+    }
+  },
+  "quote1000": {
+    "ok": true,
+    "data": {
+      "indexedTip": {
+        "height": "324740",
+        "blockHash": "00000000ba70d586b0ec2910a95292ec3cb662b49064ee11da26e707919cf08a"
+      },
+      "quote": {
+        "assetId": "signet:b7b3faa32c7de8f122c1482fcbee3a67255af573e7f1894c94501511fff95c1e",
+        "vaultOutpoint": "b0ed552fae5a34634349c75bf02aec495a9b889a18a8368318088295ad9ea89e:1",
+        "operation": "mint",
+        "amountAtoms": "100000000000",
+        "inventoryBuyAtoms": "40000000000",
+        "newlyMintedAtoms": "60000000000",
+        "grossSats": "27",
+        "protocolFeeSats": "5013",
+        "creatorFeeSats": "546",
+        "buyerTotalSats": "5586",
+        "minerFeeExcluded": true
+      }
+    }
+  },
+  "state": {
+    "cursors": [
+      {
+        "network": "signet",
+        "height": 324740,
+        "block_hash": "00000000ba70d586b0ec2910a95292ec3cb662b49064ee11da26e707919cf08a",
+        "fingerprint": "4f9236ac666e4d0327dd0274c2d30cb6126087494a2f35058b05b0d1bdc1cb64",
+        "state_root": "830b6323fbd91183a0c85b9c37549377bad0353f8e6610aab08c8f4cca93756c"
+      }
+    ],
+    "events": 3,
+    "registrations": 1
+  },
+  "checks": [
+    "existing assets, balances, inventory, history and registrations preserved",
+    "web, worker and standalone Guardian runtime sources match",
+    "read-only ASDF quote1000 succeeds: reuse400/new600/full receipt1000",
+    "worker readiness and Guardian health pass"
+  ],
+  "userWalletTransactionsSigned": 0
+}

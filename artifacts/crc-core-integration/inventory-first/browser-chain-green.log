@@ -1,0 +1,14 @@
+
+Running 8 tests using 1 worker
+
+  ✓  1 tests-crc-chain/lifecycle.spec.ts:49:1 › unchanged launch controls prepare, sign, register and mine an actual deployment (4.4s)
+  ✓  2 tests-crc-chain/lifecycle.spec.ts:71:1 › browser 500+500 mint, 400+600 sell, inventory buy and 1000 sell agree with raw chain and durable state (38.3s)
+  ✓  3 tests-crc-chain/lifecycle.spec.ts:130:1 › 1500/500 listings split on-chain and unchanged controls fill with only a nested-payment/Taproot-token buyer (34.3s)
+  ✓  4 tests-crc-chain/lifecycle.spec.ts:143:1 › browser service transfers one atom, Taproot seller publishes fractional terms and cancellation mines ALL signatures (19.3s)
+Owned browser console: Failed to load resource: the server responded with a status of 400 (Bad Request)
+  ✓  5 tests-crc-chain/lifecycle.spec.ts:185:1 › competing browser builds have one winner and spent-vault rejection precedes second custody (9.8s)
+  ✓  6 tests-crc-chain/lifecycle.spec.ts:215:1 › a browser-reviewed paid presign settles after expiry while a fresh expired purchase refuses (9.4s)
+  ✓  7 tests-crc-chain/lifecycle.spec.ts:248:1 › actual browser/HTTP boundaries reject changed PSBT, token-as-BTC funding and re-signed wrong presign (4.0s)
+  ✓  8 tests-crc-chain/lifecycle.spec.ts:279:1 › one browser buy400/sell400/buy1000 then100 and list300 keeps full receipts without manual refresh (44.5s)
+
+  8 passed (3.4m)

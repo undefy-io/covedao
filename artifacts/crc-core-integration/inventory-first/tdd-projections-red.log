@@ -1,0 +1,55 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-core-submit.integration.test.ts (15 tests | 2 failed | 12 skipped) 24805ms
+   ✓ HTTP submit registers exact signed core deployment before actual broadcast and is idempotent 2093ms
+   × full consumer buy400/sell400/buy1000 records total1000, inventory400 and new600, then repeat100 and reorg 14813ms
+     → expected { …(10) } to match object { Object (kind, tradeSide, ...) }
+(7 matching properties omitted from actual)
+   × stored buy intent cannot misstate receipt or split while wallet/Guardian signing is pending 2449ms
+     → expected 200 to be 400 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-core-submit.integration.test.ts > full consumer buy400/sell400/buy1000 records total1000, inventory400 and new600, then repeat100 and reorg
+AssertionError: expected { …(10) } to match object { Object (kind, tradeSide, ...) }
+(7 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  Object {
+    "amountAtoms": "100000000000",
+-   "inventoryBuyAtoms": "40000000000",
+    "kind": "mint",
+-   "newlyMintedAtoms": "60000000000",
+    "tradeSide": "buy",
+  }
+
+ ❯ src/lib/crc-core-submit.integration.test.ts:958:70
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/lib/crc-core-submit.integration.test.ts > stored buy intent cannot misstate receipt or split while wallet/Guardian signing is pending
+AssertionError: expected 200 to be 400 // Object.is equality
+
+- Expected
++ Received
+
+- 400
++ 200
+
+ ❯ src/lib/crc-core-submit.integration.test.ts:984:31
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 1 passed | 12 skipped (15)
+   Start at  05:42:17
+   Duration  26.78s (transform 965ms, setup 0ms, collect 1.66s, tests 24.80s, environment 0ms, prepare 44ms)
+
+undefined
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/lib/crc-core-submit.integration.test.ts -t HTTP submit registers|full consumer|stored buy intent

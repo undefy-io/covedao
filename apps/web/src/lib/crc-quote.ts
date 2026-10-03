@@ -1,4 +1,5 @@
 import * as core from "@crclaunch/crc20-protocol";
+import { describeCurveBuy } from "@crclaunch/crc20-adapters";
 export type CrcQuoteAsset = {
   assetId: string;
   mintedAtoms: string;
@@ -63,11 +64,14 @@ export function quoteCrcBuy(asset: CrcQuoteAsset, amountAtoms: bigint) {
   const state = crcCoreAssetFromQuote(asset);
   checkedAmount(amountAtoms);
   const quote = amountQuote(() => core.quoteBuy(state, amountAtoms));
+  const buy = amountQuote(() => describeCurveBuy(state, amountAtoms));
   return {
     assetId: asset.assetId,
     vaultOutpoint: core.outpoint(state.vault),
-    operation: state.inventoryAtoms ? "transfer" : "mint",
+    operation: buy.markerOperation,
     amountAtoms: amountAtoms.toString(),
+    inventoryBuyAtoms: buy.inventoryBuyAtoms.toString(),
+    newlyMintedAtoms: buy.newlyMintedAtoms.toString(),
     grossSats: quote.grossSats.toString(),
     protocolFeeSats: quote.protocolFeeSats.toString(),
     creatorFeeSats: quote.creatorFeeSats.toString(),

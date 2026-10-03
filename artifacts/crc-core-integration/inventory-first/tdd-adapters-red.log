@@ -1,0 +1,65 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/crc20-adapters
+
+ ❯ src/inventory-first.test.ts (10 tests | 7 failed) 53ms
+   × consumer buy contract: 100 with 400 inventory 3ms
+     → describeCurveBuy is not a function
+   × consumer buy contract: 400 with 400 inventory 0ms
+     → describeCurveBuy is not a function
+   × consumer buy contract: 500 with 400 inventory 0ms
+     → describeCurveBuy is not a function
+   × consumer buy contract: 1000 with 400 inventory 0ms
+     → describeCurveBuy is not a function
+   × consumer buy contract: 100 with 0 inventory 0ms
+     → describeCurveBuy is not a function
+   × consumer buy contract: 400 with 0 inventory 0ms
+     → describeCurveBuy is not a function
+   × pending Guardian signatures do not allow forged quoted receipt or issuance breakdown 8ms
+     → expected [Function] to throw an error
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/inventory-first.test.ts > consumer buy contract: 100 with 400 inventory
+ FAIL  src/inventory-first.test.ts > consumer buy contract: 400 with 400 inventory
+ FAIL  src/inventory-first.test.ts > consumer buy contract: 500 with 400 inventory
+ FAIL  src/inventory-first.test.ts > consumer buy contract: 1000 with 400 inventory
+ FAIL  src/inventory-first.test.ts > consumer buy contract: 100 with 0 inventory
+ FAIL  src/inventory-first.test.ts > consumer buy contract: 400 with 0 inventory
+TypeError: describeCurveBuy is not a function
+ ❯ src/inventory-first.test.ts:17:18
+     15|   [0, 0, 400, 0, 400, "mint-buy", "mint"],
+     16| ] as const) test(`consumer buy contract: ${requested} with ${inventory…
+     17|   expect(adapter.describeCurveBuy({ issuedAtoms: atoms(issued), invent…
+       |                  ^
+     18|     amountAtoms: atoms(requested), inventoryBuyAtoms: atoms(reused), n…
+     19|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  src/inventory-first.test.ts > pending Guardian signatures do not allow forged quoted receipt or issuance breakdown
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ src/inventory-first.test.ts:57:88
+     55|   ]) {
+     56|     const prepared = { ...f.prepared, plan };
+     57|     expect(() => adapter.completeBrowserWalletSigning(prepared, f.resp…
+       |                                                                                        ^
+     58|     expect(() => adapter.completeGuardianWalletSigning(prepared, f.res…
+     59|     expect(() => adapter.completeServerWalletSigning(plan, "signet", f…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ Test Files  1 failed (1)
+      Tests  7 failed | 3 passed (10)
+   Start at  05:36:05
+   Duration  355ms (transform 95ms, setup 0ms, collect 128ms, tests 53ms, environment 0ms, prepare 62ms)
+
+undefined
+/home/andefy/dev/covedao/packages/crc20-adapters:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/inventory-first.test.ts

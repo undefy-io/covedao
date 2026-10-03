@@ -152,3 +152,29 @@ describe("CRC quote routes", () => {
     expect((await response.json()).error.code).toBe("PAYOUT_ADDRESS_INVALID");
   });
 });
+
+it("HTTP mixed buy quotes total receipt instead of rejecting or calling it inventory-only", async () => {
+  const mixed = {
+    ...state,
+    issuedAtoms: 400n * core.atomsPerToken,
+    inventoryAtoms: 400n * core.atomsPerToken,
+  };
+  mocks.asset.mockResolvedValue({ ...token, coreState: core.encodeProtocolDto(mixed) });
+  const response = await crcQuoteRoute(request({ assetId, amountAtoms: "100000000000" }), "buy");
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({
+    ok: true,
+    data: {
+      quote: {
+        operation: "mint",
+        amountAtoms: "100000000000",
+        inventoryBuyAtoms: "40000000000",
+        newlyMintedAtoms: "60000000000",
+        grossSats: "27",
+        protocolFeeSats: "5013",
+        creatorFeeSats: "546",
+        buyerTotalSats: "5586",
+      },
+    },
+  });
+});

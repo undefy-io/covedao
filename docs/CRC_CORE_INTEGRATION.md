@@ -213,3 +213,10 @@ The independent `.12` regtest deployment starts actual production web, CRC worke
 After explicit user authorization to replace the previous deployment and selection of Signet, the current production frontend, CRC worker and standalone Guardian now run at `http://localhost:3000`. A fresh application database and shared local profile at activation 324722 bootstrap before consumers start. Actual source parity, health, empty catalog and repeated idempotent bootstrap are verified. All 204 web tests and fresh image build/typecheck/lint pass; final Astra recheck is clear.
 
 [Manual testing instructions and evidence](../artifacts/crc-core-integration/deployment/signet-manual/README.md) describe extension setup and service operations. The selected deployment gate is satisfied; actual extension transactions/two-account funded canary remain open. No user-wallet transaction was signed or broadcast. The stack remains running for manual testing.
+
+
+## Inventory-first consumer integration
+
+The `covedao-8w1` integration carries the authoritative inventory-first purchase through quotes, builds, trusted sessions, wallet verification, Guardian and confirmed projections. A purchase exceeding current inventory uses one mint transition, delivers the entire requested amount and records the inventory/new issuance breakdown. Pure inventory uses transfer; pure issuance uses mint. Both browser and server reject mismatched quantities/decomposition before custody. Existing buy controls and indexed block hash refresh remain unchanged.
+
+[Integration evidence and manual steps](../artifacts/crc-core-integration/inventory-first/README.md) cover buy400/sell400/buy1000, follow-on100, partial market fills, independently signed native/nested/Taproot paths, reorg/restart, desktop/mobile signing and aligned standalone production images. Selected Signet upgrades preserve existing assets/history. Actual user-driven Xverse signing remains a separate open canary.

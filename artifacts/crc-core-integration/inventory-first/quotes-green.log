@@ -1,0 +1,10 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ✓ src/lib/crc-quote.test.ts (9 tests) 5ms
+ ✓ src/lib/crc-quote-route.test.ts (5 tests) 10ms
+
+ Test Files  2 passed (2)
+      Tests  14 passed (14)
+   Start at  05:37:10
+   Duration  1.92s (transform 995ms, setup 0ms, collect 1.73s, tests 14ms, environment 1ms, prepare 125ms)

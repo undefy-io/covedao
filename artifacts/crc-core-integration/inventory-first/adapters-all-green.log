@@ -1,0 +1,22 @@
+
+> @crclaunch/crc20-adapters@0.1.0 test /home/andefy/dev/covedao/packages/crc20-adapters
+> pnpm build && vitest run
+
+
+> @crclaunch/crc20-adapters@0.1.0 build /home/andefy/dev/covedao/packages/crc20-adapters
+> tsc -p tsconfig.build.json && node build-browser.mjs
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/crc20-adapters
+
+ ✓ src/guardian.test.ts (2 tests) 36ms
+ ✓ src/index.test.ts (11 tests) 59ms
+ ✓ src/guardian-wallet.test.ts (5 tests) 81ms
+ ✓ src/inventory-first.test.ts (10 tests) 83ms
+ ✓ src/browser.test.ts (1 test) 415ms
+   ✓ real Chromium loads adapters and completes actual captured native, nested and Taproot signatures 415ms
+
+ Test Files  5 passed (5)
+      Tests  29 passed (29)
+   Start at  05:43:58
+   Duration  921ms (transform 181ms, setup 0ms, collect 751ms, tests 674ms, environment 1ms, prepare 366ms)

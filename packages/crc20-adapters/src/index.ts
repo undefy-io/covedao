@@ -16,6 +16,34 @@ export interface WalletAccount {
   address: string;
   publicKey: string;
 }
+/** Consumer labels follow the core's inventory-first transition, not inventory presence. */
+export function describeCurveBuy(
+  state: Pick<core.Asset, "issuedAtoms" | "inventoryAtoms">,
+  amountAtoms: bigint,
+) {
+  const amounts = core.curveBuyAmounts(state, amountAtoms);
+  return {
+    amountAtoms,
+    ...amounts,
+    operation: amounts.newlyMintedAtoms ? ("mint-buy" as const) : ("inventory-buy" as const),
+    markerOperation: amounts.newlyMintedAtoms ? ("mint" as const) : ("transfer" as const),
+  };
+}
+function assertBuyReceipt(
+  plan: Plan,
+  transition: Pick<
+    core.ValidatedTransition,
+    "kind" | "amountAtoms" | "inventoryBuyAtoms" | "newlyMintedAtoms"
+  >,
+) {
+  if (
+    (transition.kind === "mint" || transition.kind === "inventoryBuy") &&
+    (plan.outputs[plan.recipientVout]?.atoms !== transition.amountAtoms ||
+      plan.inventoryBuyAtoms !== transition.inventoryBuyAtoms ||
+      plan.newlyMintedAtoms !== transition.newlyMintedAtoms)
+  )
+    throw new Error("Quoted buy receipt or inventory breakdown differs from transition");
+}
 export interface WalletInput extends WalletAccount {
   index: number;
 }
@@ -284,9 +312,15 @@ function checkedResponse(prepared: PreparedSigning, response: string): bitcoin.P
       if (!before[field] || before[field]!.equals(after[field] ?? Buffer.alloc(0))) continue;
       // BIP174 finalization removes signing metadata. Only an omitted field on
       // a finalized wallet input is allowed; core still verifies its full spend.
-      const finalizedWallet = prepared.walletInputs.some((input) => input.index === index) && after.finalScriptWitness;
+      const finalizedWallet =
+        prepared.walletInputs.some((input) => input.index === index) && after.finalScriptWitness;
       if (after[field] || !finalizedWallet) throw new Error(`wallet changed ${field}`);
-      if (field === "redeemScript" && !bitcoin.script.compile([before.redeemScript!]).equals(after.finalScriptSig ?? Buffer.alloc(0)))
+      if (
+        field === "redeemScript" &&
+        !bitcoin.script
+          .compile([before.redeemScript!])
+          .equals(after.finalScriptSig ?? Buffer.alloc(0))
+      )
         throw new Error("wallet changed nested redeem script spend");
     }
     if (after.sighashType !== undefined && after.sighashType !== before.sighashType)
@@ -347,6 +381,7 @@ export function completeGuardianWalletSigning(
     prevouts: structuredClone(prepared.prevouts),
   };
   const transition = core.validateGuardianTransaction(ledger, transaction);
+  assertBuyReceipt(prepared.plan, transition);
   return { psbtBase64: psbt.toBase64(), transaction, transition };
 }
 /** Server-side verification uses the stored plan; key ownership is proven by core signatures. */
@@ -398,13 +433,19 @@ export function completeServerWalletSigning(
 }
 /** Browser-only input-scoped preview; authoritative submission still verifies the full ledger. */
 export function completeBrowserWalletSigning(
-  prepared: PreparedSigning, response: string, view: core.TransactionView,
+  prepared: PreparedSigning,
+  response: string,
+  view: core.TransactionView,
 ): { psbtBase64: string; transaction: ChainTransaction } {
   if (!prepared.plan || prepared.terms) throw new Error("browser plan context required");
   const psbt = checkedResponse(prepared, response);
   finalizeWalletInputs(psbt, prepared);
-  const transaction = { rawHex: rawWithWitnesses(psbt).toHex(), prevouts: structuredClone(prepared.prevouts) };
-  if (prepared.guardianPending) core.validateGuardianTransactionView(view, transaction);
+  const transaction = {
+    rawHex: rawWithWitnesses(psbt).toHex(),
+    prevouts: structuredClone(prepared.prevouts),
+  };
+  if (prepared.guardianPending)
+    assertBuyReceipt(prepared.plan, core.validateGuardianTransactionView(view, transaction));
   else core.validateFinalTransactionView(prepared.plan, transaction, view);
   return { psbtBase64: psbt.toBase64(), transaction };
 }

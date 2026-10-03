@@ -1,0 +1,45 @@
+
+> cove-guardian-service@0.1.0 lint /home/andefy/dev/guardian
+> pnpm -r lint
+
+Scope: 20 of 21 workspace projects
+packages/config lint$ eslint src --max-warnings=0
+packages/cove-wire lint$ eslint src --max-warnings=0
+packages/crc20-protocol lint$ eslint *.ts *.mjs --max-warnings=0 --no-warn-ignored
+packages/curve lint$ eslint src --max-warnings=0
+packages/config lint: Done
+packages/cove-wire lint: Done
+packages/curve lint: Done
+packages/crc20-protocol lint: Done
+packages/bitcoin lint$ eslint src --max-warnings=0
+packages/cove-economics lint$ eslint src --max-warnings=0
+packages/crc20-adapters lint$ eslint src --max-warnings=0
+packages/db lint$ eslint src --max-warnings=0
+packages/cove-economics lint: Done
+packages/crc20-adapters lint: Done
+packages/db lint: Done
+packages/bitcoin lint: Done
+packages/cove-covenant lint$ eslint src --max-warnings=0
+packages/crc20-state lint$ eslint src --max-warnings=0
+packages/protocol lint$ eslint src --max-warnings=0
+packages/crc20-state lint: Done
+packages/cove-covenant lint: Done
+packages/protocol lint: Done
+packages/cove-simplicity lint$ eslint src --max-warnings=0
+packages/cove-vault lint$ eslint src --max-warnings=0
+packages/cove-simplicity lint: Done
+packages/cove-vault lint: Done
+packages/cove-mainnet lint$ eslint src --max-warnings=0
+packages/crc20-guardian lint$ eslint src --max-warnings=0
+packages/cove-mainnet lint: Done
+packages/crc20-guardian lint: Done
+packages/cove-guardian lint$ eslint src --max-warnings=0
+packages/cove-guardian lint: Done
+packages/cove-indexer lint$ eslint src --max-warnings=0
+packages/cove-indexer lint: Done
+packages/cove-market lint$ eslint src --max-warnings=0
+packages/cove-market lint: Done
+packages/cove-app lint$ eslint src --max-warnings=0
+packages/cove-app lint: Done
+apps/guardian lint$ eslint src --max-warnings=0
+apps/guardian lint: Done

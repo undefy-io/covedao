@@ -1,0 +1,18 @@
+
+> @crclaunch/crc20-guardian@0.1.0 test /home/andefy/dev/covedao/packages/crc20-guardian
+> vitest run
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/crc20-guardian
+
+ ✓ src/index.test.ts (1 test) 3ms
+ ✓ src/integration.test.ts (4 tests) 18768ms
+   ✓ real Guardian custody mines core mint/sell/inventory buy with exact fees and indexed state 5374ms
+   ✓ bad wallet/state/fees/recovery/stale vault never reach custody 1149ms
+   ✓ actual custody spend reorg restores inventory and safely reuses the same verified journal 3627ms
+   ✓ state changes during custody signing reject the response and release the journal for a verified retry 2795ms
+
+ Test Files  2 passed (2)
+      Tests  5 passed (5)
+   Start at  05:46:44
+   Duration  19.63s (transform 354ms, setup 0ms, collect 1.14s, tests 18.77s, environment 0ms, prepare 134ms)

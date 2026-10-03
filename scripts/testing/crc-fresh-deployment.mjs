@@ -47,7 +47,7 @@ async function until(check, seconds = 60) {
   }
   throw new Error(`owned deployment readiness timeout: ${last?.message ?? "not ready"}`);
 }
-export async function deployFreshRegtest({ appImage, guardianImage, output }) {
+export async function deployFreshRegtest({ appImage, guardianImage, output, inventoryFirst = false }) {
   const manifest = deploymentManifest(appImage, guardianImage);
   const evidence = { network: "regtest", actualExtension: false, manifest: { prefix: manifest.prefix }, checks: [], createdAt: new Date().toISOString() };
   const owned = [], directory = mkdtempSync(join(tmpdir(), "crc-fresh-deploy-"));
@@ -100,7 +100,7 @@ export async function deployFreshRegtest({ appImage, guardianImage, output }) {
     run("web", appImage, [], manifest.common, [3000]);
     let web = `http://127.0.0.1:${await until(() => port("web", 3000))}`, guardian = `http://127.0.0.1:${await until(() => port("guardian", 4391))}`;
     evidence.webUrl = web; evidence.guardianUrl = guardian;
-    const json = async (url, headers) => { const response = await fetch(url, { headers, signal: AbortSignal.timeout(3000) }); if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); };
+    const json = async (url, headers) => { const response = await fetch(url, { headers, signal: AbortSignal.timeout(3000) }); if (!response.ok) throw new Error(`HTTP ${response.status}: ${(await response.text()).slice(0, 2000)}`); return response.json(); };
     const guardianReady = () => until(async () => {
       const health = await json(guardian+"/health", { authorization: `Bearer ${manifest.prefix}` });
       return health.reachable && health.auditHealthy && health.signingJournalHealthy && health.custodyBackendReady ? health : false;
@@ -180,13 +180,45 @@ export async function deployFreshRegtest({ appImage, guardianImage, output }) {
       return receipt.txid;
     };
     const deployTxid = await transact(deploy, "/api/crc/v1/launch/submit", 105);
-    const buy = await api("/api/crc/v1/backing/buy/build", { ...common, assetId: "regtest:"+deployTxid, amountAtoms: "50000000000", paymentFunding: await funding(), idempotencyKey: randomUUID() });
+    const buy = await api("/api/crc/v1/backing/buy/build", { ...common, assetId: "regtest:"+deployTxid, amountAtoms: inventoryFirst ? "40000000000" : "50000000000", paymentFunding: await funding(), idempotencyKey: randomUUID() });
     await transact(buy, "/api/crc/v1/backing/buy/submit", 106);
     if (sql("select count(*) from crc_signatures") !== "1") throw new Error("actual standalone Guardian signature journal missing");
     evidence.deployedCatalog = await json(web+"/api/crc/v1/tokens");
-    if (evidence.deployedCatalog.data.tokens.length !== 1 || evidence.deployedCatalog.data.tokens[0].mintedAtoms !== "50000000000") throw new Error("fresh deployment replay differs");
+    if (evidence.deployedCatalog.data.tokens.length !== 1 || evidence.deployedCatalog.data.tokens[0].mintedAtoms !== (inventoryFirst ? "40000000000" : "50000000000")) throw new Error("fresh deployment replay differs");
     evidence.finalStateRoot = sql("select state_root from crc_cursors where network='regtest'");
-    evidence.checks.push("fresh Node-fixture launch and 500-token mint mine through actual standalone Guardian; authoritative raw fees/outputs and worker catalog match");
+    evidence.checks.push("fresh Node-fixture launch and purchase mine through actual standalone Guardian; authoritative raw fees/outputs and worker catalog match");
+
+    if (inventoryFirst) {
+      const assetId = "regtest:"+deployTxid;
+      const tokens = await json(web+"/api/crc/v1/tokens/"+encodeURIComponent(assetId)+"/utxos?address="+encodeURIComponent(payment.address));
+      if (!tokens.ok) throw new Error(JSON.stringify(tokens));
+      const sell = await api("/api/crc/v1/backing/sell/build", { ...common, assetId, amountAtoms:"40000000000", sellerFunding:tokens.data.utxos.map(({txid,vout})=>({txid,vout})), paymentFunding:await funding(), idempotencyKey:randomUUID() });
+      await transact(sell,"/api/crc/v1/backing/sell/submit",107);
+      const quote = await api("/api/crc/v1/backing/buy/quote",{assetId,amountAtoms:"100000000000"});
+      for (const [field,value] of Object.entries({amountAtoms:"100000000000",inventoryBuyAtoms:"40000000000",newlyMintedAtoms:"60000000000",grossSats:"27",protocolFeeSats:"5013",creatorFeeSats:"546",operation:"mint"}))
+        if (quote.quote[field] !== value) throw new Error("mixed quote differs: "+field);
+      const mixed = await api("/api/crc/v1/backing/buy/build",{...common,assetId,amountAtoms:"100000000000",paymentFunding:await funding(),idempotencyKey:randomUUID()});
+      if (mixed.intent.operation !== "mint-buy" || mixed.intent.inventoryBuyAtoms !== "40000000000" || mixed.intent.newlyMintedAtoms !== "60000000000") throw new Error("mixed session differs");
+      const mixedTxid = await transact(mixed,"/api/crc/v1/backing/buy/submit",108);
+      const activity = await json(web+"/api/crc/v1/tokens/"+encodeURIComponent(assetId)+"/activity");
+      const event = activity.data.rows.find(row=>row.txid===mixedTxid);
+      if (event?.amountAtoms !== "100000000000" || event?.inventoryBuyAtoms !== "40000000000" || event?.newlyMintedAtoms !== "60000000000") throw new Error("mixed indexed receipt differs");
+      const repeat = await api("/api/crc/v1/backing/buy/build",{...common,assetId,amountAtoms:"10000000000",paymentFunding:await funding(),idempotencyKey:randomUUID()});
+      await transact(repeat,"/api/crc/v1/backing/buy/submit",109);
+      const detail = await json(web+"/api/crc/v1/tokens/"+encodeURIComponent(assetId));
+      if (detail.data.token.mintedAtoms !== "110000000000" || detail.data.token.inventoryAtoms !== "0") throw new Error("follow-on supply differs");
+      const finalRoot = sql("select state_root from crc_cursors where network='regtest'");
+      for (const role of ["web","worker","guardian"]) docker("restart",name(role));
+      web = `http://127.0.0.1:${await until(() => port("web", 3000))}`;
+      guardian = `http://127.0.0.1:${await until(() => port("guardian", 4391))}`;
+      evidence.recoveryUrls.push({ web, guardian });
+      await guardianReady();
+      await until(async() => (await json(web+"/api/crc/v1/trading/status")).data.tradingActive);
+      if (sql("select state_root from crc_cursors where network='regtest'") !== finalRoot) throw new Error("mixed history restart changed root");
+      evidence.finalStateRoot = finalRoot;
+      evidence.inventoryFirst = { quote:quote.quote, receipt:event, finalToken:detail.data.token, actualExtension:false };
+      evidence.checks.push("actual production images: buy400/sell400/buy1000 delivers1000, reuses400, issues600 with one fee set; repeat100 and coordinated restart preserve mixed history");
+    }
     evidence.status = "passed";
   } catch (error) {
     evidence.status = "failed"; evidence.error = String(error);

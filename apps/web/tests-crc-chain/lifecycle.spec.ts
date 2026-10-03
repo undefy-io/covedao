@@ -98,7 +98,9 @@ async function publish(page: Page, owner: typeof alice, atoms: bigint, price = "
   await page.goto(harness.url + "/wallet"); await page.waitForLoadState("networkidle");
   await page.getByRole("button", { name: "Connect", exact: true }).first().click();
   const coin = Object.entries(harness.ledger!.allocations).find(([, allocation]) => allocation.deployTxid === deployTxid && allocation.scriptHex === owner.ordinalsScript && allocation.atoms === atoms);
-  expect(coin).toBeDefined(); await expect(page.getByLabel("Whole token output")).toBeVisible();
+  expect(coin).toBeDefined();
+  await page.getByRole("combobox").filter({ has: page.locator(`option[value="regtest:${deployTxid}"]`) }).selectOption(`regtest:${deployTxid}`);
+  await expect(page.getByLabel("Whole token output")).toBeVisible();
   await page.getByLabel("Whole token output").selectOption(coin![0]);
   await page.getByLabel("Your BTC price (sats)").fill(price); await page.getByLabel("Expiry (blocks)").fill(expiry);
   await page.getByRole("button", { name: "Review listing", exact: true }).click();
@@ -272,4 +274,36 @@ test("actual browser/HTTP boundaries reject changed PSBT, token-as-BTC funding a
   expect(terms).toMatchObject({ ok: false, error: { code: "WALLET_SIGNATURE_INVALID" } });
   expect(harness.backend.signatures).toBe(signatures);
   harness.evidence.push({ rejectedTampering: { sessionId: built.sessionId, tokenFunding, presign, terms, noAdditionalWalletPrompts: true, noAdditionalCustody: true } });
+});
+
+test("one browser buy400/sell400/buy1000 then100 and list300 keeps full receipts without manual refresh", async ({ page, context }) => {
+  await connected(page,alice,"/launch");
+  await page.getByRole("textbox",{name:"Name",exact:true}).fill("Chain proof");
+  await page.getByRole("textbox",{name:"Ticker",exact:true}).fill("INVB");
+  await page.getByRole("button",{name:"Review launch",exact:true}).click();
+  const building=page.waitForResponse(r=>r.url().endsWith("/launch/build"));
+  await page.getByRole("button",{name:"Build and review transaction",exact:true}).click();
+  const built=(await (await building).json()).data;
+  const submitting=page.waitForResponse(r=>r.url().endsWith("/launch/submit"));
+  await page.getByRole("button",{name:"Sign and broadcast launch",exact:true}).click();
+  const result=await (await submitting).json(); expect(result.ok,JSON.stringify(result)).toBe(true);
+  deployTxid=result.data.txid; await harness.mineAndVerify(deployTxid,built);
+  await trade(page,"buy","400"); await trade(page,"sell","400");
+  const buyer=await context.newPage(); await harness.wallet(buyer,bob);
+  const prompts=harness.prompts.length;
+  const mixed=await trade(buyer,"buy","1000");
+  expect(harness.prompts.length).toBe(prompts+1);
+  expect(mixed.intent).toMatchObject({operation:"mint-buy",amountAtoms:"100000000000",inventoryBuyAtoms:"40000000000",newlyMintedAtoms:"60000000000"});
+  expect(harness.ledger!.assets[deployTxid]).toMatchObject({issuedAtoms:1000n*core.atomsPerToken,inventoryAtoms:0n});
+  await expect(buyer.getByRole("cell",{name:"1,000",exact:true}).first()).toBeVisible({timeout:15_000});
+  const activity=await harness.json(`/api/crc/v1/tokens/${encodeURIComponent(`regtest:${deployTxid}`)}/activity`);
+  expect(activity.rows[0]).toMatchObject({amountAtoms:"100000000000",inventoryBuyAtoms:"40000000000",newlyMintedAtoms:"60000000000"});
+  await trade(buyer,"buy","100");
+  await tokenOperation(buyer,bob,"listing",300n*core.atomsPerToken);
+  const ask=await publish(buyer,bob,300n*core.atomsPerToken);
+  await purchase(page,ask);
+  const bobAtoms=Object.values(harness.ledger!.allocations).filter(a=>a.deployTxid===deployTxid&&a.scriptHex===bob.ordinalsScript).reduce((n,a)=>n+a.atoms,0n);
+  expect(bobAtoms).toBe(800n*core.atomsPerToken);
+  expect(harness.ledger!.assets[deployTxid]!.issuedAtoms).toBe(1100n*core.atomsPerToken);
+  await buyer.close();
 });

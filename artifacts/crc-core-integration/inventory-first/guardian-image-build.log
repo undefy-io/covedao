@@ -1,0 +1,114 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 844B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/rust:1.94-bookworm
+#2 DONE 0.2s
+
+#3 [internal] load metadata for docker.io/library/node:24-bookworm-slim
+#3 DONE 0.2s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 149B done
+#4 DONE 0.0s
+
+#5 [rust-builder 1/4] FROM docker.io/library/rust:1.94-bookworm@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
+#5 DONE 0.0s
+
+#6 [app-builder  1/11] FROM docker.io/library/node:24-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 1.13MB 0.0s done
+#7 DONE 0.0s
+
+#8 [app-builder  2/11] WORKDIR /app
+#8 CACHED
+
+#9 [stage-1  4/11] COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+#9 CACHED
+
+#10 [app-builder  3/11] RUN npm install --global pnpm@10.33.0
+#10 CACHED
+
+#11 [stage-1  5/11] COPY apps ./apps
+#11 CACHED
+
+#12 [rust-builder 3/4] COPY packages/cove-simplicity/rust packages/cove-simplicity/rust
+#12 CACHED
+
+#13 [rust-builder 2/4] WORKDIR /build
+#13 CACHED
+
+#14 [rust-builder 4/4] RUN cargo build --release --locked --manifest-path packages/cove-simplicity/rust/Cargo.toml
+#14 CACHED
+
+#15 [stage-1  6/11] COPY packages ./packages
+#15 DONE 0.1s
+
+#16 [stage-1  7/11] COPY tsconfig.base.json ./
+#16 DONE 0.0s
+
+#17 [stage-1  8/11] COPY crc-core-source-manifest.json ./
+#17 DONE 0.0s
+
+#18 [stage-1  9/11] RUN pnpm install --frozen-lockfile
+#18 0.407 Scope: all 21 workspace projects
+#18 0.447 Lockfile is up to date, resolution step is skipped
+#18 0.469 Progress: resolved 1, reused 0, downloaded 0, added 0
+#18 0.551 Packages: +296
+#18 0.551 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#18 0.989
+#18 0.989    ╭─────────────────────────────────────────╮
+#18 0.989    │                                         │
+#18 0.989    │   Update available! 10.33.0 → 12.8.1.   │
+#18 0.989    │   Changelog: https://pnpm.io/v/12.8.1   │
+#18 0.989    │    To update, run: pnpm add -g pnpm     │
+#18 0.989    │                                         │
+#18 0.989    ╰─────────────────────────────────────────╯
+#18 0.989
+#18 1.469 Progress: resolved 296, reused 0, downloaded 289, added 289
+#18 1.710 Progress: resolved 296, reused 0, downloaded 296, added 296, done
+#18 1.991
+#18 1.991 devDependencies:
+#18 1.991 + @eslint/js 9.39.5
+#18 1.991 + @types/node 22.20.4
+#18 1.991 + eslint 9.39.5
+#18 1.991 + eslint-config-prettier 9.1.2
+#18 1.991 + prettier 3.9.9
+#18 1.991 + typescript 5.9.3
+#18 1.991 + typescript-eslint 8.70.1
+#18 1.991
+#18 2.093 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+#18 2.093 │                                                                              │
+#18 2.093 │   Ignored build scripts: esbuild@0.18.20, esbuild@0.19.12, esbuild@0.21.5,   │
+#18 2.093 │   esbuild@0.28.2.                                                            │
+#18 2.093 │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+#18 2.093 │   to run scripts.                                                            │
+#18 2.093 │                                                                              │
+#18 2.093 ╰──────────────────────────────────────────────────────────────────────────────╯
+#18 2.115 Done in 1.9s using pnpm v10.33.0
+#18 DONE 2.5s
+
+#19 [stage-1 10/11] RUN pnpm --filter @crclaunch/crc20-protocol build && pnpm --filter @crclaunch/crc20-adapters build
+#19 0.521
+#19 0.521 > @crclaunch/crc20-protocol@0.1.0 build /app/packages/crc20-protocol
+#19 0.521 > tsc -p tsconfig.build.json && node build-browser.mjs
+#19 0.521
+#19 2.508
+#19 2.508 > @crclaunch/crc20-adapters@0.1.0 build /app/packages/crc20-adapters
+#19 2.508 > tsc -p tsconfig.build.json && node build-browser.mjs
+#19 2.508
+#19 DONE 3.9s
+
+#20 [stage-1 11/11] COPY --from=rust-builder /build/packages/cove-simplicity/rust/target/release/cove-simplicity /app/packages/cove-simplicity/rust/target/release/cove-simplicity
+#20 DONE 0.1s
+
+#21 exporting to image
+#21 exporting layers
+#21 exporting layers 1.5s done
+#21 writing image sha256:d379071e091653ba7170ea88d132efc1482980912ed356c24e789daa2c84b0a2 done
+#21 naming to docker.io/library/covedao-inventory-guardian:8w1 done
+#21 DONE 1.5s

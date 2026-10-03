@@ -199,7 +199,7 @@ export class CrcChainHarness {
     const plan = core.decodeProtocolDto<core.Plan>(built.intent.corePlan);
     const actual = this.node.transaction(txid);
     const before = await loadCrcCoreLedger(this.database.db, "regtest");
-    core.validateFinalTransaction(plan, actual, before!);
+    core.validateFinalTransaction(plan, actual, { ...before!, config: core.decodeProtocolDto<core.Config>(built.intent.coreConfig) });
     const registrations = await loadCrcRegistrations(this.database.db, "regtest");
     if (built.intent.operation === "deploy") expect(registrations[txid]).toBeDefined();
     const rows = (await this.database.pool.query("select status,operation,trusted_json from crc_sessions where txid=$1", [txid])).rows;

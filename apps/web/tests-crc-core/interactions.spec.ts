@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import * as bitcoin from "bitcoinjs-lib";
 import * as core from "@crclaunch/crc20-protocol";
 import { createPlanPsbt } from "@crclaunch/crc20-adapters";
-import { fixture, assetId, config, state, key, script, funding, tokenCoin, settle } from "./fixtures";
+import { fixture, assetId, config, state, key, script, funding, tokenCoin, token, indexedTip, settle } from "./fixtures";
 import { signNativeInput } from "../../../packages/cove-market/crc20-protocol/test-support/signing.js";
 const address = bitcoin.payments.p2wpkh({ pubkey: key.publicKey, network: bitcoin.networks.regtest }).address!;
 async function wallet(page: Page, reject = false, beforeResponse?: () => Promise<void>) {
@@ -252,4 +252,41 @@ test("launch refuses a token carrier substituted into ordinary BTC funding befor
   await page.getByRole("button", { name: "Sign and broadcast launch" }).click();
   await expect(page.getByRole("alert").filter({ hasText: /funding contains a token carrier/i })).toBeVisible();
   expect(prompts).toHaveLength(0); expect(submitted).toBe(false);
+});
+
+
+test("one Buy review signs the full 1000-token receipt across 400 inventory and 600 issuance", async ({ page }) => {
+  await fixture(page); const prompts = await wallet(page); let submitted = 0;
+  const inventoryState = { ...state, issuedAtoms: 400n * core.atomsPerToken, inventoryAtoms: 400n * core.atomsPerToken,
+    vault: { ...state.vault, sats: 1000n } };
+  await page.route("**/api/crc/v1/tokens/*", async (route) => {
+    await route.fulfill({ json: { ok: true, data: { indexedTip, token: { ...token, mintedAtoms: "40000000000", circulatingAtoms: "0", inventoryAtoms: "40000000000",
+      vault: { ...token.vault, btcSats: "1000" }, coreState: core.encodeProtocolDto(inventoryState) } } } });
+  });
+  await page.route("**/api/crc/v1/backing/buy/quote", async (route) => {
+    const amount = BigInt(route.request().postDataJSON().amountAtoms), q = core.quoteBuy(inventoryState, amount);
+    await route.fulfill({ json: { ok: true, data: { quote: { assetId, amountAtoms: amount.toString(), vaultOutpoint: core.outpoint(state.vault),
+      grossSats: q.grossSats.toString(), protocolFeeSats: q.protocolFeeSats.toString(), creatorFeeSats: q.creatorFeeSats.toString(),
+      buyerTotalSats: (q.grossSats + q.protocolFeeSats + q.creatorFeeSats).toString() } } } });
+  });
+  await page.route("**/api/crc/v1/backing/buy/build", async (route) => {
+    const body = route.request().postDataJSON(); expect(body.amountAtoms).toBe("100000000000");
+    const plan = core.buildBuy({ state: inventoryState, funding: [funding], amountAtoms: BigInt(body.amountAtoms), recipientScriptHex: script, changeScriptHex: script, minerFeeSats: 400n });
+    expect(plan.outputs[plan.recipientVout]?.atoms).toBe(1000n * core.atomsPerToken);
+    await route.fulfill({ json: { ok: true, data: build(plan, { operation: "mint-buy", assetId, amountAtoms: body.amountAtoms,
+      inventoryBuyAtoms: "40000000000", newlyMintedAtoms: "60000000000", vaultOutpoint: core.outpoint(state.vault), feeTier: "standard" }) } });
+  });
+  await page.route("**/api/crc/v1/backing/buy/submit", async (route) => {
+    const psbt = bitcoin.Psbt.fromBase64(route.request().postDataJSON().signedPsbtBase64);
+    expect(psbt.data.inputs[0]!.finalScriptWitness).toBeUndefined();
+    expect(psbt.data.inputs.slice(1).every(input => input.finalScriptWitness)).toBe(true); submitted++;
+    await route.fulfill({ json: { ok: true, data: { txid: "ff".repeat(32) } } });
+  });
+  await page.goto(`/token/${encodeURIComponent(assetId)}`); await settle(page); await connect(page);
+  await page.getByRole("textbox", { name: "Tokens to buy" }).fill("1000");
+  await page.getByRole("button", { name: "Review buy" }).click();
+  await page.getByRole("button", { name: "Build trade", exact: true }).click();
+  await page.getByRole("button", { name: "Sign buy" }).click();
+  await expect(page.getByText(`Submitted: ${"ff".repeat(32)}`)).toBeVisible();
+  expect(prompts).toHaveLength(1); expect(submitted).toBe(1);
 });

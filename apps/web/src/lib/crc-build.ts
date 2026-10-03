@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import * as bitcoin from "bitcoinjs-lib";
 import * as core from "@crclaunch/crc20-protocol";
-import { createPlanPsbt } from "@crclaunch/crc20-adapters";
+import { createPlanPsbt, describeCurveBuy } from "@crclaunch/crc20-adapters";
 import { loadCrcCoreLedger } from "@crclaunch/crc20-state";
 import { AppError, unsignedTxDigest } from "@crclaunch/cove-app";
 import {
@@ -101,7 +101,10 @@ function selectPlan(
         plan = build(candidates.slice(0, count), target);
         break;
       } catch (error) {
-        if (error instanceof Error && error.message === "expired or unavailable offer, or missing current height")
+        if (
+          error instanceof Error &&
+          error.message === "expired or unavailable offer, or missing current height"
+        )
           throw new AppError("STATE_CHANGED", error.message);
         if (
           !(error instanceof Error) ||
@@ -353,7 +356,7 @@ export async function buildCrcTradeSession(
             changeScriptHex: params.walletScriptHex,
             minerFeeSats,
           })
-        : (state.inventoryAtoms ? core.buildInventoryBuy : core.buildMint)({
+        : core.buildBuy({
             state,
             funding,
             amountAtoms: params.amountAtoms,
@@ -367,12 +370,18 @@ export async function buildCrcTradeSession(
     publicKeys: publicKeys(plan, [...tokens, ...candidates]),
   });
   const digest = unsignedTxDigest(psbt);
-  const operation =
-    params.operation === "sell" ? "sell" : state.inventoryAtoms ? "inventory-buy" : "mint-buy";
+  const buy = params.operation === "buy" ? describeCurveBuy(state, params.amountAtoms) : undefined;
+  const operation = buy?.operation ?? "sell";
   const intent = {
     operation,
     assetId: params.asset.assetId,
     amountAtoms: params.amountAtoms.toString(),
+    ...(buy
+      ? {
+          inventoryBuyAtoms: buy.inventoryBuyAtoms.toString(),
+          newlyMintedAtoms: buy.newlyMintedAtoms.toString(),
+        }
+      : {}),
     vaultOutpoint: core.outpoint(state.vault),
     walletScriptHex: params.walletScriptHex,
     tokenScriptHex: params.tokenScriptHex,

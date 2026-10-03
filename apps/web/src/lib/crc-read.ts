@@ -159,6 +159,12 @@ function activity(row: Record<string, unknown>) {
     valid: event.valid,
     reason: event.valid ? null : "Tracked non-protocol spend destroyed its allocations",
     amountAtoms: event.amountAtoms?.toString() ?? null,
+    ...(event.inventoryBuyAtoms === undefined
+      ? {}
+      : {
+          inventoryBuyAtoms: event.inventoryBuyAtoms.toString(),
+          newlyMintedAtoms: event.newlyMintedAtoms!.toString(),
+        }),
   };
 }
 export async function readCrcActivity(
@@ -201,6 +207,12 @@ export async function readCrcTrades(
               ? ("market" as const)
               : ("buy" as const),
         amountAtoms: event.amountAtoms!.toString(),
+        ...(event.inventoryBuyAtoms === undefined
+          ? {}
+          : {
+              inventoryBuyAtoms: event.inventoryBuyAtoms.toString(),
+              newlyMintedAtoms: event.newlyMintedAtoms!.toString(),
+            }),
         totalPriceSats: event.grossSats!.toString(),
         timestamp: Number(row.confirmed_time) * 1000,
       };
