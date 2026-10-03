@@ -1,0 +1,43 @@
+{
+  "network": "signet",
+  "configuredRequestsPerSecond": "default3",
+  "lane": "public",
+  "measurements": [
+    {
+      "probe": 1,
+      "method": "getblockchaininfo",
+      "budgetWaitMs": 266,
+      "httpMs": 237,
+      "httpStatus": 200,
+      "totalMs": 507,
+      "chain": "signet"
+    },
+    {
+      "probe": 2,
+      "method": "getblockchaininfo",
+      "budgetWaitMs": 850,
+      "httpMs": 194,
+      "httpStatus": 200,
+      "totalMs": 1056,
+      "chain": "signet"
+    },
+    {
+      "probe": 3,
+      "method": "getblockchaininfo",
+      "budgetWaitMs": 894,
+      "httpMs": 193,
+      "httpStatus": 200,
+      "totalMs": 1092,
+      "chain": "signet"
+    },
+    {
+      "probe": 4,
+      "method": "getblockchaininfo",
+      "budgetWaitMs": 960,
+      "httpMs": 204,
+      "httpStatus": 200,
+      "totalMs": 1177,
+      "chain": "signet"
+    }
+  ]
+}
