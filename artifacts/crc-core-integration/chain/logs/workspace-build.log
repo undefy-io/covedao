@@ -1,0 +1,245 @@
+
+> crc-launch@0.1.0 build /home/andefy/dev/covedao
+> turbo run build
+
+• turbo 2.11.2
+
+   • Packages in scope: @crclaunch/bitcoin, @crclaunch/config, @crclaunch/cove-app, @crclaunch/cove-covenant, @crclaunch/cove-economics, @crclaunch/cove-guardian, @crclaunch/cove-indexer, @crclaunch/cove-mainnet, @crclaunch/cove-market, @crclaunch/cove-recovery, @crclaunch/cove-simplicity, @crclaunch/cove-vault, @crclaunch/cove-wire, @crclaunch/crc20-adapters, @crclaunch/crc20-base, @crclaunch/crc20-curve, @crclaunch/crc20-guardian, @crclaunch/crc20-ledger, @crclaunch/crc20-protocol, @crclaunch/crc20-state, @crclaunch/crc20-transactions, @crclaunch/curve, @crclaunch/db, @crclaunch/docs, @crclaunch/guardian, @crclaunch/protocol, @crclaunch/schemas, @crclaunch/wallets, @crclaunch/web, @crclaunch/worker
+   • Running build in 30 packages
+   • Remote caching disabled
+
+@crclaunch/docs:build: cache miss, executing de61dd32c6c267a8
+@crclaunch/config:build: cache hit, replaying logs f633139ba1b9a0d8
+@crclaunch/cove-wire:build: cache hit, replaying logs 42cdb2d3c9440d8d
+@crclaunch/config:build: 
+@crclaunch/config:build: > @crclaunch/config@0.1.0 build /home/andefy/dev/covedao/packages/config
+@crclaunch/config:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/config:build: 
+@crclaunch/crc20-base:build: cache hit, replaying logs df549cf963f1e4fe
+@crclaunch/crc20-base:build: 
+@crclaunch/crc20-base:build: > @crclaunch/crc20-base@0.1.0 build /home/andefy/dev/covedao/packages/crc20-base
+@crclaunch/crc20-base:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/crc20-base:build: 
+@crclaunch/cove-wire:build: 
+@crclaunch/cove-wire:build: > @crclaunch/cove-wire@0.1.0 build /home/andefy/dev/covedao/packages/cove-wire
+@crclaunch/cove-wire:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-wire:build: 
+@crclaunch/curve:build: cache hit, replaying logs 10c6b044facbd3fe
+@crclaunch/curve:build: 
+@crclaunch/curve:build: > @crclaunch/curve@0.1.0 build /home/andefy/dev/covedao/packages/curve
+@crclaunch/curve:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/curve:build: 
+@crclaunch/db:build: cache hit, replaying logs c03830d3bae80d12
+@crclaunch/bitcoin:build: cache hit, replaying logs a646c0a13d18ad52
+@crclaunch/db:build: 
+@crclaunch/db:build: > @crclaunch/db@0.1.0 build /home/andefy/dev/covedao/packages/db
+@crclaunch/db:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/db:build: 
+@crclaunch/bitcoin:build: 
+@crclaunch/bitcoin:build: > @crclaunch/bitcoin@0.1.0 build /home/andefy/dev/covedao/packages/bitcoin
+@crclaunch/bitcoin:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/bitcoin:build: 
+@crclaunch/protocol:build: cache hit, replaying logs f75cebde14bf068b
+@crclaunch/protocol:build: 
+@crclaunch/protocol:build: > @crclaunch/protocol@0.1.0 build /home/andefy/dev/covedao/packages/protocol
+@crclaunch/protocol:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/protocol:build: 
+@crclaunch/schemas:build: cache hit, replaying logs d92642b492cc2021
+@crclaunch/cove-economics:build: cache hit, replaying logs 7bfd5343aaf71d67
+@crclaunch/cove-economics:build: 
+@crclaunch/cove-economics:build: > @crclaunch/cove-economics@0.1.0 build /home/andefy/dev/covedao/packages/cove-economics
+@crclaunch/cove-economics:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-economics:build: 
+@crclaunch/schemas:build: 
+@crclaunch/schemas:build: > @crclaunch/schemas@0.1.0 build /home/andefy/dev/covedao/packages/schemas
+@crclaunch/schemas:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/schemas:build: 
+@crclaunch/crc20-curve:build: cache hit, replaying logs d965fe046154a2c6
+@crclaunch/crc20-curve:build: 
+@crclaunch/crc20-curve:build: > @crclaunch/crc20-curve@0.1.0 build /home/andefy/dev/covedao/packages/crc20-curve
+@crclaunch/crc20-curve:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/crc20-curve:build: 
+@crclaunch/cove-covenant:build: cache hit, replaying logs 70014974b9280e10
+@crclaunch/cove-covenant:build: 
+@crclaunch/cove-covenant:build: > @crclaunch/cove-covenant@0.1.0 build /home/andefy/dev/covedao/packages/cove-covenant
+@crclaunch/cove-covenant:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-covenant:build: 
+@crclaunch/cove-vault:build: cache hit, replaying logs 803b70090959e20d
+@crclaunch/cove-vault:build: 
+@crclaunch/cove-vault:build: > @crclaunch/cove-vault@0.1.0 build /home/andefy/dev/covedao/packages/cove-vault
+@crclaunch/cove-vault:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-vault:build: 
+@crclaunch/cove-simplicity:build: cache hit, replaying logs 9f38990c49f1b59b
+@crclaunch/cove-simplicity:build: 
+@crclaunch/cove-simplicity:build: > @crclaunch/cove-simplicity@0.1.0 build /home/andefy/dev/covedao/packages/cove-simplicity
+@crclaunch/cove-simplicity:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-simplicity:build: 
+@crclaunch/wallets:build: cache hit, replaying logs 7de127aa5e5aa5e8
+@crclaunch/wallets:build: 
+@crclaunch/wallets:build: > @crclaunch/wallets@0.1.0 build /home/andefy/dev/covedao/packages/wallets
+@crclaunch/wallets:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/wallets:build: 
+@crclaunch/crc20-transactions:build: cache hit, replaying logs b43681d8e86a6056
+@crclaunch/crc20-transactions:build: 
+@crclaunch/crc20-transactions:build: > @crclaunch/crc20-transactions@0.1.0 build /home/andefy/dev/covedao/packages/crc20-transactions
+@crclaunch/crc20-transactions:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/crc20-transactions:build: 
+@crclaunch/cove-mainnet:build: cache hit, replaying logs 63ae78786e45bdc3
+@crclaunch/cove-mainnet:build: 
+@crclaunch/cove-mainnet:build: > @crclaunch/cove-mainnet@0.1.0 build /home/andefy/dev/covedao/packages/cove-mainnet
+@crclaunch/cove-mainnet:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-mainnet:build: 
+@crclaunch/crc20-ledger:build: cache hit, replaying logs c0bf7b338bcc8df8
+@crclaunch/crc20-ledger:build: 
+@crclaunch/crc20-ledger:build: > @crclaunch/crc20-ledger@0.1.0 build /home/andefy/dev/covedao/packages/crc20-ledger
+@crclaunch/crc20-ledger:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/crc20-ledger:build: 
+@crclaunch/cove-guardian:build: cache hit, replaying logs 4d6d5a52e81521d0
+@crclaunch/cove-guardian:build: 
+@crclaunch/cove-guardian:build: > @crclaunch/cove-guardian@0.1.0 build /home/andefy/dev/covedao/packages/cove-guardian
+@crclaunch/cove-guardian:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-guardian:build: 
+@crclaunch/cove-recovery:build: cache hit, replaying logs dd32a4bc9bea0d71
+@crclaunch/cove-recovery:build: 
+@crclaunch/cove-recovery:build: > @crclaunch/cove-recovery@0.1.0 build /home/andefy/dev/covedao/packages/cove-recovery
+@crclaunch/cove-recovery:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-recovery:build: 
+@crclaunch/crc20-protocol:build: cache hit, replaying logs c08c67c9c19351b8
+@crclaunch/crc20-protocol:build: 
+@crclaunch/crc20-protocol:build: > @crclaunch/crc20-protocol@0.1.0 build /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+@crclaunch/crc20-protocol:build: > tsc -p tsconfig.build.json && node build-browser.mjs
+@crclaunch/crc20-protocol:build: 
+@crclaunch/crc20-state:build: cache hit, replaying logs 0213c9161ebfcbca
+@crclaunch/crc20-state:build: 
+@crclaunch/crc20-state:build: > @crclaunch/crc20-state@0.1.0 build /home/andefy/dev/covedao/packages/crc20-state
+@crclaunch/crc20-state:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/crc20-state:build: 
+@crclaunch/cove-indexer:build: cache hit, replaying logs 71f90fbf71409d7c
+@crclaunch/cove-indexer:build: 
+@crclaunch/cove-indexer:build: > @crclaunch/cove-indexer@0.1.0 build /home/andefy/dev/covedao/packages/cove-indexer
+@crclaunch/cove-indexer:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-indexer:build: 
+@crclaunch/cove-market:build: cache hit, replaying logs 938021dba48ff5f9
+@crclaunch/cove-market:build: 
+@crclaunch/cove-market:build: > @crclaunch/cove-market@0.1.0 build /home/andefy/dev/covedao/packages/cove-market
+@crclaunch/cove-market:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-market:build: 
+@crclaunch/crc20-adapters:build: cache hit, replaying logs 8d95ab2cbbde866a
+@crclaunch/crc20-adapters:build: 
+@crclaunch/crc20-adapters:build: > @crclaunch/crc20-adapters@0.1.0 build /home/andefy/dev/covedao/packages/crc20-adapters
+@crclaunch/crc20-adapters:build: > tsc -p tsconfig.build.json && node build-browser.mjs
+@crclaunch/crc20-adapters:build: 
+@crclaunch/cove-app:build: cache hit, replaying logs 2a7f5d19cbd5c0c1
+@crclaunch/cove-app:build: 
+@crclaunch/cove-app:build: > @crclaunch/cove-app@0.1.0 build /home/andefy/dev/covedao/packages/cove-app
+@crclaunch/cove-app:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-app:build: 
+@crclaunch/worker:build: cache hit, replaying logs 5c3fb2ee8870e1ca
+@crclaunch/worker:build: 
+@crclaunch/worker:build: > @crclaunch/worker@0.1.0 build /home/andefy/dev/covedao/apps/worker
+@crclaunch/worker:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/worker:build: 
+@crclaunch/guardian:build: cache hit, replaying logs 4d4f254c71186e1a
+@crclaunch/guardian:build: 
+@crclaunch/guardian:build: > @crclaunch/guardian@0.1.0 build /home/andefy/dev/covedao/apps/guardian
+@crclaunch/guardian:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/guardian:build: 
+@crclaunch/crc20-guardian:build: cache hit, replaying logs 3ef2308f0745729e
+@crclaunch/crc20-guardian:build: 
+@crclaunch/crc20-guardian:build: > @crclaunch/crc20-guardian@0.1.0 build /home/andefy/dev/covedao/packages/crc20-guardian
+@crclaunch/crc20-guardian:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/crc20-guardian:build: 
+@crclaunch/web:build: cache miss, executing 7306bef2a8e428b7
+@crclaunch/docs:build: 
+@crclaunch/docs:build: > @crclaunch/docs@0.1.0 build /home/andefy/dev/covedao/apps/docs
+@crclaunch/docs:build: > docusaurus build
+@crclaunch/docs:build: 
+@crclaunch/web:build: 
+@crclaunch/web:build: > @crclaunch/web@0.1.0 build /home/andefy/dev/covedao/apps/web
+@crclaunch/web:build: > pnpm --filter @crclaunch/docs build:web && next build
+@crclaunch/web:build: 
+@crclaunch/web:build: 
+@crclaunch/web:build: > @crclaunch/docs@0.1.0 build:web /home/andefy/dev/covedao/apps/docs
+@crclaunch/web:build: > DOCS_HASH_ROUTER=1 DOCS_BASE_URL=/ DOCS_LOCALE=en docusaurus build --out-dir ../web/public/docs && DOCS_HASH_ROUTER=1 DOCS_BASE_URL=/ DOCS_LOCALE=zh-Hans docusaurus build --locale zh-Hans --out-dir ../web/public/docs/zh-Hans
+@crclaunch/web:build: 
+@crclaunch/docs:build: [INFO] Website will be built for all these locales: 
+@crclaunch/docs:build: - en
+@crclaunch/docs:build: - zh-Hans
+@crclaunch/docs:build: [INFO] [en] Creating an optimized production build...
+@crclaunch/web:build: [INFO] [en] Creating an optimized production build...
+@crclaunch/web:build: [WARNING] docusaurus-plugin-sitemap does not support the Hash Router and will be disabled.
+@crclaunch/web:build: [webpackbar] ℹ Compiling Client
+@crclaunch/docs:build: [webpackbar] ℹ Compiling Client
+@crclaunch/docs:build: [webpackbar] ℹ Compiling Server
+@crclaunch/web:build: [webpackbar] ✔ Client: Compiled successfully in 691.85ms
+@crclaunch/web:build: [SUCCESS] Generated static files in "../web/public/docs".
+@crclaunch/web:build: [INFO] Use `npm run serve` command to test your build locally.
+@crclaunch/docs:build: [webpackbar] ✔ Server: Compiled successfully in 1.19s
+@crclaunch/docs:build: [webpackbar] ✔ Client: Compiled successfully in 1.42s
+@crclaunch/web:build: [INFO] [zh-Hans] Creating an optimized production build...
+@crclaunch/web:build: [WARNING] docusaurus-plugin-sitemap does not support the Hash Router and will be disabled.
+@crclaunch/docs:build: 
+@crclaunch/docs:build: [ERROR] Error: Unable to build website for locale en.
+@crclaunch/docs:build:     at tryToBuildLocale (/home/andefy/dev/covedao/node_modules/.pnpm/@docusaurus+core@3.10.2_@mdx-js+react@3.1.1_@types+react@19.3.0_react@19.2.8__postcss@8_b3e3054f4137c26f20a88ddbe3115a04/node_modules/@docusaurus/core/lib/commands/build/build.js:76:15)
+@crclaunch/docs:build:     at async /home/andefy/dev/covedao/node_modules/.pnpm/@docusaurus+core@3.10.2_@mdx-js+react@3.1.1_@types+react@19.3.0_react@19.2.8__postcss@8_b3e3054f4137c26f20a88ddbe3115a04/node_modules/@docusaurus/core/lib/commands/build/build.js:34:9
+@crclaunch/docs:build:     ... 4 lines matching cause stack trace ...
+@crclaunch/docs:build:     at async file:///home/andefy/dev/covedao/node_modules/.pnpm/@docusaurus+core@3.10.2_@mdx-js+react@3.1.1_@types+react@19.3.0_react@19.2.8__postcss@8_b3e3054f4137c26f20a88ddbe3115a04/node_modules/@docusaurus/core/bin/docusaurus.mjs:44:3 {
+@crclaunch/docs:build:   [cause]: Error: Docusaurus found broken links!
+@crclaunch/docs:build:   
+@crclaunch/docs:build:   Please check the pages of your site in the list below, and make sure you don't reference any path that does not exist.
+@crclaunch/docs:build:   Note: it's possible to ignore broken links with the 'onBrokenLinks' Docusaurus configuration, and let the build pass.
+@crclaunch/docs:build:   
+@crclaunch/docs:build:   It looks like some of the broken links we found appear in many pages of your site.
+@crclaunch/docs:build:   Maybe those broken links appear on all pages through your site layout?
+@crclaunch/docs:build:   We recommend that you check your theme configuration for such links (particularly, theme navbar and footer).
+@crclaunch/docs:build:   Frequent broken links are linking to:
+@crclaunch/docs:build:   - /
+@crclaunch/docs:build:   
+@crclaunch/docs:build:   Exhaustive list of all broken links found:
+@crclaunch/docs:build:   - Broken link on source page path = /covedao/404.html:
+@crclaunch/docs:build:      -> linking to /
+@crclaunch/docs:build:   - Broken link on source page path = /covedao/how-covenants-work:
+@crclaunch/docs:build:      -> linking to /
+@crclaunch/docs:build:   - Broken link on source page path = /covedao/how-it-works:
+@crclaunch/docs:build:      -> linking to /
+@crclaunch/docs:build:   - Broken link on source page path = /covedao/the-vault:
+@crclaunch/docs:build:      -> linking to /
+@crclaunch/docs:build:   - Broken link on source page path = /covedao/where-covenants-kick-in:
+@crclaunch/docs:build:      -> linking to /
+@crclaunch/docs:build:   - Broken link on source page path = /covedao/:
+@crclaunch/docs:build:      -> linking to /
+@crclaunch/docs:build:   
+@crclaunch/docs:build:       at throwError (/home/andefy/dev/covedao/node_modules/.pnpm/@docusaurus+logger@3.10.2/node_modules/@docusaurus/logger/lib/logger.js:80:11)
+@crclaunch/docs:build:       at reportBrokenLinks (/home/andefy/dev/covedao/node_modules/.pnpm/@docusaurus+core@3.10.2_@mdx-js+react@3.1.1_@types+react@19.3.0_react@19.2.8__postcss@8_b3e3054f4137c26f20a88ddbe3115a04/node_modules/@docusaurus/core/lib/server/brokenLinks.js:250:47)
+@crclaunch/docs:build:       at handleBrokenLinks (/home/andefy/dev/covedao/node_modules/.pnpm/@docusaurus+core@3.10.2_@mdx-js+react@3.1.1_@types+react@19.3.0_react@19.2.8__postcss@8_b3e3054f4137c26f20a88ddbe3115a04/node_modules/@docusaurus/core/lib/server/brokenLinks.js:282:5)
+@crclaunch/docs:build:       at executeBrokenLinksCheck (/home/andefy/dev/covedao/node_modules/.pnpm/@docusaurus+core@3.10.2_@mdx-js+react@3.1.1_@types+react@19.3.0_react@19.2.8__postcss@8_b3e3054f4137c26f20a88ddbe3115a04/node_modules/@docusaurus/core/lib/commands/build/buildLocale.js:123:47)
+@crclaunch/docs:build:       at /home/andefy/dev/covedao/node_modules/.pnpm/@docusaurus+core@3.10.2_@mdx-js+react@3.1.1_@types+react@19.3.0_react@19.2.8__postcss@8_b3e3054f4137c26f20a88ddbe3115a04/node_modules/@docusaurus/core/lib/commands/build/buildLocale.js:98:67
+@crclaunch/docs:build:       at Object.async (/home/andefy/dev/covedao/node_modules/.pnpm/@docusaurus+logger@3.10.2/node_modules/@docusaurus/logger/lib/perfLogger.js:42:47)
+@crclaunch/docs:build:       at buildLocale (/home/andefy/dev/covedao/node_modules/.pnpm/@docusaurus+core@3.10.2_@mdx-js+react@3.1.1_@types+react@19.3.0_react@19.2.8__postcss@8_b3e3054f4137c26f20a88ddbe3115a04/node_modules/@docusaurus/core/lib/commands/build/buildLocale.js:98:31)
+@crclaunch/docs:build:       at async runBuildLocaleTask (/home/andefy/dev/covedao/node_modules/.pnpm/@docusaurus+core@3.10.2_@mdx-js+react@3.1.1_@types+react@19.3.0_react@19.2.8__postcss@8_b3e3054f4137c26f20a88ddbe3115a04/node_modules/@docusaurus/core/lib/commands/build/build.js:91:5)
+@crclaunch/docs:build:       at async /home/andefy/dev/covedao/node_modules/.pnpm/@docusaurus+core@3.10.2_@mdx-js+react@3.1.1_@types+react@19.3.0_react@19.2.8__postcss@8_b3e3054f4137c26f20a88ddbe3115a04/node_modules/@docusaurus/core/lib/commands/build/build.js:72:13
+@crclaunch/docs:build:       at async tryToBuildLocale (/home/andefy/dev/covedao/node_modules/.pnpm/@docusaurus+core@3.10.2_@mdx-js+react@3.1.1_@types+react@19.3.0_react@19.2.8__postcss@8_b3e3054f4137c26f20a88ddbe3115a04/node_modules/@docusaurus/core/lib/commands/build/build.js:68:9)
+@crclaunch/docs:build:       at async /home/andefy/dev/covedao/node_modules/.pnpm/@docusaurus+core@3.10.2_@mdx-js+react@3.1.1_@types+react@19.3.0_react@19.2.8__postcss@8_b3e3054f4137c26f20a88ddbe3115a04/node_modules/@docusaurus/core/lib/commands/build/build.js:34:9
+@crclaunch/docs:build:       at async mapAsyncSequential (/home/andefy/dev/covedao/node_modules/.pnpm/@docusaurus+utils@3.10.2_clean-css@5.3.3_cssnano@6.1.2_postcss@8.5.28__html-minifier-te_5909c079b7f217cbb6cd7ee27c39bce6/node_modules/@docusaurus/utils/lib/jsUtils.js:21:24)
+@crclaunch/docs:build:       at async Command.build (/home/andefy/dev/covedao/node_modules/.pnpm/@docusaurus+core@3.10.2_@mdx-js+react@3.1.1_@types+react@19.3.0_react@19.2.8__postcss@8_b3e3054f4137c26f20a88ddbe3115a04/node_modules/@docusaurus/core/lib/commands/build/build.js:33:5)
+@crclaunch/docs:build:       at async Promise.all (index 0)
+@crclaunch/docs:build:       at async runCLI (/home/andefy/dev/covedao/node_modules/.pnpm/@docusaurus+core@3.10.2_@mdx-js+react@3.1.1_@types+react@19.3.0_react@19.2.8__postcss@8_b3e3054f4137c26f20a88ddbe3115a04/node_modules/@docusaurus/core/lib/commands/cli.js:56:5)
+@crclaunch/docs:build:       at async file:///home/andefy/dev/covedao/node_modules/.pnpm/@docusaurus+core@3.10.2_@mdx-js+react@3.1.1_@types+react@19.3.0_react@19.2.8__postcss@8_b3e3054f4137c26f20a88ddbe3115a04/node_modules/@docusaurus/core/bin/docusaurus.mjs:44:3
+@crclaunch/docs:build: }
+@crclaunch/docs:build: [INFO] Docusaurus version: 3.10.2
+@crclaunch/docs:build: Node version: v24.21.0
+@crclaunch/docs:build:  ELIFECYCLE  Command failed with exit code 1.
+@crclaunch/web:build: [webpackbar] ℹ Compiling Client
+@crclaunch/web:build: /home/andefy/dev/covedao/apps/docs:
+@crclaunch/web:build:  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/docs@0.1.0 build:web: `DOCS_HASH_ROUTER=1 DOCS_BASE_URL=/ DOCS_LOCALE=en docusaurus build --out-dir ../web/public/docs && DOCS_HASH_ROUTER=1 DOCS_BASE_URL=/ DOCS_LOCALE=zh-Hans docusaurus build --locale zh-Hans --out-dir ../web/public/docs/zh-Hans`
+@crclaunch/web:build: Command failed with signal "SIGINT"
+@crclaunch/web:build:  ELIFECYCLE  Command failed.
+@crclaunch/docs#build:  ERROR  command (/home/andefy/dev/covedao/apps/docs) /home/andefy/.local/share/mise/installs/node/latest/bin/pnpm run build exited (1)
+
+ Tasks:    28 successful, 30 total
+Cached:    28 cached, 30 total
+  Time:    4.493s 
+Failed:    @crclaunch/docs#build
+
+ ERROR  run failed: command  exited (1)
+ ELIFECYCLE  Command failed with exit code 1.

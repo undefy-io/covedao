@@ -1,0 +1,43 @@
+Scope: 21 of 22 workspace projects
+packages/config build$ tsc -p tsconfig.json --noEmit
+packages/cove-wire build$ tsc -p tsconfig.json --noEmit
+packages/crc20-protocol build$ tsc -p tsconfig.build.json && node build-browser.mjs
+packages/curve build$ tsc -p tsconfig.json --noEmit
+packages/curve build: Done
+packages/config build: Done
+packages/cove-wire build: Done
+packages/crc20-protocol build: Done
+packages/bitcoin build$ tsc -p tsconfig.json --noEmit
+packages/cove-economics build$ tsc -p tsconfig.json --noEmit
+packages/crc20-adapters build$ tsc -p tsconfig.build.json && node build-browser.mjs
+packages/db build$ tsc -p tsconfig.json --noEmit
+packages/cove-economics build: Done
+packages/bitcoin build: Done
+packages/db build: Done
+packages/crc20-adapters build: Done
+packages/cove-covenant build$ tsc -p tsconfig.json --noEmit
+packages/crc20-curve build$ tsc -p tsconfig.json --noEmit
+packages/crc20-state build$ tsc -p tsconfig.json --noEmit
+packages/protocol build$ tsc -p tsconfig.json --noEmit
+packages/cove-covenant build: Done
+packages/protocol build: Done
+packages/crc20-curve build: Done
+packages/crc20-state build: Done
+packages/cove-simplicity build$ tsc -p tsconfig.json --noEmit
+packages/cove-vault build$ tsc -p tsconfig.json --noEmit
+packages/cove-simplicity build: Done
+packages/cove-vault build: Done
+packages/cove-mainnet build$ tsc -p tsconfig.json --noEmit
+packages/crc20-guardian build$ tsc -p tsconfig.json --noEmit
+packages/cove-mainnet build: Done
+packages/crc20-guardian build: Done
+packages/cove-guardian build$ tsc -p tsconfig.json --noEmit
+packages/cove-guardian build: Done
+packages/cove-indexer build$ tsc -p tsconfig.json --noEmit
+packages/cove-indexer build: Done
+packages/cove-market build$ tsc -p tsconfig.json --noEmit
+packages/cove-market build: Done
+packages/cove-app build$ tsc -p tsconfig.json --noEmit
+packages/cove-app build: Done
+apps/guardian build$ tsc -p tsconfig.json --noEmit
+apps/guardian build: Done

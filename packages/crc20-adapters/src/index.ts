@@ -277,14 +277,18 @@ function checkedResponse(prepared: PreparedSigning, response: string): bitcoin.P
       !after.witnessUtxo.script.equals(before.witnessUtxo.script)
     )
       throw new Error("wallet changed prevout");
-    for (const field of [
-      "finalScriptWitness",
-      "finalScriptSig",
-      "redeemScript",
-      "tapInternalKey",
-    ] as const)
+    for (const field of ["finalScriptWitness", "finalScriptSig"] as const)
       if (before[field] && !before[field]!.equals(after[field] ?? Buffer.alloc(0)))
         throw new Error(`wallet changed ${field}`);
+    for (const field of ["redeemScript", "tapInternalKey"] as const) {
+      if (!before[field] || before[field]!.equals(after[field] ?? Buffer.alloc(0))) continue;
+      // BIP174 finalization removes signing metadata. Only an omitted field on
+      // a finalized wallet input is allowed; core still verifies its full spend.
+      const finalizedWallet = prepared.walletInputs.some((input) => input.index === index) && after.finalScriptWitness;
+      if (after[field] || !finalizedWallet) throw new Error(`wallet changed ${field}`);
+      if (field === "redeemScript" && !bitcoin.script.compile([before.redeemScript!]).equals(after.finalScriptSig ?? Buffer.alloc(0)))
+        throw new Error("wallet changed nested redeem script spend");
+    }
     if (after.sighashType !== undefined && after.sighashType !== before.sighashType)
       throw new Error("wallet changed sighash");
   });

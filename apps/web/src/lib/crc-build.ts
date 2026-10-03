@@ -101,6 +101,8 @@ function selectPlan(
         plan = build(candidates.slice(0, count), target);
         break;
       } catch (error) {
+        if (error instanceof Error && error.message === "expired or unavailable offer, or missing current height")
+          throw new AppError("STATE_CHANGED", error.message);
         if (
           !(error instanceof Error) ||
           ![

@@ -1,0 +1,10 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ✓ src/lib/crc-browser-session.test.ts (7 tests) 43ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  23:54:05
+   Duration  479ms (transform 96ms, setup 0ms, collect 151ms, tests 43ms, environment 0ms, prepare 69ms)
+

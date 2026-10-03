@@ -1,0 +1,41 @@
+
+Running 4 tests using 1 worker
+
+  ✓  1 tests-crc-chain/lifecycle.spec.ts:40:1 › unchanged launch controls prepare, sign, register and mine an actual deployment (3.4s)
+Owned browser console: Failed to load resource: the server responded with a status of 400 (Bad Request)
+  ✓  2 tests-crc-chain/lifecycle.spec.ts:62:1 › browser 500+500 mint, 400+600 sell, inventory buy and 1000 sell agree with raw chain and durable state (30.3s)
+Owned browser console: Failed to load resource: the server responded with a status of 400 (Bad Request)
+  ✘  3 tests-crc-chain/lifecycle.spec.ts:119:1 › 1500/500 listings split on-chain and unchanged controls fill with only a nested-payment/Taproot-token buyer (20.4s)
+  -  4 tests-crc-chain/lifecycle.spec.ts:132:1 › browser service transfers one atom, Taproot seller publishes fractional terms and cancellation mines ALL signatures
+
+
+  1) tests-crc-chain/lifecycle.spec.ts:119:1 › 1500/500 listings split on-chain and unchanged controls fill with only a nested-payment/Taproot-token buyer 
+
+    Error: {"ok":false,"error":{"code":"WALLET_SIGNATURE_INVALID","message":"An unexpected error occurred.","retryable":false,"detail":"wallet changed redeemScript"}}
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      109 |   await page.getByRole("button", { name: "Connect", exact: true }).first().click();
+      110 |   const row = page.locator("tbody tr").filter({ hasText: `${listing.sellerAnchorTxid.slice(0, 12)}:${listing.sellerAnchorVout}` });
+    > 111 |   const builtResponse = page.waitForResponse((r) => r.url().endsWith("/market/reserve"));
+          |                                                                                          ^
+      112 |   const submittedResponse = page.waitForResponse((r) => r.url().endsWith("/market/buyer-sign"));
+      113 |   const before = harness.prompts.length;
+      114 |   await row.getByRole("button", { name: "Review", exact: true }).click();
+        at purchase (/home/andefy/dev/covedao/apps/web/tests-crc-chain/lifecycle.spec.ts:111:100)
+        at /home/andefy/dev/covedao/apps/web/tests-crc-chain/lifecycle.spec.ts:126:3
+
+    Error Context: test-results/lifecycle-1500-500-listing-7a467-payment-Taproot-token-buyer/error-context.md
+
+    Error Context: test-results/lifecycle-1500-500-listing-7a467-payment-Taproot-token-buyer/error-context.md
+
+  1 failed
+    tests-crc-chain/lifecycle.spec.ts:119:1 › 1500/500 listings split on-chain and unchanged controls fill with only a nested-payment/Taproot-token buyer 
+  1 did not run
+  2 passed (1.6m)
+undefined
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: playwright test -c playwright.crc-chain.config.ts

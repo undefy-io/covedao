@@ -1,0 +1,68 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP unsigned or changed wallet response never reaches Core live checks or custody
+[api] WALLET_SIGNATURE_INVALID
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP unsigned or changed wallet response never reaches Core live checks or custody
+[api] WALLET_SIGNATURE_INVALID
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP re-signed retry uses cached Guardian witness after lost response
+[api] GUARDIAN_UNAVAILABLE
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP forged offer terms and wrong network reject before live RPC or custody
+[api] WALLET_SIGNATURE_INVALID
+[api] WRONG_NETWORK
+
+stderr | src/lib/crc-core-submit.integration.test.ts > API persists READY before failed broadcast and retries exact saved bytes without custody
+[api] BROADCAST_FAILED
+
+stderr | src/lib/crc-core-submit.integration.test.ts > API admits competing advisory builds but rejects the spent vault before second custody
+[api] STATE_CHANGED
+
+ ❯ src/lib/crc-core-submit.integration.test.ts (13 tests | 1 failed) 53227ms
+   ✓ HTTP submit registers exact signed core deployment before actual broadcast and is idempotent 1896ms
+   ✓ HTTP API sends verified wallet first to actual shared Guardian and mines indexed core mint 3449ms
+   ✓ HTTP sell and inventory buy mine exact core plans, fees and allocations 7844ms
+   ✓ HTTP re-signed retry uses cached Guardian witness after lost response 4177ms
+   ✓ HTTP arbitrary transfer and one-transaction listing preserve exact core allocations 5984ms
+   ✓ core offer activation and buyer-only API fill preserve seller presign and exact fees 3322ms
+   ✓ API cancellation mines, rolls back with actual reorg, and rebroadcasts its persisted receipt 7097ms
+   × API accepts an already signed paid fill after advisory expiry and rejects new expired builds 971ms
+     → expected Error: expired or unavailable offer, or m… to match object { code: 'STATE_CHANGED', …(1) }
+   ✓ API persists READY before failed broadcast and retries exact saved bytes without custody 4180ms
+   ✓ API admits competing advisory builds but rejects the spent vault before second custody 3576ms
+   ✓ HTTP sell build replay survives consumed token inputs, funding refresh and fee changes 5067ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-core-submit.integration.test.ts > API accepts an already signed paid fill after advisory expiry and rejects new expired builds
+AssertionError: expected Error: expired or unavailable offer, or m… to match object { code: 'STATE_CHANGED', …(1) }
+
+- Expected
++ Received
+
+- Object {
+-   "code": "STATE_CHANGED",
+-   "message": StringMatching /expired/i,
+- }
++ [Error: expired or unavailable offer, or missing current height]
+
+ ❯ src/lib/crc-core-submit.integration.test.ts:767:3
+    765|   node.mine();
+    766|   expect((await sync()).tip!.height).toBe(offer.expiryHeight);
+    767|   await expect(
+       |   ^
+    768|     buildCrcOfferSession({ ...args, idempotencyKey: "http-new-expired-…
+    769|   ).rejects.toMatchObject({ code: "STATE_CHANGED", message: expect.str…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 12 passed (13)
+   Start at  00:27:46
+   Duration  55.19s (transform 992ms, setup 0ms, collect 1.68s, tests 53.23s, environment 0ms, prepare 66ms)
+
+undefined
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/lib/crc-core-submit.integration.test.ts

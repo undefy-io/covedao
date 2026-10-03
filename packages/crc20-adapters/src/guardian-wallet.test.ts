@@ -106,3 +106,16 @@ test("server completes wallet-first signatures against the exact stored plan and
     ),
   ).toThrow();
 });
+
+test("browser-finalized nested wallet signatures survive the subsequent server verification", () => {
+  const f = fixture();
+  const prepared = adapter.prepareGuardianPlanSigning(f.plan, f.ledger, {
+    network: "signet", walletInputs: [{ ...f.account, index: 1 }],
+  });
+  const completed = adapter.completeBrowserWalletSigning(prepared, f.response.toBase64(), f.ledger);
+  const original = adapter.createPlanPsbt(f.plan, "signet", { publicKeys: { 1: f.account.publicKey } }).toBase64();
+  expect(adapter.completeServerWalletSigning(f.plan, "signet", original, completed.psbtBase64, f.ledger, true).transition!.kind).toBe("mint");
+  const changed = bitcoin.Psbt.fromBase64(completed.psbtBase64);
+  changed.data.inputs[1]!.finalScriptSig = Buffer.from("00", "hex");
+  expect(() => adapter.completeServerWalletSigning(f.plan, "signet", original, changed.toBase64(), f.ledger, true)).toThrow();
+});

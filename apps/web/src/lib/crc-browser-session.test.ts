@@ -91,3 +91,15 @@ test("rejects observed token carriers disguised as ordinary final-plan funding b
   await expect(signCrcBuildSession(malicious, review, wallet, signer, observed)).rejects.toThrow(/token|funding/i);
   expect(signer).not.toHaveBeenCalled();
 });
+
+test("accepts identical persisted plans after JSONB changes object-key order while keeping wire marker bytes exact", async () => {
+  const reorder = (value: unknown): unknown => Array.isArray(value) ? value.map(reorder)
+    : value && typeof value === "object" ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => b.localeCompare(a)).map(([key, item]) => [key, reorder(item)])) : value;
+  const persisted = { ...built, intent: { ...built.intent, corePlan: reorder(built.intent.corePlan), coreConfig: reorder(built.intent.coreConfig) } };
+  const signer = vi.fn(async (base64: string) => { const psbt = bitcoin.Psbt.fromBase64(base64); psbt.signAllInputs(key); return psbt.toBase64(); });
+  await expect(signCrcBuildSession(persisted, review, wallet, signer, request)).resolves.toEqual(expect.any(String));
+  expect(signer).toHaveBeenCalledOnce();
+  const tampered = { ...persisted, intent: { ...persisted.intent, corePlan: { ...(persisted.intent.corePlan as Record<string, unknown>), markerJson: plan.markerJson.replace('"p":"crc-20"', '"p": "crc-20"') } } };
+  signer.mockClear(); await expect(signCrcBuildSession(tampered, review, wallet, signer, request)).rejects.toThrow();
+  expect(signer).not.toHaveBeenCalled();
+});

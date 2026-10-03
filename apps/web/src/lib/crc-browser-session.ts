@@ -23,7 +23,15 @@ export async function crcBrowserData<T>(request: CrcRequest, url: string, body?:
   if (!response.ok || result?.ok !== true) throw new Error(result?.error?.detail || result?.error?.message || `Request failed: ${response.status}`);
   return result.data as T;
 }
-const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+function ordered(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(ordered);
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value)
+    .sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => [key, ordered(item)]));
+  return value;
+}
+// JSONB can reorder object keys. Array order and marker JSON string bytes
+// remain significant when comparing the independently reconstructed plan.
+const same = (a: unknown, b: unknown) => JSON.stringify(ordered(a)) === JSON.stringify(ordered(b));
 const amount = (value: unknown): bigint => {
   if (typeof value !== "string" || !/^(0|[1-9]\d*)$/.test(value)) throw new Error("Invalid exact amount");
   return BigInt(value);

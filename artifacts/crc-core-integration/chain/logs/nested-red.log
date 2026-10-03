@@ -1,0 +1,33 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/crc20-adapters
+
+ ❯ src/guardian-wallet.test.ts (5 tests | 1 failed) 41ms
+   × browser-finalized nested wallet signatures survive the subsequent server verification 9ms
+     → wallet changed redeemScript
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/guardian-wallet.test.ts > browser-finalized nested wallet signatures survive the subsequent server verification
+Error: wallet changed redeemScript
+ ❯ src/index.ts:287:15
+    285|     ] as const)
+    286|       if (before[field] && !before[field]!.equals(after[field] ?? Buff…
+    287|         throw new Error(`wallet changed ${field}`);
+       |               ^
+    288|     if (after.sighashType !== undefined && after.sighashType !== befor…
+    289|       throw new Error("wallet changed sighash");
+ ❯ checkedResponse src/index.ts:271:24
+ ❯ completeGuardianWalletSigning src/index.ts:339:16
+ ❯ Module.completeServerWalletSigning src/index.ts:385:31
+ ❯ src/guardian-wallet.test.ts:117:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  00:09:22
+   Duration  337ms (transform 79ms, setup 0ms, collect 110ms, tests 41ms, environment 0ms, prepare 73ms)
+
+undefined
+/home/andefy/dev/covedao/packages/crc20-adapters:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/guardian-wallet.test.ts

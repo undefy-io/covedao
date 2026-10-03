@@ -12,7 +12,8 @@
     "test": "vitest run --passWithNoTests",
     "test:e2e": "playwright test",
     "test:e2e:crc": "playwright test -c playwright.crc.config.ts",
-    "test:e2e:crc-core": "playwright test -c playwright.crc-core.config.ts"
+    "test:e2e:crc-core": "playwright test -c playwright.crc-core.config.ts",
+    "test:e2e:crc-chain": "playwright test -c playwright.crc-chain.config.ts"
   },
   "dependencies": {
     "@crclaunch/bitcoin": "workspace:*",
@@ -26,7 +27,10 @@
     "@crclaunch/cove-market": "workspace:*",
     "@crclaunch/cove-vault": "workspace:*",
     "@crclaunch/cove-wire": "workspace:*",
+    "@crclaunch/crc20-adapters": "workspace:*",
     "@crclaunch/crc20-curve": "workspace:*",
+    "@crclaunch/crc20-protocol": "workspace:*",
+    "@crclaunch/crc20-state": "workspace:*",
     "@crclaunch/crc20-transactions": "workspace:*",
     "@crclaunch/curve": "workspace:*",
     "@crclaunch/db": "workspace:*",
@@ -44,17 +48,16 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "tiny-secp256k1": "^2.2.3",
-    "zod": "^3.24.1",
-    "@crclaunch/crc20-protocol": "workspace:*",
-    "@crclaunch/crc20-adapters": "workspace:*",
-    "@crclaunch/crc20-state": "workspace:*"
+    "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@crclaunch/crc20-guardian": "workspace:*",
     "@playwright/test": "^1.49.1",
     "@types/node": "^22.10.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "autoprefixer": "^10.4.20",
+    "esbuild": "^0.21.5",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.2",

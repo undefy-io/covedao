@@ -766,7 +766,7 @@ test("API accepts an already signed paid fill after advisory expiry and rejects 
   expect((await sync()).tip!.height).toBe(offer.expiryHeight);
   await expect(
     buildCrcOfferSession({ ...args, idempotencyKey: "http-new-expired-fill" }),
-  ).rejects.toThrow(/expired/i);
+  ).rejects.toMatchObject({ code: "STATE_CHANGED", message: expect.stringMatching(/expired/i) });
   expect(await buildCrcOfferSession(args)).toEqual(built);
   const result = await submit(built.sessionId, signed, "purchase");
   node.mine();

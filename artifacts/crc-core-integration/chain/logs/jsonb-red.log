@@ -1,0 +1,28 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-browser-session.test.ts (7 tests | 1 failed) 44ms
+   × accepts identical persisted plans after JSONB changes object-key order while keeping wire marker bytes exact 9ms
+     → promise rejected "Error: Server plan differs from reconstru…" instead of resolving
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-browser-session.test.ts > accepts identical persisted plans after JSONB changes object-key order while keeping wire marker bytes exact
+AssertionError: promise rejected "Error: Server plan differs from reconstru…" instead of resolving
+ ❯ src/lib/crc-browser-session.test.ts:100:79
+
+
+Caused by: Error: Server plan differs from reconstructed core terms
+ ❯ Module.signCrcBuildSession src/lib/crc-browser-session.ts:131:84
+ ❯ src/lib/crc-browser-session.test.ts:100:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+   Start at  23:53:19
+   Duration  505ms (transform 121ms, setup 0ms, collect 189ms, tests 44ms, environment 0ms, prepare 68ms)
+
+undefined
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/lib/crc-browser-session.test.ts

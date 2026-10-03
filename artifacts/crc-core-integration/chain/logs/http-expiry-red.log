@@ -1,0 +1,56 @@
+
+> @crclaunch/web@0.1.0 test:e2e:crc-chain /home/andefy/dev/covedao/apps/web
+> playwright test -c playwright.crc-chain.config.ts
+
+
+Running 7 tests using 1 worker
+
+  ✓  1 tests-crc-chain/lifecycle.spec.ts:49:1 › unchanged launch controls prepare, sign, register and mine an actual deployment (4.4s)
+Owned browser console: Failed to load resource: the server responded with a status of 400 (Bad Request)
+  ✓  2 tests-crc-chain/lifecycle.spec.ts:71:1 › browser 500+500 mint, 400+600 sell, inventory buy and 1000 sell agree with raw chain and durable state (37.3s)
+  ✓  3 tests-crc-chain/lifecycle.spec.ts:128:1 › 1500/500 listings split on-chain and unchanged controls fill with only a nested-payment/Taproot-token buyer (33.9s)
+  ✓  4 tests-crc-chain/lifecycle.spec.ts:141:1 › browser service transfers one atom, Taproot seller publishes fractional terms and cancellation mines ALL signatures (18.7s)
+Owned browser console: Failed to load resource: the server responded with a status of 400 (Bad Request)
+  ✓  5 tests-crc-chain/lifecycle.spec.ts:183:1 › competing browser builds have one winner and spent-vault rejection precedes second custody (9.8s)
+  ✘  6 tests-crc-chain/lifecycle.spec.ts:213:1 › a browser-reviewed paid presign settles after expiry while a fresh expired purchase refuses (4.8s)
+  -  7 tests-crc-chain/lifecycle.spec.ts:241:1 › actual browser/HTTP boundaries reject changed PSBT, token-as-BTC funding and re-signed wrong presign
+
+
+  1) tests-crc-chain/lifecycle.spec.ts:213:1 › a browser-reviewed paid presign settles after expiry while a fresh expired purchase refuses 
+
+    Error: page.waitForResponse: Target page, context or browser has been closed
+
+      114 |   const row = page.locator("tbody tr").filter({ hasText: `${listing.sellerAnchorTxid.slice(0, 12)}:${listing.sellerAnchorVout}` });
+      115 |   const builtResponse = page.waitForResponse((r) => r.url().endsWith("/market/reserve"));
+    > 116 |   const submittedResponse = page.waitForResponse((r) => r.url().endsWith("/market/buyer-sign"));
+          |                                  ^
+      117 |   const before = harness.prompts.length;
+      118 |   await row.getByRole("button", { name: "Review", exact: true }).click();
+      119 |   const built = await (await builtResponse).json(); expect(built.ok, JSON.stringify(built)).toBe(true);
+        at purchase (/home/andefy/dev/covedao/apps/web/tests-crc-chain/lifecycle.spec.ts:116:34)
+
+    Error: expect(received).toMatch(expected)
+
+    Expected pattern: /expired/i
+    Received string:  "{\"ok\":false,\"error\":{\"code\":\"INTERNAL_ERROR\",\"message\":\"An unexpected error occurred.\",\"retryable\":false}}"
+
+      232 |       method: "POST", headers: { "content-type": "application/json", "x-real-ip": "127.0.0.5" },
+      233 |       body: JSON.stringify({ offerId: listing.id, walletScriptHex: alice.script, tokenScriptHex: alice.ordinalsScript,
+    > 234 |         walletPublicKeyHex: alice.publicKey, tokenPublicKeyHex: alice.publicKey, minerFeeSats: 1000,
+          |                                                                                                     ^
+      235 |         paymentFunding: checked.tokenFreeOutpoints, idempotencyKey: crypto.randomUUID() }),
+      236 |     });
+      237 |     const refusal = await expired.json(); expect(refusal.ok).toBe(false); expect(JSON.stringify(refusal)).toMatch(/expired/i);
+        at /home/andefy/dev/covedao/apps/web/tests-crc-chain/lifecycle.spec.ts:234:107
+
+    Error Context: test-results/lifecycle-a-browser-review-5c56a-sh-expired-purchase-refuses/error-context.md
+
+    Error Context: test-results/lifecycle-a-browser-review-5c56a-sh-expired-purchase-refuses/error-context.md
+
+  1 failed
+    tests-crc-chain/lifecycle.spec.ts:213:1 › a browser-reviewed paid presign settles after expiry while a fresh expired purchase refuses 
+  1 did not run
+  5 passed (2.5m)
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 test:e2e:crc-chain: `playwright test -c playwright.crc-chain.config.ts`
+Exit status 1

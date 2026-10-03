@@ -1,0 +1,289 @@
+• turbo 2.11.2
+
+   • Packages in scope: @crclaunch/bitcoin, @crclaunch/config, @crclaunch/cove-app, @crclaunch/cove-covenant, @crclaunch/cove-economics, @crclaunch/cove-guardian, @crclaunch/cove-indexer, @crclaunch/cove-mainnet, @crclaunch/cove-market, @crclaunch/cove-recovery, @crclaunch/cove-simplicity, @crclaunch/cove-vault, @crclaunch/cove-wire, @crclaunch/crc20-adapters, @crclaunch/crc20-base, @crclaunch/crc20-curve, @crclaunch/crc20-guardian, @crclaunch/crc20-ledger, @crclaunch/crc20-protocol, @crclaunch/crc20-state, @crclaunch/crc20-transactions, @crclaunch/curve, @crclaunch/db, @crclaunch/docs, @crclaunch/guardian, @crclaunch/protocol, @crclaunch/schemas, @crclaunch/wallets, @crclaunch/web, @crclaunch/worker
+   • Running build in 30 packages
+   • Remote caching disabled
+
+@crclaunch/config:build: cache hit, replaying logs f633139ba1b9a0d8
+@crclaunch/config:build: 
+@crclaunch/config:build: > @crclaunch/config@0.1.0 build /home/andefy/dev/covedao/packages/config
+@crclaunch/config:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/config:build: 
+@crclaunch/cove-wire:build: cache hit, replaying logs 42cdb2d3c9440d8d
+@crclaunch/cove-wire:build: 
+@crclaunch/cove-wire:build: > @crclaunch/cove-wire@0.1.0 build /home/andefy/dev/covedao/packages/cove-wire
+@crclaunch/cove-wire:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-wire:build: 
+@crclaunch/crc20-base:build: cache hit, replaying logs df549cf963f1e4fe
+@crclaunch/crc20-base:build: 
+@crclaunch/crc20-base:build: > @crclaunch/crc20-base@0.1.0 build /home/andefy/dev/covedao/packages/crc20-base
+@crclaunch/crc20-base:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/crc20-base:build: 
+@crclaunch/schemas:build: cache hit, replaying logs d92642b492cc2021
+@crclaunch/schemas:build: 
+@crclaunch/schemas:build: > @crclaunch/schemas@0.1.0 build /home/andefy/dev/covedao/packages/schemas
+@crclaunch/schemas:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/schemas:build: 
+@crclaunch/crc20-protocol:build: cache hit, replaying logs c08c67c9c19351b8
+@crclaunch/crc20-protocol:build: 
+@crclaunch/crc20-protocol:build: > @crclaunch/crc20-protocol@0.1.0 build /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+@crclaunch/crc20-protocol:build: > tsc -p tsconfig.build.json && node build-browser.mjs
+@crclaunch/crc20-protocol:build: 
+@crclaunch/curve:build: cache hit, replaying logs 10c6b044facbd3fe
+@crclaunch/curve:build: 
+@crclaunch/curve:build: > @crclaunch/curve@0.1.0 build /home/andefy/dev/covedao/packages/curve
+@crclaunch/curve:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/curve:build: 
+@crclaunch/docs:build: cache hit, replaying logs de61dd32c6c267a8
+@crclaunch/docs:build: 
+@crclaunch/docs:build: > @crclaunch/docs@0.1.0 build /home/andefy/dev/covedao/apps/docs
+@crclaunch/docs:build: > docusaurus build
+@crclaunch/docs:build: 
+@crclaunch/docs:build: [INFO] Website will be built for all these locales: 
+@crclaunch/docs:build: - en
+@crclaunch/docs:build: - zh-Hans
+@crclaunch/docs:build: [INFO] [en] Creating an optimized production build...
+@crclaunch/docs:build: [webpackbar] ℹ Compiling Client
+@crclaunch/docs:build: [webpackbar] ℹ Compiling Server
+@crclaunch/docs:build: [webpackbar] ✔ Server: Compiled successfully in 833.51ms
+@crclaunch/docs:build: [webpackbar] ✔ Client: Compiled successfully in 870.32ms
+@crclaunch/docs:build: [SUCCESS] Generated static files in "build".
+@crclaunch/docs:build: [INFO] [zh-Hans] Creating an optimized production build...
+@crclaunch/docs:build: [webpackbar] ℹ Compiling Client
+@crclaunch/docs:build: [webpackbar] ℹ Compiling Server
+@crclaunch/docs:build: [webpackbar] ✔ Server: Compiled successfully in 408.62ms
+@crclaunch/docs:build: [webpackbar] ✔ Client: Compiled successfully in 492.59ms
+@crclaunch/docs:build: [SUCCESS] Generated static files in "build/zh-Hans".
+@crclaunch/docs:build: [INFO] Use `npm run serve` command to test your build locally.
+@crclaunch/crc20-adapters:build: cache hit, replaying logs 8d95ab2cbbde866a
+@crclaunch/crc20-adapters:build: 
+@crclaunch/crc20-adapters:build: > @crclaunch/crc20-adapters@0.1.0 build /home/andefy/dev/covedao/packages/crc20-adapters
+@crclaunch/crc20-adapters:build: > tsc -p tsconfig.build.json && node build-browser.mjs
+@crclaunch/crc20-adapters:build: 
+@crclaunch/cove-economics:build: cache hit, replaying logs 7bfd5343aaf71d67
+@crclaunch/cove-economics:build: 
+@crclaunch/cove-economics:build: > @crclaunch/cove-economics@0.1.0 build /home/andefy/dev/covedao/packages/cove-economics
+@crclaunch/cove-economics:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-economics:build: 
+@crclaunch/db:build: cache hit, replaying logs c03830d3bae80d12
+@crclaunch/db:build: 
+@crclaunch/db:build: > @crclaunch/db@0.1.0 build /home/andefy/dev/covedao/packages/db
+@crclaunch/db:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/db:build: 
+@crclaunch/bitcoin:build: cache hit, replaying logs a646c0a13d18ad52
+@crclaunch/bitcoin:build: 
+@crclaunch/bitcoin:build: > @crclaunch/bitcoin@0.1.0 build /home/andefy/dev/covedao/packages/bitcoin
+@crclaunch/bitcoin:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/bitcoin:build: 
+@crclaunch/crc20-curve:build: cache hit, replaying logs d965fe046154a2c6
+@crclaunch/crc20-curve:build: 
+@crclaunch/crc20-curve:build: > @crclaunch/crc20-curve@0.1.0 build /home/andefy/dev/covedao/packages/crc20-curve
+@crclaunch/crc20-curve:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/crc20-curve:build: 
+@crclaunch/cove-covenant:build: cache hit, replaying logs 70014974b9280e10
+@crclaunch/cove-covenant:build: 
+@crclaunch/cove-covenant:build: > @crclaunch/cove-covenant@0.1.0 build /home/andefy/dev/covedao/packages/cove-covenant
+@crclaunch/cove-covenant:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-covenant:build: 
+@crclaunch/crc20-state:build: cache hit, replaying logs 0213c9161ebfcbca
+@crclaunch/crc20-state:build: 
+@crclaunch/crc20-state:build: > @crclaunch/crc20-state@0.1.0 build /home/andefy/dev/covedao/packages/crc20-state
+@crclaunch/crc20-state:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/crc20-state:build: 
+@crclaunch/protocol:build: cache hit, replaying logs f75cebde14bf068b
+@crclaunch/protocol:build: 
+@crclaunch/protocol:build: > @crclaunch/protocol@0.1.0 build /home/andefy/dev/covedao/packages/protocol
+@crclaunch/protocol:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/protocol:build: 
+@crclaunch/cove-simplicity:build: cache hit, replaying logs 9f38990c49f1b59b
+@crclaunch/cove-simplicity:build: 
+@crclaunch/cove-simplicity:build: > @crclaunch/cove-simplicity@0.1.0 build /home/andefy/dev/covedao/packages/cove-simplicity
+@crclaunch/cove-simplicity:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-simplicity:build: 
+@crclaunch/cove-vault:build: cache hit, replaying logs 803b70090959e20d
+@crclaunch/cove-vault:build: 
+@crclaunch/cove-vault:build: > @crclaunch/cove-vault@0.1.0 build /home/andefy/dev/covedao/packages/cove-vault
+@crclaunch/cove-vault:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-vault:build: 
+@crclaunch/wallets:build: cache hit, replaying logs 7de127aa5e5aa5e8
+@crclaunch/wallets:build: 
+@crclaunch/wallets:build: > @crclaunch/wallets@0.1.0 build /home/andefy/dev/covedao/packages/wallets
+@crclaunch/wallets:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/wallets:build: 
+@crclaunch/crc20-transactions:build: cache hit, replaying logs b43681d8e86a6056
+@crclaunch/crc20-transactions:build: 
+@crclaunch/crc20-transactions:build: > @crclaunch/crc20-transactions@0.1.0 build /home/andefy/dev/covedao/packages/crc20-transactions
+@crclaunch/crc20-transactions:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/crc20-transactions:build: 
+@crclaunch/cove-recovery:build: cache hit, replaying logs dd32a4bc9bea0d71
+@crclaunch/cove-recovery:build: 
+@crclaunch/cove-recovery:build: > @crclaunch/cove-recovery@0.1.0 build /home/andefy/dev/covedao/packages/cove-recovery
+@crclaunch/cove-recovery:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-recovery:build: 
+@crclaunch/cove-mainnet:build: cache hit, replaying logs 63ae78786e45bdc3
+@crclaunch/cove-mainnet:build: 
+@crclaunch/cove-mainnet:build: > @crclaunch/cove-mainnet@0.1.0 build /home/andefy/dev/covedao/packages/cove-mainnet
+@crclaunch/cove-mainnet:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-mainnet:build: 
+@crclaunch/crc20-ledger:build: cache hit, replaying logs c0bf7b338bcc8df8
+@crclaunch/crc20-ledger:build: 
+@crclaunch/crc20-ledger:build: > @crclaunch/crc20-ledger@0.1.0 build /home/andefy/dev/covedao/packages/crc20-ledger
+@crclaunch/crc20-ledger:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/crc20-ledger:build: 
+@crclaunch/cove-guardian:build: cache hit, replaying logs 4d6d5a52e81521d0
+@crclaunch/cove-guardian:build: 
+@crclaunch/cove-guardian:build: > @crclaunch/cove-guardian@0.1.0 build /home/andefy/dev/covedao/packages/cove-guardian
+@crclaunch/cove-guardian:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-guardian:build: 
+@crclaunch/cove-indexer:build: cache hit, replaying logs 71f90fbf71409d7c
+@crclaunch/cove-indexer:build: 
+@crclaunch/cove-indexer:build: > @crclaunch/cove-indexer@0.1.0 build /home/andefy/dev/covedao/packages/cove-indexer
+@crclaunch/cove-indexer:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-indexer:build: 
+@crclaunch/crc20-guardian:build: cache hit, replaying logs 3ef2308f0745729e
+@crclaunch/crc20-guardian:build: 
+@crclaunch/crc20-guardian:build: > @crclaunch/crc20-guardian@0.1.0 build /home/andefy/dev/covedao/packages/crc20-guardian
+@crclaunch/crc20-guardian:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/crc20-guardian:build: 
+@crclaunch/cove-market:build: cache hit, replaying logs 938021dba48ff5f9
+@crclaunch/cove-market:build: 
+@crclaunch/cove-market:build: > @crclaunch/cove-market@0.1.0 build /home/andefy/dev/covedao/packages/cove-market
+@crclaunch/cove-market:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-market:build: 
+@crclaunch/cove-app:build: cache hit, replaying logs 2a7f5d19cbd5c0c1
+@crclaunch/cove-app:build: 
+@crclaunch/cove-app:build: > @crclaunch/cove-app@0.1.0 build /home/andefy/dev/covedao/packages/cove-app
+@crclaunch/cove-app:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-app:build: 
+@crclaunch/web:build: cache miss, executing 3abba82d4b8321f5
+@crclaunch/web:build: 
+@crclaunch/web:build: > @crclaunch/web@0.1.0 build /home/andefy/dev/covedao/apps/web
+@crclaunch/web:build: > pnpm --filter @crclaunch/docs build:web && next build
+@crclaunch/web:build: 
+@crclaunch/web:build: 
+@crclaunch/web:build: > @crclaunch/docs@0.1.0 build:web /home/andefy/dev/covedao/apps/docs
+@crclaunch/web:build: > DOCS_HASH_ROUTER=1 DOCS_BASE_URL=/ DOCS_LOCALE=en docusaurus build --out-dir ../web/public/docs && DOCS_HASH_ROUTER=1 DOCS_BASE_URL=/ DOCS_LOCALE=zh-Hans docusaurus build --locale zh-Hans --out-dir ../web/public/docs/zh-Hans
+@crclaunch/web:build: 
+@crclaunch/web:build: [INFO] [en] Creating an optimized production build...
+@crclaunch/web:build: [WARNING] docusaurus-plugin-sitemap does not support the Hash Router and will be disabled.
+@crclaunch/web:build: [webpackbar] ℹ Compiling Client
+@crclaunch/web:build: [webpackbar] ✔ Client: Compiled successfully in 441.69ms
+@crclaunch/web:build: [SUCCESS] Generated static files in "../web/public/docs".
+@crclaunch/web:build: [INFO] Use `npm run serve` command to test your build locally.
+@crclaunch/web:build: [INFO] [zh-Hans] Creating an optimized production build...
+@crclaunch/web:build: [WARNING] docusaurus-plugin-sitemap does not support the Hash Router and will be disabled.
+@crclaunch/web:build: [webpackbar] ℹ Compiling Client
+@crclaunch/web:build: [webpackbar] ✔ Client: Compiled successfully in 417.72ms
+@crclaunch/web:build: [SUCCESS] Generated static files in "../web/public/docs/zh-Hans".
+@crclaunch/web:build: [INFO] Use `npm run serve` command to test your build locally.
+@crclaunch/web:build:    ▲ Next.js 15.5.26
+@crclaunch/web:build:    - Experiments (use with caution):
+@crclaunch/web:build:      · clientTraceMetadata
+@crclaunch/web:build: 
+@crclaunch/web:build:    Creating an optimized production build ...
+@crclaunch/web:build:  ✓ Compiled successfully in 11.4s
+@crclaunch/web:build:    Skipping linting
+@crclaunch/web:build:    Checking validity of types ...
+@crclaunch/web:build:    Collecting page data ...
+@crclaunch/web:build:    Generating static pages (0/11) ...
+@crclaunch/web:build:    Generating static pages (2/11) 
+@crclaunch/web:build:    Generating static pages (5/11) 
+@crclaunch/web:build:    Generating static pages (8/11) 
+@crclaunch/web:build:  ✓ Generating static pages (11/11)
+@crclaunch/web:build:    Finalizing page optimization ...
+@crclaunch/web:build:    Collecting build traces ...
+@crclaunch/web:build: 
+@crclaunch/web:build: Route (app)                                                 Size  First Load JS
+@crclaunch/web:build: ┌ ƒ /                                                    3.93 kB         1.4 MB
+@crclaunch/web:build: ├ ƒ /_not-found                                             1 kB         176 kB
+@crclaunch/web:build: ├ ƒ /activity                                            3.23 kB         1.4 MB
+@crclaunch/web:build: ├ ƒ /api/crc/v1/activity                                   277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/crc/v1/backing/buy/build                          277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/crc/v1/backing/buy/quote                          277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/crc/v1/backing/buy/submit                         277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/crc/v1/backing/sell/build                         277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/crc/v1/backing/sell/quote                         277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/crc/v1/backing/sell/submit                        277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/crc/v1/fees                                       277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/crc/v1/launch/build                               277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/crc/v1/launch/submit                              277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/crc/v1/market/[operation]                         277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/crc/v1/market/status                              277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/crc/v1/tokens                                     277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/crc/v1/tokens/[assetId]                           277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/crc/v1/tokens/[assetId]/activity                  277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/crc/v1/tokens/[assetId]/candles                   277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/crc/v1/tokens/[assetId]/market                    277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/crc/v1/tokens/[assetId]/utxos                     277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/crc/v1/trading/status                             277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/crc/v1/wallet/[address]/balances                  277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/crc/v1/wallet/utxos                               277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/dev/wallet                                        277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/activity                                       277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/backing/buy/build                              277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/backing/buy/plan                               277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/backing/buy/quote                              277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/backing/buy/quote-sats                         277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/backing/buy/submit                             277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/backing/redeem/build                           277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/backing/redeem/quote                           277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/backing/redeem/submit                          277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/fees                                           277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/launch/build                                   277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/launch/prepare                                 277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/launch/submit                                  277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/market/fills/[fillId]                          277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/market/fills/[fillId]/build                    277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/market/fills/[fillId]/buyer-signature          277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/market/fills/[fillId]/finalize                 277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/market/listings                                277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/market/listings/[listingId]/cancel             277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/market/listings/[listingId]/cancel/prepare     277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/market/listings/[listingId]/reserve            277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/market/listings/[listingId]/reserve/prepare    277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/market/listings/prepare                        277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/status                                         277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/tokens                                         277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/tokens/[tokenId]                               277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/tokens/[tokenId]/activity                      277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/tokens/[tokenId]/buy/routes                    277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/tokens/[tokenId]/candles                       277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/tokens/[tokenId]/holders                       277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/tokens/[tokenId]/market                        277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/tokens/sparklines                              277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/transfer/build                                 277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/transfer/submit                                277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/tx/[txid]                                      277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/wallet/[address]/portfolio                     277 B         175 kB
+@crclaunch/web:build: ├ ƒ /api/v3/wallet/utxos                                   277 B         175 kB
+@crclaunch/web:build: ├ ○ /apple-icon.png                                          0 B            0 B
+@crclaunch/web:build: ├ ƒ /explore                                             7.04 kB        1.41 MB
+@crclaunch/web:build: ├ ○ /icon.png                                                0 B            0 B
+@crclaunch/web:build: ├ ƒ /launch                                              4.17 kB        2.85 MB
+@crclaunch/web:build: ├ ƒ /market                                              8.18 kB        2.87 MB
+@crclaunch/web:build: ├ ƒ /token/[tokenId]                                     19.2 kB        2.88 MB
+@crclaunch/web:build: └ ƒ /wallet                                              9.81 kB        2.87 MB
+@crclaunch/web:build: + First Load JS shared by all                             175 kB
+@crclaunch/web:build:   ├ chunks/2079-f35c58be8f7376a7.js                       117 kB
+@crclaunch/web:build:   ├ chunks/298fdf74-aa6ccb9e05c98900.js                  54.2 kB
+@crclaunch/web:build:   └ other shared chunks (total)                          3.32 kB
+@crclaunch/web:build: 
+@crclaunch/web:build: 
+@crclaunch/web:build: ○  (Static)   prerendered as static content
+@crclaunch/web:build: ƒ  (Dynamic)  server-rendered on demand
+@crclaunch/web:build: 
+@crclaunch/guardian:build: cache hit, replaying logs 4d4f254c71186e1a
+@crclaunch/guardian:build: 
+@crclaunch/guardian:build: > @crclaunch/guardian@0.1.0 build /home/andefy/dev/covedao/apps/guardian
+@crclaunch/guardian:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/guardian:build: 
+@crclaunch/worker:build: cache hit, replaying logs 5c3fb2ee8870e1ca
+@crclaunch/worker:build: 
+@crclaunch/worker:build: > @crclaunch/worker@0.1.0 build /home/andefy/dev/covedao/apps/worker
+@crclaunch/worker:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/worker:build: 
+
+ Tasks:    30 successful, 30 total
+Cached:    29 cached, 30 total
+  Time:    39.648s 
+
