@@ -1,0 +1,354 @@
+{
+  "measuredAt": "2026-10-03T10:22:44.279236+00:00",
+  "note": "Sequential single observations per endpoint using curl, preserving assets/history. Wallet immediate repeats within five-second cache TTL. Quotes and funding-check POSTs do not build/sign/broadcast. Wallet UTXO GET updates ordinary funding cache. No signed requests replayed.",
+  "results": [
+    {
+      "origin": "local",
+      "endpoint": "status",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 15.3,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "local",
+      "endpoint": "trading/status",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 6.8,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "local",
+      "endpoint": "market/status",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 7.1,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "local",
+      "endpoint": "fees",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 7.9,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "local",
+      "endpoint": "tokens",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 11.1,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "local",
+      "endpoint": "activity",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 6.6,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "local",
+      "endpoint": "token",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 10.4,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "local",
+      "endpoint": "activity",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 7.9,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "local",
+      "endpoint": "candles",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 6.2,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "local",
+      "endpoint": "market",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 7.5,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "local",
+      "endpoint": "token-utxos",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 10.4,
+      "ok": true,
+      "error": null,
+      "utxoCount": 1
+    },
+    {
+      "origin": "local",
+      "endpoint": "balances",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 7.2,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "local",
+      "endpoint": "listings",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 9.8,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "local",
+      "endpoint": "buy-quote",
+      "method": "POST",
+      "status": 200,
+      "durationMs": 12.4,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "local",
+      "endpoint": "mixed-buy-quote",
+      "method": "POST",
+      "status": 200,
+      "durationMs": 16.4,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "local",
+      "endpoint": "sell-quote",
+      "method": "POST",
+      "status": 200,
+      "durationMs": 15.8,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "local",
+      "endpoint": "funding-check",
+      "method": "POST",
+      "status": 200,
+      "durationMs": 14.2,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "local",
+      "endpoint": "wallet-utxos",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 1861.6,
+      "ok": true,
+      "error": null,
+      "utxoCount": 29
+    },
+    {
+      "origin": "local",
+      "endpoint": "wallet-utxos-immediate-repeat",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 16.8,
+      "ok": true,
+      "error": null,
+      "utxoCount": 29
+    },
+    {
+      "origin": "tunnel",
+      "endpoint": "status",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 110.2,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "tunnel",
+      "endpoint": "trading/status",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 115.0,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "tunnel",
+      "endpoint": "market/status",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 156.6,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "tunnel",
+      "endpoint": "fees",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 106.6,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "tunnel",
+      "endpoint": "tokens",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 112.9,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "tunnel",
+      "endpoint": "activity",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 163.7,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "tunnel",
+      "endpoint": "token",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 131.1,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "tunnel",
+      "endpoint": "activity",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 133.2,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "tunnel",
+      "endpoint": "candles",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 166.9,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "tunnel",
+      "endpoint": "market",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 137.3,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "tunnel",
+      "endpoint": "token-utxos",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 136.2,
+      "ok": true,
+      "error": null,
+      "utxoCount": 1
+    },
+    {
+      "origin": "tunnel",
+      "endpoint": "balances",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 125.2,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "tunnel",
+      "endpoint": "listings",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 101.7,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "tunnel",
+      "endpoint": "buy-quote",
+      "method": "POST",
+      "status": 200,
+      "durationMs": 139.0,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "tunnel",
+      "endpoint": "mixed-buy-quote",
+      "method": "POST",
+      "status": 200,
+      "durationMs": 142.9,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "tunnel",
+      "endpoint": "sell-quote",
+      "method": "POST",
+      "status": 200,
+      "durationMs": 136.6,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "tunnel",
+      "endpoint": "funding-check",
+      "method": "POST",
+      "status": 200,
+      "durationMs": 116.4,
+      "ok": true,
+      "error": null
+    },
+    {
+      "origin": "tunnel",
+      "endpoint": "wallet-utxos",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 131.2,
+      "ok": true,
+      "error": null,
+      "utxoCount": 29
+    },
+    {
+      "origin": "tunnel",
+      "endpoint": "wallet-utxos-immediate-repeat",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 116.3,
+      "ok": true,
+      "error": null,
+      "utxoCount": 29
+    }
+  ]
+}

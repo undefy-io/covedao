@@ -1,0 +1,55 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP unsigned or changed wallet response never reaches Core live checks or custody
+[api] WALLET_SIGNATURE_INVALID
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP unsigned or changed wallet response never reaches Core live checks or custody
+[api] WALLET_SIGNATURE_INVALID
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP re-signed retry uses cached Guardian witness after lost response
+[api] GUARDIAN_UNAVAILABLE
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP forged offer terms and wrong network reject before live RPC or custody
+[api] WALLET_SIGNATURE_INVALID
+[api] WRONG_NETWORK
+
+stderr | src/lib/crc-core-submit.integration.test.ts > API persists READY before failed broadcast and retries exact saved bytes without custody
+[api] BROADCAST_FAILED
+
+stderr | src/lib/crc-core-submit.integration.test.ts > API admits competing advisory builds but rejects the spent vault before second custody
+[api] STATE_CHANGED
+
+stderr | src/lib/crc-core-submit.integration.test.ts > stored buy intent cannot misstate receipt or split while wallet/Guardian signing is pending
+[api] CLIENT_INTENT_MISMATCH
+
+stderr | src/lib/crc-core-submit.integration.test.ts > stored buy intent cannot misstate receipt or split while wallet/Guardian signing is pending
+[api] CLIENT_INTENT_MISMATCH
+
+stderr | src/lib/crc-core-submit.integration.test.ts > stored buy intent cannot misstate receipt or split while wallet/Guardian signing is pending
+[api] CLIENT_INTENT_MISMATCH
+
+stderr | src/lib/crc-core-submit.integration.test.ts > stored buy intent cannot misstate receipt or split while wallet/Guardian signing is pending
+[api] CLIENT_INTENT_MISMATCH
+
+ ✓ src/lib/crc-core-submit.integration.test.ts (17 tests) 86873ms
+   ✓ HTTP submit registers exact signed core deployment before actual broadcast and is idempotent 1640ms
+   ✓ HTTP API sends verified wallet first to actual shared Guardian and mines indexed core mint 2431ms
+   ✓ HTTP sell and inventory buy mine exact core plans, fees and allocations 6241ms
+   ✓ HTTP re-signed retry uses cached Guardian witness after lost response 2886ms
+   ✓ HTTP arbitrary transfer and one-transaction listing preserve exact core allocations 4771ms
+   ✓ core offer activation and buyer-only API fill preserve seller presign and exact fees 2870ms
+   ✓ API cancellation mines, rolls back with actual reorg, and rebroadcasts its persisted receipt 6012ms
+   ✓ API accepts an already signed paid fill after advisory expiry and rejects new expired builds 2792ms
+   ✓ API persists READY before failed broadcast and retries exact saved bytes without custody 3168ms
+   ✓ API admits competing advisory builds but rejects the spent vault before second custody 2776ms
+   ✓ HTTP sell build replay survives consumed token inputs, funding refresh and fee changes 3528ms
+   ✓ full consumer buy400/sell400/buy1000 records total1000, inventory400 and new600, then repeat100 and reorg 20293ms
+   ✓ consumer buy400/list300/buyer-only fill returns100 without an extra split transaction 7554ms
+   ✓ three-input sell retains live fences and READY recovery with fewer RPC calls at the real shared quota 14245ms
+
+ Test Files  1 passed (1)
+      Tests  17 passed (17)
+   Start at  10:22:50
+   Duration  88.84s (transform 996ms, setup 0ms, collect 1.67s, tests 86.87s, environment 0ms, prepare 60ms)
+
