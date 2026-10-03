@@ -287,6 +287,13 @@ export async function persistCrcCoreBlock(
           eventJson: core.encodeProtocolDto(event),
         })),
       );
+    // Only canonical, protocol-accepted chain events acknowledge browser broadcasts.
+    const observedTxids = [...new Set(accepted.events.map(event => event.txid))];
+    if (observedTxids.length) await tx.execute(sql`
+      UPDATE crc_sessions SET status='BROADCAST', updated_at=now()
+      WHERE network=${selected === "bitcoin" ? "mainnet" : selected} AND status='READY'
+      AND txid IN (${sql.join(observedTxids.map(id => sql`${id}`), sql`, `)})
+    `);
     await tx.insert(schema.crcUndo).values({
       network: selected,
       height: BigInt(block.height),

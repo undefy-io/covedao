@@ -16,6 +16,7 @@ import {
 } from "./crc-session";
 import type { CrcNetwork } from "./crc-read";
 import { parseCrcLaunchMetadata, saveCrcLaunchMetadata } from "./crc-metadata";
+import { readyTransactionId } from "./crc-ready-transaction";
 type SubmitParams = {
   db: Database;
   network: CrcNetwork;
@@ -133,9 +134,20 @@ export function finalizeCrcPsbt(psbt: bitcoin.Psbt): bitcoin.Transaction {
   }
   return psbt.extractTransaction();
 }
-export async function submitCrcSession(
-  params: SubmitParams,
-): Promise<{ txid: string; status: "BROADCAST" }> {
+export type CrcReadyTransaction = { network: CrcNetwork; status: "READY" | "BROADCAST"; rawTxHex: string; txid: string };
+function readyReceipt(params: SubmitParams, session: Session): CrcReadyTransaction {
+  if (!session.signedRawHex || !session.txid || readyTransactionId(session.signedRawHex, session.psbtBase64) !== session.txid)
+    throw new Error("Stored CRC transaction identity mismatch");
+  return { network: params.network, status: session.status === "BROADCAST" ? "BROADCAST" : "READY", rawTxHex: session.signedRawHex, txid: session.txid };
+}
+export async function prepareCrcSession(params: SubmitParams): Promise<CrcReadyTransaction> {
+  return completeCrcSession(params, true) as Promise<CrcReadyTransaction>;
+}
+/** Regtest fixture relay. Public HTTP routes exclusively use preparation. */
+export async function submitCrcSession(params: SubmitParams): Promise<{ txid: string; status: "BROADCAST" }> {
+  return completeCrcSession(params, false) as Promise<{ txid: string; status: "BROADCAST" }>;
+}
+async function completeCrcSession(params: SubmitParams, clientBroadcast: boolean) {
   const session = await getCrcBuildSession(params.db, params.network, params.sessionId);
   if (!session || !operationMatches(session.operation, params.expectedOperation))
     throw new AppError("CLIENT_INTENT_MISMATCH", "Unknown CRC build session or operation");
@@ -144,7 +156,7 @@ export async function submitCrcSession(
     session.signedRawHex &&
     session.txid
   )
-    return broadcastReady(params, session);
+    return clientBroadcast ? readyReceipt(params, session) : broadcastReady(params, session);
   if (session.expiresAt.getTime() <= Date.now())
     throw new AppError("STATE_CHANGED", "CRC build session expired");
   if (params.signedPsbtBase64.length > 750000)
@@ -199,12 +211,12 @@ export async function submitCrcSession(
           "CRC buy inventory breakdown differs from signed transition",
         );
   }
-  await timed(params, "live_before_sign", () => assertLive(params, ledger, verified.transaction));
   const signedHash = createHash("sha256").update(params.signedPsbtBase64).digest("hex");
   const claim = await claimCrcBuildSession(params.db, params.network, params.sessionId, signedHash);
   if (!claim?.claimId)
     throw new AppError("STATE_CHANGED", "CRC build session is already signing or expired");
   try {
+    await timed(params, "live_before_sign", () => assertLive(params, ledger, verified.transaction));
     let transaction = verified.transaction;
     if (guardianPending) {
       let response: Response;
@@ -279,7 +291,7 @@ export async function submitCrcSession(
     }
     ledger = await context(params, session, config);
     core.validateFinalTransaction(plan, transaction, ledger);
-    const network = await timed(params, "live_before_broadcast", () => assertLive(params, ledger, transaction));
+    const network = await timed(params, "live_before_ready", () => assertLive(params, ledger, transaction));
     const txid = core.parseRawTransaction(transaction.rawHex).txid;
     if (session.operation === "deploy") {
       await saveCrcRegistration(params.db, config, transaction);
@@ -299,6 +311,7 @@ export async function submitCrcSession(
       txid,
       claim.claimId,
     );
+    if (clientBroadcast) return { network: params.network, status: "READY" as const, rawTxHex: transaction.rawHex, txid };
     // Fresh submission already has a verified current transaction and live
     // fence. Persist READY before I/O, but leave observation/reconstruction to
     // the recovery path; a lost response is retried from these exact bytes.

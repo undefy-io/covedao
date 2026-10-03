@@ -5,6 +5,9 @@ import type { WalletFundingCoin } from "./funding-candidates";
 
 export class PublicChainUnavailable extends Error {}
 export class PublicChainInvalid extends Error {}
+class PublicRpcError extends PublicChainInvalid {
+  constructor(readonly code: number, message: string) { super(message); }
+}
 export class PublicProofTooLarge extends PublicChainUnavailable {}
 type Requester = (url: string, init?: RequestInit) => Promise<Response>;
 type Coin = Required<WalletFundingCoin>;
@@ -19,7 +22,7 @@ async function observations<T>(tasks: Promise<T>[]): Promise<T[]> {
   return settled.map(item => (item as PromiseFulfilledResult<T>).value);
 }
 
-/** Public browser reads only: no custody credentials, PostgreSQL or Node RPC provider. */
+/** Public browser chain access: no custody credentials, PostgreSQL or Node RPC provider. */
 export class CrcPublicChain {
   private readonly rpcUrl: string;
   private readonly indexUrl: string;
@@ -51,7 +54,7 @@ export class CrcPublicChain {
       if (signal.aborted) abort();
     });
   }
-  private async body(url: string, init?: RequestInit): Promise<string> {
+  private async body(url: string, init?: RequestInit, rpc = false): Promise<string> {
     const deadline = Date.now() + this.timeoutMs;
     const signal = AbortSignal.timeout(this.timeoutMs);
     if (this.active < 4) this.active++;
@@ -87,7 +90,7 @@ export class CrcPublicChain {
           });
           continue;
         }
-        if (!response.ok) { await response.body?.cancel(); throw new PublicChainUnavailable("Public chain lookup failed"); }
+        if (!response.ok && !(rpc && response.status === 500)) { await response.body?.cancel(); throw new PublicChainUnavailable("Public chain lookup failed"); }
         const reader = response.body?.getReader();
         if (!reader) throw new PublicChainInvalid("Public chain returned an empty response");
         const parts: Uint8Array[] = []; let size = 0;
@@ -111,9 +114,11 @@ export class CrcPublicChain {
   }
   private async rpc(method: string, params: unknown[]): Promise<unknown> {
     const text = await this.body(this.rpcUrl, { method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "1.0", id: method, method, params }) });
+      body: JSON.stringify({ jsonrpc: "1.0", id: method, method, params }) }, true);
     let result;
     try { result = JSON.parse(text); } catch { throw new PublicChainInvalid("Public RPC returned invalid JSON"); }
+    if (result?.error && Number.isSafeInteger(result.error.code) && typeof result.error.message === "string")
+      throw new PublicRpcError(result.error.code, result.error.message.slice(0, 500));
     if (!result || typeof result !== "object" || result.error || !Object.hasOwn(result, "result"))
       throw new PublicChainInvalid("Public RPC returned invalid data");
     return result.result;
@@ -132,6 +137,28 @@ export class CrcPublicChain {
         throw new PublicChainInvalid("Public address index network differs from RPC");
       this.identity = { until: Date.now() + 5000, blocks: info.blocks! }; return info.blocks!;
     });
+  }
+  async broadcast(rawHex: string, txid: string, signal?: AbortSignal): Promise<string> {
+    if (rawHex.length > 750000 || !/^(?:[a-f0-9]{2})+$/.test(rawHex) || core.parseRawTransaction(rawHex).txid !== txid)
+      throw new PublicChainInvalid("Broadcast transaction identity mismatch");
+    return this.join(`broadcast:${txid}`, async () => {
+      await this.checkIdentity();
+      let result: unknown;
+      try { result = await this.rpc("sendrawtransaction", [rawHex]); }
+      catch (error) {
+        if (error instanceof PublicRpcError && error.code === -27) return txid;
+        // A lost response or duplicate-mempool rejection may follow acceptance.
+        // Query this exact txid directly; a cached funding parent is not evidence.
+        try {
+          const observed = await this.rpc("getrawtransaction", [txid, false]);
+          if (typeof observed === "string" && observed.length <= 750000 && core.parseRawTransaction(observed).txid === txid) return txid;
+        } catch { /* Keep the original failure and saved receipt for explicit retry. */ }
+        throw error;
+      }
+      if (result !== txid) throw new PublicChainInvalid("Public RPC broadcast identity mismatch");
+      this.addresses.clear();
+      return txid;
+    }, signal);
   }
   async coins(address: string, signal?: AbortSignal): Promise<Coin[]> {
     return this.join(`address:${address}`, async () => {

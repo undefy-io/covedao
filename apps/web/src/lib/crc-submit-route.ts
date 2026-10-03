@@ -1,7 +1,7 @@
 import { fail, handleError, ok, readJson, strField } from "./api";
 import { getCrcMutationServices } from "./crc-mutation";
 import { checkCrcRateLimit } from "./crc-rate-limit";
-import { submitCrcSession } from "./crc-submit";
+import { prepareCrcSession, submitCrcSession } from "./crc-submit";
 
 export async function crcSubmitRoute(
   req: Request,
@@ -22,8 +22,10 @@ export async function crcSubmitRoute(
     if (!/^[0-9a-fA-F-]{36}$/.test(sessionId) || !signedPsbtBase64) {
       return fail("BAD_REQUEST", "A build session and signed PSBT are required", 400);
     }
+    if (config.network !== "regtest" && body.broadcast !== "client")
+      return finish(fail("CLIENT_UPDATE_REQUIRED", "Refresh this page before submitting the transaction.", 409));
     return finish(ok(
-      await submitCrcSession({
+      await (body.broadcast === "client" ? prepareCrcSession : submitCrcSession)({
         db,
         network: config.network,
         provider,

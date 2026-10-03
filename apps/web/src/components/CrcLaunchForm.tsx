@@ -2,6 +2,7 @@
 import { crcWalletData } from "@/lib/crc-wallet-data";
 
 import Link from "next/link";
+import { submitCrcFromBrowser } from "@/lib/crc-client-broadcast";
 import { signCrcBuildSession } from "@/lib/crc-browser-session";
 import { useEffect, useState } from "react";
 import { useWallet } from "./WalletProvider";
@@ -96,13 +97,10 @@ export function CrcLaunchForm() {
     setError(""); setBusy(true);
     try {
       checkMetadata(built.intent.metadata);
-      const signedPsbtBase64 = await signCrcBuildSession(built, { operation: "deploy", ticker: ticker.trim().toUpperCase(), minerFeeSats: built.intent.minerFeeSats },
-        { network, address, publicKey, ordinalsAddress, ordinalsPublicKey }, signPsbt);
-      const response = await fetch("/api/crc/v1/launch/submit", { method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sessionId: built.sessionId, signedPsbtBase64 }) });
-      const body = await response.json();
-      if (!response.ok || !body.ok) throw new Error(body.error?.detail || body.error?.message || "Could not submit launch");
-      setTxid(body.data.txid); setBuilt(null);
+      const submitted = await submitCrcFromBrowser(built, {network, address}, "/api/crc/v1/launch/submit", () =>
+        signCrcBuildSession(built, { operation: "deploy", ticker: ticker.trim().toUpperCase(), minerFeeSats: built.intent.minerFeeSats },
+          { network, address, publicKey, ordinalsAddress, ordinalsPublicKey }, signPsbt));
+      setTxid(submitted.txid); setBuilt(null);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not submit launch"); }
     finally { setBusy(false); }
   }

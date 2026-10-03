@@ -3,6 +3,7 @@ import { crcWalletData } from "@/lib/crc-wallet-data";
 
 import Link from "next/link";
 import { atomsPerToken, capAtoms, carrierSats, curveStepAtoms, decodeProtocolDto, type Plan } from "@crclaunch/crc20-protocol";
+import { submitCrcFromBrowser } from "@/lib/crc-client-broadcast";
 import { crcBuiltWalletDelta, signCrcBuildSession } from "@/lib/crc-browser-session";
 import { useEffect, useState } from "react";
 import { useCrcRead } from "../lib/use-crc-read";
@@ -76,15 +77,10 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
       if (builtTrade) {
         if (builtTrade.intent.feeTier !== feeTier || builtTrade.intent.amountAtoms !== amountAtoms ||
           builtTrade.intent.vaultOutpoint !== quote.vaultOutpoint) throw new Error("Trade changed. Review a new quote");
-        const signedPsbtBase64 = await signCrcBuildSession(builtTrade, { operation: side, assetId, amountAtoms, minerFeeSats: builtTrade.intent.minerFeeSats },
-          { network, address, publicKey, ordinalsAddress, ordinalsPublicKey }, signPsbt);
-        const submitResponse = await fetch(`/api/crc/v1/backing/${side}/submit`, {
-          method: "POST", headers: { "content-type": "application/json" },
-          body: JSON.stringify({ sessionId: builtTrade.sessionId, signedPsbtBase64 }),
-        });
-        const submitted = await submitResponse.json();
-        if (!submitResponse.ok || !submitted.ok) throw new Error(submitted.error?.detail || submitted.error?.message || "Trade was not submitted");
-        setSubmittedTxid(submitted.data.txid);
+        const submitted = await submitCrcFromBrowser(builtTrade, {network, address}, `/api/crc/v1/backing/${side}/submit`, () =>
+          signCrcBuildSession(builtTrade, { operation: side, assetId, amountAtoms, minerFeeSats: builtTrade.intent.minerFeeSats },
+            { network, address, publicKey, ordinalsAddress, ordinalsPublicKey }, signPsbt));
+        setSubmittedTxid(submitted.txid);
         setBuiltTrade(null);
         setQuote(null);
         return;

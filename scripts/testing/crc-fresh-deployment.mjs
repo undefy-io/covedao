@@ -47,7 +47,7 @@ async function until(check, seconds = 60) {
   }
   throw new Error(`owned deployment readiness timeout: ${last?.message ?? "not ready"}`);
 }
-export async function deployFreshRegtest({ appImage, guardianImage, output, inventoryFirst = false, browserUi = false, baselineImage }) {
+export async function deployFreshRegtest({ appImage, guardianImage, output, inventoryFirst = false, clientBroadcast = false, browserUi = false, baselineImage }) {
   const manifest = deploymentManifest(appImage, guardianImage);
   const evidence = { network: "regtest", actualExtension: false, manifest: { prefix: manifest.prefix }, checks: [], createdAt: new Date().toISOString() };
   const owned = [], directory = mkdtempSync(join(tmpdir(), "crc-fresh-deploy-"));
@@ -170,12 +170,20 @@ export async function deployFreshRegtest({ appImage, guardianImage, output, inve
     const transact = async (built, path, height) => {
       const psbt = bitcoin.Psbt.fromBase64(built.psbtBase64);
       psbt.data.inputs.forEach((input, index) => { if (input.witnessUtxo?.script.equals(payment.output)) psbt.signInput(index, key); });
-      const receipt = await api(path, { sessionId: built.sessionId, signedPsbtBase64: psbt.toBase64() });
-      const raw = rpc("getrawtransaction", receipt.txid);
+      const receipt = await api(path, { sessionId: built.sessionId, signedPsbtBase64: psbt.toBase64(), ...(clientBroadcast ? {broadcast:"client"} : {}) });
+      if (clientBroadcast) {
+        if (receipt.status !== "READY" || receipt.network !== "regtest" || sql("select status from crc_sessions where id='"+built.sessionId+"'") !== "READY") throw new Error("preparation did not save READY");
+        if (rpc("getrawmempool").includes(receipt.txid)) throw new Error("backend unexpectedly broadcast");
+        const replay = await api(path,{sessionId:built.sessionId,signedPsbtBase64:"saved receipt",broadcast:"client"});
+        if (JSON.stringify(replay) !== JSON.stringify(receipt)) throw new Error("prepared receipt replay differs");
+        if (rpc("sendrawtransaction",receipt.rawTxHex) !== receipt.txid) throw new Error("client relay identity differs");
+      }
+      const raw = clientBroadcast ? receipt.rawTxHex : rpc("getrawtransaction", receipt.txid);
       const verification = `(async()=>{const core=await import('@crclaunch/crc20-protocol');const {createDb}=await import('@crclaunch/db');const {loadCrcCoreLedger}=await import('@crclaunch/crc20-state');const ledger=await loadCrcCoreLedger(createDb(process.env.COVE_DATABASE_URL),'regtest');const intent=${JSON.stringify(built.intent)};const plan=core.decodeProtocolDto(intent.corePlan),config=core.decodeProtocolDto(intent.coreConfig);const actual=core.validateFinalTransaction(plan,{rawHex:${JSON.stringify(raw)},prevouts:plan.inputs},{...ledger,config});if(actual!==${JSON.stringify(receipt.txid)})throw new Error('validated txid differs');console.log(JSON.stringify({operation:intent.operation,minerFeeSats:core.sats(plan.minerFeeSats).toString()}));process.exit(0);})().catch(e=>{console.error(e);process.exit(1)});`;
       const checked = appCommand("pnpm", "--filter", "@crclaunch/web", "exec", "tsx", "-e", verification);
       rpc("generatetoaddress", 1, miner);
       await until(() => sql("select height from crc_cursors where network='regtest'") === String(height));
+      if (clientBroadcast && sql("select status from crc_sessions where id='"+built.sessionId+"'") !== "BROADCAST") throw new Error("indexer did not observe browser broadcast");
       (evidence.fixtureTransactions ??= []).push({ txid: receipt.txid, rawHex: raw, verification: checked.trim().split("\n").at(-1), sessionId: built.sessionId, intent: built.intent });
       return receipt.txid;
     };
@@ -218,6 +226,10 @@ export async function deployFreshRegtest({ appImage, guardianImage, output, inve
       evidence.finalStateRoot = finalRoot;
       evidence.inventoryFirst = { quote:quote.quote, receipt:event, finalToken:detail.data.token, actualExtension:false };
       evidence.checks.push("actual production images: buy400/sell400/buy1000 delivers1000, reuses400, issues600 with one fee set; repeat100 and coordinated restart preserve mixed history");
+    }
+    if (clientBroadcast) {
+      evidence.clientBroadcast = true;
+      evidence.checks.push("every fixture transaction: HTTP preparation saves READY without mempool relay; cached receipt is identical; client sends exact bytes; canonical worker marks BROADCAST");
     }
     if (browserUi) {
       if (!baselineImage) throw new Error("browser UI parity requires an explicit previous regtest image");

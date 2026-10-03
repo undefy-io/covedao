@@ -1,3 +1,4 @@
+import { submitCrcFromBrowser } from "./crc-client-broadcast";
 import { crcWalletData } from "./crc-wallet-data";
 import * as core from "@crclaunch/crc20-protocol";
 import { crcBrowserData, crcBrowserScript, signCrcBuildSession, type CrcBrowserBuild, type CrcBrowserWallet, type CrcRequest } from "./crc-browser-session";
@@ -37,10 +38,10 @@ export async function buyCrcMarketListing(
     paymentFunding, fundingEvidence, minerFeeSats, idempotencyKey: crypto.randomUUID(),
   });
   if (built.fillId !== built.sessionId) throw new Error("Market session identity changed");
-  const signedPsbtBase64 = await signCrcBuildSession(built, { operation: "purchase", assetId: `${wallet.network}:${offer.deployTxid}`, amountAtoms: offer.listedInput.atoms.toString(), minerFeeSats, offer }, wallet, wallet.signPsbt, request);
-  const result = await crcBrowserData<{ fillId: string; txid: string }>(request, "/api/crc/v1/market/buyer-sign", { sessionId: built.sessionId, signedPsbtBase64 });
+  const sign = () => signCrcBuildSession(built, { operation: "purchase", assetId: `${wallet.network}:${offer.deployTxid}`, amountAtoms: offer.listedInput.atoms.toString(), minerFeeSats, offer }, wallet, wallet.signPsbt, request);
+  const result = await submitCrcFromBrowser(built, wallet, "/api/crc/v1/market/buyer-sign", sign, request);
   if (result.fillId !== built.sessionId || !/^[0-9a-f]{64}$/.test(result.txid)) throw new Error("Market broadcast identity changed");
-  return result;
+  return {txid: result.txid, fillId: result.fillId!};
 }
 
 async function crcMarketFunding(request: CrcRequest, wallet: CrcBrowserWallet) {
@@ -68,8 +69,8 @@ export async function cancelCrcMarketListing(
     walletPublicKeyHex: wallet.publicKey, tokenPublicKeyHex: wallet.ordinalsPublicKey || wallet.publicKey,
     paymentFunding, fundingEvidence, minerFeeSats, idempotencyKey: crypto.randomUUID(),
   });
-  const signedPsbtBase64 = await signCrcBuildSession(built, { operation: "cancel", offer, assetId: `${wallet.network}:${offer.deployTxid}`, amountAtoms: offer.listedInput.atoms.toString(), minerFeeSats }, wallet, wallet.signPsbt, request);
-  const result = await crcBrowserData<{ txid: string }>(request, "/api/crc/v1/market/cancel", { sessionId: built.sessionId, signedPsbtBase64 });
+  const sign = () => signCrcBuildSession(built, { operation: "cancel", offer, assetId: `${wallet.network}:${offer.deployTxid}`, amountAtoms: offer.listedInput.atoms.toString(), minerFeeSats }, wallet, wallet.signPsbt, request);
+  const result = await submitCrcFromBrowser(built, wallet, "/api/crc/v1/market/cancel", sign, request);
   if (!/^[0-9a-f]{64}$/.test(result.txid)) throw new Error("Cancellation broadcast identity changed");
   return result;
 }

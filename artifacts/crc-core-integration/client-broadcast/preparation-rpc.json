@@ -1,0 +1,99 @@
+{
+  "network": "regtest",
+  "transactions": [
+    {
+      "clientPreparation": {
+        "operation": "deploy",
+        "inputs": 1,
+        "calls": [
+          "getblockchaininfo",
+          "gettxout",
+          "getblockchaininfo",
+          "gettxout"
+        ],
+        "durationMs": 285,
+        "cachedRpcCalls": 0
+      }
+    },
+    {
+      "clientPreparation": {
+        "operation": "buy",
+        "inputs": 2,
+        "calls": [
+          "getblockchaininfo",
+          "getblockhash",
+          "gettxout",
+          "gettxout",
+          "getblockchaininfo",
+          "getrawtransaction",
+          "getblockhash",
+          "gettxout",
+          "gettxout",
+          "getblockhash",
+          "gettxout",
+          "gettxout",
+          "getblockchaininfo",
+          "getblockhash",
+          "gettxout",
+          "gettxout"
+        ],
+        "durationMs": 1091,
+        "cachedRpcCalls": 0
+      }
+    },
+    {
+      "clientPreparation": {
+        "operation": "sell",
+        "inputs": 3,
+        "calls": [
+          "getblockchaininfo",
+          "getblockhash",
+          "gettxout",
+          "gettxout",
+          "gettxout",
+          "getblockchaininfo",
+          "getblockhash",
+          "gettxout",
+          "gettxout",
+          "gettxout",
+          "getblockhash",
+          "gettxout",
+          "gettxout",
+          "gettxout",
+          "getblockchaininfo",
+          "getblockhash",
+          "gettxout",
+          "gettxout",
+          "gettxout"
+        ],
+        "durationMs": 1130,
+        "cachedRpcCalls": 0
+      }
+    },
+    {
+      "clientPreparation": {
+        "operation": "buy",
+        "inputs": 2,
+        "calls": [
+          "getblockchaininfo",
+          "getblockhash",
+          "gettxout",
+          "gettxout",
+          "getblockchaininfo",
+          "getblockhash",
+          "gettxout",
+          "gettxout",
+          "getblockhash",
+          "gettxout",
+          "gettxout",
+          "getblockchaininfo",
+          "getblockhash",
+          "gettxout",
+          "gettxout"
+        ],
+        "durationMs": 930,
+        "cachedRpcCalls": 0
+      }
+    }
+  ]
+}

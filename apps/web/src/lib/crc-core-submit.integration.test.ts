@@ -183,6 +183,21 @@ async function submit(
   expect(body, JSON.stringify(body)).toMatchObject({ ok: true, data: { status: "BROADCAST" } });
   return body.data as { txid: string; status: string };
 }
+async function clientSubmit(sessionId: string, signedPsbtBase64: string, operation: "transfer" | "listing" | "purchase" | "cancel") {
+  const routeOperation = operation === "purchase" ? "buyer-sign" : operation === "cancel" ? "cancel" : `${operation}-submit`;
+  const request = (signed: string) => crcMarketPost(new Request("http://localhost/api/crc/v1/market/"+routeOperation, {
+    method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({sessionId,signedPsbtBase64:signed,broadcast:"client"}),
+  }),routeOperation,true,()=>({db:database.db,network:"regtest",provider: provider as unknown as CoreRpcProvider}));
+  const before = node.calls.length;
+  const response = await request(signedPsbtBase64), json = await response.json();
+  expect(json,JSON.stringify(json)).toMatchObject({ok:true,data:{network:"regtest"}});
+  expect(node.calls.slice(before).some(method=>["sendrawtransaction","testmempoolaccept","getrawmempool"].includes(method))).toBe(false);
+  const count = node.calls.length, custody = sign.mock.calls.length;
+  expect((await (await request("saved receipt")).json()).data).toEqual(json.data);
+  expect(node.calls).toHaveLength(count); expect(sign.mock.calls.length).toBe(custody);
+  expect(node.broadcast(json.data.rawTxHex)).toBe(json.data.txid);
+  return {txid:json.data.txid as string,status:"BROADCAST"};
+}
 beforeAll(async () => {
   database = await isolatedDatabase();
   node.start();
@@ -495,7 +510,7 @@ test("HTTP arbitrary transfer and one-transaction listing preserve exact core al
     expect(body, JSON.stringify(body)).toMatchObject({ ok: true });
     const built = body.data;
     const count = sign.mock.calls.length;
-    const result = await submit(built.sessionId, walletSign(built.psbtBase64), operation);
+    const result = await clientSubmit(built.sessionId, walletSign(built.psbtBase64), operation);
     expect(sign).toHaveBeenCalledTimes(count);
     const plan = core.decodeProtocolDto<core.Plan>(built.intent.corePlan);
     core.validateFinalTransaction(plan, node.transaction(result.txid), {
@@ -598,6 +613,7 @@ test("core offer activation and buyer-only API fill preserve seller presign and 
       body: JSON.stringify({
         sessionId: built.sessionId,
         signedPsbtBase64: walletSign(built.psbtBase64, true, undefined, bobKey),
+        broadcast: "client",
       }),
     }),
     "buyer-sign",
@@ -611,6 +627,8 @@ test("core offer activation and buyer-only API fill preserve seller presign and 
   const completedBody = await completed.json();
   expect(completedBody, JSON.stringify(completedBody)).toMatchObject({ ok: true });
   const result = completedBody.data;
+  expect(result.status).toBe("READY");
+  expect(node.broadcast(result.rawTxHex)).toBe(result.txid);
   expect(sign).toHaveBeenCalledTimes(count);
   const plan = core.decodeProtocolDto<core.Plan>(built.intent.corePlan);
   const transaction = node.transaction(result.txid);
@@ -674,7 +692,7 @@ test("API cancellation mines, rolls back with actual reorg, and rebroadcasts its
     feeScriptHex: protocolScript,
   });
   const signed = walletSign(built.psbtBase64, false, undefined, bobKey);
-  const result = await submit(built.sessionId, signed, "cancel");
+  const result = await clientSubmit(built.sessionId, signed, "cancel");
   node.mine();
   const after = await sync();
   expect(after.offers[id]!.status).toBe("cancelled");
@@ -690,7 +708,7 @@ test("API cancellation mines, rolls back with actual reorg, and rebroadcasts its
     result.txid,
   ]);
   expect(events.rows).toHaveLength(0);
-  expect(await submit(built.sessionId, signed, "cancel")).toEqual(result);
+  expect(await clientSubmit(built.sessionId, signed, "cancel")).toEqual(result);
   node.mine();
   expect((await sync()).offers[id]!.status).toBe("cancelled");
 }, 60000);
@@ -1228,3 +1246,71 @@ test("three-input sell retains live fences and READY recovery with fewer RPC cal
     node.mine(); await sync();
   } finally { injected.services.provider = provider; service = originalService; }
 }, 60000);
+
+test("client preparation saves exact READY bytes without relay, replays locally, and indexer observes browser broadcasts", async () => {
+  const launch = await buildCrcLaunchSession({ db: database.db, network: "regtest", bitcoinNetwork: bitcoin.networks.regtest,
+    ticker: "RDY", walletScriptHex: aliceScript, tokenScriptHex: aliceScript, walletPublicKeyHex: Buffer.from(aliceKey.publicKey).toString("hex"),
+    ...await browserFunding(), minerFeeSats: 1000, idempotencyKey: "browser-ready-launch", feeScriptHex: protocolScript,
+    guardianXOnly: await backend.xOnlyPubkey(), recoveryProfile });
+  if (!(await state.loadCrcCoreLedger(database.db, "regtest"))) await state.initializeCrcLedger(database.db, core.decodeProtocolDto<core.Config>(launch.intent.coreConfig), { activationHeight });
+  if (!service) service = new CrcGuardianSigningService({ db: database.db, core: provider, custodyBackend: backend, guardianXOnly: await backend.xOnlyPubkey(), recoveryProfile, network: "regtest", protocolScript: Buffer.from(protocolScript, "hex"), maxMinerFeeSats: 20000n });
+  const prepared = async (built: {sessionId: string; psbtBase64: string}, operation: "deploy" | "buy" | "sell", signature: string) => {
+    const count = node.calls.length, started = performance.now();
+    const response = await crcSubmitRoute(new Request("http://localhost/submit", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId: built.sessionId, signedPsbtBase64: signature, broadcast: "client" }) }), operation);
+    const json = await response.json();
+    expect(json, JSON.stringify(json)).toMatchObject({ ok: true, data: { status: "READY", network: "regtest" } });
+    expect(core.parseRawTransaction(json.data.rawTxHex).txid).toBe(json.data.txid);
+    expect(node.calls.slice(count).some(call => ["sendrawtransaction", "testmempoolaccept", "getrawmempool"].includes(call))).toBe(false);
+    minedEvidence.push({clientPreparation:{operation, inputs:bitcoin.Psbt.fromBase64(built.psbtBase64).inputCount, calls:node.calls.slice(count), durationMs:Math.round(performance.now()-started), cachedRpcCalls:0}});
+    const row = (await database.pool.query("select status,signed_raw_hex,txid from crc_sessions where id=$1", [built.sessionId])).rows[0];
+    expect(row).toMatchObject({ status: "READY", signed_raw_hex: json.data.rawTxHex, txid: json.data.txid });
+    await database.pool.query("update crc_sessions set expires_at=now()-interval '1 hour' where id=$1",[built.sessionId]);
+    const replayCount = node.calls.length, custodyCount = sign.mock.calls.length;
+    const repeat = await crcSubmitRoute(new Request("http://localhost/submit", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId: built.sessionId, signedPsbtBase64: "saved receipt", broadcast: "client" }) }), operation);
+    expect((await repeat.json()).data).toEqual(json.data);
+    expect(node.calls).toHaveLength(replayCount); expect(sign.mock.calls.length).toBe(custodyCount);
+    // The fixture now acts as the browser, using its own connection to Core.
+    expect(node.broadcast(json.data.rawTxHex)).toBe(json.data.txid);
+    node.mine(); const indexed = await sync();
+    expect((await database.pool.query("select status from crc_sessions where id=$1", [built.sessionId])).rows[0].status).toBe("BROADCAST");
+    return { receipt: json.data, indexed };
+  };
+  // A competing claim loses before any live RPC, even with valid wallet signatures.
+  await database.pool.query("update crc_sessions set status='SIGNING',claim_id=$2,updated_at=now() where id=$1",[launch.sessionId,crypto.randomUUID()]);
+  const claimRpcCount=node.calls.length, claimCustodyCount=sign.mock.calls.length;
+  const conflict=await crcSubmitRoute(new Request("http://localhost/submit",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({sessionId:launch.sessionId,signedPsbtBase64:walletSign(launch.psbtBase64),broadcast:"client"})}),"deploy");
+  expect((await conflict.json()).error.code).toBe("STATE_CHANGED");
+  expect(node.calls).toHaveLength(claimRpcCount);expect(sign.mock.calls.length).toBe(claimCustodyCount);
+  await database.pool.query("update crc_sessions set status='BUILT',claim_id=null where id=$1",[launch.sessionId]);
+  const deployed = await prepared(launch, "deploy", walletSign(launch.psbtBase64));
+  const oldDeployment = deployId; deployId = deployed.receipt.txid;
+  try {
+    for (const [index, operation, quantity] of [[0, "buy", 400], [1, "sell", 400], [2, "buy", 1000]] as const) {
+      const ledger = await sync();
+      const built = await buildCrcTradeSession({ db: database.db, network: "regtest", bitcoinNetwork: bitcoin.networks.regtest,
+        asset: (await readCrcQuoteAsset(database.db, "regtest", deployId))!, operation, amountAtoms: invAtoms(quantity),
+        walletScriptHex: aliceScript, tokenScriptHex: aliceScript, walletPublicKeyHex: Buffer.from(aliceKey.publicKey).toString("hex"),
+        tokenPublicKeyHex: Buffer.from(aliceKey.publicKey).toString("hex"), ...await browserFunding(), minerFeeSats: 1000,
+        idempotencyKey: `browser-ready-trade${index}`, feeScriptHex: protocolScript,
+        ...(operation === "sell" ? { sellerFunding: Object.entries(ledger.allocations).filter(([, a]) => a.deployTxid === deployId && a.scriptHex === aliceScript).map(([p]) => ({ txid: p.split(":")[0]!, vout: Number(p.split(":")[1]) })) } : {}) });
+      await prepared(built, operation, walletSign(built.psbtBase64, true));
+    }
+  } finally { deployId = oldDeployment; }
+}, 60000);
+
+test("public submit and market routes reject stale frontend relay requests before RPC",async()=>{
+  const count=node.calls.length, custody=sign.mock.calls.length, previous=injected.services.config.network;
+  const body={sessionId:crypto.randomUUID(),signedPsbtBase64:"saved receipt"};
+  try {
+    injected.services.config.network="signet";
+    for(const broadcast of [undefined,"server"]) {
+      const req=()=>new Request("http://localhost/submit",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({...body,broadcast})});
+      expect((await crcSubmitRoute(req(),"buy")).status).toBe(409);
+      const market=await crcMarketPost(req(),"buyer-sign",true,()=>({db:database.db,network:"signet",provider:provider as unknown as CoreRpcProvider}));
+      expect(market.status).toBe(broadcast===undefined?409:400);
+    }
+    expect(node.calls).toHaveLength(count);expect(sign.mock.calls.length).toBe(custody);
+  } finally {injected.services.config.network=previous;}
+});

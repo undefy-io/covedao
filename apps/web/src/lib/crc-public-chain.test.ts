@@ -89,3 +89,35 @@ test("a fast outage cannot hide delayed forged or spent evidence behind fallback
   await expect(client.evidence([input, other])).rejects.toBeInstanceOf(PublicChainInvalid);
   await expect(client.observe([input, other])).rejects.toBeInstanceOf(PublicChainInvalid);
 });
+
+test("broadcasts exact bytes once for joined callers and verifies the returned txid", async () => {
+  const {client, request} = fixture({sendrawtransaction:tx.getId()});
+  expect(await Promise.all([client.broadcast(tx.toHex(),tx.getId()),client.broadcast(tx.toHex(),tx.getId())])).toEqual([tx.getId(),tx.getId()]);
+  const calls=request.mock.calls.filter(([,init])=>init?.body).map(([,init])=>JSON.parse(String(init!.body)));
+  expect(calls.filter(c=>c.method==='sendrawtransaction')).toEqual([{jsonrpc:'1.0',id:'sendrawtransaction',method:'sendrawtransaction',params:[tx.toHex()]}]);
+  expect(calls.some(c=>c.method==='testmempoolaccept')).toBe(false);
+  await expect(client.broadcast(tx.toHex(),'cd'.repeat(32))).rejects.toThrow('identity');
+});
+test("recognizes Core HTTP 500 already-known responses and recovers ambiguous acceptance by exact raw hash", async () => {
+  for(const code of [-27,-26]) {
+    const f=fixture();const request=vi.fn(async(url:string,init?:RequestInit)=>{
+      if(init?.body&&JSON.parse(String(init.body)).method==='sendrawtransaction') return Response.json({result:null,error:{code,message:'relay result'}},{status:500});
+      return f.request(url,init);
+    });
+    const client=new CrcPublicChain('signet','https://rpc.example','https://index.example',request);
+    expect(await client.broadcast(tx.toHex(),tx.getId())).toBe(tx.getId());
+    expect(request.mock.calls.filter(([,init])=>init?.body&&JSON.parse(String(init.body)).method==='getrawtransaction')).toHaveLength(code===-27?0:1);
+  }
+});
+test("wrong network and mismatching relay/observation identities never acknowledge a broadcast", async()=>{
+  const wrong=fixture({getblockchaininfo:{chain:'test',blocks:12}});
+  await expect(wrong.client.broadcast(tx.toHex(),tx.getId())).rejects.toThrow('network');
+  expect(wrong.request.mock.calls.some(([,init])=>init?.body&&JSON.parse(String(init.body)).method==='sendrawtransaction')).toBe(false);
+  await expect(fixture({sendrawtransaction:'cd'.repeat(32)}).client.broadcast(tx.toHex(),tx.getId())).rejects.toThrow('identity');
+  const f=fixture({getrawtransaction:'00'});
+  const client=new CrcPublicChain('signet','https://rpc.example','https://index.example',async(url,init)=>{
+    if(init?.body&&JSON.parse(String(init.body)).method==='sendrawtransaction') throw new Error('lost response');
+    return f.request(url,init);
+  });
+  await expect(client.broadcast(tx.toHex(),tx.getId())).rejects.toThrow();
+});

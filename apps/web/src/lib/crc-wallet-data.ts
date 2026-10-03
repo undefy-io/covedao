@@ -19,6 +19,11 @@ export function fundingAddressScript(address: string, network: string): string {
 
 export class CrcWalletData {
   constructor(readonly network: string, private readonly request: Requester, private readonly client?: CrcPublicChain) {}
+  get canBroadcast(): boolean { return !!this.client; }
+  broadcast(rawHex: string, txid: string, signal?: AbortSignal): Promise<string> {
+    if (!this.client) throw new Error("Public broadcast is unavailable. Refresh this page and retry.");
+    return this.client.broadcast(rawHex, txid, signal);
+  }
   private async serverCoins(address: string, signal?: AbortSignal): Promise<WalletFundingCoin[]> {
     signal?.throwIfAborted();
     const response = await (0, this.request)(`/api/crc/v1/wallet/utxos?address=${encodeURIComponent(address)}`, { cache: "no-store", signal });

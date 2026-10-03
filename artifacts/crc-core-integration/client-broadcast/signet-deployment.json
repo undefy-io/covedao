@@ -1,0 +1,64 @@
+{
+  "checkedAt": "2026-10-03T17:28:23.317Z",
+  "network": "signet",
+  "readiness": [
+    {
+      "origin": "http://127.0.0.1:3000",
+      "status": 200,
+      "tradingActive": true
+    },
+    {
+      "origin": "https://9c2a3d44-b9a1-11f1-8256-2bc599fb54d9.localtests.xyz",
+      "status": 200,
+      "tradingActive": true
+    }
+  ],
+  "images": [
+    {
+      "role": "web",
+      "image": "sha256:f500a7a2584426eac7086e43c9a762ca55056852e39fd860f2661ff7f034382a",
+      "health": "healthy"
+    },
+    {
+      "role": "worker",
+      "image": "sha256:f500a7a2584426eac7086e43c9a762ca55056852e39fd860f2661ff7f034382a",
+      "health": "running"
+    },
+    {
+      "role": "guardian",
+      "image": "sha256:295beafc29cf9dd4e093285799c5a45de77235c13b7a33f386456ee58589e3b1",
+      "health": "healthy"
+    }
+  ],
+  "workerReadiness": true,
+  "staleClientStatus": 409,
+  "historicalPreparedReceipt": {
+    "txid": "b7b3faa32c7de8f122c1482fcbee3a67255af573e7f1894c94501511fff95c1e",
+    "status": "BROADCAST",
+    "exactSavedBytes": true
+  },
+  "preservedData": [
+    {
+      "table": "crc_sessions",
+      "count": 11,
+      "digest": "178522eaaca87e5f4348dbd4eefe35f9"
+    },
+    {
+      "table": "crc_registrations",
+      "count": 1,
+      "digest": "67c1d0c8e081bbb0f6ded61fb3c623ed"
+    },
+    {
+      "table": "crc_events",
+      "count": 7,
+      "digest": "0354e0cf06de5176e9cd15ce6b61c0ad"
+    },
+    {
+      "table": "crc_records",
+      "count": 25,
+      "digest": "ced4ad175471e72954e397e27accbd7e"
+    }
+  ],
+  "backup": ".local/signet-backups/client-broadcast-ut1/pre-upgrade.dump",
+  "validTransactionBroadcast": false
+}

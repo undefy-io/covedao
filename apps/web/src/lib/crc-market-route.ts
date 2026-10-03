@@ -9,7 +9,7 @@ import { checkCrcRateLimit } from "./crc-rate-limit";
 import type { CrcNetwork } from "./crc-read";
 import { activateCrcCoreOffer } from "./crc-market-core";
 import { buildCrcTokenSession, buildCrcOfferSession } from "./crc-build";
-import { submitCrcSession } from "./crc-submit";
+import { prepareCrcSession, submitCrcSession } from "./crc-submit";
 const txid = z.string().regex(/^[0-9a-f]{64}$/);
 const script = z
   .string()
@@ -28,7 +28,7 @@ const common = z.object({
   idempotencyKey: z.string().min(1).max(128),
 });
 const signed = z
-  .object({ sessionId: z.string().uuid(), signedPsbtBase64: z.string().min(1).max(250000) })
+  .object({ sessionId: z.string().uuid(), signedPsbtBase64: z.string().min(1).max(250000), broadcast: z.literal("client").optional() })
   .strict();
 export type CrcMarketServices = {
   db: Database;
@@ -237,7 +237,9 @@ export async function crcMarketPost(
     } as const;
     if (Object.hasOwn(operations, operation)) {
       const parsed = signed.parse(raw);
-      const result = await submitCrcSession({
+      if (network !== "regtest" && parsed.broadcast !== "client")
+        return fail("CLIENT_UPDATE_REQUIRED", "Refresh this page before submitting the transaction.", 409);
+      const result = await (parsed.broadcast === "client" ? prepareCrcSession : submitCrcSession)({
         ...parsed,
         db,
         network,
