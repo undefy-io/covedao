@@ -1,0 +1,36 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/wallets/xverse-capabilities.test.ts (17 tests | 1 failed) 25ms
+   × thrown permission failure Error: Access denied. is not a user cancellation 6ms
+     → expected WalletError: Xverse request was cancelled { code: '…' } to match object { code: 'FAILED' }
+(1 matching property omitted from actual)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/wallets/xverse-capabilities.test.ts > thrown permission failure Error: Access denied. is not a user cancellation
+AssertionError: expected WalletError: Xverse request was cancelled { code: '…' } to match object { code: 'FAILED' }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+- Object {
+-   "code": "FAILED",
++ WalletError {
++   "code": "REJECTED",
+  }
+
+ ❯ src/lib/wallets/xverse-capabilities.test.ts:181:5
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 16 passed (17)
+   Start at  03:14:47
+   Duration  582ms (transform 133ms, setup 0ms, collect 274ms, tests 25ms, environment 0ms, prepare 65ms)
+
+undefined
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/lib/wallets/xverse-capabilities.test.ts

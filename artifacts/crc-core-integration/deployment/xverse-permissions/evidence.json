@@ -1,0 +1,19 @@
+{
+  "appImage": "sha256:01c598def151b331ef1da82e4a871fe517552bd8bd1424a70eff2d10c7254d57",
+  "sourceHashes": {
+    "apps/web/src/lib/wallets/adapters.ts": "14ecfc93bb3c4804b6359334c68a3ff44db9d8f057afa1a8dad4b9973be004ca",
+    "apps/web/src/i18n/en.ts": "8515abd739ac34839700f8d69214a7d99f922886749bdf64b062cef20c6b2cac",
+    "apps/web/src/i18n/zh-CN.ts": "245d4529cd90816f563cb5b73e4f0fbe88c3d95fa45430f3891065fafc21a18f"
+  },
+  "network": "signet",
+  "tradingStatus": {
+    "tradingActive": true,
+    "network": "signet",
+    "protocolScriptHex": "0014a760aba32ec431908bcac87b8456ab99b080f0e2"
+  },
+  "webTests": 217,
+  "xverseAdapterTests": 18,
+  "actualExtensionRecoveryVerified": false,
+  "userWalletTransactions": 0,
+  "createdAt": "2026-10-03T03:19:35.043Z"
+}

@@ -1,0 +1,41 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/wallets/xverse-capabilities.test.ts (18 tests | 1 failed) 37ms
+   × explicit user rejection of a permission prompt stays a rejection without retry 7ms
+     → expected WalletError: Xverse connection permission… { code: '…' } to match object { code: 'REJECTED' }
+(1 matching property omitted from actual)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/wallets/xverse-capabilities.test.ts > explicit user rejection of a permission prompt stays a rejection without retry
+AssertionError: expected WalletError: Xverse connection permission… { code: '…' } to match object { code: 'REJECTED' }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+- Object {
+-   "code": "REJECTED",
++ WalletError {
++   "code": "FAILED",
+  }
+
+ ❯ src/lib/wallets/xverse-capabilities.test.ts:188:3
+    186| test("explicit user rejection of a permission prompt stays a rejection…
+    187|   const request = provider({ error: { code: 4001, message: "User rejec…
+    188|   await expect(adapterFor("xverse").signMessage("signet", "selected-ad…
+       |   ^
+    189|   expect(request).toHaveBeenCalledTimes(2);
+    190| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 17 passed (18)
+   Start at  03:16:11
+   Duration  994ms (transform 240ms, setup 0ms, collect 461ms, tests 37ms, environment 0ms, prepare 165ms)
+
+undefined
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/lib/wallets/xverse-capabilities.test.ts

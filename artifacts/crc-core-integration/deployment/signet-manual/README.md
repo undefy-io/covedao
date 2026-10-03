@@ -29,3 +29,8 @@ Manual testing subsequently exposed an external address-index timeout. The deplo
 [wallet-index recovery fix](../wallet-index-recovery/README.md) preserves observations
 and returns a retryable 503 for upstream failures; the exact reported tunnel wallet
 request is verified HTTP 200 after redeployment.
+
+The latest frontend also uses Xverse's modern permission-granting connection API.
+[Pre-prompt permission evidence](../xverse-permissions/README.md) records the corrected
+access-denied/cancellation handling. Actual reconnect and popup recovery remain
+pending manual verification; refresh and reconnect Xverse before retrying a launch.

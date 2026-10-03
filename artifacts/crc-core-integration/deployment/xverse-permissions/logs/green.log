@@ -1,0 +1,9 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ✓ src/lib/wallets/xverse-capabilities.test.ts (18 tests) 26ms
+
+ Test Files  1 passed (1)
+      Tests  18 passed (18)
+   Start at  03:17:48
+   Duration  890ms (transform 292ms, setup 0ms, collect 473ms, tests 26ms, environment 0ms, prepare 102ms)

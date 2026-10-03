@@ -92,7 +92,7 @@ test("regtest is rejected before any browser provider prompt", async () => {
   expect(request).not.toHaveBeenCalled();
 });
 test("mainnet address returned during signet connect is rejected", async () => {
-  provider({});
+  provider({ result: { network: { bitcoin: { name: "Mainnet" } }, addresses: [] } });
   await expect(adapterFor("xverse").connect("signet")).rejects.toMatchObject({
     code: "WRONG_NETWORK",
   });
@@ -131,3 +131,60 @@ for (const operation of ["psbt", "message"] as const) {
     expect(request.mock.calls.map(([method]) => method)).toEqual(["wallet_getNetwork"]);
   });
 }
+
+test("Xverse connects through wallet_connect to grant network-read permission and retain purpose", async () => {
+  const { readFileSync } = await import("node:fs");
+  const connected = JSON.parse(readFileSync(new URL("../../../../../artifacts/crc-core-integration/wallet-capabilities/xverse-real-connect.json", import.meta.url), "utf8")).connect.value;
+  const request = vi.fn(async (method: string) => method === "wallet_connect" ? connected : { error: { code: -32002, message: "Access denied." } });
+  vi.stubGlobal("window", { XverseProviders: { BitcoinProvider: { request } } });
+  const result = await adapterFor("xverse").connect("signet");
+  expect(request).toHaveBeenCalledWith("wallet_connect", { addresses: ["payment", "ordinals"], network: "Signet", message: "Connect to covs.trade" });
+  expect(result.payments.address).toBe(connected.result.addresses[0].address);
+  expect(result.ordinals.address).toBe(connected.result.addresses[1].address);
+  expect(request).toHaveBeenCalledTimes(1);
+});
+
+for (const operation of ["psbt", "message"] as const) {
+  test(`network-read access denial is not reported as cancellation and prevents ${operation} prompt`, async () => {
+    const request = vi.fn(async (_method: string) => ({ error: { code: -32002, message: "Access denied." } }));
+    vi.stubGlobal("window", { XverseProviders: { BitcoinProvider: { request } } });
+    const action = operation === "psbt" ? adapterFor("xverse").signPsbt("signet", { psbtBase64: fixture(1).toBase64(), inputsByAddress: [{ address: "selected-address", indexes: [1] }] }) : adapterFor("xverse").signMessage("signet", "selected-address", "terms");
+    await expect(action).rejects.toMatchObject({ code: "FAILED" });
+    expect(request.mock.calls.map(([method]) => method)).toEqual(["wallet_getNetwork"]);
+  });
+}
+
+test("modern connection grants read permission before network check and the single PSBT request", async () => {
+  const { readFileSync } = await import("node:fs");
+  const connected = JSON.parse(readFileSync(new URL("../../../../../artifacts/crc-core-integration/wallet-capabilities/xverse-real-connect.json", import.meta.url), "utf8")).connect.value;
+  let permitted = false;
+  const encoded = fixture(1).toBase64();
+  const request = vi.fn(async (method: string) => {
+    if (method === "wallet_connect") { permitted = true; return connected; }
+    if (!permitted) return { error: { code: -32002, message: "Access denied." } };
+    if (method === "wallet_getNetwork") return { result: { bitcoin: { name: "Signet" } } };
+    return { result: { psbt: encoded } };
+  });
+  vi.stubGlobal("window", { XverseProviders: { BitcoinProvider: { request } } });
+  await adapterFor("xverse").connect("signet");
+  expect(await adapterFor("xverse").signPsbt("signet", { psbtBase64: encoded, inputsByAddress: [{ address: "selected-address", indexes: [1] }] })).toBe(encoded);
+  expect(request.mock.calls.map(([method]) => method)).toEqual(["wallet_connect", "wallet_getNetwork", "signPsbt"]);
+});
+
+for (const error of [Object.assign(new Error("Access denied."), { code: -32002 }), { code: -32002, message: "User permissions are missing" }]) {
+  test(`thrown permission failure ${String(error)} is not a user cancellation`, async () => {
+    const request = vi.fn(async (method: string) => {
+      if (method === "wallet_getNetwork") return { result: { bitcoin: { name: "Signet" } } };
+      throw error;
+    });
+    vi.stubGlobal("window", { XverseProviders: { BitcoinProvider: { request } } });
+    await expect(adapterFor("xverse").signPsbt("signet", { psbtBase64: fixture(1).toBase64(), inputsByAddress: [{ address: "selected-address", indexes: [1] }] })).rejects.toMatchObject({ code: "FAILED", message: expect.stringMatching(/permission/i) });
+    expect(request.mock.calls.map(([method]) => method)).toEqual(["wallet_getNetwork", "signPsbt"]);
+  });
+}
+
+test("explicit user rejection of a permission prompt stays a rejection without retry", async () => {
+  const request = provider({ error: { code: 4001, message: "User rejected permission request" } });
+  await expect(adapterFor("xverse").signMessage("signet", "selected-address", "terms")).rejects.toMatchObject({ code: "REJECTED" });
+  expect(request).toHaveBeenCalledTimes(2);
+});

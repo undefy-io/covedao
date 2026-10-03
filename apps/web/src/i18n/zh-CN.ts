@@ -393,6 +393,7 @@ export const zhCN: Record<MessageKey, string> = {
   "pick.install": "安装 →",
   "pick.footTest": "本地 regtest 钱包。私钥是公开的、就在代码仓库里，由服务器直接签名、不会弹窗确认。想切换就先断开再重新连接。",
   "pick.foot": "covs 需要你钱包里的两个地址：一个放 BTC 用来付款，一个放你的代币。大部分钱包都两个都有。没有你的确认，什么都不会签名。",
+  "wal.permissions": "缺少 {wallet} 连接权限。请断开并重新连接钱包。",
   "wal.cancelled": "{wallet} 请求已取消",
   "wal.notInstalled": "未安装 {wallet}",
   "wal.declined": "你在 {wallet} 里拒绝了请求",

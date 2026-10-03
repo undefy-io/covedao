@@ -65,23 +65,29 @@ function serialized(result: { base64: string | null; hex: string }): string {
 
 const SIGHASH_ALL = bitcoin.Transaction.SIGHASH_ALL;
 
-/** One call to Xverse's JSON-RPC provider; throws its error message on refusal. */
+/** Preserve wallet error codes for returned and thrown RPC failures. */
+function xverseFailure(error: unknown): never {
+  const value = error as { code?: number; message?: string };
+  const message = value?.message ?? String(error);
+  if (value?.code === -32002)
+    throw new WalletError("FAILED", tr("wal.permissions", { wallet: "Xverse" }));
+  if (value?.code === 4001 || /reject|cancel/i.test(message))
+    throw new WalletError("REJECTED", tr("wal.declined", { wallet: "Xverse" }));
+  if (/access denied|permission/i.test(message))
+    throw new WalletError("FAILED", tr("wal.permissions", { wallet: "Xverse" }));
+  throw new WalletError("FAILED", `Xverse: ${message}`);
+}
+
+/** One call to Xverse's JSON-RPC provider, without retrying a signature request. */
 async function xverseRpc<T>(method: string, params: Record<string, unknown>): Promise<T> {
   const provider = (window as unknown as {
     XverseProviders?: { BitcoinProvider?: { request(m: string, p: unknown): Promise<unknown> } };
   }).XverseProviders?.BitcoinProvider;
   if (!provider) throw new WalletError("NOT_INSTALLED", tr("wal.notInstalled", { wallet: "Xverse" }));
-  const res = (await provider.request(method, params)) as {
-    result?: T;
-    error?: { code?: number; message?: string };
-  };
-  if (res?.error) {
-    // 4001 / -32000 is the user closing or rejecting the prompt.
-    if (res.error.code === 4001 || /reject|cancel/i.test(res.error.message ?? "")) {
-      throw new WalletError("REJECTED", tr("wal.declined", { wallet: "Xverse" }));
-    }
-    throw new WalletError("FAILED", res.error.message ?? tr("wal.refused", { wallet: "Xverse" }));
-  }
+  let res: { result?: T; error?: { code?: number; message?: string } };
+  try { res = await provider.request(method, params) as typeof res; }
+  catch (error) { xverseFailure(error); }
+  if (res?.error) xverseFailure(res.error);
   if (!res?.result) throw new WalletError("FAILED", tr("wal.returnedNothing", { wallet: "Xverse" }));
   return res.result;
 }
@@ -96,8 +102,34 @@ async function assertXverseNetwork(network: BrowserNetwork): Promise<void> {
   } catch (error) {
     if (error instanceof WalletSigningError && error.code === "NETWORK") throw new WalletError("WRONG_NETWORK", error.message);
     if (error instanceof WalletSigningError && error.code === "REJECTED") throw new WalletError("REJECTED", error.message);
+    if (error instanceof WalletSigningError && error.code === "FAILED") {
+      throw new WalletError("FAILED", /access denied|permission/i.test(error.message)
+        ? tr("wal.permissions", { wallet: "Xverse" }) : `Xverse network check: ${error.message}`);
+    }
     throw error;
   }
+}
+
+async function connectXverse(network: BrowserNetwork): Promise<SdkAddress[]> {
+  const names = { mainnet: "Mainnet", testnet: "Testnet", signet: "Signet" };
+  const connected = await xverseRpc<{
+    network?: { bitcoin?: { name?: string } };
+    addresses?: { address: string; publicKey: string; purpose: string }[];
+  }>("wallet_connect", { addresses: ["payment", "ordinals"], network: names[network], message: "Connect to covs.trade" });
+  try {
+    const observed = connected.network?.bitcoin?.name;
+    if (!observed || protocolNetwork(observed.toLowerCase()) !== protocolNetwork(network)) throw new Error("network");
+  } catch { throw new WalletError("WRONG_NETWORK", "Xverse wallet network mismatch"); }
+  const addresses = connected.addresses;
+  if (!Array.isArray(addresses)) throw new WalletError("FAILED", tr("wal.returnedNothing", { wallet: "Xverse" }));
+  const selected = ["payment", "ordinals"].map((purpose) => {
+    const matches = addresses.filter((account) => account?.purpose === purpose);
+    const account = matches[0];
+    if (matches.length !== 1 || !account || typeof account.address !== "string" || typeof account.publicKey !== "string")
+      throw new WalletError("FAILED", `Xverse returned invalid ${purpose} account`);
+    return { address: account.address, publicKey: account.publicKey, format: purpose === "ordinals" ? "taproot" : "segwit" };
+  });
+  return selected;
 }
 
 /**
@@ -179,7 +211,7 @@ export const ADAPTERS: WalletAdapter[] = [
     name: "Xverse",
     installUrl: "https://www.xverse.app/download",
     isInstalled: () => xverse.isInstalled(),
-    getAddresses: (network) => xverse.getAddresses(network) as Promise<SdkAddress[]>,
+    getAddresses: connectXverse,
     // Xverse's current RPC, not the SDK's legacy `signTransaction` token API,
     // which current Xverse builds fail on ("(intermediate value).map is not a
     // function") before the user ever sees the request.
