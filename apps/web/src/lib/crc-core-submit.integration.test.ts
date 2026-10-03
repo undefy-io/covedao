@@ -9,7 +9,7 @@ import * as ecc from "tiny-secp256k1";
 import * as core from "@crclaunch/crc20-protocol";
 import * as state from "@crclaunch/crc20-state";
 import { createPlanPsbt, guardianPsbtTransaction } from "@crclaunch/crc20-adapters";
-import { saveWalletFundingSnapshot } from "@crclaunch/db";
+import { saveWalletFundingSnapshot, PostgresRpcBudget } from "@crclaunch/db";
 import { dev1RecoveryProfile } from "@crclaunch/cove-vault";
 import { isolatedDatabase } from "../../../../packages/cove-indexer/src/crc20/test-support/database.js";
 import {
@@ -1144,3 +1144,62 @@ test("consumer buy400/list300/buyer-only fill returns100 without an extra split 
   expect(after.assets[deployId]).toEqual(listed.assets[deployId]);
   expect(after.offers[id]!.status).toBe("filled");
 },60000);
+
+
+test("three-input sell retains live fences and READY recovery with fewer RPC calls at the real shared quota", async () => {
+  await inventoryTrade("buy", 1000, "alice", "latency-fund1000");
+  const ledger = await sync();
+  const [outpoint] = Object.entries(ledger.allocations).find(([, coin]) => coin.deployTxid === deployId && coin.scriptHex === aliceScript && coin.atoms === invAtoms(1000))!;
+  const asset = (await readCrcQuoteAsset(database.db, "regtest", deployId))!;
+  const built = await buildCrcTradeSession({ db: database.db, network: "regtest", bitcoinNetwork: bitcoin.networks.regtest, asset,
+    operation: "sell", amountAtoms: invAtoms(700), walletScriptHex: aliceScript, tokenScriptHex: aliceScript,
+    walletPublicKeyHex: Buffer.from(aliceKey.publicKey).toString("hex"), tokenPublicKeyHex: Buffer.from(aliceKey.publicKey).toString("hex"),
+    paymentFunding: await cacheFunding(), sellerFunding: [{ txid: outpoint!.split(":")[0]!, vout: Number(outpoint!.split(":")[1]) }],
+    minerFeeSats: 1000, idempotencyKey: "latency-sell700", feeScriptHex: protocolScript });
+  const plan = core.decodeProtocolDto<core.Plan>(built.intent.corePlan);
+  expect(plan.inputs).toHaveLength(3);
+  const account = crypto.randomUUID();
+  const calls: { lane: string; method: string; budgetMs: number; elapsedMs: number }[] = [];
+  const paced = (lane: "public" | "guardian") => {
+    const budget = new PostgresRpcBudget(database.db, account, lane, 3);
+    return Object.fromEntries(Object.entries(provider).map(([method, fn]) => [method, async (...args: unknown[]) => {
+      const queued = performance.now(); const release = await budget.acquire(AbortSignal.timeout(15000));
+      const started = performance.now();
+      try {
+        await new Promise(resolve => setTimeout(resolve, 200));
+        if (method === "broadcastTransaction") {
+          const rows = await database.pool.query("select status from crc_sessions where id=$1", [built.sessionId]);
+          expect(rows.rows[0].status).toBe("READY");
+        }
+        return await (fn as (...params: unknown[]) => Promise<unknown>)(...args);
+      } finally {
+        calls.push({ lane, method, budgetMs: Math.round(started-queued), elapsedMs: Math.round(performance.now()-started) }); await release();
+      }
+    }]));
+  };
+  const originalService = service, publicProvider = paced("public");
+  injected.services.provider = publicProvider;
+  service = new CrcGuardianSigningService({ db: database.db, core: paced("guardian") as never, custodyBackend: backend,
+    guardianXOnly: await backend.xOnlyPubkey(), recoveryProfile, network: "regtest", protocolScript: Buffer.from(protocolScript, "hex"), maxMinerFeeSats: 20000n });
+  try {
+    const before = sign.mock.calls.length, started = performance.now();
+    const response = await crcSubmitRoute(new Request("http://localhost/submit", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId: built.sessionId, signedPsbtBase64: walletSign(built.psbtBase64, true) }) }), "sell");
+    const body = await response.json(); expect(body.ok, JSON.stringify(body)).toBe(true);
+    const durationMs = Math.round(performance.now()-started);
+    const freshCalls = [...calls];
+    minedEvidence.push({ latency: { durationMs, modeledTransportMs: 200, quotaPerSecond: 3, inputs: plan.inputs.length, calls: freshCalls, serverTiming: response.headers.get("server-timing") } });
+    expect(freshCalls.filter(call => call.lane === "public")).toHaveLength(12);
+    expect(freshCalls.filter(call => call.lane === "guardian")).toHaveLength(10);
+    expect(freshCalls.filter(call => call.method === "observeTransaction")).toHaveLength(0);
+    expect(freshCalls.filter(call => call.method === "getTxout")).toHaveLength(12);
+    expect(durationMs).toBeLessThan(16000);
+    expect(response.headers.get("server-timing")).toContain("guardian;dur=");
+    expect(sign.mock.calls.length).toBe(before + 1);
+    calls.length = 0;
+    expect(await submit(built.sessionId, "saved receipt retry", "sell")).toEqual(body.data);
+    expect(calls.map(call => call.method)).toEqual(["getBlockchainInfo", "observeTransaction"]);
+    expect(sign.mock.calls.length).toBe(before + 1);
+    node.mine(); await sync();
+  } finally { injected.services.provider = provider; service = originalService; }
+}, 60000);

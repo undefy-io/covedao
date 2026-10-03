@@ -7,6 +7,11 @@ export async function crcSubmitRoute(
   req: Request,
   expectedOperation: "deploy" | "buy" | "sell" | "transfer" | "listing" | "purchase" | "cancel",
 ): Promise<Response> {
+  const start = performance.now(), timings: string[] = [];
+  const finish = (response: Response) => {
+    response.headers.set("server-timing", [...timings, `submit;dur=${(performance.now()-start).toFixed(1)}`].join(", "));
+    return response;
+  };
   try {
     const limited = checkCrcRateLimit(req, true);
     if (limited) return limited;
@@ -17,7 +22,7 @@ export async function crcSubmitRoute(
     if (!/^[0-9a-fA-F-]{36}$/.test(sessionId) || !signedPsbtBase64) {
       return fail("BAD_REQUEST", "A build session and signed PSBT are required", 400);
     }
-    return ok(
+    return finish(ok(
       await submitCrcSession({
         db,
         network: config.network,
@@ -27,9 +32,10 @@ export async function crcSubmitRoute(
         sessionId,
         signedPsbtBase64,
         expectedOperation,
+        onTiming: (stage, ms) => timings.push(`${stage};dur=${ms.toFixed(1)}`),
       }),
-    );
+    ));
   } catch (error) {
-    return handleError(error);
+    return finish(handleError(error));
   }
 }

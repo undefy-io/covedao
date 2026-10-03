@@ -1,0 +1,740 @@
+{
+  "network": "regtest",
+  "transactions": [
+    {
+      "txid": "6bac1f73f63623659a61375e22623116e4155ca1901ee16b0fd09e62bfb8add7",
+      "rawHex": "020000000001012761c502436d61a07a944a1a5503006e0bc3fcb26e2f2528799d08c8ee139c120000000000feffffff050000000000000000806a4c7d7b2270223a226372632d3230222c226f70223a226465706c6f79222c227469636b223a2254455354222c2274797065223a22626f6e64696e67222c226d6178223a223231303030303030222c226c696d223a223231303030303030222c226c656166223a2230222c226f726469223a2230222c22627463223a2231227de80300000000000022512092f00728b8b81f9fb1ba7f457bb67d25c84d330ef751d7c292bd3f1ec0fbbe67e8030000000000001600147016cc099e003049b776999217a90b5d9030b9ab581b0000000000001600146363636363636363636363636363636363636363f0ca052a010000001600147016cc099e003049b776999217a90b5d9030b9ab02483045022100d1d9ac24411658bcd7a1b8086cf4748abc89876859917d0a8d802b151a7ddfc202203351b357c574226f407baeb3c85dad74c176c421122fe1bb5295db74872868b9012102e5a018b3a2e155316109d9cdc5eab739759c0e07e0c00bf9fccb8237fe4d7f0200000000",
+      "actual": {
+        "rawHex": "020000000001012761c502436d61a07a944a1a5503006e0bc3fcb26e2f2528799d08c8ee139c120000000000feffffff050000000000000000806a4c7d7b2270223a226372632d3230222c226f70223a226465706c6f79222c227469636b223a2254455354222c2274797065223a22626f6e64696e67222c226d6178223a223231303030303030222c226c696d223a223231303030303030222c226c656166223a2230222c226f726469223a2230222c22627463223a2231227de80300000000000022512092f00728b8b81f9fb1ba7f457bb67d25c84d330ef751d7c292bd3f1ec0fbbe67e8030000000000001600147016cc099e003049b776999217a90b5d9030b9ab581b0000000000001600146363636363636363636363636363636363636363f0ca052a010000001600147016cc099e003049b776999217a90b5d9030b9ab02483045022100d1d9ac24411658bcd7a1b8086cf4748abc89876859917d0a8d802b151a7ddfc202203351b357c574226f407baeb3c85dad74c176c421122fe1bb5295db74872868b9012102e5a018b3a2e155316109d9cdc5eab739759c0e07e0c00bf9fccb8237fe4d7f0200000000",
+        "prevouts": [
+          {
+            "txid": "129c13eec8089d7928252f6eb2fcc30b6e0003551a4a947aa0616d4302c56127",
+            "vout": 0,
+            "sats": "5000000000",
+            "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+          }
+        ]
+      },
+      "session": {
+        "operation": "deploy",
+        "trusted_json": {
+          "ticker": "TEST",
+          "feeTier": null,
+          "corePlan": {
+            "inputs": [
+              {
+                "sats": "5000000000",
+                "txid": "129c13eec8089d7928252f6eb2fcc30b6e0003551a4a947aa0616d4302c56127",
+                "vout": 0,
+                "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+                "publicKeyHex": "02e5a018b3a2e155316109d9cdc5eab739759c0e07e0c00bf9fccb8237fe4d7f02"
+              }
+            ],
+            "outputs": [
+              {
+                "role": "marker",
+                "sats": "0",
+                "scriptHex": "6a4c7d7b2270223a226372632d3230222c226f70223a226465706c6f79222c227469636b223a2254455354222c2274797065223a22626f6e64696e67222c226d6178223a223231303030303030222c226c696d223a223231303030303030222c226c656166223a2230222c226f726469223a2230222c22627463223a2231227d"
+              },
+              {
+                "role": "vault",
+                "sats": "1000",
+                "scriptHex": "512092f00728b8b81f9fb1ba7f457bb67d25c84d330ef751d7c292bd3f1ec0fbbe67"
+              },
+              {
+                "role": "creatorRecord",
+                "sats": "1000",
+                "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+              },
+              {
+                "role": "protocolFee",
+                "sats": "7000",
+                "scriptHex": "00146363636363636363636363636363636363636363"
+              },
+              {
+                "role": "btcChange",
+                "sats": "4999990000",
+                "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+              }
+            ],
+            "markerJson": "{\"p\":\"crc-20\",\"op\":\"deploy\",\"tick\":\"TEST\",\"type\":\"bonding\",\"max\":\"21000000\",\"lim\":\"21000000\",\"leaf\":\"0\",\"ordi\":\"0\",\"btc\":\"1\"}",
+            "markerVout": 0,
+            "changeAtoms": "0",
+            "minerFeeSats": "1000",
+            "transactions": [
+              {
+                "inputs": [
+                  {
+                    "sats": "5000000000",
+                    "txid": "129c13eec8089d7928252f6eb2fcc30b6e0003551a4a947aa0616d4302c56127",
+                    "vout": 0,
+                    "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+                    "publicKeyHex": "02e5a018b3a2e155316109d9cdc5eab739759c0e07e0c00bf9fccb8237fe4d7f02"
+                  }
+                ],
+                "outputs": [
+                  {
+                    "role": "marker",
+                    "sats": "0",
+                    "scriptHex": "6a4c7d7b2270223a226372632d3230222c226f70223a226465706c6f79222c227469636b223a2254455354222c2274797065223a22626f6e64696e67222c226d6178223a223231303030303030222c226c696d223a223231303030303030222c226c656166223a2230222c226f726469223a2230222c22627463223a2231227d"
+                  },
+                  {
+                    "role": "vault",
+                    "sats": "1000",
+                    "scriptHex": "512092f00728b8b81f9fb1ba7f457bb67d25c84d330ef751d7c292bd3f1ec0fbbe67"
+                  },
+                  {
+                    "role": "creatorRecord",
+                    "sats": "1000",
+                    "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+                  },
+                  {
+                    "role": "protocolFee",
+                    "sats": "7000",
+                    "scriptHex": "00146363636363636363636363636363636363636363"
+                  },
+                  {
+                    "role": "btcChange",
+                    "sats": "4999990000",
+                    "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+                  }
+                ]
+              }
+            ],
+            "recipientVout": 1,
+            "creatorFeeSats": "0",
+            "protocolFeeSats": "7000"
+          },
+          "metadata": {
+            "xUrl": null,
+            "imageUrl": null,
+            "websiteUrl": null,
+            "description": "Owned regtest only",
+            "displayName": "Core coin"
+          },
+          "operation": "deploy",
+          "changeSats": 4999990000,
+          "coreConfig": {
+            "ticker": "TEST",
+            "network": "regtest",
+            "vaultScriptHex": "512092f00728b8b81f9fb1ba7f457bb67d25c84d330ef751d7c292bd3f1ec0fbbe67",
+            "guardianCustody": {
+              "controlBlockHex": "c050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0e1ef2b2b9d5702bc59be46c6eb65a9ef94d32d416dd477dac23b361ad815b2a0",
+              "assetCommitmentHex": "5bae2507ba0e9d04394b952864ced1d5d7957ab222fd18273dcc566ad1b6a25f",
+              "executionScriptHex": "205bae2507ba0e9d04394b952864ced1d5d7957ab222fd18273dcc566ad1b6a25f8820eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619ac",
+              "recoveryLeafHashHex": "e1ef2b2b9d5702bc59be46c6eb65a9ef94d32d416dd477dac23b361ad815b2a0",
+              "guardianPublicKeyHex": "eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619"
+            },
+            "creatorScriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+            "protocolScriptHex": "00146363636363636363636363636363636363636363"
+          },
+          "minerFeeSats": 1000,
+          "launchFeeSats": 7000,
+          "launchSaltHex": "8d36d12d85f90fc8ec51c387dd7ee961c3cfd3cd669f2d84930a648a3822cf98",
+          "vaultScriptHex": "512092f00728b8b81f9fb1ba7f457bb67d25c84d330ef751d7c292bd3f1ec0fbbe67",
+          "feeRateSatPerVb": null,
+          "vaultAnchorSats": 1000,
+          "creatorScriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "unsignedTxDigest": "0e869fea4619f8a863dd1417961a06c316ba2a1a99f30a25cdbe7d2c97bab133",
+          "creatorRecordSats": 1000,
+          "protocolScriptHex": "00146363636363636363636363636363636363636363"
+        }
+      }
+    },
+    {
+      "txid": "55d16d56309c5a4f0f74cdcb8fc9898d944b6c497b5208ece028d2005e1f7c06",
+      "rawHex": "02000000000102d7adb8bf629ed00f6be11e90a15c15e4163162225e37619a652336f6731fac6b0100000000feffffffd7adb8bf629ed00f6be11e90a15c15e4163162225e37619a652336f6731fac6b0400000000feffffff0600000000000000002a6a287b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a2254455354227de8030000000000001600147016cc099e003049b776999217a90b5d9030b9ab030400000000000022512092f00728b8b81f9fb1ba7f457bb67d25c84d330ef751d7c292bd3f1ec0fbbe679513000000000000160014636363636363636363636363636363636363636322020000000000001600147016cc099e003049b776999217a90b5d9030b9ab4ead052a010000001600147016cc099e003049b776999217a90b5d9030b9ab0441110660ae2470dce87f30f03173deb9a9ef660a803496f0895f778ac754ad0525f365d6cf28e33d750dc81d9e4b8e83f95ed7f31468c3ba77b8e6ab8aa97d40a501205bae2507ba0e9d04394b952864ced1d5d7957ab222fd18273dcc566ad1b6a25f44205bae2507ba0e9d04394b952864ced1d5d7957ab222fd18273dcc566ad1b6a25f8820eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619ac41c050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0e1ef2b2b9d5702bc59be46c6eb65a9ef94d32d416dd477dac23b361ad815b2a002473044022023868646223427de32c8651d2b422267d7af3fa633526ac42172b91dd82347f102200933b094c56d37c480f69578613c23cfb7e8a2c1e657db24ae62ab8a6ff998c4012102e5a018b3a2e155316109d9cdc5eab739759c0e07e0c00bf9fccb8237fe4d7f0200000000",
+      "actual": {
+        "rawHex": "02000000000102d7adb8bf629ed00f6be11e90a15c15e4163162225e37619a652336f6731fac6b0100000000feffffffd7adb8bf629ed00f6be11e90a15c15e4163162225e37619a652336f6731fac6b0400000000feffffff0600000000000000002a6a287b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a2254455354227de8030000000000001600147016cc099e003049b776999217a90b5d9030b9ab030400000000000022512092f00728b8b81f9fb1ba7f457bb67d25c84d330ef751d7c292bd3f1ec0fbbe679513000000000000160014636363636363636363636363636363636363636322020000000000001600147016cc099e003049b776999217a90b5d9030b9ab4ead052a010000001600147016cc099e003049b776999217a90b5d9030b9ab0441110660ae2470dce87f30f03173deb9a9ef660a803496f0895f778ac754ad0525f365d6cf28e33d750dc81d9e4b8e83f95ed7f31468c3ba77b8e6ab8aa97d40a501205bae2507ba0e9d04394b952864ced1d5d7957ab222fd18273dcc566ad1b6a25f44205bae2507ba0e9d04394b952864ced1d5d7957ab222fd18273dcc566ad1b6a25f8820eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619ac41c050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0e1ef2b2b9d5702bc59be46c6eb65a9ef94d32d416dd477dac23b361ad815b2a002473044022023868646223427de32c8651d2b422267d7af3fa633526ac42172b91dd82347f102200933b094c56d37c480f69578613c23cfb7e8a2c1e657db24ae62ab8a6ff998c4012102e5a018b3a2e155316109d9cdc5eab739759c0e07e0c00bf9fccb8237fe4d7f0200000000",
+        "prevouts": [
+          {
+            "txid": "6bac1f73f63623659a61375e22623116e4155ca1901ee16b0fd09e62bfb8add7",
+            "vout": 1,
+            "sats": "1000",
+            "scriptHex": "512092f00728b8b81f9fb1ba7f457bb67d25c84d330ef751d7c292bd3f1ec0fbbe67"
+          },
+          {
+            "txid": "6bac1f73f63623659a61375e22623116e4155ca1901ee16b0fd09e62bfb8add7",
+            "vout": 4,
+            "sats": "4999990000",
+            "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+          }
+        ]
+      },
+      "session": {
+        "operation": "mint-buy",
+        "trusted_json": {
+          "quote": {
+            "assetId": "regtest:6bac1f73f63623659a61375e22623116e4155ca1901ee16b0fd09e62bfb8add7",
+            "grossSats": "27",
+            "operation": "mint",
+            "amountAtoms": "100000000000",
+            "vaultOutpoint": "6bac1f73f63623659a61375e22623116e4155ca1901ee16b0fd09e62bfb8add7:1",
+            "buyerTotalSats": "5586",
+            "creatorFeeSats": "546",
+            "protocolFeeSats": "5013",
+            "minerFeeExcluded": true,
+            "newlyMintedAtoms": "100000000000",
+            "inventoryBuyAtoms": "0"
+          },
+          "assetId": "regtest:6bac1f73f63623659a61375e22623116e4155ca1901ee16b0fd09e62bfb8add7",
+          "feeTier": null,
+          "corePlan": {
+            "inputs": [
+              {
+                "sats": "1000",
+                "txid": "6bac1f73f63623659a61375e22623116e4155ca1901ee16b0fd09e62bfb8add7",
+                "vout": 1,
+                "scriptHex": "512092f00728b8b81f9fb1ba7f457bb67d25c84d330ef751d7c292bd3f1ec0fbbe67"
+              },
+              {
+                "sats": "4999990000",
+                "txid": "6bac1f73f63623659a61375e22623116e4155ca1901ee16b0fd09e62bfb8add7",
+                "vout": 4,
+                "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+                "publicKeyHex": "02e5a018b3a2e155316109d9cdc5eab739759c0e07e0c00bf9fccb8237fe4d7f02"
+              }
+            ],
+            "outputs": [
+              {
+                "role": "marker",
+                "sats": "0",
+                "scriptHex": "6a287b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a2254455354227d"
+              },
+              {
+                "role": "recipient",
+                "sats": "1000",
+                "atoms": "100000000000",
+                "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+              },
+              {
+                "role": "vault",
+                "sats": "1027",
+                "scriptHex": "512092f00728b8b81f9fb1ba7f457bb67d25c84d330ef751d7c292bd3f1ec0fbbe67"
+              },
+              {
+                "role": "protocolFee",
+                "sats": "5013",
+                "scriptHex": "00146363636363636363636363636363636363636363"
+              },
+              {
+                "role": "creatorFee",
+                "sats": "546",
+                "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+              },
+              {
+                "role": "btcChange",
+                "sats": "4999982414",
+                "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+              }
+            ],
+            "grossSats": "27",
+            "markerJson": "{\"p\":\"crc-20\",\"op\":\"mint\",\"tick\":\"TEST\"}",
+            "markerVout": 0,
+            "changeAtoms": "0",
+            "minerFeeSats": "1000",
+            "transactions": [
+              {
+                "inputs": [
+                  {
+                    "sats": "1000",
+                    "txid": "6bac1f73f63623659a61375e22623116e4155ca1901ee16b0fd09e62bfb8add7",
+                    "vout": 1,
+                    "scriptHex": "512092f00728b8b81f9fb1ba7f457bb67d25c84d330ef751d7c292bd3f1ec0fbbe67"
+                  },
+                  {
+                    "sats": "4999990000",
+                    "txid": "6bac1f73f63623659a61375e22623116e4155ca1901ee16b0fd09e62bfb8add7",
+                    "vout": 4,
+                    "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+                    "publicKeyHex": "02e5a018b3a2e155316109d9cdc5eab739759c0e07e0c00bf9fccb8237fe4d7f02"
+                  }
+                ],
+                "outputs": [
+                  {
+                    "role": "marker",
+                    "sats": "0",
+                    "scriptHex": "6a287b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a2254455354227d"
+                  },
+                  {
+                    "role": "recipient",
+                    "sats": "1000",
+                    "atoms": "100000000000",
+                    "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+                  },
+                  {
+                    "role": "vault",
+                    "sats": "1027",
+                    "scriptHex": "512092f00728b8b81f9fb1ba7f457bb67d25c84d330ef751d7c292bd3f1ec0fbbe67"
+                  },
+                  {
+                    "role": "protocolFee",
+                    "sats": "5013",
+                    "scriptHex": "00146363636363636363636363636363636363636363"
+                  },
+                  {
+                    "role": "creatorFee",
+                    "sats": "546",
+                    "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+                  },
+                  {
+                    "role": "btcChange",
+                    "sats": "4999982414",
+                    "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+                  }
+                ]
+              }
+            ],
+            "recipientVout": 1,
+            "creatorFeeSats": "546",
+            "protocolFeeSats": "5013"
+          },
+          "operation": "mint-buy",
+          "changeSats": 4999982414,
+          "coreConfig": {
+            "ticker": "TEST",
+            "network": "regtest",
+            "vaultScriptHex": "512092f00728b8b81f9fb1ba7f457bb67d25c84d330ef751d7c292bd3f1ec0fbbe67",
+            "guardianCustody": {
+              "controlBlockHex": "c050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0e1ef2b2b9d5702bc59be46c6eb65a9ef94d32d416dd477dac23b361ad815b2a0",
+              "assetCommitmentHex": "5bae2507ba0e9d04394b952864ced1d5d7957ab222fd18273dcc566ad1b6a25f",
+              "executionScriptHex": "205bae2507ba0e9d04394b952864ced1d5d7957ab222fd18273dcc566ad1b6a25f8820eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619ac",
+              "recoveryLeafHashHex": "e1ef2b2b9d5702bc59be46c6eb65a9ef94d32d416dd477dac23b361ad815b2a0",
+              "guardianPublicKeyHex": "eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619"
+            },
+            "creatorScriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+            "protocolScriptHex": "00146363636363636363636363636363636363636363"
+          },
+          "amountAtoms": "100000000000",
+          "minerFeeSats": 1000,
+          "vaultOutpoint": "6bac1f73f63623659a61375e22623116e4155ca1901ee16b0fd09e62bfb8add7:1",
+          "tokenScriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "feeRateSatPerVb": null,
+          "walletScriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "newlyMintedAtoms": "100000000000",
+          "unsignedTxDigest": "da3d2cfee36d6799d3f3ca212ec18a45f284076020d57365d6c1cac9ccf44e38",
+          "inventoryBuyAtoms": "0"
+        }
+      }
+    },
+    {
+      "txid": "f0af84f3547c9f3a6ba5d6dd757c4070c14b3fcaed47b74c0174ddbb3751be2a",
+      "rawHex": "02000000000103067c1f5e00d228e0ec08527b496c4b948d89c98fcbcd740f4f5a9c30566dd1550200000000feffffff067c1f5e00d228e0ec08527b496c4b948d89c98fcbcd740f4f5a9c30566dd1550100000000feffffff5ccec770907faa9fad1038d755eee4a538628ec28a39661d3e6d1b79ff258ca40000000000feffffff060000000000000000426a407b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a223730303030303030303030227df10300000000000022512092f00728b8b81f9fb1ba7f457bb67d25c84d330ef751d7c292bd3f1ec0fbbe67e8030000000000001600147016cc099e003049b776999217a90b5d9030b9abe8030000000000001600147016cc099e003049b776999217a90b5d9030b9abe80300000000000016001463636363636363636363636363636363636363635ae6052a010000001600147016cc099e003049b776999217a90b5d9030b9ab0441c15fc775e21a1b3e3d7bccbb3602476200c0c28d444a0d0b95ac4a58b62cfd45498d95dda4f5928d259ffa81a8c5ea478fe4abf15333ef204c39f47b86235a5001205bae2507ba0e9d04394b952864ced1d5d7957ab222fd18273dcc566ad1b6a25f44205bae2507ba0e9d04394b952864ced1d5d7957ab222fd18273dcc566ad1b6a25f8820eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619ac41c050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0e1ef2b2b9d5702bc59be46c6eb65a9ef94d32d416dd477dac23b361ad815b2a002473044022016f45e8db33ed2da42d1e5390d7b7f2e5c2d7a563e280bcbaa98b711bd330a2f0220616351e803881d97bebe26160ff201190ab5bf8aa8b358f621b85bab997ab117012102e5a018b3a2e155316109d9cdc5eab739759c0e07e0c00bf9fccb8237fe4d7f0202473044022043cdc444dc20811f3c1d17ce690724e4b0144b87989ab6337210a283172e732d02207c03113333b83d22955e7473e6f9cf5610fa6b41672462f624ea27671fc1e36a012102e5a018b3a2e155316109d9cdc5eab739759c0e07e0c00bf9fccb8237fe4d7f0200000000",
+      "actual": {
+        "rawHex": "02000000000103067c1f5e00d228e0ec08527b496c4b948d89c98fcbcd740f4f5a9c30566dd1550200000000feffffff067c1f5e00d228e0ec08527b496c4b948d89c98fcbcd740f4f5a9c30566dd1550100000000feffffff5ccec770907faa9fad1038d755eee4a538628ec28a39661d3e6d1b79ff258ca40000000000feffffff060000000000000000426a407b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a223730303030303030303030227df10300000000000022512092f00728b8b81f9fb1ba7f457bb67d25c84d330ef751d7c292bd3f1ec0fbbe67e8030000000000001600147016cc099e003049b776999217a90b5d9030b9abe8030000000000001600147016cc099e003049b776999217a90b5d9030b9abe80300000000000016001463636363636363636363636363636363636363635ae6052a010000001600147016cc099e003049b776999217a90b5d9030b9ab0441c15fc775e21a1b3e3d7bccbb3602476200c0c28d444a0d0b95ac4a58b62cfd45498d95dda4f5928d259ffa81a8c5ea478fe4abf15333ef204c39f47b86235a5001205bae2507ba0e9d04394b952864ced1d5d7957ab222fd18273dcc566ad1b6a25f44205bae2507ba0e9d04394b952864ced1d5d7957ab222fd18273dcc566ad1b6a25f8820eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619ac41c050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0e1ef2b2b9d5702bc59be46c6eb65a9ef94d32d416dd477dac23b361ad815b2a002473044022016f45e8db33ed2da42d1e5390d7b7f2e5c2d7a563e280bcbaa98b711bd330a2f0220616351e803881d97bebe26160ff201190ab5bf8aa8b358f621b85bab997ab117012102e5a018b3a2e155316109d9cdc5eab739759c0e07e0c00bf9fccb8237fe4d7f0202473044022043cdc444dc20811f3c1d17ce690724e4b0144b87989ab6337210a283172e732d02207c03113333b83d22955e7473e6f9cf5610fa6b41672462f624ea27671fc1e36a012102e5a018b3a2e155316109d9cdc5eab739759c0e07e0c00bf9fccb8237fe4d7f0200000000",
+        "prevouts": [
+          {
+            "txid": "55d16d56309c5a4f0f74cdcb8fc9898d944b6c497b5208ece028d2005e1f7c06",
+            "vout": 2,
+            "sats": "1027",
+            "scriptHex": "512092f00728b8b81f9fb1ba7f457bb67d25c84d330ef751d7c292bd3f1ec0fbbe67"
+          },
+          {
+            "txid": "55d16d56309c5a4f0f74cdcb8fc9898d944b6c497b5208ece028d2005e1f7c06",
+            "vout": 1,
+            "sats": "1000",
+            "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+          },
+          {
+            "txid": "a48c25ff791b6d3e1d66398ac28e6238a5e4ee55d73810ad9faa7f9070c7ce5c",
+            "vout": 0,
+            "sats": "5000000000",
+            "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+          }
+        ]
+      },
+      "session": {
+        "operation": "sell",
+        "trusted_json": {
+          "quote": {
+            "assetId": "regtest:6bac1f73f63623659a61375e22623116e4155ca1901ee16b0fd09e62bfb8add7",
+            "grossSats": "18",
+            "operation": "transfer",
+            "amountAtoms": "70000000000",
+            "sellerNetSats": "-982",
+            "vaultOutpoint": "55d16d56309c5a4f0f74cdcb8fc9898d944b6c497b5208ece028d2005e1f7c06:2",
+            "payoutDustSats": "1000",
+            "protocolFeeSats": "1000",
+            "walletTopUpSats": "1982",
+            "minerFeeExcluded": true,
+            "sellerPayoutSats": "1000",
+            "walletTopUpExcludesCarrierCredits": true
+          },
+          "assetId": "regtest:6bac1f73f63623659a61375e22623116e4155ca1901ee16b0fd09e62bfb8add7",
+          "feeTier": null,
+          "corePlan": {
+            "inputs": [
+              {
+                "sats": "1027",
+                "txid": "55d16d56309c5a4f0f74cdcb8fc9898d944b6c497b5208ece028d2005e1f7c06",
+                "vout": 2,
+                "scriptHex": "512092f00728b8b81f9fb1ba7f457bb67d25c84d330ef751d7c292bd3f1ec0fbbe67"
+              },
+              {
+                "sats": "1000",
+                "txid": "55d16d56309c5a4f0f74cdcb8fc9898d944b6c497b5208ece028d2005e1f7c06",
+                "vout": 1,
+                "atoms": "100000000000",
+                "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+                "deployTxid": "6bac1f73f63623659a61375e22623116e4155ca1901ee16b0fd09e62bfb8add7",
+                "publicKeyHex": "02e5a018b3a2e155316109d9cdc5eab739759c0e07e0c00bf9fccb8237fe4d7f02"
+              },
+              {
+                "sats": "5000000000",
+                "txid": "a48c25ff791b6d3e1d66398ac28e6238a5e4ee55d73810ad9faa7f9070c7ce5c",
+                "vout": 0,
+                "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+                "publicKeyHex": "02e5a018b3a2e155316109d9cdc5eab739759c0e07e0c00bf9fccb8237fe4d7f02"
+              }
+            ],
+            "outputs": [
+              {
+                "role": "marker",
+                "sats": "0",
+                "scriptHex": "6a407b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a223730303030303030303030227d"
+              },
+              {
+                "role": "vault",
+                "sats": "1009",
+                "atoms": "70000000000",
+                "scriptHex": "512092f00728b8b81f9fb1ba7f457bb67d25c84d330ef751d7c292bd3f1ec0fbbe67"
+              },
+              {
+                "role": "payout",
+                "sats": "1000",
+                "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+              },
+              {
+                "role": "tokenChange",
+                "sats": "1000",
+                "atoms": "30000000000",
+                "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+              },
+              {
+                "role": "protocolFee",
+                "sats": "1000",
+                "scriptHex": "00146363636363636363636363636363636363636363"
+              },
+              {
+                "role": "btcChange",
+                "sats": "4999997018",
+                "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+              }
+            ],
+            "grossSats": "18",
+            "markerJson": "{\"p\":\"crc-20\",\"op\":\"transfer\",\"tick\":\"TEST\",\"amt\":\"70000000000\"}",
+            "markerVout": 0,
+            "changeAtoms": "30000000000",
+            "economicSats": "-982",
+            "minerFeeSats": "1000",
+            "transactions": [
+              {
+                "inputs": [
+                  {
+                    "sats": "1027",
+                    "txid": "55d16d56309c5a4f0f74cdcb8fc9898d944b6c497b5208ece028d2005e1f7c06",
+                    "vout": 2,
+                    "scriptHex": "512092f00728b8b81f9fb1ba7f457bb67d25c84d330ef751d7c292bd3f1ec0fbbe67"
+                  },
+                  {
+                    "sats": "1000",
+                    "txid": "55d16d56309c5a4f0f74cdcb8fc9898d944b6c497b5208ece028d2005e1f7c06",
+                    "vout": 1,
+                    "atoms": "100000000000",
+                    "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+                    "deployTxid": "6bac1f73f63623659a61375e22623116e4155ca1901ee16b0fd09e62bfb8add7",
+                    "publicKeyHex": "02e5a018b3a2e155316109d9cdc5eab739759c0e07e0c00bf9fccb8237fe4d7f02"
+                  },
+                  {
+                    "sats": "5000000000",
+                    "txid": "a48c25ff791b6d3e1d66398ac28e6238a5e4ee55d73810ad9faa7f9070c7ce5c",
+                    "vout": 0,
+                    "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+                    "publicKeyHex": "02e5a018b3a2e155316109d9cdc5eab739759c0e07e0c00bf9fccb8237fe4d7f02"
+                  }
+                ],
+                "outputs": [
+                  {
+                    "role": "marker",
+                    "sats": "0",
+                    "scriptHex": "6a407b2270223a226372632d3230222c226f70223a227472616e73666572222c227469636b223a2254455354222c22616d74223a223730303030303030303030227d"
+                  },
+                  {
+                    "role": "vault",
+                    "sats": "1009",
+                    "atoms": "70000000000",
+                    "scriptHex": "512092f00728b8b81f9fb1ba7f457bb67d25c84d330ef751d7c292bd3f1ec0fbbe67"
+                  },
+                  {
+                    "role": "payout",
+                    "sats": "1000",
+                    "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+                  },
+                  {
+                    "role": "tokenChange",
+                    "sats": "1000",
+                    "atoms": "30000000000",
+                    "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+                  },
+                  {
+                    "role": "protocolFee",
+                    "sats": "1000",
+                    "scriptHex": "00146363636363636363636363636363636363636363"
+                  },
+                  {
+                    "role": "btcChange",
+                    "sats": "4999997018",
+                    "scriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab"
+                  }
+                ]
+              }
+            ],
+            "recipientVout": 1,
+            "creatorFeeSats": "0",
+            "protocolFeeSats": "1000",
+            "walletTopUpSats": "2982",
+            "sellerPayoutSats": "1000"
+          },
+          "operation": "sell",
+          "changeSats": 4999997018,
+          "coreConfig": {
+            "ticker": "TEST",
+            "network": "regtest",
+            "vaultScriptHex": "512092f00728b8b81f9fb1ba7f457bb67d25c84d330ef751d7c292bd3f1ec0fbbe67",
+            "guardianCustody": {
+              "controlBlockHex": "c050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0e1ef2b2b9d5702bc59be46c6eb65a9ef94d32d416dd477dac23b361ad815b2a0",
+              "assetCommitmentHex": "5bae2507ba0e9d04394b952864ced1d5d7957ab222fd18273dcc566ad1b6a25f",
+              "executionScriptHex": "205bae2507ba0e9d04394b952864ced1d5d7957ab222fd18273dcc566ad1b6a25f8820eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619ac",
+              "recoveryLeafHashHex": "e1ef2b2b9d5702bc59be46c6eb65a9ef94d32d416dd477dac23b361ad815b2a0",
+              "guardianPublicKeyHex": "eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619"
+            },
+            "creatorScriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+            "protocolScriptHex": "00146363636363636363636363636363636363636363"
+          },
+          "amountAtoms": "70000000000",
+          "minerFeeSats": 1000,
+          "vaultOutpoint": "55d16d56309c5a4f0f74cdcb8fc9898d944b6c497b5208ece028d2005e1f7c06:2",
+          "tokenScriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "feeRateSatPerVb": null,
+          "walletScriptHex": "00147016cc099e003049b776999217a90b5d9030b9ab",
+          "unsignedTxDigest": "ddde4d28aaa04b046619f1db97ed05eef2d5e4c1864047054a49a914a1b0f934"
+        }
+      }
+    },
+    {
+      "latency": {
+        "durationMs": 34252,
+        "modeledTransportMs": 200,
+        "quotaPerSecond": 3,
+        "inputs": 3,
+        "calls": [
+          {
+            "lane": "public",
+            "method": "getBlockchainInfo",
+            "budgetMs": 3,
+            "elapsedMs": 282
+          },
+          {
+            "lane": "public",
+            "method": "getBlockHash",
+            "budgetMs": 777,
+            "elapsedMs": 292
+          },
+          {
+            "lane": "public",
+            "method": "getTxout",
+            "budgetMs": 838,
+            "elapsedMs": 271
+          },
+          {
+            "lane": "public",
+            "method": "getTxout",
+            "budgetMs": 789,
+            "elapsedMs": 286
+          },
+          {
+            "lane": "public",
+            "method": "getTxout",
+            "budgetMs": 729,
+            "elapsedMs": 293
+          },
+          {
+            "lane": "guardian",
+            "method": "getBlockchainInfo",
+            "budgetMs": 85,
+            "elapsedMs": 287
+          },
+          {
+            "lane": "guardian",
+            "method": "getRawTransaction",
+            "budgetMs": 792,
+            "elapsedMs": 289
+          },
+          {
+            "lane": "guardian",
+            "method": "getBlockHash",
+            "budgetMs": 799,
+            "elapsedMs": 257
+          },
+          {
+            "lane": "guardian",
+            "method": "getTxout",
+            "budgetMs": 760,
+            "elapsedMs": 282
+          },
+          {
+            "lane": "guardian",
+            "method": "getTxout",
+            "budgetMs": 733,
+            "elapsedMs": 285
+          },
+          {
+            "lane": "guardian",
+            "method": "getTxout",
+            "budgetMs": 792,
+            "elapsedMs": 283
+          },
+          {
+            "lane": "guardian",
+            "method": "getBlockHash",
+            "budgetMs": 712,
+            "elapsedMs": 290
+          },
+          {
+            "lane": "guardian",
+            "method": "getTxout",
+            "budgetMs": 810,
+            "elapsedMs": 294
+          },
+          {
+            "lane": "guardian",
+            "method": "getTxout",
+            "budgetMs": 747,
+            "elapsedMs": 283
+          },
+          {
+            "lane": "guardian",
+            "method": "getTxout",
+            "budgetMs": 711,
+            "elapsedMs": 285
+          },
+          {
+            "lane": "guardian",
+            "method": "getBlockHash",
+            "budgetMs": 708,
+            "elapsedMs": 281
+          },
+          {
+            "lane": "guardian",
+            "method": "getTxout",
+            "budgetMs": 718,
+            "elapsedMs": 281
+          },
+          {
+            "lane": "guardian",
+            "method": "getTxout",
+            "budgetMs": 738,
+            "elapsedMs": 278
+          },
+          {
+            "lane": "guardian",
+            "method": "getTxout",
+            "budgetMs": 732,
+            "elapsedMs": 299
+          },
+          {
+            "lane": "public",
+            "method": "getBlockchainInfo",
+            "budgetMs": 145,
+            "elapsedMs": 284
+          },
+          {
+            "lane": "public",
+            "method": "getBlockHash",
+            "budgetMs": 728,
+            "elapsedMs": 284
+          },
+          {
+            "lane": "public",
+            "method": "getTxout",
+            "budgetMs": 744,
+            "elapsedMs": 278
+          },
+          {
+            "lane": "public",
+            "method": "getTxout",
+            "budgetMs": 827,
+            "elapsedMs": 296
+          },
+          {
+            "lane": "public",
+            "method": "getTxout",
+            "budgetMs": 778,
+            "elapsedMs": 253
+          },
+          {
+            "lane": "public",
+            "method": "getBlockchainInfo",
+            "budgetMs": 829,
+            "elapsedMs": 261
+          },
+          {
+            "lane": "public",
+            "method": "observeTransaction",
+            "budgetMs": 819,
+            "elapsedMs": 336
+          },
+          {
+            "lane": "public",
+            "method": "getBlockchainInfo",
+            "budgetMs": 784,
+            "elapsedMs": 272
+          },
+          {
+            "lane": "public",
+            "method": "getBlockHash",
+            "budgetMs": 764,
+            "elapsedMs": 290
+          },
+          {
+            "lane": "public",
+            "method": "getTxout",
+            "budgetMs": 816,
+            "elapsedMs": 281
+          },
+          {
+            "lane": "public",
+            "method": "getTxout",
+            "budgetMs": 731,
+            "elapsedMs": 280
+          },
+          {
+            "lane": "public",
+            "method": "getTxout",
+            "budgetMs": 781,
+            "elapsedMs": 249
+          },
+          {
+            "lane": "public",
+            "method": "getBlockchainInfo",
+            "budgetMs": 827,
+            "elapsedMs": 254
+          },
+          {
+            "lane": "public",
+            "method": "testMempoolAccept",
+            "budgetMs": 760,
+            "elapsedMs": 269
+          },
+          {
+            "lane": "public",
+            "method": "broadcastTransaction",
+            "budgetMs": 822,
+            "elapsedMs": 560
+          }
+        ],
+        "serverTiming": null
+      }
+    }
+  ]
+}

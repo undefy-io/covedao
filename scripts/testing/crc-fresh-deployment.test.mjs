@@ -19,7 +19,9 @@ test("fresh deployment coordinates only isolated regtest services", () => {
 test("runtime attestation rejects drift in either service and incomplete manifests", async () => {
   const { verifyRuntimeHashes } = await import("./crc-fresh-deployment.mjs");
   const files = Object.fromEntries(["protocol/index.ts", "adapters/src/index.ts", "state/src/index.ts", "guardian/src/index.ts"].map((suffix) => ["packages/crc20-"+suffix, "ab".repeat(32)]));
-  assert.equal(verifyRuntimeHashes(files, { ...files }), 4);
+  files["packages/db/src/quotas.ts"] = "ab".repeat(32);
+  assert.equal(verifyRuntimeHashes(files, { ...files }), 5);
+  assert.throws(() => verifyRuntimeHashes(files, { ...files, "packages/db/src/quotas.ts": "cd".repeat(32) }));
   const changed = { ...files, "packages/crc20-guardian/src/index.ts": "cd".repeat(32) };
   assert.throws(() => verifyRuntimeHashes(files, changed));
   assert.throws(() => verifyRuntimeHashes({}, {}));

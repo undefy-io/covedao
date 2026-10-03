@@ -1,0 +1,31 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/db
+
+ ❯ src/rpc-budget.integration.test.ts (3 tests | 1 failed) 12565ms
+   × an idle lane lends quota to consecutive public requests while preserving the upstream cap 3240ms
+     → expected 3226 to be less than 1800
+   ✓ continuous public replicas do not starve worker or Guardian waiting for shared quota 7560ms
+   ✓ stalled public calls retain reserved concurrency and aborted waiters leave no reservation 463ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/rpc-budget.integration.test.ts > an idle lane lends quota to consecutive public requests while preserving the upstream cap
+AssertionError: expected 3226 to be less than 1800
+ ❯ src/rpc-budget.integration.test.ts:40:35
+     38|   }
+     39|   assertRate(starts, 3);
+     40|   expect(starts[3]! - starts[0]!).toBeLessThan(1800);
+       |                                   ^
+     41| }, 10_000);
+     42| test("continuous public replicas do not starve worker or Guardian wait…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+   Start at  09:56:00
+   Duration  13.02s (transform 66ms, setup 0ms, collect 254ms, tests 12.57s, environment 0ms, prepare 51ms)
+
+undefined
+/home/andefy/dev/covedao/packages/db:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/rpc-budget.integration.test.ts

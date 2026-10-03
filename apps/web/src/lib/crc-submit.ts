@@ -4,7 +4,7 @@ import * as bitcoin from "bitcoinjs-lib";
 import * as core from "@crclaunch/crc20-protocol";
 import { completeServerWalletSigning } from "@crclaunch/crc20-adapters";
 import { loadCrcCoreLedger, saveCrcRegistration } from "@crclaunch/crc20-state";
-import { broadcastRecordedTransaction, type CoreRpcProvider } from "@crclaunch/bitcoin";
+import { broadcastRecordedTransaction, type CoreRpcProvider, type BlockchainInfo } from "@crclaunch/bitcoin";
 import { AppError, unsignedTxDigest } from "@crclaunch/cove-app";
 import type { Database } from "@crclaunch/db";
 import {
@@ -25,7 +25,13 @@ type SubmitParams = {
   guardianEndpoint: string;
   guardianAuthToken: string;
   expectedOperation?: "deploy" | "buy" | "sell" | "transfer" | "listing" | "purchase" | "cancel";
+  onTiming?: (stage: string, durationMs: number) => void;
 };
+async function timed<T>(params: SubmitParams, stage: string, run: () => Promise<T>): Promise<T> {
+  const start = performance.now();
+  try { return await run(); }
+  finally { params.onTiming?.(stage, performance.now() - start); }
+}
 type Session = NonNullable<Awaited<ReturnType<typeof getCrcBuildSession>>>;
 function operationMatches(actual: string, expected: SubmitParams["expectedOperation"]) {
   return (
@@ -60,13 +66,15 @@ async function assertNetwork(params: SubmitParams) {
   const expected =
     params.network === "mainnet" ? "main" : params.network === "testnet" ? "test" : params.network;
   if (info.chain !== expected) throw new AppError("WRONG_NETWORK", "CRC backend network mismatch");
+  return info;
 }
 async function assertLive(
   params: SubmitParams,
   ledger: core.Ledger,
   transaction: core.ChainTransaction,
+  observation?: BlockchainInfo,
 ) {
-  await assertNetwork(params);
+  const network = observation ?? await assertNetwork(params);
   if (ledger.tip && (await params.provider.getBlockHash(ledger.tip.height)) !== ledger.tip.hash)
     throw new AppError("STATE_CHANGED", "CRC indexed state is no longer canonical");
   for (const input of transaction.prevouts) {
@@ -79,10 +87,11 @@ async function assertLive(
     )
       throw new AppError("STATE_CHANGED", "CRC input is no longer a confirmed matching UTXO");
   }
+  return network;
 }
 async function broadcastReady(params: SubmitParams, session: Session) {
   if (!session.signedRawHex || !session.txid) throw new Error("CRC signed transaction missing");
-  await assertNetwork(params);
+  const network = await assertNetwork(params);
   // A crash after broadcast can leave READY; a provider failure never proves eviction.
   const observed = await params.provider.observeTransaction(session.txid, {
     retry: false,
@@ -93,12 +102,13 @@ async function broadcastReady(params: SubmitParams, session: Session) {
     const ledger = await context(params, session, config);
     const transaction = { rawHex: session.signedRawHex, prevouts: plan.inputs };
     core.validateFinalTransaction(plan, transaction, ledger);
-    await assertLive(params, ledger, transaction);
+    await assertLive(params, ledger, transaction, network);
     try {
       await broadcastRecordedTransaction(
         params.provider,
         { rawTxHex: session.signedRawHex, txid: session.txid },
         params.network,
+        network,
       );
     } catch (error) {
       throw new AppError(
@@ -189,7 +199,7 @@ export async function submitCrcSession(
           "CRC buy inventory breakdown differs from signed transition",
         );
   }
-  await assertLive(params, ledger, verified.transaction);
+  await timed(params, "live_before_sign", () => assertLive(params, ledger, verified.transaction));
   const signedHash = createHash("sha256").update(params.signedPsbtBase64).digest("hex");
   const claim = await claimCrcBuildSession(params.db, params.network, params.sessionId, signedHash);
   if (!claim?.claimId)
@@ -199,7 +209,7 @@ export async function submitCrcSession(
     if (guardianPending) {
       let response: Response;
       try {
-        response = await fetch(new URL("/sign/crc20", params.guardianEndpoint), {
+        response = await timed(params, "guardian", () => fetch(new URL("/sign/crc20", params.guardianEndpoint), {
           method: "POST",
           headers: {
             authorization: `Bearer ${params.guardianAuthToken}`,
@@ -213,7 +223,7 @@ export async function submitCrcSession(
             psbtBase64: verified.psbtBase64,
           }),
           signal: AbortSignal.timeout(30000),
-        });
+        }));
       } catch (error) {
         throw new AppError(
           "GUARDIAN_UNAVAILABLE",
@@ -269,7 +279,7 @@ export async function submitCrcSession(
     }
     ledger = await context(params, session, config);
     core.validateFinalTransaction(plan, transaction, ledger);
-    await assertLive(params, ledger, transaction);
+    const network = await timed(params, "live_before_broadcast", () => assertLive(params, ledger, transaction));
     const txid = core.parseRawTransaction(transaction.rawHex).txid;
     if (session.operation === "deploy") {
       await saveCrcRegistration(params.db, config, transaction);
@@ -281,7 +291,7 @@ export async function submitCrcSession(
         parseCrcLaunchMetadata(data.metadata, config.ticker),
       );
     }
-    const ready = await markCrcBuildReady(
+    await markCrcBuildReady(
       params.db,
       params.network,
       params.sessionId,
@@ -289,7 +299,18 @@ export async function submitCrcSession(
       txid,
       claim.claimId,
     );
-    return await broadcastReady(params, ready);
+    // Fresh submission already has a verified current transaction and live
+    // fence. Persist READY before I/O, but leave observation/reconstruction to
+    // the recovery path; a lost response is retried from these exact bytes.
+    try {
+      await timed(params, "broadcast", () => broadcastRecordedTransaction(
+        params.provider, { rawTxHex: transaction.rawHex, txid }, params.network, network,
+      ));
+    } catch (error) {
+      throw new AppError("BROADCAST_FAILED", error instanceof Error ? error.message : "CRC transaction could not be broadcast");
+    }
+    await markCrcBuildBroadcast(params.db, params.network, params.sessionId, txid);
+    return { txid, status: "BROADCAST" };
   } catch (error) {
     await releaseCrcBuildSession(params.db, params.network, params.sessionId, claim.claimId);
     throw error;

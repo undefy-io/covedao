@@ -1,6 +1,7 @@
 import { beforeAll, afterAll, test, expect, vi } from "vitest";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { createHash } from "node:crypto";
 import * as bitcoin from "bitcoinjs-lib";
 import * as core from "@crclaunch/crc20-protocol";
 import * as state from "@crclaunch/crc20-state";
@@ -355,6 +356,8 @@ test("bad wallet/state/fees/recovery/stale vault never reach custody", async () 
     ok: false,
   });
   expect(sign).toHaveBeenCalledTimes(count);
+  const staleDigest = createHash("sha256").update(walletPsbt(plan).data.globalMap.unsignedTx.toBuffer()).digest("hex");
+  expect((await database.pool.query("select status from crc_signatures where network='regtest' and unsigned_digest=$1", [staleDigest])).rows).toEqual([{ status: "failed" }]);
   const badRecovery = new CrcGuardianSigningService({
     db: database.db,
     core: provider,
@@ -413,7 +416,8 @@ test("state changes during custody signing reject the response and release the j
   });
   const rejected = await service.sign(request(psbt, "mint-buy"));
   expect(rejected).toMatchObject({ ok: false, detail: expect.stringMatching(/state changed/) });
-  const rows = await database.pool.query("select status from crc_signatures where status='failed'");
+  const digest = createHash("sha256").update(psbt.data.globalMap.unsignedTx.toBuffer()).digest("hex");
+  const rows = await database.pool.query("select status from crc_signatures where network='regtest' and unsigned_digest=$1 and status='failed'", [digest]);
   expect(rows.rows).toHaveLength(1);
   const retried = await service.sign(request(psbt, "mint-buy"));
   expect(retried).toMatchObject({ ok: true });

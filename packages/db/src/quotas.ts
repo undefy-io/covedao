@@ -26,7 +26,9 @@ export async function sharedQuota(db: Database, key: string, limit: number, wind
 
 type Lane = "worker" | "guardian" | "public";
 type Lease = { id: string; lane: Lane; until: number };
-type State = { rate: number; concurrency: number; next: number; lanes: Partial<Record<Lane, number>>; leases: Lease[] };
+type Waiter = Lease & { queuedAt: number };
+type State = { rate: number; concurrency: number; next: number; lanes: Partial<Record<Lane, number>>; leases: Lease[];
+  waiters?: Waiter[]; lastGrant?: Partial<Record<Lane, number>> };
 
 type BudgetRequest = { signal: AbortSignal; resolve: (release: () => Promise<void>) => void;
   reject: (error: unknown) => void; abort: () => void };
@@ -75,10 +77,10 @@ export class PostgresRpcBudget {
 
   private async acquireShared(signal: AbortSignal): Promise<() => Promise<void>> {
     const deadline = Date.now() + 8_000;
-    {
+    const id = randomUUID();
+    try {
       while (Date.now() < deadline) {
         signal.throwIfAborted();
-        const id = randomUUID();
         const accepted = await this.db.transaction(async (tx) => {
           await tx.execute(sql`set local lock_timeout = '500ms'`);
           await tx.execute(sql`set local statement_timeout = '1000ms'`);
@@ -90,9 +92,24 @@ export class PostgresRpcBudget {
           const state = row.state as State;
           if (state.rate !== this.requestsPerSecond || state.concurrency !== this.maxConcurrent) throw new Error("provider budget configuration differs across services");
           state.leases = state.leases.filter((lease) => lease.until > now);
-          if (state.next > now || (state.lanes[this.lane] ?? 0) > now ||
-            state.leases.length >= this.maxConcurrent || state.leases.filter((lease) => lease.lane === this.lane).length >= Math.floor(this.maxConcurrent / 3)) return false;
+          const waiters = state.waiters = (state.waiters ?? []).filter(waiter => waiter.until > now);
+          if (!waiters.some(waiter => waiter.id === id)) {
+            if (waiters.length >= 128) throw new CapacityUnavailable();
+            waiters.push({ id, lane: this.lane, queuedAt: now, until: now + Math.max(1, deadline - Date.now()) });
+          }
+          const lastGrant = state.lastGrant ??= {};
+          // Oldest-served eligible lane wins, then FIFO within that lane. Idle
+          // lanes reserve concurrency but do not waste provider request quota.
+          const eligible = waiters.filter(waiter => state.leases.filter(lease => lease.lane === waiter.lane).length < Math.floor(this.maxConcurrent / 3));
+          eligible.sort((a, b) => (lastGrant[a.lane] ?? 0) - (lastGrant[b.lane] ?? 0) || a.queuedAt - b.queuedAt);
+          if (state.next > now || state.leases.length >= this.maxConcurrent || eligible[0]?.id !== id) {
+            await tx.execute(sql`update cove_rpc_budgets set state = ${JSON.stringify(state)}::jsonb where account = ${this.account}`);
+            return false;
+          }
           state.next = now + Math.ceil(1_050 / this.requestsPerSecond);
+          lastGrant[this.lane] = now;
+          state.waiters = waiters.filter(waiter => waiter.id !== id);
+          // Retain the old field for a coordinated rollout across older clients.
           state.lanes[this.lane] = now + Math.ceil(3_000 / this.requestsPerSecond);
           state.leases.push({ id, lane: this.lane, until: now + 30_000 });
           await tx.execute(sql`update cove_rpc_budgets set state = ${JSON.stringify(state)}::jsonb where account = ${this.account}`);
@@ -111,6 +128,11 @@ export class PostgresRpcBudget {
         });
       }
       throw new CapacityUnavailable();
+    } finally {
+      // Abort/timeout must not leave a phantom lane waiting for its turn.
+      await this.db.execute(sql`update cove_rpc_budgets set state = jsonb_set(state, '{waiters}',
+        coalesce((select jsonb_agg(waiter) from jsonb_array_elements(coalesce(state->'waiters', '[]'::jsonb)) waiter where waiter->>'id' <> ${id}), '[]'::jsonb))
+        where account = ${this.account}`).catch(() => {});
     }
   }
 }

@@ -1,0 +1,11 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/db
+
+ ✓ src/rpc-budget.integration.test.ts (3 tests) 6651ms
+   ✓ an idle lane lends quota to consecutive public requests while preserving the upstream cap 1246ms
+   ✓ continuous public replicas do not starve worker or Guardian waiting for shared quota 3801ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  09:58:48
+   Duration  7.14s (transform 82ms, setup 0ms, collect 273ms, tests 6.65s, environment 0ms, prepare 59ms)

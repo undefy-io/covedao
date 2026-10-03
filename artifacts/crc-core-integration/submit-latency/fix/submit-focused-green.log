@@ -1,0 +1,11 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ✓ src/lib/crc-core-submit.integration.test.ts (17 tests | 15 skipped) 19237ms
+   ✓ HTTP submit registers exact signed core deployment before actual broadcast and is idempotent 1336ms
+   ✓ three-input sell retains live fences and READY recovery with fewer RPC calls at the real shared quota 13096ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed | 15 skipped (17)
+   Start at  09:59:31
+   Duration  20.93s (transform 795ms, setup 0ms, collect 1.39s, tests 19.24s, environment 0ms, prepare 61ms)

@@ -188,7 +188,6 @@ export class CrcGuardianSigningService {
           throw new Error("CRC input prevout is spent, unconfirmed or mismatched");
       }
     };
-    await assertLive();
     const context = {
       network,
       deployTxid: request.deploymentTxid,
@@ -197,6 +196,7 @@ export class CrcGuardianSigningService {
     };
     const claim = await claimCrcSignature(this.options.db, context);
     if (claim.signedPsbtBase64) {
+      await assertLive();
       const saved = bitcoin.Psbt.fromBase64(claim.signedPsbtBase64);
       if (
         createHash("sha256").update(saved.data.globalMap.unsignedTx.toBuffer()).digest("hex") !==

@@ -1,0 +1,37 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-core-submit.integration.test.ts (17 tests | 1 failed | 15 skipped) 46052ms
+   ✓ HTTP submit registers exact signed core deployment before actual broadcast and is idempotent 2001ms
+   × three-input sell retains live fences and READY recovery with fewer RPC calls at the real shared quota 38537ms
+     → expected [ { lane: 'public', …(3) }, …(19) ] to have a length of 12 but got 20
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-core-submit.integration.test.ts > three-input sell retains live fences and READY recovery with fewer RPC calls at the real shared quota
+AssertionError: expected [ { lane: 'public', …(3) }, …(19) ] to have a length of 12 but got 20
+
+- Expected
++ Received
+
+- 12
++ 20
+
+ ❯ src/lib/crc-core-submit.integration.test.ts:1192:63
+    1190|     const freshCalls = [...calls];
+    1191|     minedEvidence.push({ latency: { durationMs, modeledTransportMs: 20…
+    1192|     expect(freshCalls.filter(call => call.lane === "public")).toHaveLe…
+       |                                                               ^
+    1193|     expect(freshCalls.filter(call => call.lane === "guardian")).toHave…
+    1194|     expect(freshCalls.filter(call => call.method === "observeTransacti…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed | 15 skipped (17)
+   Start at  09:57:19
+   Duration  47.95s (transform 978ms, setup 0ms, collect 1.63s, tests 46.05s, environment 0ms, prepare 63ms)
+
+undefined
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/lib/crc-core-submit.integration.test.ts -t HTTP submit registers|three-input sell

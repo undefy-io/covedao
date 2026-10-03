@@ -65,6 +65,9 @@ for package, source in [
         metadata["devDependencies"].pop("@crclaunch/cove-guardian", None)
     put(destination / "package.json", json.dumps(metadata, indent=2) + "\n")
 
+# App, worker and Guardian must share the same cross-process RPC scheduler.
+put(Path("packages/db/src/quotas.ts"), (ROOT / "packages/db/src/quotas.ts").read_bytes())
+
 schema_start = "/** Single-core CRC state."
 canonical_schema = (ROOT / "packages/db/src/schema.ts").read_text()
 suffix = canonical_schema[canonical_schema.index(schema_start):]

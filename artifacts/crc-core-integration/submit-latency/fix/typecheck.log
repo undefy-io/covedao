@@ -1,0 +1,245 @@
+
+> crc-launch@0.1.0 typecheck /home/andefy/dev/covedao
+> turbo run typecheck
+
+• turbo 2.11.2
+
+   • Packages in scope: @crclaunch/bitcoin, @crclaunch/config, @crclaunch/cove-app, @crclaunch/cove-covenant, @crclaunch/cove-economics, @crclaunch/cove-guardian, @crclaunch/cove-indexer, @crclaunch/cove-mainnet, @crclaunch/cove-market, @crclaunch/cove-recovery, @crclaunch/cove-simplicity, @crclaunch/cove-vault, @crclaunch/cove-wire, @crclaunch/crc20-adapters, @crclaunch/crc20-guardian, @crclaunch/crc20-protocol, @crclaunch/crc20-state, @crclaunch/curve, @crclaunch/db, @crclaunch/docs, @crclaunch/guardian, @crclaunch/protocol, @crclaunch/schemas, @crclaunch/wallets, @crclaunch/web, @crclaunch/worker
+   • Running typecheck in 26 packages
+   • Remote caching disabled
+
+@crclaunch/curve:typecheck: cache hit, replaying logs 108cffa7d15151e7
+@crclaunch/curve:build: cache hit, replaying logs 10c6b044facbd3fe
+@crclaunch/config:typecheck: cache hit, replaying logs eff8188da220fd38
+@crclaunch/curve:build:
+@crclaunch/curve:build: > @crclaunch/curve@0.1.0 build /home/andefy/dev/covedao/packages/curve
+@crclaunch/curve:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/curve:build:
+@crclaunch/crc20-protocol:typecheck: cache hit, replaying logs 3e0a35e8c6a25d32
+@crclaunch/db:typecheck: cache miss, executing 6cd64a264e95ffa2
+@crclaunch/config:typecheck:
+@crclaunch/config:typecheck: > @crclaunch/config@0.1.0 typecheck /home/andefy/dev/covedao/packages/config
+@crclaunch/config:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/config:typecheck:
+@crclaunch/bitcoin:build: cache hit, replaying logs a646c0a13d18ad52
+@crclaunch/bitcoin:build:
+@crclaunch/bitcoin:build: > @crclaunch/bitcoin@0.1.0 build /home/andefy/dev/covedao/packages/bitcoin
+@crclaunch/bitcoin:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/bitcoin:build:
+@crclaunch/db:build: cache miss, executing 05de85ce3299f51c
+@crclaunch/schemas:typecheck: cache hit, replaying logs 7718e122cffa871b
+@crclaunch/cove-economics:build: cache hit, replaying logs 7bfd5343aaf71d67
+@crclaunch/cove-economics:build:
+@crclaunch/cove-economics:build: > @crclaunch/cove-economics@0.1.0 build /home/andefy/dev/covedao/packages/cove-economics
+@crclaunch/cove-economics:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-economics:build:
+@crclaunch/schemas:typecheck:
+@crclaunch/schemas:typecheck: > @crclaunch/schemas@0.1.0 typecheck /home/andefy/dev/covedao/packages/schemas
+@crclaunch/schemas:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/schemas:typecheck:
+@crclaunch/cove-wire:build: cache hit, replaying logs 42cdb2d3c9440d8d
+@crclaunch/cove-wire:build:
+@crclaunch/cove-wire:build: > @crclaunch/cove-wire@0.1.0 build /home/andefy/dev/covedao/packages/cove-wire
+@crclaunch/cove-wire:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-wire:build:
+@crclaunch/cove-wire:typecheck: cache hit, replaying logs 9150e90a69ec919e
+@crclaunch/config:build: cache hit, replaying logs f633139ba1b9a0d8
+@crclaunch/config:build:
+@crclaunch/config:build: > @crclaunch/config@0.1.0 build /home/andefy/dev/covedao/packages/config
+@crclaunch/config:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/config:build:
+@crclaunch/cove-economics:typecheck: cache hit, replaying logs 5e377d3f3e8367d7
+@crclaunch/curve:typecheck:
+@crclaunch/curve:typecheck: > @crclaunch/curve@0.1.0 typecheck /home/andefy/dev/covedao/packages/curve
+@crclaunch/curve:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/curve:typecheck:
+@crclaunch/bitcoin:typecheck: cache hit, replaying logs b22a86fc5dd03420
+@crclaunch/crc20-protocol:typecheck:
+@crclaunch/crc20-protocol:typecheck: > @crclaunch/crc20-protocol@0.1.0 typecheck /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+@crclaunch/crc20-protocol:typecheck: > tsc --noEmit --incremental false --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution bundler --allowImportingTsExtensions --types node *.ts test-support/*.ts
+@crclaunch/crc20-protocol:typecheck:
+@crclaunch/cove-wire:typecheck:
+@crclaunch/cove-wire:typecheck: > @crclaunch/cove-wire@0.1.0 typecheck /home/andefy/dev/covedao/packages/cove-wire
+@crclaunch/cove-wire:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-wire:typecheck:
+@crclaunch/protocol:build: cache hit, replaying logs f75cebde14bf068b
+@crclaunch/protocol:build:
+@crclaunch/protocol:build: > @crclaunch/protocol@0.1.0 build /home/andefy/dev/covedao/packages/protocol
+@crclaunch/cove-covenant:build: cache hit, replaying logs 70014974b9280e10
+@crclaunch/bitcoin:typecheck:
+@crclaunch/bitcoin:typecheck: > @crclaunch/bitcoin@0.1.0 typecheck /home/andefy/dev/covedao/packages/bitcoin
+@crclaunch/bitcoin:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/protocol:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/protocol:build:
+@crclaunch/bitcoin:typecheck:
+@crclaunch/cove-covenant:build:
+@crclaunch/cove-covenant:build: > @crclaunch/cove-covenant@0.1.0 build /home/andefy/dev/covedao/packages/cove-covenant
+@crclaunch/cove-covenant:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-covenant:build:
+@crclaunch/cove-simplicity:build: cache hit, replaying logs 9f38990c49f1b59b
+@crclaunch/cove-simplicity:build:
+@crclaunch/cove-simplicity:build: > @crclaunch/cove-simplicity@0.1.0 build /home/andefy/dev/covedao/packages/cove-simplicity
+@crclaunch/cove-simplicity:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-simplicity:build:
+@crclaunch/wallets:build: cache hit, replaying logs 7de127aa5e5aa5e8
+@crclaunch/wallets:build:
+@crclaunch/wallets:build: > @crclaunch/wallets@0.1.0 build /home/andefy/dev/covedao/packages/wallets
+@crclaunch/wallets:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/wallets:build:
+@crclaunch/cove-vault:build: cache hit, replaying logs 803b70090959e20d
+@crclaunch/cove-vault:build:
+@crclaunch/cove-vault:build: > @crclaunch/cove-vault@0.1.0 build /home/andefy/dev/covedao/packages/cove-vault
+@crclaunch/cove-vault:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-vault:build:
+@crclaunch/cove-mainnet:build: cache hit, replaying logs 63ae78786e45bdc3
+@crclaunch/cove-mainnet:build:
+@crclaunch/cove-mainnet:build: > @crclaunch/cove-mainnet@0.1.0 build /home/andefy/dev/covedao/packages/cove-mainnet
+@crclaunch/cove-mainnet:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-mainnet:build:
+@crclaunch/cove-economics:typecheck:
+@crclaunch/cove-economics:typecheck: > @crclaunch/cove-economics@0.1.0 typecheck /home/andefy/dev/covedao/packages/cove-economics
+@crclaunch/cove-simplicity:typecheck: cache hit, replaying logs e18a87e24833ec71
+@crclaunch/cove-covenant:typecheck: cache hit, replaying logs d78ea6d41ff49b1f
+@crclaunch/cove-economics:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-economics:typecheck:
+@crclaunch/cove-recovery:typecheck: cache hit, replaying logs 40be9a8f6fb1c1f0
+@crclaunch/wallets:typecheck: cache hit, replaying logs b528b4c620c45099
+@crclaunch/protocol:typecheck: cache hit, replaying logs e1272feb8e029555
+@crclaunch/cove-recovery:typecheck:
+@crclaunch/cove-recovery:typecheck: > @crclaunch/cove-recovery@0.1.0 typecheck /home/andefy/dev/covedao/packages/cove-recovery
+@crclaunch/cove-recovery:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-recovery:typecheck:
+@crclaunch/cove-simplicity:typecheck:
+@crclaunch/cove-simplicity:typecheck: > @crclaunch/cove-simplicity@0.1.0 typecheck /home/andefy/dev/covedao/packages/cove-simplicity
+@crclaunch/cove-covenant:typecheck:
+@crclaunch/cove-simplicity:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-covenant:typecheck: > @crclaunch/cove-covenant@0.1.0 typecheck /home/andefy/dev/covedao/packages/cove-covenant
+@crclaunch/cove-simplicity:typecheck:
+@crclaunch/cove-covenant:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-covenant:typecheck:
+@crclaunch/wallets:typecheck:
+@crclaunch/wallets:typecheck: > @crclaunch/wallets@0.1.0 typecheck /home/andefy/dev/covedao/packages/wallets
+@crclaunch/wallets:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/wallets:typecheck:
+@crclaunch/cove-vault:typecheck: cache hit, replaying logs cdbf45b9fbf42453
+@crclaunch/cove-guardian:build: cache hit, replaying logs 4d6d5a52e81521d0
+@crclaunch/cove-guardian:build:
+@crclaunch/cove-guardian:build: > @crclaunch/cove-guardian@0.1.0 build /home/andefy/dev/covedao/packages/cove-guardian
+@crclaunch/protocol:typecheck:
+@crclaunch/protocol:typecheck: > @crclaunch/protocol@0.1.0 typecheck /home/andefy/dev/covedao/packages/protocol
+@crclaunch/cove-guardian:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-guardian:build:
+@crclaunch/protocol:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/protocol:typecheck:
+@crclaunch/cove-vault:typecheck:
+@crclaunch/cove-vault:typecheck: > @crclaunch/cove-vault@0.1.0 typecheck /home/andefy/dev/covedao/packages/cove-vault
+@crclaunch/cove-vault:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-vault:typecheck:
+@crclaunch/cove-guardian:typecheck: cache hit, replaying logs b11012b5e2a6ae59
+@crclaunch/cove-mainnet:typecheck: cache hit, replaying logs b359a417a5ac4394
+@crclaunch/cove-guardian:typecheck:
+@crclaunch/cove-guardian:typecheck: > @crclaunch/cove-guardian@0.1.0 typecheck /home/andefy/dev/covedao/packages/cove-guardian
+@crclaunch/cove-guardian:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-guardian:typecheck:
+@crclaunch/cove-mainnet:typecheck:
+@crclaunch/cove-mainnet:typecheck: > @crclaunch/cove-mainnet@0.1.0 typecheck /home/andefy/dev/covedao/packages/cove-mainnet
+@crclaunch/cove-mainnet:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-mainnet:typecheck:
+@crclaunch/crc20-protocol:build: cache hit, replaying logs 06a61ae6a8272f61
+@crclaunch/crc20-protocol:build:
+@crclaunch/crc20-protocol:build: > @crclaunch/crc20-protocol@0.1.0 build /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+@crclaunch/crc20-protocol:build: > tsc -p tsconfig.build.json && node build-browser.mjs
+@crclaunch/crc20-protocol:build:
+@crclaunch/crc20-adapters:typecheck: cache hit, replaying logs 3bd56930c2728c11
+@crclaunch/crc20-adapters:typecheck:
+@crclaunch/crc20-adapters:typecheck: > @crclaunch/crc20-adapters@0.1.0 typecheck /home/andefy/dev/covedao/packages/crc20-adapters
+@crclaunch/crc20-adapters:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/crc20-adapters:typecheck:
+@crclaunch/crc20-adapters:build: cache hit, replaying logs 9da98b90b1865d4d
+@crclaunch/crc20-adapters:build:
+@crclaunch/crc20-adapters:build: > @crclaunch/crc20-adapters@0.1.0 build /home/andefy/dev/covedao/packages/crc20-adapters
+@crclaunch/crc20-adapters:build: > tsc -p tsconfig.build.json && node build-browser.mjs
+@crclaunch/crc20-adapters:build:
+@crclaunch/db:typecheck:
+@crclaunch/db:typecheck: > @crclaunch/db@0.1.0 typecheck /home/andefy/dev/covedao/packages/db
+@crclaunch/db:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/db:typecheck:
+@crclaunch/db:build:
+@crclaunch/db:build: > @crclaunch/db@0.1.0 build /home/andefy/dev/covedao/packages/db
+@crclaunch/db:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/db:build:
+@crclaunch/crc20-state:typecheck: cache miss, executing a8c98bdf1a8c0c70
+@crclaunch/crc20-state:build: cache miss, executing 4c2c7df518c275b0
+@crclaunch/crc20-state:typecheck:
+@crclaunch/crc20-state:typecheck: > @crclaunch/crc20-state@0.1.0 typecheck /home/andefy/dev/covedao/packages/crc20-state
+@crclaunch/crc20-state:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/crc20-state:typecheck:
+@crclaunch/crc20-state:build:
+@crclaunch/crc20-state:build: > @crclaunch/crc20-state@0.1.0 build /home/andefy/dev/covedao/packages/crc20-state
+@crclaunch/crc20-state:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/crc20-state:build:
+@crclaunch/cove-indexer:typecheck: cache miss, executing 807fdc148f7b4023
+@crclaunch/cove-indexer:build: cache miss, executing 0c34529782652e9b
+@crclaunch/cove-indexer:build:
+@crclaunch/cove-indexer:build: > @crclaunch/cove-indexer@0.1.0 build /home/andefy/dev/covedao/packages/cove-indexer
+@crclaunch/cove-indexer:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-indexer:build:
+@crclaunch/cove-indexer:typecheck:
+@crclaunch/cove-indexer:typecheck: > @crclaunch/cove-indexer@0.1.0 typecheck /home/andefy/dev/covedao/packages/cove-indexer
+@crclaunch/cove-indexer:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-indexer:typecheck:
+@crclaunch/crc20-guardian:build: cache miss, executing 652b14455cf9d214
+@crclaunch/cove-market:typecheck: cache miss, executing 3b0a677e1893ed41
+@crclaunch/cove-market:build: cache miss, executing be99ec4edf22566f
+@crclaunch/crc20-guardian:typecheck: cache miss, executing b429483cb5ee7f27
+@crclaunch/cove-market:build:
+@crclaunch/cove-market:build: > @crclaunch/cove-market@0.1.0 build /home/andefy/dev/covedao/packages/cove-market
+@crclaunch/cove-market:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-market:build:
+@crclaunch/crc20-guardian:typecheck:
+@crclaunch/crc20-guardian:typecheck: > @crclaunch/crc20-guardian@0.1.0 typecheck /home/andefy/dev/covedao/packages/crc20-guardian
+@crclaunch/crc20-guardian:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/crc20-guardian:typecheck:
+@crclaunch/cove-market:typecheck:
+@crclaunch/cove-market:typecheck: > @crclaunch/cove-market@0.1.0 typecheck /home/andefy/dev/covedao/packages/cove-market
+@crclaunch/cove-market:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-market:typecheck:
+@crclaunch/crc20-guardian:build:
+@crclaunch/crc20-guardian:build: > @crclaunch/crc20-guardian@0.1.0 build /home/andefy/dev/covedao/packages/crc20-guardian
+@crclaunch/crc20-guardian:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/crc20-guardian:build:
+@crclaunch/cove-app:build: cache miss, executing 4c3eacd8061e2340
+@crclaunch/cove-app:typecheck: cache miss, executing 47f1034ccb45efcd
+@crclaunch/cove-app:typecheck:
+@crclaunch/cove-app:typecheck: > @crclaunch/cove-app@0.1.0 typecheck /home/andefy/dev/covedao/packages/cove-app
+@crclaunch/cove-app:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-app:typecheck:
+@crclaunch/cove-app:build:
+@crclaunch/cove-app:build: > @crclaunch/cove-app@0.1.0 build /home/andefy/dev/covedao/packages/cove-app
+@crclaunch/cove-app:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-app:build:
+@crclaunch/worker:typecheck: cache miss, executing 012c962859f4f52f
+@crclaunch/guardian:typecheck: cache miss, executing d33bdbb8a0428b4e
+@crclaunch/web:typecheck: cache miss, executing ee3abde64dda86ed
+@crclaunch/worker:typecheck:
+@crclaunch/worker:typecheck: > @crclaunch/worker@0.1.0 typecheck /home/andefy/dev/covedao/apps/worker
+@crclaunch/worker:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/worker:typecheck:
+@crclaunch/guardian:typecheck:
+@crclaunch/guardian:typecheck: > @crclaunch/guardian@0.1.0 typecheck /home/andefy/dev/covedao/apps/guardian
+@crclaunch/guardian:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/guardian:typecheck:
+@crclaunch/web:typecheck:
+@crclaunch/web:typecheck: > @crclaunch/web@0.1.0 typecheck /home/andefy/dev/covedao/apps/web
+@crclaunch/web:typecheck: > tsc -p tsconfig.json --noEmit
+@crclaunch/web:typecheck:
+
+ Tasks:    45 successful, 45 total
+Cached:    30 cached, 45 total
+  Time:    14.212s
+
+ WARNING  no output files found for task @crclaunch/cove-app#build. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @crclaunch/cove-market#build. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @crclaunch/crc20-guardian#build. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @crclaunch/crc20-state#build. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @crclaunch/db#build. Please check your `outputs` key in `turbo.json`

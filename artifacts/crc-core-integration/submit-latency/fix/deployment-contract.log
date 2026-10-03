@@ -1,0 +1,10 @@
+✔ fresh deployment coordinates only isolated regtest services (2.272083ms)
+✔ runtime attestation rejects drift in either service and incomplete manifests (0.885586ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 72.313903

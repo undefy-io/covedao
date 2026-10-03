@@ -26,7 +26,7 @@ export function deploymentManifest(appImage, guardianImage) {
   };
 }
 export function verifyRuntimeHashes(expected, actual) {
-  for (const path of ["packages/crc20-protocol/index.ts", "packages/crc20-adapters/src/index.ts", "packages/crc20-state/src/index.ts", "packages/crc20-guardian/src/index.ts"])
+  for (const path of ["packages/crc20-protocol/index.ts", "packages/crc20-adapters/src/index.ts", "packages/crc20-state/src/index.ts", "packages/crc20-guardian/src/index.ts", "packages/db/src/quotas.ts"])
     if (!Object.hasOwn(expected, path)) throw new Error("incomplete CRC runtime manifest");
   for (const [path, digest] of Object.entries(expected))
     if (!/^[0-9a-f]{64}$/.test(digest) || actual[path] !== digest) throw new Error(`CRC runtime mismatch: ${path}`);
@@ -113,7 +113,7 @@ export async function deployFreshRegtest({ appImage, guardianImage, output, inve
     if (!catalog.ok || catalog.data.tokens.length !== 0) throw new Error("fresh catalog is not empty");
     evidence.checks.push("actual standalone Guardian health; CRC worker readiness; production web active; empty catalog indexed at Core tip");
     const storedManifest = JSON.parse(docker("exec", name("guardian"), "node", "-e", "process.stdout.write(require('fs').readFileSync('/app/crc-core-source-manifest.json','utf8'))"));
-    const runtimeHashes = Object.fromEntries(Object.entries(storedManifest.files).filter(([path]) => path.startsWith("packages/crc20-") && /\.(ts|mjs)$/.test(path)));
+    const runtimeHashes = Object.fromEntries(Object.entries(storedManifest.files).filter(([path]) => (path.startsWith("packages/crc20-") && /\.(ts|mjs)$/.test(path)) || path === "packages/db/src/quotas.ts"));
     const fingerprintCheck = `const fs=require('fs'),crypto=require('crypto'),files=JSON.parse(process.argv[1]),hashes={};for(const path of Object.keys(files)){const file=process.argv[2]==='app'?path.replace('packages/crc20-protocol/','packages/cove-market/crc20-protocol/'):path;hashes[path]=crypto.createHash('sha256').update(fs.readFileSync('/app/'+file)).digest('hex');}console.log(JSON.stringify(hashes));`;
     evidence.alignedRuntimeFiles = verifyRuntimeHashes(runtimeHashes, JSON.parse(docker("exec", name("web"), "node", "-e", fingerprintCheck, JSON.stringify(runtimeHashes), "app")));
     verifyRuntimeHashes(runtimeHashes, JSON.parse(docker("exec", name("guardian"), "node", "-e", fingerprintCheck, JSON.stringify(runtimeHashes), "guardian")));

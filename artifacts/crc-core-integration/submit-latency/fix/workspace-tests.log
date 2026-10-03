@@ -1,0 +1,823 @@
+
+> crc-launch@0.1.0 test /home/andefy/dev/covedao
+> turbo run test
+
+• turbo 2.11.2
+
+   • Packages in scope: @crclaunch/bitcoin, @crclaunch/config, @crclaunch/cove-app, @crclaunch/cove-covenant, @crclaunch/cove-economics, @crclaunch/cove-guardian, @crclaunch/cove-indexer, @crclaunch/cove-mainnet, @crclaunch/cove-market, @crclaunch/cove-recovery, @crclaunch/cove-simplicity, @crclaunch/cove-vault, @crclaunch/cove-wire, @crclaunch/crc20-adapters, @crclaunch/crc20-guardian, @crclaunch/crc20-protocol, @crclaunch/crc20-state, @crclaunch/curve, @crclaunch/db, @crclaunch/docs, @crclaunch/guardian, @crclaunch/protocol, @crclaunch/schemas, @crclaunch/wallets, @crclaunch/web, @crclaunch/worker
+   • Running test in 26 packages
+   • Remote caching disabled
+
+@crclaunch/cove-wire:build: cache hit, replaying logs 42cdb2d3c9440d8d
+@crclaunch/cove-wire:build:
+@crclaunch/cove-wire:build: > @crclaunch/cove-wire@0.1.0 build /home/andefy/dev/covedao/packages/cove-wire
+@crclaunch/cove-wire:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-wire:build:
+@crclaunch/config:build: cache hit, replaying logs f633139ba1b9a0d8
+@crclaunch/curve:build: cache hit, replaying logs 10c6b044facbd3fe
+@crclaunch/schemas:test: cache hit, replaying logs 8c8d566b3e8dfb69
+@crclaunch/curve:build:
+@crclaunch/curve:build: > @crclaunch/curve@0.1.0 build /home/andefy/dev/covedao/packages/curve
+@crclaunch/curve:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/curve:build:
+@crclaunch/config:build:
+@crclaunch/config:build: > @crclaunch/config@0.1.0 build /home/andefy/dev/covedao/packages/config
+@crclaunch/config:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/config:build:
+@crclaunch/cove-wire:test: cache hit, replaying logs 7e2beb1ab59b6aef
+@crclaunch/cove-wire:test:
+@crclaunch/schemas:test:
+@crclaunch/cove-wire:test: > @crclaunch/cove-wire@0.1.0 test /home/andefy/dev/covedao/packages/cove-wire
+@crclaunch/schemas:test: > @crclaunch/schemas@0.1.0 test /home/andefy/dev/covedao/packages/schemas
+@crclaunch/schemas:test: > vitest run --passWithNoTests
+@crclaunch/cove-economics:build: cache hit, replaying logs 7bfd5343aaf71d67
+@crclaunch/cove-wire:test: > vitest run
+@crclaunch/cove-economics:build:
+@crclaunch/cove-wire:test:
+@crclaunch/cove-economics:build: > @crclaunch/cove-economics@0.1.0 build /home/andefy/dev/covedao/packages/cove-economics
+@crclaunch/schemas:test:
+@crclaunch/schemas:test:
+@crclaunch/cove-economics:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-economics:build:
+@crclaunch/cove-wire:test:
+@crclaunch/cove-wire:test:  RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-wire
+@crclaunch/schemas:test:  RUN  v2.1.9 /home/andefy/dev/covedao/packages/schemas
+@crclaunch/schemas:test:
+@crclaunch/cove-wire:test:
+@crclaunch/cove-wire:test:  ↓ src/discovery-relay.test.ts (1 test | 1 skipped)
+@crclaunch/bitcoin:build: cache hit, replaying logs a646c0a13d18ad52
+@crclaunch/schemas:test: include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+@crclaunch/bitcoin:build:
+@crclaunch/cove-wire:test:  ✓ src/codec.test.ts (15 tests) 30ms
+@crclaunch/cove-wire:test:  ✓ src/discovery.test.ts (14 tests) 8ms
+@crclaunch/schemas:test: No test files found, exiting with code 0
+@crclaunch/schemas:test:
+@crclaunch/bitcoin:build: > @crclaunch/bitcoin@0.1.0 build /home/andefy/dev/covedao/packages/bitcoin
+@crclaunch/bitcoin:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/bitcoin:build:
+@crclaunch/db:test: cache hit, replaying logs 7c03309e80d7eab1
+@crclaunch/db:build: cache hit, replaying logs 05de85ce3299f51c
+@crclaunch/schemas:test: exclude:  **/node_modules/**, **/dist/**, **/cypress/**, **/.{idea,git,cache,output,temp}/**, **/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build,eslint,prettier}.config.*
+@crclaunch/cove-wire:test:  ✓ src/tokenId.test.ts (9 tests) 27ms
+@crclaunch/cove-wire:test:  ✓ src/codecV2.test.ts (23 tests) 102ms
+@crclaunch/db:test:
+@crclaunch/db:test: > @crclaunch/db@0.1.0 test /home/andefy/dev/covedao/packages/db
+@crclaunch/db:test: > vitest run
+@crclaunch/db:build:
+@crclaunch/db:build: > @crclaunch/db@0.1.0 build /home/andefy/dev/covedao/packages/db
+@crclaunch/db:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/db:test:
+@crclaunch/db:test:
+@crclaunch/db:test:  RUN  v2.1.9 /home/andefy/dev/covedao/packages/db
+@crclaunch/cove-wire:test:
+@crclaunch/db:build:
+@crclaunch/cove-covenant:test: cache hit, replaying logs 7011498cd239abaa
+@crclaunch/config:test: cache hit, replaying logs 405432ec82cf61a4
+@crclaunch/cove-economics:test: cache hit, replaying logs 87d71a1080dc1b38
+@crclaunch/crc20-protocol:build: cache hit, replaying logs 06a61ae6a8272f61
+@crclaunch/db:test:
+@crclaunch/cove-wire:test:  Test Files  4 passed | 1 skipped (5)
+@crclaunch/db:test:  ↓ src/observations.integration.test.ts (17 tests | 17 skipped)
+@crclaunch/db:test:  ↓ src/submissions.integration.test.ts (12 tests | 12 skipped)
+@crclaunch/db:test:  ✓ src/state-machine.test.ts (4 tests) 26ms
+@crclaunch/db:test:  ✓ src/rpc-budget.integration.test.ts (3 tests) 9331ms
+@crclaunch/cove-covenant:test:
+@crclaunch/cove-covenant:test: > @crclaunch/cove-covenant@0.1.0 test /home/andefy/dev/covedao/packages/cove-covenant
+@crclaunch/cove-covenant:test: > vitest run
+@crclaunch/cove-covenant:test:
+@crclaunch/cove-economics:test:
+@crclaunch/cove-wire:test:       Tests  61 passed | 1 skipped (62)
+@crclaunch/cove-economics:test: > @crclaunch/cove-economics@0.1.0 test /home/andefy/dev/covedao/packages/cove-economics
+@crclaunch/cove-covenant:test:
+@crclaunch/cove-covenant:test:  RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-covenant
+@crclaunch/cove-covenant:test:
+@crclaunch/cove-covenant:test:  ✓ src/tokenUtxo.test.ts (12 tests) 16ms
+@crclaunch/config:test:
+@crclaunch/config:test: > @crclaunch/config@0.1.0 test /home/andefy/dev/covedao/packages/config
+@crclaunch/cove-wire:test:    Start at  13:09:47
+@crclaunch/cove-wire:test:    Duration  2.14s (transform 1.15s, setup 0ms, collect 1.45s, tests 167ms, environment 1ms, prepare 2.49s)
+@crclaunch/db:test:    ✓ an idle lane lends quota to consecutive public requests while preserving the upstream cap 1316ms
+@crclaunch/db:test:    ✓ continuous public replicas do not starve worker or Guardian waiting for shared quota 3740ms
+@crclaunch/cove-economics:test: > vitest run
+@crclaunch/cove-economics:test:
+@crclaunch/crc20-protocol:build:
+@crclaunch/crc20-protocol:build: > @crclaunch/crc20-protocol@0.1.0 build /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+@crclaunch/cove-covenant:test:  ✓ src/state.test.ts (9 tests) 37ms
+@crclaunch/cove-covenant:test:  ✓ src/stateV2.test.ts (6 tests) 21ms
+@crclaunch/cove-covenant:test:  ✓ src/taproot.test.ts (6 tests) 22ms
+@crclaunch/config:test: > vitest run --passWithNoTests
+@crclaunch/config:test:
+@crclaunch/cove-wire:test:
+@crclaunch/bitcoin:test: cache hit, replaying logs 430c521da5a08c59
+@crclaunch/db:test:    ✓ stalled public calls retain reserved concurrency and aborted waiters leave no reservation 303ms
+@crclaunch/db:test:
+@crclaunch/bitcoin:test:
+@crclaunch/bitcoin:test: > @crclaunch/bitcoin@0.1.0 test /home/andefy/dev/covedao/packages/bitcoin
+@crclaunch/crc20-protocol:build: > tsc -p tsconfig.build.json && node build-browser.mjs
+@crclaunch/crc20-protocol:build:
+@crclaunch/cove-covenant:test:  ✓ src/transition.test.ts (6 tests) 16ms
+@crclaunch/cove-covenant:test:  ✓ src/redeem.test.ts (5 tests) 39ms
+@crclaunch/cove-covenant:test:  ✓ src/resolver.test.ts (5 tests) 9ms
+@crclaunch/config:test:
+@crclaunch/config:test:  RUN  v2.1.9 /home/andefy/dev/covedao/packages/config
+@crclaunch/cove-economics:test:
+@crclaunch/crc20-protocol:test: cache hit, replaying logs d90d64e28b635565
+@crclaunch/cove-economics:test:  RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-economics
+@crclaunch/db:test:  Test Files  2 passed | 2 skipped (4)
+@crclaunch/bitcoin:test: > vitest run --passWithNoTests
+@crclaunch/cove-covenant:test:  ✓ src/transitionV2.test.ts (10 tests) 20ms
+@crclaunch/config:test:
+@crclaunch/crc20-protocol:test:
+@crclaunch/protocol:build: cache hit, replaying logs f75cebde14bf068b
+@crclaunch/cove-covenant:build: cache hit, replaying logs 70014974b9280e10
+@crclaunch/cove-economics:test:
+@crclaunch/cove-economics:test:  ✓ src/feeSettlement.test.ts (8 tests) 3ms
+@crclaunch/db:test:       Tests  7 passed | 29 skipped (36)
+@crclaunch/bitcoin:test:
+@crclaunch/bitcoin:test:
+@crclaunch/protocol:build:
+@crclaunch/protocol:build: > @crclaunch/protocol@0.1.0 build /home/andefy/dev/covedao/packages/protocol
+@crclaunch/cove-covenant:test:
+@crclaunch/cove-covenant:test:  Test Files  8 passed (8)
+@crclaunch/crc20-protocol:test: > @crclaunch/crc20-protocol@0.1.0 test /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+@crclaunch/crc20-protocol:test: > pnpm build && vitest run
+@crclaunch/crc20-protocol:test:
+@crclaunch/db:test:    Start at  10:01:15
+@crclaunch/db:test:    Duration  11.98s (transform 1.17s, setup 0ms, collect 5.83s, tests 9.36s, environment 1ms, prepare 1.56s)
+@crclaunch/config:test:  ✓ src/cove-networks.test.ts (3 tests) 56ms
+@crclaunch/config:test:  ✓ test/load.test.ts (20 tests) 132ms
+@crclaunch/config:test:
+@crclaunch/config:test:  Test Files  2 passed (2)
+@crclaunch/config:test:       Tests  23 passed (23)
+@crclaunch/config:test:    Start at  09:16:49
+@crclaunch/cove-economics:test:  ✓ src/fee.test.ts (6 tests) 4ms
+@crclaunch/cove-economics:test:  ✓ src/redeemPayout.test.ts (9 tests) 3ms
+@crclaunch/cove-economics:test:  ✓ src/curve.test.ts (19 tests) 7ms
+@crclaunch/cove-covenant:build:
+@crclaunch/cove-covenant:build: > @crclaunch/cove-covenant@0.1.0 build /home/andefy/dev/covedao/packages/cove-covenant
+@crclaunch/bitcoin:test:  RUN  v2.1.9 /home/andefy/dev/covedao/packages/bitcoin
+@crclaunch/bitcoin:test:
+@crclaunch/protocol:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/protocol:build:
+@crclaunch/cove-covenant:test:       Tests  59 passed (59)
+@crclaunch/cove-covenant:test:    Start at  13:09:47
+@crclaunch/crc20-protocol:test:
+@crclaunch/crc20-protocol:test: > @crclaunch/crc20-protocol@0.1.0 build /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+@crclaunch/crc20-protocol:test: > tsc -p tsconfig.build.json && node build-browser.mjs
+@crclaunch/db:test:
+@crclaunch/config:test:    Duration  5.73s (transform 1.56s, setup 0ms, collect 2.25s, tests 188ms, environment 1ms, prepare 2.54s)
+@crclaunch/cove-economics:test:  ✓ src/backing.test.ts (13 tests) 91ms
+@crclaunch/cove-economics:test:  ✓ src/hardening.test.ts (9 tests) 555ms
+@crclaunch/cove-economics:test:    ✓ zero-delta economics (§1.1) > every accepted positive transition has gross >= 1 (thousands of vectors) 383ms
+@crclaunch/cove-covenant:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-covenant:build:
+@crclaunch/bitcoin:test:  ✓ src/dust.test.ts (7 tests) 13ms
+@crclaunch/bitcoin:test:  ✓ src/fees.test.ts (22 tests) 25ms
+@crclaunch/cove-covenant:test:    Duration  2.45s (transform 3.44s, setup 0ms, collect 6.39s, tests 179ms, environment 2ms, prepare 4.90s)
+@crclaunch/cove-covenant:test:
+@crclaunch/crc20-protocol:test:
+@crclaunch/crc20-protocol:test:
+@crclaunch/curve:test: cache hit, replaying logs bcddf4a6000db96d
+@crclaunch/config:test:
+@crclaunch/cove-economics:test:
+@crclaunch/cove-economics:test:  Test Files  6 passed (6)
+@crclaunch/cove-economics:test:       Tests  64 passed (64)
+@crclaunch/bitcoin:test:  ✓ src/decoder.test.ts (10 tests) 18ms
+@crclaunch/bitcoin:test:  ✓ src/esplora.test.ts (10 tests) 21ms
+@crclaunch/crc20-protocol:test:  RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+@crclaunch/crc20-protocol:test:
+@crclaunch/curve:test:
+@crclaunch/curve:test: > @crclaunch/curve@0.1.0 test /home/andefy/dev/covedao/packages/curve
+@crclaunch/cove-economics:test:    Start at  14:14:08
+@crclaunch/cove-economics:test:    Duration  822ms (transform 139ms, setup 0ms, collect 327ms, tests 663ms, environment 1ms, prepare 367ms)
+@crclaunch/bitcoin:test:  ✓ src/recorded-broadcast.test.ts (10 tests) 46ms
+@crclaunch/bitcoin:test:  ✓ src/psbt.test.ts (18 tests) 67ms
+@crclaunch/crc20-protocol:test:  ✓ regtest.test.ts (2 tests) 22185ms
+@crclaunch/crc20-protocol:test:    ✓ two-wallet raw-chain lifecycle, invalid transitions, signatures, competitors, both cancel races, replay and reorg 14255ms
+@crclaunch/curve:test: > vitest run --coverage
+@crclaunch/curve:test:
+@crclaunch/cove-economics:test:
+@crclaunch/bitcoin:test:  ✓ src/address-cache.test.ts (9 tests) 67ms
+@crclaunch/bitcoin:test:  ✓ src/provider.test.ts (43 tests) 124ms
+@crclaunch/crc20-protocol:test:    ✓ Bob independently mints and raw-chain ownership never credits Alice with Bob's carrier 1786ms
+@crclaunch/crc20-protocol:test:  ✓ confirmed.test.ts (16 tests) 4779ms
+@crclaunch/curve:test:
+@crclaunch/curve:test:  RUN  v2.1.9 /home/andefy/dev/covedao/packages/curve
+@crclaunch/curve:test:       Coverage enabled with v8
+@crclaunch/curve:test:
+@crclaunch/bitcoin:test:  ✓ src/signer.test.ts (9 tests) 72ms
+@crclaunch/bitcoin:test:  ✓ src/spend.test.ts (16 tests) 140ms
+@crclaunch/crc20-protocol:test:    ✓ Core mines non-protocol carrier burn; production transition and durable rollback follow actual prevouts 4700ms
+@crclaunch/crc20-protocol:test:  ✓ scripts.test.ts (12 tests) 4613ms
+@crclaunch/curve:test:  ✓ test/atoms.test.ts (8 tests) 83ms
+@crclaunch/curve:test:  ✓ test/fees.test.ts (7 tests) 90ms
+@crclaunch/curve:test:  ✓ test/raise.test.ts (9 tests) 164ms
+@crclaunch/bitcoin:test:
+@crclaunch/bitcoin:test:  Test Files  10 passed (10)
+@crclaunch/crc20-protocol:test:    ✓ Docker Core mines all three independently signed supported paths with exact fees 4566ms
+@crclaunch/crc20-protocol:test:  ✓ wallet-offers.test.ts (7 tests) 6393ms
+@crclaunch/curve:test:  ✓ test/prices.test.ts (11 tests) 409ms
+@crclaunch/curve:test:  ✓ test/static.test.ts (2 tests) 51ms
+@crclaunch/bitcoin:test:       Tests  154 passed (154)
+@crclaunch/bitcoin:test:    Start at  07:47:52
+@crclaunch/crc20-protocol:test:    ✓ Core confirms a fractional Taproot listing and buyer-only presigned fill with exact allocations 6334ms
+@crclaunch/crc20-protocol:test:  ✓ market-settlement.test.ts (11 tests) 30423ms
+@crclaunch/curve:test:  ✓ test/quote.test.ts (22 tests) 112ms
+@crclaunch/curve:test:
+@crclaunch/curve:test:  Test Files  6 passed (6)
+@crclaunch/curve:test:       Tests  59 passed (59)
+@crclaunch/curve:test:    Start at  09:16:48
+@crclaunch/crc20-protocol:test:    ✓ purchase confirmed 0 blocks after expiry still pays and allocates tokens 2196ms
+@crclaunch/crc20-protocol:test:    ✓ purchase confirmed 2 blocks after expiry still pays and allocates tokens 2632ms
+@crclaunch/crc20-protocol:test:    ✓ new signed-offer purchases require height and reject expired or unavailable offers 1647ms
+@crclaunch/bitcoin:test:    Duration  1.99s (transform 2.34s, setup 0ms, collect 4.94s, tests 594ms, environment 2ms, prepare 2.92s)
+@crclaunch/curve:test:    Duration  5.17s (transform 1.67s, setup 0ms, collect 3.53s, tests 909ms, environment 7ms, prepare 6.43s)
+@crclaunch/curve:test:
+@crclaunch/crc20-protocol:test:    ✓ owner transfer 100000000000n, expired=false preserves allocation and retires listing 2697ms
+@crclaunch/crc20-protocol:test:    ✓ owner transfer 50000000000n, expired=false preserves allocation and retires listing 2722ms
+@crclaunch/crc20-protocol:test:    ✓ owner transfer 1n, expired=true preserves allocation and retires listing 2756ms
+@crclaunch/bitcoin:test:
+@crclaunch/curve:test:  % Coverage report from v8
+@crclaunch/protocol:test: cache hit, replaying logs ea19cf5e4439f16a
+@crclaunch/curve:test: --------------|---------|----------|---------|---------|-------------------
+@crclaunch/crc20-protocol:test:    ✓ one owner transfer can consume multiple registered token outputs 3256ms
+@crclaunch/crc20-protocol:test:    ✓ curve sale of a listed carrier retires its offer 2337ms
+@crclaunch/curve:test: File          | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+@crclaunch/curve:test: --------------|---------|----------|---------|---------|-------------------
+@crclaunch/curve:test: All files     |     100 |      100 |     100 |     100 |
+@crclaunch/crc20-protocol:test:    ✓ ledger-aware final validation rejects unannotated token funding before broadcast 3308ms
+@crclaunch/crc20-protocol:test:    ✓ a correctly signed ALL authorization is not a reusable offer witness 1374ms
+@crclaunch/crc20-protocol:test:    ✓ verified 0x83 offers still fill with only buyer signing and SQLite-compatible outputs 2222ms
+@crclaunch/protocol:test:
+@crclaunch/protocol:test: > @crclaunch/protocol@0.1.0 test /home/andefy/dev/covedao/packages/protocol
+@crclaunch/curve:test:  constants.ts |     100 |      100 |     100 |     100 |
+@crclaunch/curve:test:  fees.ts      |     100 |      100 |     100 |     100 |
+@crclaunch/crc20-protocol:test:  ✓ inventory-first-chain.test.ts (3 tests) 17994ms
+@crclaunch/crc20-protocol:test:    ✓ buy400 -> sell400 -> buy1000 settles one full purchase, then repeat and partial trades remain seamless 7062ms
+@crclaunch/protocol:test: > vitest run
+@crclaunch/protocol:test:
+@crclaunch/curve:test:  index.ts     |     100 |      100 |     100 |     100 |
+@crclaunch/curve:test:  prices.ts    |     100 |      100 |     100 |     100 |
+@crclaunch/crc20-protocol:test:    ✓ buy400 -> list300 -> buyer-only purchase retains100 and transfers exactly300 2173ms
+@crclaunch/crc20-protocol:test:    ✓ competing mixed purchases have one confirmed winner and rollback permits a replacement at the same height 5440ms
+@crclaunch/crc20-protocol:test:  ✓ small-curve.test.ts (3 tests) 12646ms
+@crclaunch/cove-vault:build: cache hit, replaying logs 803b70090959e20d
+@crclaunch/protocol:test:
+@crclaunch/protocol:test:  RUN  v2.1.9 /home/andefy/dev/covedao/packages/protocol
+@crclaunch/curve:test:  quote.ts     |     100 |      100 |     100 |     100 |
+@crclaunch/curve:test:  raise.ts     |     100 |      100 |     100 |     100 |
+@crclaunch/curve:test: --------------|---------|----------|---------|---------|-------------------
+@crclaunch/crc20-protocol:test:    ✓ confirmed 500 + 500 buys followed by sells [ 400, 600 ] check creator/platform fees and every input/output 4950ms
+@crclaunch/crc20-protocol:test:    ✓ confirmed 500 + 500 buys followed by sells [ 1000 ] check creator/platform fees and every input/output 4364ms
+@crclaunch/cove-vault:build:
+@crclaunch/cove-vault:build: > @crclaunch/cove-vault@0.1.0 build /home/andefy/dev/covedao/packages/cove-vault
+@crclaunch/protocol:test:
+@crclaunch/protocol:test:  ✓ src/cove/config.test.ts (4 tests) 17ms
+@crclaunch/protocol:test:  ✓ src/cove/mapper.test.ts (4 tests) 25ms
+@crclaunch/crc20-protocol:test:  ✓ inventory-first-replay.test.ts (12 tests) 67ms
+@crclaunch/crc20-protocol:test:  ✓ rules.test.ts (22 tests) 23ms
+@crclaunch/crc20-protocol:test:  ✓ archive.test.ts (1 test) 2744ms
+@crclaunch/crc20-protocol:test:    ✓ all 1950 Garden raw transactions reproduce txids, every exact output, marker and spendable recipient; archived parents reproduce input values 2743ms
+@crclaunch/crc20-protocol:test:  ✓ protocol.test.ts (4 tests) 203ms
+@crclaunch/cove-vault:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-vault:build:
+@crclaunch/wallets:test: cache hit, replaying logs 147995a1316efb2b
+@crclaunch/crc20-protocol:test:  ✓ inventory-first.test.ts (11 tests) 12ms
+@crclaunch/wallets:test:
+@crclaunch/cove-vault:test: cache hit, replaying logs 35782288057f7e0b
+@crclaunch/protocol:test:  ✓ src/crc20.test.ts (4 tests) 17ms
+@crclaunch/protocol:test:  ✓ src/cove/envelope.test.ts (12 tests) 23ms
+@crclaunch/protocol:test:  ✓ src/cove/reference-parser.test.ts (9 tests) 14ms
+@crclaunch/protocol:test:  ✓ src/mock/chain.test.ts (5 tests) 65ms
+@crclaunch/wallets:test: > @crclaunch/wallets@0.1.0 test /home/andefy/dev/covedao/packages/wallets
+@crclaunch/wallets:test: > vitest run --passWithNoTests
+@crclaunch/wallets:test:
+@crclaunch/cove-vault:test:
+@crclaunch/cove-vault:test: > @crclaunch/cove-vault@0.1.0 test /home/andefy/dev/covedao/packages/cove-vault
+@crclaunch/crc20-protocol:test:  ✓ compliance.test.ts (9 tests) 42ms
+@crclaunch/crc20-protocol:test:  ✓ transaction-view.test.ts (3 tests) 54ms
+@crclaunch/protocol:test:  ✓ src/canonical.test.ts (3 tests) 18ms
+@crclaunch/protocol:test:  ✓ src/cove/build.test.ts (4 tests) 23ms
+@crclaunch/wallets:test:
+@crclaunch/wallets:test:  RUN  v2.1.9 /home/andefy/dev/covedao/packages/wallets
+@crclaunch/cove-simplicity:test: cache hit, replaying logs f6f8c822956aaa56
+@crclaunch/cove-vault:test: > vitest run
+@crclaunch/cove-vault:test:
+@crclaunch/crc20-protocol:test:  ✓ target.test.ts (8 tests) 11ms
+@crclaunch/crc20-protocol:test:  ✓ hardening.test.ts (5 tests) 28ms
+@crclaunch/cove-simplicity:build: cache hit, replaying logs 9f38990c49f1b59b
+@crclaunch/crc20-adapters:test: cache hit, replaying logs f690cb090750dd19
+@crclaunch/crc20-state:build: cache hit, replaying logs 4c2c7df518c275b0
+@crclaunch/wallets:test:
+@crclaunch/crc20-state:build:
+@crclaunch/cove-simplicity:test:
+@crclaunch/wallets:build: cache hit, replaying logs 7de127aa5e5aa5e8
+@crclaunch/protocol:test:  ✓ src/cove/state-root.test.ts (5 tests) 20ms
+@crclaunch/protocol:test:  ✓ src/cove/validator.test.ts (21 tests) 33ms
+@crclaunch/cove-simplicity:build:
+@crclaunch/cove-simplicity:build: > @crclaunch/cove-simplicity@0.1.0 build /home/andefy/dev/covedao/packages/cove-simplicity
+@crclaunch/crc20-adapters:test:
+@crclaunch/crc20-adapters:test: > @crclaunch/crc20-adapters@0.1.0 test /home/andefy/dev/covedao/packages/crc20-adapters
+@crclaunch/wallets:test:  ✓ src/listing-intent.test.ts (4 tests) 131ms
+@crclaunch/wallets:test:  ✓ src/cove-intent.test.ts (19 tests) 240ms
+@crclaunch/crc20-state:build: > @crclaunch/crc20-state@0.1.0 build /home/andefy/dev/covedao/packages/crc20-state
+@crclaunch/crc20-state:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-vault:test:
+@crclaunch/cove-vault:test:  RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-vault
+@crclaunch/crc20-adapters:build: cache hit, replaying logs 9da98b90b1865d4d
+@crclaunch/cove-simplicity:test: > @crclaunch/cove-simplicity@0.1.0 test /home/andefy/dev/covedao/packages/cove-simplicity
+@crclaunch/cove-simplicity:test: > vitest run
+@crclaunch/crc20-protocol:test:  ✓ browser.test.ts (1 test) 301ms
+@crclaunch/crc20-protocol:test:  ✓ dto.test.ts (13 tests) 6ms
+@crclaunch/wallets:build:
+@crclaunch/wallets:build: > @crclaunch/wallets@0.1.0 build /home/andefy/dev/covedao/packages/wallets
+@crclaunch/protocol:test:  ✓ src/cove/state-root-reference.test.ts (6 tests) 23ms
+@crclaunch/protocol:test:  ✓ src/cove/state-root-mainnet.test.ts (5 tests) 18ms
+@crclaunch/cove-simplicity:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-simplicity:build:
+@crclaunch/crc20-adapters:test: > pnpm build && vitest run
+@crclaunch/crc20-adapters:test:
+@crclaunch/crc20-adapters:test:
+@crclaunch/wallets:test:  ✓ src/deploy-intent.test.ts (5 tests) 65ms
+@crclaunch/wallets:test:
+@crclaunch/crc20-state:build:
+@crclaunch/cove-vault:test:
+@crclaunch/cove-vault:test:  ✓ src/crc20-vault.test.ts (6 tests) 23ms
+@crclaunch/crc20-adapters:build:
+@crclaunch/cove-simplicity:test:
+@crclaunch/cove-simplicity:test:
+@crclaunch/wallets:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/wallets:build:
+@crclaunch/protocol:test:  ✓ src/mock/adversarial.test.ts (31 tests) 246ms
+@crclaunch/protocol:test:
+@crclaunch/crc20-adapters:test: > @crclaunch/crc20-adapters@0.1.0 build /home/andefy/dev/covedao/packages/crc20-adapters
+@crclaunch/crc20-adapters:test: > tsc -p tsconfig.build.json && node build-browser.mjs
+@crclaunch/wallets:test:  Test Files  3 passed (3)
+@crclaunch/wallets:test:       Tests  28 passed (28)
+@crclaunch/cove-vault:test:  ✓ src/vaultV3.test.ts (8 tests) 21ms
+@crclaunch/cove-recovery:test: cache hit, replaying logs a48499d5b0986ca6
+@crclaunch/cove-vault:test:  ✓ src/vaultProfile.test.ts (7 tests) 42ms
+@crclaunch/cove-recovery:test:
+@crclaunch/cove-recovery:test: > @crclaunch/cove-recovery@0.1.0 test /home/andefy/dev/covedao/packages/cove-recovery
+@crclaunch/cove-simplicity:test:  RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-simplicity
+@crclaunch/cove-simplicity:test:
+@crclaunch/protocol:test:  Test Files  13 passed (13)
+@crclaunch/protocol:test:       Tests  113 passed (113)
+@crclaunch/protocol:test:    Start at  07:47:52
+@crclaunch/wallets:test:    Start at  13:09:47
+@crclaunch/wallets:test:    Duration  2.73s (transform 882ms, setup 0ms, collect 2.03s, tests 436ms, environment 1ms, prepare 1.07s)
+@crclaunch/wallets:test:
+@crclaunch/cove-vault:test:  ✓ src/vault.test.ts (10 tests) 54ms
+@crclaunch/cove-vault:test:  ✓ src/backingVault.test.ts (5 tests) 48ms
+@crclaunch/cove-recovery:test: > vitest run
+@crclaunch/cove-recovery:test:
+@crclaunch/cove-recovery:test:
+@crclaunch/crc20-protocol:test:  ✓ wallet-evidence.test.ts (7 tests) 31ms
+@crclaunch/crc20-protocol:test:  ✓ guardian-preflight.test.ts (3 tests) 23ms
+@crclaunch/crc20-protocol:test:  ✓ funding.test.ts (8 tests) 38ms
+@crclaunch/crc20-adapters:test:
+@crclaunch/crc20-adapters:test:
+@crclaunch/protocol:test:    Duration  2.61s (transform 5.04s, setup 0ms, collect 11.81s, tests 544ms, environment 4ms, prepare 7.18s)
+@crclaunch/protocol:test:
+@crclaunch/crc20-adapters:build: > @crclaunch/crc20-adapters@0.1.0 build /home/andefy/dev/covedao/packages/crc20-adapters
+@crclaunch/crc20-adapters:build: > tsc -p tsconfig.build.json && node build-browser.mjs
+@crclaunch/crc20-adapters:build:
+@crclaunch/cove-recovery:test:  RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-recovery
+@crclaunch/cove-recovery:test:
+@crclaunch/cove-recovery:test:  ✓ src/recovery.test.ts (6 tests) 33ms
+@crclaunch/cove-simplicity:test:  ✓ src/executor.test.ts (10 tests) 221ms
+@crclaunch/cove-simplicity:test:  ✓ src/redeem.differential.test.ts (8 tests) 68ms
+@crclaunch/crc20-protocol:test:  ✓ package.test.ts (5 tests) 55ms
+@crclaunch/crc20-protocol:test:  ✓ confirmed-events.test.ts (1 test) 19ms
+@crclaunch/crc20-adapters:test:  RUN  v2.1.9 /home/andefy/dev/covedao/packages/crc20-adapters
+@crclaunch/crc20-adapters:test:
+@crclaunch/cove-vault:test:
+@crclaunch/cove-vault:test:  Test Files  5 passed (5)
+@crclaunch/cove-recovery:test:
+@crclaunch/cove-recovery:test:  Test Files  1 passed (1)
+@crclaunch/cove-recovery:test:       Tests  6 passed (6)
+@crclaunch/cove-simplicity:test:  ✓ src/witness.test.ts (10 tests) 10ms
+@crclaunch/cove-simplicity:test:  ✓ src/differential.test.ts (10 tests) 100ms
+@crclaunch/crc20-protocol:test:  ✓ partial-signature.test.ts (1 test) 14ms
+@crclaunch/crc20-protocol:test:  ✓ wallet-key.test.ts (2 tests) 7ms
+@crclaunch/crc20-adapters:test:  ✓ src/guardian.test.ts (2 tests) 228ms
+@crclaunch/crc20-adapters:test:  ✓ src/guardian-wallet.test.ts (5 tests) 283ms
+@crclaunch/cove-vault:test:       Tests  36 passed (36)
+@crclaunch/cove-vault:test:    Start at  07:47:52
+@crclaunch/cove-recovery:test:    Start at  07:47:53
+@crclaunch/cove-recovery:test:    Duration  1.96s (transform 588ms, setup 0ms, collect 930ms, tests 33ms, environment 0ms, prepare 309ms)
+@crclaunch/cove-simplicity:test:
+@crclaunch/cove-simplicity:test:  Test Files  4 passed (4)
+@crclaunch/cove-simplicity:test:       Tests  38 passed (38)
+@crclaunch/crc20-protocol:test:  ✓ asset-vault.test.ts (1 test) 3ms
+@crclaunch/crc20-protocol:test:  ✓ hash.test.ts (1 test) 7ms
+@crclaunch/crc20-protocol:test:  ✓ core-funding.test.ts (1 test) 2ms
+@crclaunch/crc20-adapters:test:  ✓ src/inventory-first.test.ts (10 tests) 485ms
+@crclaunch/crc20-adapters:test:  ✓ src/index.test.ts (11 tests) 454ms
+@crclaunch/cove-vault:test:    Duration  2.56s (transform 2.31s, setup 0ms, collect 4.51s, tests 188ms, environment 1ms, prepare 3.13s)
+@crclaunch/cove-vault:test:
+@crclaunch/cove-recovery:test:
+@crclaunch/cove-simplicity:test:    Start at  13:09:47
+@crclaunch/cove-simplicity:test:    Duration  3.06s (transform 1.78s, setup 0ms, collect 3.48s, tests 399ms, environment 1ms, prepare 1.24s)
+@crclaunch/cove-simplicity:test:
+@crclaunch/crc20-protocol:test:
+@crclaunch/crc20-protocol:test:  Test Files  28 passed (28)
+@crclaunch/crc20-adapters:test:  ✓ src/browser.test.ts (1 test) 1911ms
+@crclaunch/crc20-adapters:test:    ✓ real Chromium loads adapters and completes actual captured native, nested and Taproot signatures 1910ms
+@crclaunch/crc20-adapters:test:
+@crclaunch/crc20-protocol:test:       Tests  173 passed (173)
+@crclaunch/crc20-protocol:test:    Start at  05:51:21
+@crclaunch/cove-mainnet:test: cache hit, replaying logs 652da66ee67dc350
+@crclaunch/crc20-adapters:test:  Test Files  5 passed (5)
+@crclaunch/crc20-adapters:test:       Tests  29 passed (29)
+@crclaunch/cove-mainnet:build: cache hit, replaying logs 63ae78786e45bdc3
+@crclaunch/crc20-protocol:test:    Duration  109.42s (transform 1.04s, setup 0ms, collect 2.62s, tests 102.72s, environment 4ms, prepare 1.28s)
+@crclaunch/crc20-protocol:test:
+@crclaunch/crc20-adapters:test:    Start at  05:51:22
+@crclaunch/crc20-adapters:test:    Duration  4.80s (transform 1.63s, setup 0ms, collect 5.66s, tests 3.36s, environment 2ms, prepare 2.07s)
+@crclaunch/cove-mainnet:test:
+@crclaunch/cove-mainnet:test: > @crclaunch/cove-mainnet@0.1.0 test /home/andefy/dev/covedao/packages/cove-mainnet
+@crclaunch/cove-mainnet:build:
+@crclaunch/cove-mainnet:build: > @crclaunch/cove-mainnet@0.1.0 build /home/andefy/dev/covedao/packages/cove-mainnet
+@crclaunch/crc20-adapters:test:
+@crclaunch/cove-mainnet:test: > vitest run
+@crclaunch/cove-mainnet:test:
+@crclaunch/cove-mainnet:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-mainnet:build:
+@crclaunch/cove-mainnet:test:
+@crclaunch/cove-mainnet:test:  RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-mainnet
+@crclaunch/cove-mainnet:test:
+@crclaunch/cove-mainnet:test:  ✓ src/profile.test.ts (24 tests) 81ms
+@crclaunch/cove-mainnet:test:  ✓ src/committed-profile.test.ts (15 tests) 103ms
+@crclaunch/cove-mainnet:test:
+@crclaunch/cove-mainnet:test:  Test Files  2 passed (2)
+@crclaunch/cove-mainnet:test:       Tests  39 passed (39)
+@crclaunch/cove-mainnet:test:    Start at  07:47:52
+@crclaunch/cove-mainnet:test:    Duration  2.40s (transform 1.08s, setup 0ms, collect 2.22s, tests 184ms, environment 0ms, prepare 1.05s)
+@crclaunch/cove-mainnet:test:
+@crclaunch/cove-guardian:test: cache hit, replaying logs edc393a6e60f1786
+@crclaunch/cove-guardian:build: cache hit, replaying logs 4d6d5a52e81521d0
+@crclaunch/cove-guardian:test:
+@crclaunch/cove-guardian:test: > @crclaunch/cove-guardian@0.1.0 test /home/andefy/dev/covedao/packages/cove-guardian
+@crclaunch/cove-guardian:test: > vitest run
+@crclaunch/cove-guardian:test:
+@crclaunch/cove-guardian:test:
+@crclaunch/cove-guardian:test:  RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-guardian
+@crclaunch/cove-guardian:build:
+@crclaunch/cove-guardian:test:
+@crclaunch/cove-guardian:build: > @crclaunch/cove-guardian@0.1.0 build /home/andefy/dev/covedao/packages/cove-guardian
+@crclaunch/cove-guardian:test:  ✓ src/v3/architecture.test.ts (7 tests) 5ms
+@crclaunch/cove-guardian:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-guardian:test:  ✓ src/v3/journal.test.ts (8 tests) 39ms
+@crclaunch/cove-guardian:test:  ✓ src/v3/discoveryOutput.test.ts (10 tests) 15ms
+@crclaunch/cove-guardian:test:  ✓ src/v3/funding.test.ts (22 tests) 42ms
+@crclaunch/cove-guardian:build:
+@crclaunch/cove-guardian:test:  ✓ src/policy.test.ts (16 tests) 13ms
+@crclaunch/cove-guardian:test:  ✓ src/v3/external-cancellation.test.ts (8 tests) 193ms
+@crclaunch/cove-guardian:test:  ✓ src/frozen-protocol.test.ts (12 tests) 6ms
+@crclaunch/cove-guardian:test:  ✓ src/tx.test.ts (10 tests) 92ms
+@crclaunch/cove-guardian:test:  ✓ src/v3/riskPolicy.test.ts (12 tests) 8ms
+@crclaunch/cove-guardian:test:  ✓ src/v3/mainnet-guard.test.ts (4 tests) 6ms
+@crclaunch/cove-guardian:test:  ✓ src/v3/transitionSigner.test.ts (5 tests) 40ms
+@crclaunch/cove-guardian:test:  ✓ src/v3/custody.test.ts (5 tests) 66ms
+@crclaunch/cove-guardian:test:  ✓ src/v3/mainnetProfile.test.ts (1 test) 83ms
+@crclaunch/cove-guardian:test:  ✓ src/v3/builder.test.ts (24 tests) 239ms
+@crclaunch/cove-guardian:test:  ✓ src/v3/finalize.test.ts (11 tests) 261ms
+@crclaunch/cove-guardian:test: stderr | src/v3/guardianApi.test.ts > remote Guardian client (§24) > post-sign audit failure surfaces SIGNED_BUT_AUDIT_FINALIZATION_FAILED and keeps the journal reserved (§34)
+@crclaunch/cove-guardian:test: SIGNED_BUT_AUDIT_FINALIZATION_FAILED: MINT aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+@crclaunch/cove-guardian:test:
+@crclaunch/cove-guardian:test:  ✓ src/v3/guardianApi.test.ts (12 tests) 236ms
+@crclaunch/cove-guardian:test:  ✓ src/v3/guardian.test.ts (21 tests) 288ms
+@crclaunch/cove-guardian:test:
+@crclaunch/cove-guardian:test:  Test Files  17 passed (17)
+@crclaunch/cove-guardian:test:       Tests  188 passed (188)
+@crclaunch/cove-guardian:test:    Start at  07:47:52
+@crclaunch/cove-guardian:test:    Duration  3.39s (transform 6.36s, setup 0ms, collect 24.10s, tests 1.63s, environment 22ms, prepare 8.21s)
+@crclaunch/cove-guardian:test:
+@crclaunch/cove-indexer:test: cache miss, executing e9d78205b5ecbc3e
+@crclaunch/cove-indexer:build: cache hit, replaying logs 0c34529782652e9b
+@crclaunch/cove-indexer:build:
+@crclaunch/cove-indexer:build: > @crclaunch/cove-indexer@0.1.0 build /home/andefy/dev/covedao/packages/cove-indexer
+@crclaunch/cove-indexer:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-indexer:build:
+@crclaunch/crc20-guardian:test: cache miss, executing df25135fc1a09a2b
+@crclaunch/crc20-guardian:build: cache miss, executing 76de72ef56890f0b
+@crclaunch/cove-market:build: cache hit, replaying logs be99ec4edf22566f
+@crclaunch/cove-market:build:
+@crclaunch/cove-market:build: > @crclaunch/cove-market@0.1.0 build /home/andefy/dev/covedao/packages/cove-market
+@crclaunch/cove-market:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-market:build:
+@crclaunch/cove-app:build: cache hit, replaying logs 4c3eacd8061e2340
+@crclaunch/cove-app:build:
+@crclaunch/cove-app:test: cache hit, replaying logs 283c1eea3efc798b
+@crclaunch/cove-app:build: > @crclaunch/cove-app@0.1.0 build /home/andefy/dev/covedao/packages/cove-app
+@crclaunch/cove-app:test:
+@crclaunch/cove-app:test: > @crclaunch/cove-app@0.1.0 test /home/andefy/dev/covedao/packages/cove-app
+@crclaunch/cove-app:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/cove-app:build:
+@crclaunch/cove-app:test: > vitest run
+@crclaunch/cove-app:test:
+@crclaunch/cove-app:test:
+@crclaunch/cove-app:test:  RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-app
+@crclaunch/cove-app:test:
+@crclaunch/cove-app:test:  ✓ src/mint-plan.test.ts (4 tests) 18ms
+@crclaunch/cove-app:test:  ↓ src/pending-candidates.integration.test.ts (3 tests | 3 skipped)
+@crclaunch/cove-app:test:  ✓ src/funding.test.ts (5 tests) 207ms
+@crclaunch/cove-app:test:  ✓ src/mainnet.test.ts (5 tests) 107ms
+@crclaunch/cove-app:test:  ✓ src/readiness-probes.test.ts (9 tests) 212ms
+@crclaunch/cove-app:test:  ✓ src/readiness.test.ts (8 tests) 244ms
+@crclaunch/cove-app:test:  ✓ src/wallet-read.test.ts (2 tests) 87ms
+@crclaunch/cove-app:test:  ↓ src/budget-funding.integration.test.ts (1 test | 1 skipped)
+@crclaunch/cove-app:test:  ✓ src/config.test.ts (13 tests) 378ms
+@crclaunch/cove-app:test:  ✓ src/ops.test.ts (3 tests) 32ms
+@crclaunch/cove-app:test:  ✓ src/format.test.ts (6 tests) 46ms
+@crclaunch/cove-app:test:  ✓ src/psbt.test.ts (2 tests) 55ms
+@crclaunch/cove-app:test:  ↓ src/signing-result.integration.test.ts (1 test | 1 skipped)
+@crclaunch/cove-app:test:  ↓ src/ord-budget.integration.test.ts (1 test | 1 skipped)
+@crclaunch/cove-app:test:  ↓ src/journal-audit.integration.test.ts (3 tests | 3 skipped)
+@crclaunch/cove-app:test:  ↓ src/pending-observations.integration.test.ts (1 test | 1 skipped)
+@crclaunch/cove-app:test:  ✓ src/token-read.test.ts (2 tests) 18ms
+@crclaunch/cove-app:test:  ↓ src/small-redeem.regtest.test.ts (10 tests | 10 skipped)
+@crclaunch/cove-app:test:  ✓ src/runtime-snapshot.test.ts (16 tests) 223ms
+@crclaunch/cove-app:test:  ↓ src/competing.regtest.test.ts (2 tests | 2 skipped)
+@crclaunch/cove-app:test:  ✓ src/mainnet-gate.test.ts (5 tests) 42ms
+@crclaunch/cove-app:test:  ✓ src/build-preflight.test.ts (15 tests) 140ms
+@crclaunch/cove-app:test:  ✓ src/network-gate.test.ts (4 tests) 153ms
+@crclaunch/cove-app:test:  ✓ src/tx-status.test.ts (15 tests) 397ms
+@crclaunch/cove-app:test:  ✓ src/fill-finalize-guard.test.ts (2 tests) 25ms
+@crclaunch/cove-app:test:  ✓ src/pending-backing.test.ts (11 tests) 504ms
+@crclaunch/cove-app:test: stdout | src/transition-signer.test.ts > watchGuardianAgreement > keeps running when the profiles match, and retries while the Guardian is unreachable
+@crclaunch/guardian:test: cache hit, replaying logs beb6dc592ee57328
+@crclaunch/worker:test: cache hit, replaying logs a9c00fbbe336b15a
+@crclaunch/cove-market:test: cache hit, replaying logs f75fb81a3ce3e011
+@crclaunch/cove-app:test: [test] Guardian runs the same mainnet profile (fee address included)
+@crclaunch/cove-app:test:
+@crclaunch/cove-app:test: stderr | src/transition-signer.test.ts > watchGuardianAgreement > keeps running when the profiles match, and retries while the Guardian is unreachable
+@crclaunch/cove-app:test: [test] cannot compare profiles with the Guardian yet (guardian unreachable); retrying
+@crclaunch/cove-app:test:
+@crclaunch/cove-app:test: stdout | src/transition-signer.test.ts > watchGuardianAgreement > keeps running when the profiles match, and retries while the Guardian is unreachable
+@crclaunch/cove-app:test: [test] Guardian runs the same mainnet profile (fee address included)
+@crclaunch/cove-app:test:
+@crclaunch/cove-market:test:
+@crclaunch/worker:test:
+@crclaunch/worker:test: > @crclaunch/worker@0.1.0 test /home/andefy/dev/covedao/apps/worker
+@crclaunch/cove-app:test:  ✓ src/transition-signer.test.ts (6 tests) 54ms
+@crclaunch/cove-app:test:  ✓ src/fee-cache.test.ts (1 test) 37ms
+@crclaunch/cove-app:test:  ↓ src/submission-recovery.integration.test.ts (4 tests | 4 skipped)
+@crclaunch/guardian:test:
+@crclaunch/guardian:test: > @crclaunch/guardian@0.1.0 test /home/andefy/dev/covedao/apps/guardian
+@crclaunch/cove-market:test: > @crclaunch/cove-market@0.1.0 test /home/andefy/dev/covedao/packages/cove-market
+@crclaunch/cove-market:test: > vitest run
+@crclaunch/cove-market:test:
+@crclaunch/worker:test: > vitest run --passWithNoTests
+@crclaunch/worker:test:
+@crclaunch/cove-app:test:
+@crclaunch/cove-app:test:  Test Files  20 passed | 9 skipped (29)
+@crclaunch/guardian:test: > vitest run
+@crclaunch/guardian:test:
+@crclaunch/cove-market:test:
+@crclaunch/cove-market:test:  RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market
+@crclaunch/cove-market:test:
+@crclaunch/worker:test:
+@crclaunch/worker:test:  RUN  v2.1.9 /home/andefy/dev/covedao/apps/worker
+@crclaunch/cove-app:test:       Tests  134 passed | 26 skipped (160)
+@crclaunch/cove-app:test:    Start at  10:01:15
+@crclaunch/cove-app:test:    Duration  10.18s (transform 15.73s, setup 0ms, collect 147.81s, tests 2.98s, environment 36ms, prepare 12.84s)
+@crclaunch/guardian:test:
+@crclaunch/guardian:test:  RUN  v2.1.9 /home/andefy/dev/covedao/apps/guardian
+@crclaunch/cove-market:test:  ✓ src/order/bip322.test.ts (6 tests) 87ms
+@crclaunch/cove-market:test:  ✓ src/order/order.test.ts (9 tests) 92ms
+@crclaunch/cove-market:test:  ✓ src/best-execution.test.ts (7 tests) 72ms
+@crclaunch/worker:test:
+@crclaunch/worker:test:  ✓ src/crc-health.test.ts (2 tests) 4ms
+@crclaunch/cove-app:test:
+@crclaunch/guardian:test:
+@crclaunch/guardian:test:  ✓ src/auth.test.ts (5 tests) 15ms
+@crclaunch/cove-market:test:  ✓ src/psbt.test.ts (3 tests) 245ms
+@crclaunch/cove-market:test:  ↓ src/submission-recovery.integration.test.ts (5 tests | 5 skipped)
+@crclaunch/cove-market:test:  ✓ src/chain-identity.test.ts (1 test) 37ms
+@crclaunch/worker:test:  ↓ src/crc-owner.integration.test.ts (1 test | 1 skipped)
+@crclaunch/worker:test:  ✓ src/crc-env.test.ts (2 tests) 25ms
+@crclaunch/guardian:test: stderr | src/http.test.ts > Guardian request lifecycle > disconnect aborts in-flight work and later requests regain signing capacity
+@crclaunch/cove-market:test:  ✓ src/observation-safety.test.ts (4 tests) 72ms
+@crclaunch/cove-market:test:  ✓ src/fee-observation.test.ts (2 tests) 48ms
+@crclaunch/cove-market:test:  ✓ src/presign.test.ts (14 tests) 480ms
+@crclaunch/worker:test:
+@crclaunch/worker:test:  Test Files  2 passed | 1 skipped (3)
+@crclaunch/worker:test:       Tests  4 passed | 1 skipped (5)
+@crclaunch/cove-market:test:  ✓ src/finalize.test.ts (12 tests) 302ms
+@crclaunch/cove-market:test:
+@crclaunch/guardian:test: guardian request failed: Guardian client disconnected
+@crclaunch/guardian:test: guardian request failed: Guardian client disconnected
+@crclaunch/guardian:test:
+@crclaunch/worker:test:    Start at  10:01:15
+@crclaunch/worker:test:    Duration  2.47s (transform 1.05s, setup 0ms, collect 1.41s, tests 29ms, environment 1ms, prepare 1.57s)
+@crclaunch/cove-market:test:  Test Files  9 passed | 1 skipped (10)
+@crclaunch/cove-market:test:       Tests  58 passed | 5 skipped (63)
+@crclaunch/guardian:test: stderr | src/http.test.ts > Guardian request lifecycle > an incomplete disconnected request never enters signing
+@crclaunch/guardian:test: guardian request failed: Guardian client disconnected
+@crclaunch/guardian:test:
+@crclaunch/worker:test:
+@crclaunch/cove-market:test:    Start at  10:01:15
+@crclaunch/cove-market:test:    Duration  7.72s (transform 5.96s, setup 0ms, collect 41.00s, tests 1.43s, environment 2ms, prepare 4.13s)
+@crclaunch/cove-market:test:
+@crclaunch/guardian:test:  ✓ src/http.test.ts (3 tests) 403ms
+@crclaunch/guardian:test:  ✓ src/custody.test.ts (7 tests) 264ms
+@crclaunch/guardian:test:  ✓ src/boot.test.ts (6 tests) 339ms
+@crclaunch/guardian:test:  ✓ src/service.test.ts (4 tests) 32ms
+@crclaunch/guardian:test:  ↓ src/pending.integration.test.ts (14 tests | 14 skipped)
+@crclaunch/guardian:test:
+@crclaunch/guardian:test:  Test Files  5 passed | 1 skipped (6)
+@crclaunch/guardian:test:       Tests  25 passed | 14 skipped (39)
+@crclaunch/guardian:test:    Start at  10:01:15
+@crclaunch/guardian:test:    Duration  7.51s (transform 5.13s, setup 0ms, collect 19.60s, tests 1.05s, environment 1ms, prepare 895ms)
+@crclaunch/guardian:test:
+@crclaunch/crc20-guardian:test:
+@crclaunch/crc20-guardian:test: > @crclaunch/crc20-guardian@0.1.0 test /home/andefy/dev/covedao/packages/crc20-guardian
+@crclaunch/crc20-guardian:test: > vitest run
+@crclaunch/crc20-guardian:test:
+@crclaunch/crc20-guardian:build:
+@crclaunch/crc20-guardian:build: > @crclaunch/crc20-guardian@0.1.0 build /home/andefy/dev/covedao/packages/crc20-guardian
+@crclaunch/crc20-guardian:build: > tsc -p tsconfig.json --noEmit
+@crclaunch/crc20-guardian:build:
+@crclaunch/cove-indexer:test:
+@crclaunch/cove-indexer:test: > @crclaunch/cove-indexer@0.1.0 test /home/andefy/dev/covedao/packages/cove-indexer
+@crclaunch/cove-indexer:test: > vitest run
+@crclaunch/cove-indexer:test:
+@crclaunch/cove-indexer:test:
+@crclaunch/cove-indexer:test:  RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-indexer
+@crclaunch/cove-indexer:test:
+@crclaunch/crc20-guardian:test:
+@crclaunch/crc20-guardian:test:  RUN  v2.1.9 /home/andefy/dev/covedao/packages/crc20-guardian
+@crclaunch/crc20-guardian:test:
+@crclaunch/cove-indexer:test:  ✓ src/v3/undo.test.ts (4 tests) 7ms
+@crclaunch/cove-indexer:test:  ✓ src/v3/export-hygiene.test.ts (3 tests) 4ms
+@crclaunch/cove-indexer:test:  ✓ src/chain-assert.test.ts (10 tests) 3ms
+@crclaunch/cove-indexer:test:  ✓ src/crc20/worker-core.test.ts (3 tests) 21ms
+@crclaunch/cove-indexer:test:  ✓ src/sign.test.ts (1 test) 27ms
+@crclaunch/cove-indexer:test:  ✓ src/indexer.test.ts (13 tests) 12ms
+@crclaunch/cove-indexer:test:  ✓ src/signet-proof.test.ts (5 tests) 4ms
+@crclaunch/cove-indexer:test:  ✓ src/proof-manifest.test.ts (9 tests) 5ms
+@crclaunch/cove-indexer:test:  ✓ src/mainnet-canary.test.ts (3 tests) 3ms
+@crclaunch/cove-indexer:test:  ✓ src/v3/health.test.ts (10 tests) 9ms
+@crclaunch/crc20-guardian:test:  ✓ src/index.test.ts (1 test) 3ms
+@crclaunch/cove-indexer:test:  ↓ src/v3/store.test.ts (1 test | 1 skipped)
+@crclaunch/cove-indexer:test:  ✓ src/v3/persistent-continuity.test.ts (6 tests) 10ms
+@crclaunch/cove-indexer:test:  ✓ src/v3/state.test.ts (8 tests) 67ms
+@crclaunch/cove-indexer:test:  ✓ src/v3/golden-root.test.ts (5 tests) 87ms
+@crclaunch/cove-indexer:test:  ✓ src/crc20/runner.test.ts (2 tests) 5ms
+@crclaunch/web:test: cache miss, executing 0f55c03aef725949
+@crclaunch/web:test:
+@crclaunch/web:test: > @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+@crclaunch/web:test: > vitest run --passWithNoTests
+@crclaunch/web:test:
+@crclaunch/web:test:
+@crclaunch/web:test:  RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+@crclaunch/web:test:
+@crclaunch/web:test:  ✓ src/lib/crc-replacement-boundary.test.ts (6 tests) 5ms
+@crclaunch/web:test:  ✓ src/lib/read-cache.test.ts (4 tests) 22ms
+@crclaunch/web:test:  ✓ src/lib/ohlc.test.ts (14 tests) 9ms
+@crclaunch/web:test:  ✓ src/lib/chain-status-store.test.ts (5 tests) 15ms
+@crclaunch/web:test:  ✓ src/lib/crc-indexed-refresh.test.ts (4 tests) 9ms
+@crclaunch/web:test:  ✓ src/lib/wallets/resolve.test.ts (10 tests) 19ms
+@crclaunch/web:test:  ✓ src/lib/format.test.ts (13 tests) 6ms
+@crclaunch/web:test:  ✓ src/lib/crc-poll.test.ts (4 tests) 10ms
+@crclaunch/web:test:  ✓ src/lib/crc-client.test.ts (4 tests) 9ms
+@crclaunch/web:test:  ✓ src/lib/regtest-scan.test.ts (8 tests) 25ms
+@crclaunch/web:test:  ✓ src/lib/crc-quote.test.ts (9 tests) 8ms
+@crclaunch/web:test:  ✓ src/lib/crc-browser-signing.test.ts (4 tests) 58ms
+@crclaunch/web:test:  ✓ src/route-inventory.test.ts (25 tests) 7ms
+@crclaunch/web:test:  ✓ src/lib/crc-browser-session.test.ts (9 tests) 144ms
+@crclaunch/web:test:  ✓ src/lib/crc-market-seller.test.ts (2 tests) 40ms
+@crclaunch/web:test:  ✓ src/i18n/i18n.test.ts (6 tests) 42ms
+@crclaunch/web:test:  ✓ src/lib/wallets/xverse-capabilities.test.ts (18 tests) 49ms
+@crclaunch/web:test:  ✓ src/components/FeePicker.test.ts (3 tests) 3ms
+@crclaunch/web:test:  ✓ src/lib/crc-market-client.test.ts (3 tests) 150ms
+@crclaunch/web:test:  ✓ src/app/api/dev/wallet/route.test.ts (3 tests) 20ms
+@crclaunch/web:test:  ✓ src/lib/funding-candidates.test.ts (2 tests) 5ms
+@crclaunch/web:test:  ✓ src/lib/crc-wallet-key.test.ts (2 tests) 5ms
+@crclaunch/web:test:  ✓ src/lib/crc-read.test.ts (4 tests) 7ms
+@crclaunch/web:test:  ✓ src/lib/crc-bootstrap.test.ts (4 tests) 13ms
+@crclaunch/web:test:  ✓ src/lib/crc-market-availability.test.ts (3 tests) 3ms
+@crclaunch/web:test:  ✓ src/lib/crc-activity-label.test.ts (1 test) 3ms
+@crclaunch/cove-indexer:test:  ✓ src/crc20/store-core.integration.test.ts (4 tests) 2654ms
+@crclaunch/cove-indexer:test:  ✓ src/crc20/fresh-reset.integration.test.ts (1 test) 2626ms
+@crclaunch/web:test:  ✓ src/lib/crc-metadata.test.ts (2 tests) 7ms
+@crclaunch/web:test:  ✓ src/lib/crc-mutation.test.ts (1 test) 3ms
+@crclaunch/web:test:  ✓ src/lib/crc-submit.test.ts (1 test) 19ms
+@crclaunch/web:test:  ✓ src/app/api/crc/v1/status/route.test.ts (1 test) 6ms
+@crclaunch/web:test:  ✓ src/lib/rate-limit.test.ts (3 tests) 9ms
+@crclaunch/web:test: stderr | src/app/api/crc/v1/wallet/utxos/route.test.ts > CRC wallet funding observation > returns retryable unavailable on lookup failure without replacing funding: DOMException{ stack: 'TimeoutError: upstream timeout\n    at new DOMException (node:internal/per_context/domexception:76:18)\n    at /home/andefy/dev/covedao/apps/web/src/app/api/crc/v1/wallet/utxos/route.test.ts:19:12\n    at file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:514:43\n    at runWithSuite (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:29:9)\n    at Object.collect (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:514:13)\n    at Object.collect (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:518:57)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at collectTests (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:852:28)\n    at startTests (file:///home/andefy/dev/covedao/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1268:17)\n    at file:///home/andefy/dev/covedao/node_modules/.pnpm/vitest@2.1.9_@types+node@22.20.4_terser@5.51.2/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11' }
+@crclaunch/web:test: [api] ADDRESS_INDEX_UNAVAILABLE
+@crclaunch/web:test:
+@crclaunch/web:test: stderr | src/app/api/crc/v1/wallet/utxos/route.test.ts > CRC wallet funding observation > returns retryable unavailable on lookup failure without replacing funding: TypeError: fetch failed
+@crclaunch/web:test: [api] ADDRESS_INDEX_UNAVAILABLE
+@crclaunch/web:test:
+@crclaunch/web:test: stderr | src/app/api/crc/v1/wallet/utxos/route.test.ts > CRC wallet funding observation > returns retryable unavailable on lookup failure without replacing funding: Error: Esplora utxo HTTP 502
+@crclaunch/web:test: [api] ADDRESS_INDEX_UNAVAILABLE
+@crclaunch/web:test:
+@crclaunch/web:test: stderr | src/app/api/crc/v1/wallet/utxos/route.test.ts > CRC wallet funding observation > returns retryable unavailable on lookup failure without replacing funding: SyntaxError: invalid upstream JSON
+@crclaunch/web:test: [api] ADDRESS_INDEX_UNAVAILABLE
+@crclaunch/web:test:
+@crclaunch/web:test: stderr | src/app/api/crc/v1/wallet/utxos/route.test.ts > CRC wallet funding observation > saves an exact successful observation after a transient lookup failure
+@crclaunch/web:test: [api] ADDRESS_INDEX_UNAVAILABLE
+@crclaunch/web:test:
+@crclaunch/web:test:  ✓ src/app/api/crc/v1/wallet/utxos/route.test.ts (6 tests) 16ms
+@crclaunch/web:test:  ✓ src/lib/crc-quote-route.test.ts (5 tests) 23ms
+@crclaunch/web:test:  ✓ src/app/api/crc/v1/tokens/[assetId]/route.test.ts (2 tests) 9ms
+@crclaunch/web:test:  ✓ src/app/api/crc/v1/trading/status/route.test.ts (1 test) 5ms
+@crclaunch/web:test: stderr | src/app/api/crc/v1/wallet/[address]/balances/route.test.ts > CRC wallet balances route > rejects a mainnet address without querying balances
+@crclaunch/web:test: [api] WRONG_NETWORK
+@crclaunch/web:test:
+@crclaunch/web:test:  ✓ src/app/api/crc/v1/wallet/[address]/balances/route.test.ts (3 tests) 14ms
+@crclaunch/web:test:  ✓ src/app/api/crc/v1/tokens/route.test.ts (4 tests) 14ms
+@crclaunch/web:test:  ✓ src/app/api/crc/v1/tokens/[assetId]/utxos/route.test.ts (2 tests) 11ms
+@crclaunch/web:test: stderr | src/lib/crc-trade-build-route.test.ts > CRC sell build authority > rejects an ordinary same-script Bitcoin output without indexed token allocation
+@crclaunch/web:test: [api] FUNDING_INPUT_INVALID
+@crclaunch/web:test:
+@crclaunch/web:test:  ✓ src/lib/crc-trade-build-route.test.ts (2 tests) 10ms
+@crclaunch/web:test:  ✓ src/lib/crc-market-route.test.ts (9 tests) 26ms
+@crclaunch/web:test:  ✓ src/app/api/crc/v1/market/[operation]/route.test.ts (4 tests) 17ms
+@crclaunch/web:test:  ✓ src/lib/crc-core-read.integration.test.ts (6 tests) 1955ms
+@crclaunch/web:test: stderr | src/lib/crc-core-submit.integration.test.ts > HTTP unsigned or changed wallet response never reaches Core live checks or custody
+@crclaunch/web:test: [api] WALLET_SIGNATURE_INVALID
+@crclaunch/web:test:
+@crclaunch/web:test: stderr | src/lib/crc-core-submit.integration.test.ts > HTTP unsigned or changed wallet response never reaches Core live checks or custody
+@crclaunch/web:test: [api] WALLET_SIGNATURE_INVALID
+@crclaunch/web:test:
+@crclaunch/web:test: stderr | src/lib/crc-core-submit.integration.test.ts > HTTP re-signed retry uses cached Guardian witness after lost response
+@crclaunch/web:test: [api] GUARDIAN_UNAVAILABLE
+@crclaunch/web:test:
+@crclaunch/crc20-guardian:test:  ✓ src/integration.test.ts (4 tests) 17093ms
+@crclaunch/crc20-guardian:test:    ✓ real Guardian custody mines core mint/sell/inventory buy with exact fees and indexed state 3808ms
+@crclaunch/crc20-guardian:test:    ✓ bad wallet/state/fees/recovery/stale vault never reach custody 922ms
+@crclaunch/crc20-guardian:test:    ✓ actual custody spend reorg restores inventory and safely reuses the same verified journal 3335ms
+@crclaunch/crc20-guardian:test:    ✓ state changes during custody signing reject the response and release the journal for a verified retry 2528ms
+@crclaunch/crc20-guardian:test:
+@crclaunch/crc20-guardian:test:  Test Files  2 passed (2)
+@crclaunch/crc20-guardian:test:       Tests  5 passed (5)
+@crclaunch/crc20-guardian:test:    Start at  10:04:12
+@crclaunch/crc20-guardian:test:    Duration  18.28s (transform 512ms, setup 0ms, collect 1.54s, tests 17.10s, environment 3ms, prepare 217ms)
+@crclaunch/crc20-guardian:test:
+@crclaunch/cove-indexer:test:  ✓ src/crc20/runner-core.integration.test.ts (3 tests) 19731ms
+@crclaunch/cove-indexer:test:    ✓ actual mined deploy/mint and offer retirement persist exact core state across restart/reorg 5735ms
+@crclaunch/cove-indexer:test:    ✓ deep actual reorg uses canonical checkpoint and replays when bounded undo is exhausted 6663ms
+@crclaunch/cove-indexer:test:    ✓ actual cancelled-offer paid fill and unregistered external deployment follow only core decisions 1683ms
+@crclaunch/cove-indexer:test:
+@crclaunch/cove-indexer:test:  Test Files  17 passed | 1 skipped (18)
+@crclaunch/cove-indexer:test:       Tests  90 passed | 1 skipped (91)
+@crclaunch/cove-indexer:test:    Start at  10:04:12
+@crclaunch/cove-indexer:test:    Duration  21.09s (transform 2.52s, setup 0ms, collect 9.95s, tests 25.28s, environment 4ms, prepare 1.88s)
+@crclaunch/cove-indexer:test:
+@crclaunch/web:test: stderr | src/lib/crc-core-submit.integration.test.ts > HTTP forged offer terms and wrong network reject before live RPC or custody
+@crclaunch/web:test: [api] WALLET_SIGNATURE_INVALID
+@crclaunch/web:test: [api] WRONG_NETWORK
+@crclaunch/web:test:
+@crclaunch/web:test: stderr | src/lib/crc-core-submit.integration.test.ts > API persists READY before failed broadcast and retries exact saved bytes without custody
+@crclaunch/web:test: [api] BROADCAST_FAILED
+@crclaunch/web:test:
+@crclaunch/web:test: stderr | src/lib/crc-core-submit.integration.test.ts > API admits competing advisory builds but rejects the spent vault before second custody
+@crclaunch/web:test: [api] STATE_CHANGED
+@crclaunch/web:test:
+@crclaunch/web:test: stderr | src/lib/crc-core-submit.integration.test.ts > stored buy intent cannot misstate receipt or split while wallet/Guardian signing is pending
+@crclaunch/web:test: [api] CLIENT_INTENT_MISMATCH
+@crclaunch/web:test:
+@crclaunch/web:test: stderr | src/lib/crc-core-submit.integration.test.ts > stored buy intent cannot misstate receipt or split while wallet/Guardian signing is pending
+@crclaunch/web:test: [api] CLIENT_INTENT_MISMATCH
+@crclaunch/web:test:
+@crclaunch/web:test: stderr | src/lib/crc-core-submit.integration.test.ts > stored buy intent cannot misstate receipt or split while wallet/Guardian signing is pending
+@crclaunch/web:test: [api] CLIENT_INTENT_MISMATCH
+@crclaunch/web:test:
+@crclaunch/web:test: stderr | src/lib/crc-core-submit.integration.test.ts > stored buy intent cannot misstate receipt or split while wallet/Guardian signing is pending
+@crclaunch/web:test: [api] CLIENT_INTENT_MISMATCH
+@crclaunch/web:test:
+@crclaunch/web:test:  ✓ src/lib/crc-core-submit.integration.test.ts (17 tests) 78212ms
+@crclaunch/web:test:    ✓ HTTP submit registers exact signed core deployment before actual broadcast and is idempotent 1109ms
+@crclaunch/web:test:    ✓ HTTP API sends verified wallet first to actual shared Guardian and mines indexed core mint 1866ms
+@crclaunch/web:test:    ✓ HTTP sell and inventory buy mine exact core plans, fees and allocations 4698ms
+@crclaunch/web:test:    ✓ HTTP re-signed retry uses cached Guardian witness after lost response 2612ms
+@crclaunch/web:test:    ✓ HTTP arbitrary transfer and one-transaction listing preserve exact core allocations 3996ms
+@crclaunch/web:test:    ✓ core offer activation and buyer-only API fill preserve seller presign and exact fees 2234ms
+@crclaunch/web:test:    ✓ API cancellation mines, rolls back with actual reorg, and rebroadcasts its persisted receipt 5589ms
+@crclaunch/web:test:    ✓ API accepts an already signed paid fill after advisory expiry and rejects new expired builds 2426ms
+@crclaunch/web:test:    ✓ API persists READY before failed broadcast and retries exact saved bytes without custody 2860ms
+@crclaunch/web:test:    ✓ API admits competing advisory builds but rejects the spent vault before second custody 2516ms
+@crclaunch/web:test:    ✓ HTTP sell build replay survives consumed token inputs, funding refresh and fee changes 2965ms
+@crclaunch/web:test:    ✓ full consumer buy400/sell400/buy1000 records total1000, inventory400 and new600, then repeat100 and reorg 19663ms
+@crclaunch/web:test:    ✓ consumer buy400/list300/buyer-only fill returns100 without an extra split transaction 7215ms
+@crclaunch/web:test:    ✓ three-input sell retains live fences and READY recovery with fewer RPC calls at the real shared quota 13325ms
+@crclaunch/web:test:
+@crclaunch/web:test:  Test Files  43 passed (43)
+@crclaunch/web:test:       Tests  239 passed (239)
+@crclaunch/web:test:    Start at  10:04:14
+@crclaunch/web:test:    Duration  80.91s (transform 4.08s, setup 0ms, collect 36.28s, tests 81.04s, environment 8ms, prepare 3.60s)
+@crclaunch/web:test:
+
+ Tasks:    44 successful, 44 total
+Cached:    40 cached, 44 total
+  Time:    1m23.38s
+
+ WARNING  no output files found for task @crclaunch/cove-indexer#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @crclaunch/crc20-guardian#build. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @crclaunch/crc20-guardian#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @crclaunch/web#test. Please check your `outputs` key in `turbo.json`
