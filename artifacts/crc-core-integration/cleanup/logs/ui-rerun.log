@@ -1,0 +1,7 @@
+
+Running 2 tests using 1 worker
+
+  ✓  1 [desktop] › tests-crc-core/bundle.spec.ts:3:1 › active UI scripts contain only the authoritative CRC implementation and no server modules (13.1s)
+  ✓  2 [desktop] › tests-crc-core/ui-parity.spec.ts:5:3 › unchanged UI matches 5dded6a pixels and controls at /wallet (1.4s)
+
+  2 passed (15.0s)

@@ -1,0 +1,9 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/worker
+
+ ✓ src/crc-health.test.ts (2 tests) 8ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  00:59:57
+   Duration  447ms (transform 74ms, setup 0ms, collect 66ms, tests 8ms, environment 0ms, prepare 124ms)

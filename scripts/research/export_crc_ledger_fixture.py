@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 ACTIVITY = ROOT / "artifacts/crc-garden/activity-2026-09-30.sqlite"
 POSITIONS = ROOT / "artifacts/crc-garden/block-order-proofs.sqlite"
 PREVOUTS = ROOT / "artifacts/crc-garden/parent-prevouts.sqlite"
-TARGET = ROOT / "packages/crc20-ledger/test/fixtures/leaf-events.json"
+TARGET = ROOT / "artifacts/crc-garden/derived-fixtures/leaf-events.json"
 
 
 def main() -> None:

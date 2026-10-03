@@ -1,6 +1,6 @@
 import { saveWalletFundingSnapshot } from "@crclaunch/db";
 import { ok, fail, handleError, readJson, strField } from "@/lib/api";
-import { getV3Services } from "@/lib/v3-server";
+import { getCrcMutationServices } from "@/lib/crc-mutation";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { regtestScans, type ScanRpcCaller } from "@/lib/regtest-scan";
 import * as bitcoin from "bitcoinjs-lib";
@@ -47,7 +47,7 @@ function assertDevWalletAllowed(): { ok: true } | { ok: false; reason: string } 
   if ((process.env.COVE_DEV_WALLET ?? "").toLowerCase() !== "true") {
     return { ok: false, reason: "dev wallet is off; set COVE_DEV_WALLET=true to enable it" };
   }
-  const { config } = getV3Services();
+  const { config } = getCrcMutationServices();
   if (config.network !== "regtest") {
     return { ok: false, reason: `dev wallet is regtest-only; network is ${config.network}` };
   }
@@ -78,7 +78,7 @@ async function spendableUtxos(
   ids: { address: string; script: string }[],
   signal: AbortSignal,
 ): Promise<{ txid: string; vout: number; sats: number; script: string }[]> {
-  const { provider } = getV3Services();
+  const { provider } = getCrcMutationServices();
   const unspents = await regtestScans.scan<{
     txid: string; vout: number; amount: number; scriptPubKey: string;
   }>(provider as unknown as ScanRpcCaller, ids.map((id) => id.address), signal);
@@ -137,7 +137,7 @@ export async function POST(req: Request) {
     }
     if (action === "getUtxos") {
       const utxos = (await spendableUtxos([id], req.signal)).map((u) => ({ txid: u.txid, vout: u.vout, valueSats: String(u.sats), confirmations: 1 }));
-      const { db, config } = getV3Services();
+      const { db, config } = getCrcMutationServices();
       await saveWalletFundingSnapshot(db, config.network, id.script, utxos);
       return ok({ utxos });
     }

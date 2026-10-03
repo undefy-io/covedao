@@ -10,6 +10,8 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
 COPY apps ./apps
 COPY packages ./packages
 RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @crclaunch/crc20-protocol build
+RUN pnpm --filter @crclaunch/crc20-adapters build
 COPY --from=rust-builder /build/packages/cove-simplicity/rust/target/release/cove-simplicity /app/packages/cove-simplicity/rust/target/release/cove-simplicity
 ARG COVE_NETWORK=signet
 ARG SENTRY_DSN

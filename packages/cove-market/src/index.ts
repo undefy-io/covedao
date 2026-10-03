@@ -75,26 +75,3 @@ export { getBuyRoutes, getSellOptions, type BuyRoute, type SellOption } from "./
 export { assertMarketReady, assertMarketEnabled, healthErrorFor, marketEnabledFlag } from "./health.js";
 
 export { readStoredFeeObservation } from "./fee-observation.js";
-export {
-  crcMarketFee,
-  buildCrcListingPsbt,
-  verifyCrcListingPresign,
-  crcListingMessage,
-  crcCancelMessage,
-  verifyCrcFillTransaction,
-  type CrcFillOptions,
-  type CrcListing,
-  type IndexedCrcAsset,
-  type CrcNetwork,
-} from "./crc20/market.js";
-export {
-  CrcListingConflictError,
-  createCrcListing,
-  cancelCrcListing,
-  reserveCrcFill,
-  submitBuyerSignedCrcFill,
-  completePresignedCrcFill,
-  listCrcSellerFillRequests,
-  acceptSignedCrcFill,
-  broadcastCrcFill,
-} from "./crc20/store.js";

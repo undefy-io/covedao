@@ -2,7 +2,7 @@ import { isIP } from "node:net";
 import { FixedWindowRateLimiter } from "@crclaunch/cove-app";
 import { sharedQuota } from "@crclaunch/db";
 import { fail } from "./api";
-import { getV3Services } from "./v3-server";
+import { getCrcReadServices } from "./crc-server";
 import { serverEnv } from "./server-env";
 
 export function clientIp(req: Request, trustedHeader = "none"): string {
@@ -65,13 +65,13 @@ export async function checkRateLimit(req: Request, operation: string, limiter?: 
     return response;
   };
   if (checking >= 64) return unavailable();
-  const { db, config } = getV3Services();
+  const { db, network } = getCrcReadServices();
   const globalLimit = expensive ? 60 : group === "address" ? 240 : 20_000;
   checking++;
   try {
-    if (!await sharedQuota(db, `${config.network}:global:${group}`, globalLimit, 60_000)) return denied();
+    if (!await sharedQuota(db, `${network}:global:${group}`, globalLimit, 60_000)) return denied();
     const ip = clientIp(req, serverEnv.COVE_TRUSTED_CLIENT_IP_HEADER);
-    if (ip !== "local" && !await sharedQuota(db, `${config.network}:ip:${ip}:${group}`, expensive ? 20 : group === "address" ? 60 : 1_200, 60_000)) return denied();
+    if (ip !== "local" && !await sharedQuota(db, `${network}:ip:${ip}:${group}`, expensive ? 20 : group === "address" ? 60 : 1_200, 60_000)) return denied();
     return null;
   } catch { return unavailable(); }
   finally { checking--; }

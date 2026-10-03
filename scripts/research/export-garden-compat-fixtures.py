@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 DATABASE = ROOT / "artifacts/crc-garden/activity-2026-09-30.sqlite"
-FIXTURES = ROOT / "packages/crc20-transactions/test/fixtures"
+FIXTURES = ROOT / "artifacts/crc-garden/derived-fixtures"
 
 
 def rows(connection):
@@ -50,7 +50,7 @@ def rows(connection):
 
 
 def check_raw_transactions(connection):
-    path = ROOT / "packages/crc20-base/test/fixtures/leaf-mainnet.json"
+    path = ROOT / "artifacts/crc-garden/derived-fixtures/leaf-mainnet.json"
     fixture = json.loads(path.read_text())
     database = {
         txid: (kind, recipient, amount, json.loads(raw)["hex"])

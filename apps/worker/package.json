@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/v3.ts",
+    "dev": "tsx watch src/crc.ts",
     "dev:v1": "tsx watch src/index.ts",
-    "start": "tsx src/v3.ts",
+    "start": "tsx src/crc.ts",
     "start:crc": "tsx src/crc.ts",
     "dev:crc": "tsx watch src/crc.ts",
     "start:v1": "tsx src/index.ts",

@@ -115,7 +115,7 @@ export class CrcChainHarness {
       await this.observeFees();
       const reservation = createServer(); const reserved = await listen(reservation); await closeServer(reservation);
       this.url = reserved;
-      this.env = { ...process.env, COVE_NETWORK: "regtest", COVE_PROTOCOL_MODE: "crc20", COVE_CRC_TRADING_ACTIVE: "true",
+      this.env = { ...process.env, COVE_NETWORK: "regtest", COVE_CRC_TRADING_ACTIVE: "true",
         COVE_CRC_MARKET_TESTING_ENABLED: "true", COVE_DATABASE_URL: dbUrl, DATABASE_URL: dbUrl,
         COVE_BITCOIN_RPC_URL: rpcUrl, COVE_BITCOIN_RPC_USER: "isolated", COVE_BITCOIN_RPC_PASSWORD: "isolated", COVE_BITCOIN_RPC_API_KEY: "",
         COVE_GUARDIAN_ENDPOINT: guardianUrl, COVE_GUARDIAN_AUTH_TOKEN: "owned-crc-browser", COVE_TEST_ONLY_PROFILE_PATH: profilePath,

@@ -1,0 +1,33 @@
+name: CRC product — owned browser to chain
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  product-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:crc-runtime
+      - run: pnpm --filter @crclaunch/web exec playwright install --with-deps chromium
+      - name: Run isolated production browser/Core/Postgres/Guardian gate
+        run: CRC_CORE_CHAIN_EVIDENCE_PATH=${{ github.workspace }}/crc-chain-evidence.json pnpm --filter @crclaunch/web test:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: crc-chain-evidence
+          path: |
+            crc-chain-evidence.json
+            apps/web/test-results

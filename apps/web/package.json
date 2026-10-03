@@ -10,10 +10,10 @@
     "lint": "eslint src --max-warnings=0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests",
-    "test:e2e": "playwright test",
-    "test:e2e:crc": "playwright test -c playwright.crc.config.ts",
-    "test:e2e:crc-core": "playwright test -c playwright.crc-core.config.ts",
-    "test:e2e:crc-chain": "playwright test -c playwright.crc-chain.config.ts"
+    "test:e2e": "pnpm -w build:crc-runtime && playwright test",
+    "test:e2e:crc": "pnpm -w build:crc-runtime && playwright test -c playwright.crc.config.ts",
+    "test:e2e:crc-core": "pnpm -w build:crc-runtime && playwright test -c playwright.crc-core.config.ts",
+    "test:e2e:crc-chain": "pnpm -w build:crc-runtime && playwright test -c playwright.crc-chain.config.ts"
   },
   "dependencies": {
     "@crclaunch/bitcoin": "workspace:*",
@@ -28,10 +28,8 @@
     "@crclaunch/cove-vault": "workspace:*",
     "@crclaunch/cove-wire": "workspace:*",
     "@crclaunch/crc20-adapters": "workspace:*",
-    "@crclaunch/crc20-curve": "workspace:*",
     "@crclaunch/crc20-protocol": "workspace:*",
     "@crclaunch/crc20-state": "workspace:*",
-    "@crclaunch/crc20-transactions": "workspace:*",
     "@crclaunch/curve": "workspace:*",
     "@crclaunch/db": "workspace:*",
     "@crclaunch/wallets": "workspace:*",

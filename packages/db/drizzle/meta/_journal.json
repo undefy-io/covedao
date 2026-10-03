@@ -288,6 +288,13 @@
       "when": 1790972687545,
       "tag": "0040_crc_api",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1790988732861,
+      "tag": "0041_crc_fresh_reset",
+      "breakpoints": true
     }
   ]
 }

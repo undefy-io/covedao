@@ -3,40 +3,32 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 /**
- * V3 route inventory test (§99). Confirms every V3 API route referenced by the
+ * CRC route inventory test. Confirms every CRC API route referenced by the
  * frontend/build flow actually exists — a missing/typo'd route fails CI. Legacy
- * CRC routes must NOT exist on the production path.
+ * routes must NOT exist on the production path.
  */
 const REQUIRED_ROUTES = [
-  "/api/v3/status",
-  "/api/v3/tokens",
-  "/api/v3/tokens/[tokenId]",
-  "/api/v3/tokens/[tokenId]/activity",
-  "/api/v3/tokens/[tokenId]/holders",
-  "/api/v3/tokens/[tokenId]/buy/routes",
-  "/api/v3/launch/prepare",
-  "/api/v3/launch/build",
-  "/api/v3/launch/submit",
-  "/api/v3/backing/buy/quote",
-  "/api/v3/backing/buy/quote-sats",
-  "/api/v3/backing/buy/build",
-  "/api/v3/backing/buy/submit",
-  "/api/v3/backing/redeem/quote",
-  "/api/v3/backing/redeem/build",
-  "/api/v3/backing/redeem/submit",
-  "/api/v3/transfer/build",
-  "/api/v3/transfer/submit",
-  "/api/v3/market/listings",
-  "/api/v3/market/listings/prepare",
-  "/api/v3/market/listings/[listingId]/cancel/prepare",
-  "/api/v3/market/listings/[listingId]/cancel",
-  "/api/v3/market/listings/[listingId]/reserve",
-  "/api/v3/market/fills/[fillId]/build",
-  "/api/v3/market/fills/[fillId]/buyer-signature",
-  "/api/v3/market/fills/[fillId]/finalize",
-  "/api/v3/market/fills/[fillId]",
-  "/api/v3/wallet/[address]/portfolio",
-  "/api/v3/tx/[txid]",
+  "/api/crc/v1/activity",
+  "/api/crc/v1/backing/buy/build",
+  "/api/crc/v1/backing/buy/quote",
+  "/api/crc/v1/backing/buy/submit",
+  "/api/crc/v1/backing/sell/build",
+  "/api/crc/v1/backing/sell/quote",
+  "/api/crc/v1/backing/sell/submit",
+  "/api/crc/v1/fees",
+  "/api/crc/v1/launch/build",
+  "/api/crc/v1/launch/submit",
+  "/api/crc/v1/market/[operation]",
+  "/api/crc/v1/market/status",
+  "/api/crc/v1/tokens",
+  "/api/crc/v1/tokens/[assetId]",
+  "/api/crc/v1/tokens/[assetId]/activity",
+  "/api/crc/v1/tokens/[assetId]/candles",
+  "/api/crc/v1/tokens/[assetId]/market",
+  "/api/crc/v1/tokens/[assetId]/utxos",
+  "/api/crc/v1/trading/status",
+  "/api/crc/v1/wallet/[address]/balances",
+  "/api/crc/v1/wallet/utxos"
 ];
 
 const FORBIDDEN_LEGACY_ROUTES = [

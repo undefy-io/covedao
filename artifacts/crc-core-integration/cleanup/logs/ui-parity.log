@@ -1,0 +1,127 @@
+
+> @crclaunch/web@0.1.0 test:e2e:crc-core /home/andefy/dev/covedao/apps/web
+> playwright test -c playwright.crc-core.config.ts
+
+
+Running 48 tests using 1 worker
+
+  ✘   1 [desktop] › tests-crc-core/bundle.spec.ts:3:1 › active UI scripts contain only the authoritative CRC implementation and no server modules (16.1s)
+  ✓   2 [desktop] › tests-crc-core/interactions.spec.ts:46:3 › existing trade controls build and sign 500-token buy with exact core fees (2.2s)
+  ✓   3 [desktop] › tests-crc-core/interactions.spec.ts:46:3 › existing trade controls build and sign 400-token sell with exact core fees (2.1s)
+  ✓   4 [desktop] › tests-crc-core/interactions.spec.ts:46:3 › existing trade controls build and sign 600-token sell with exact core fees (2.2s)
+  ✓   5 [desktop] › tests-crc-core/interactions.spec.ts:72:3 › altered signing never reaches submission and clears busy state (1.8s)
+  ✓   6 [desktop] › tests-crc-core/interactions.spec.ts:72:3 › unsupported signing never reaches submission and clears busy state (1.9s)
+  ✓   7 [desktop] › tests-crc-core/interactions.spec.ts:72:3 › rejected signing never reaches submission and clears busy state (1.9s)
+  ✓   8 [desktop] › tests-crc-core/interactions.spec.ts:95:1 › launch retains metadata review and validates before wallet signing (2.7s)
+  ✓   9 [desktop] › tests-crc-core/interactions.spec.ts:114:1 › market review completes with one buyer signature and unchanged seller presign (2.7s)
+  ✓  10 [desktop] › tests-crc-core/interactions.spec.ts:135:1 › seller controls publish core BIP322/83 terms and cancellation spends with ALL (2.5s)
+  ✓  11 [desktop] › tests-crc-core/interactions.spec.ts:173:1 › disconnect during independent plan observations prevents a stale wallet prompt (2.0s)
+  ✓  12 [desktop] › tests-crc-core/interactions.spec.ts:198:3 › launch refuses changed description before offering a signature (1.7s)
+  ✓  13 [desktop] › tests-crc-core/interactions.spec.ts:198:3 › launch refuses changed websiteUrl before offering a signature (1.7s)
+  ✓  14 [desktop] › tests-crc-core/interactions.spec.ts:198:3 › launch refuses changed xUrl before offering a signature (1.8s)
+  ✓  15 [desktop] › tests-crc-core/interactions.spec.ts:198:3 › launch refuses changed imageUrl before offering a signature (1.8s)
+  ✓  16 [desktop] › tests-crc-core/interactions.spec.ts:218:1 › disconnect while a wallet response is pending prevents submission of its signature (2.3s)
+  ✓  17 [desktop] › tests-crc-core/interactions.spec.ts:238:1 › launch refuses a token carrier substituted into ordinary BTC funding before prompting (1.9s)
+  ✓  18 [desktop] › tests-crc-core/ui-parity.spec.ts:5:3 › unchanged UI matches 5dded6a pixels and controls at / (10.4s)
+  ✓  19 [desktop] › tests-crc-core/ui-parity.spec.ts:5:3 › unchanged UI matches 5dded6a pixels and controls at /explore (2.9s)
+  ✓  20 [desktop] › tests-crc-core/ui-parity.spec.ts:5:3 › unchanged UI matches 5dded6a pixels and controls at /token/regtest%3Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (3.7s)
+  ✓  21 [desktop] › tests-crc-core/ui-parity.spec.ts:5:3 › unchanged UI matches 5dded6a pixels and controls at /launch (2.6s)
+  ✓  22 [desktop] › tests-crc-core/ui-parity.spec.ts:5:3 › unchanged UI matches 5dded6a pixels and controls at /market (2.8s)
+  ✓  23 [desktop] › tests-crc-core/ui-parity.spec.ts:5:3 › unchanged UI matches 5dded6a pixels and controls at /activity (3.0s)
+  ✘  24 [desktop] › tests-crc-core/ui-parity.spec.ts:5:3 › unchanged UI matches 5dded6a pixels and controls at /wallet (2.5s)
+  ✓  25 [mobile] › tests-crc-core/bundle.spec.ts:3:1 › active UI scripts contain only the authoritative CRC implementation and no server modules (14.7s)
+  ✓  26 [mobile] › tests-crc-core/interactions.spec.ts:46:3 › existing trade controls build and sign 500-token buy with exact core fees (2.1s)
+  ✓  27 [mobile] › tests-crc-core/interactions.spec.ts:46:3 › existing trade controls build and sign 400-token sell with exact core fees (2.1s)
+  ✓  28 [mobile] › tests-crc-core/interactions.spec.ts:46:3 › existing trade controls build and sign 600-token sell with exact core fees (2.0s)
+  ✓  29 [mobile] › tests-crc-core/interactions.spec.ts:72:3 › altered signing never reaches submission and clears busy state (1.9s)
+  ✓  30 [mobile] › tests-crc-core/interactions.spec.ts:72:3 › unsupported signing never reaches submission and clears busy state (1.9s)
+  ✓  31 [mobile] › tests-crc-core/interactions.spec.ts:72:3 › rejected signing never reaches submission and clears busy state (2.1s)
+  ✓  32 [mobile] › tests-crc-core/interactions.spec.ts:95:1 › launch retains metadata review and validates before wallet signing (2.0s)
+  ✓  33 [mobile] › tests-crc-core/interactions.spec.ts:114:1 › market review completes with one buyer signature and unchanged seller presign (1.7s)
+  ✓  34 [mobile] › tests-crc-core/interactions.spec.ts:135:1 › seller controls publish core BIP322/83 terms and cancellation spends with ALL (1.6s)
+  ✓  35 [mobile] › tests-crc-core/interactions.spec.ts:173:1 › disconnect during independent plan observations prevents a stale wallet prompt (2.1s)
+  ✓  36 [mobile] › tests-crc-core/interactions.spec.ts:198:3 › launch refuses changed description before offering a signature (1.7s)
+  ✓  37 [mobile] › tests-crc-core/interactions.spec.ts:198:3 › launch refuses changed websiteUrl before offering a signature (1.6s)
+  ✓  38 [mobile] › tests-crc-core/interactions.spec.ts:198:3 › launch refuses changed xUrl before offering a signature (1.6s)
+  ✓  39 [mobile] › tests-crc-core/interactions.spec.ts:198:3 › launch refuses changed imageUrl before offering a signature (1.7s)
+  ✓  40 [mobile] › tests-crc-core/interactions.spec.ts:218:1 › disconnect while a wallet response is pending prevents submission of its signature (1.9s)
+  ✓  41 [mobile] › tests-crc-core/interactions.spec.ts:238:1 › launch refuses a token carrier substituted into ordinary BTC funding before prompting (1.9s)
+  ✓  42 [mobile] › tests-crc-core/ui-parity.spec.ts:5:3 › unchanged UI matches 5dded6a pixels and controls at / (1.6s)
+  ✓  43 [mobile] › tests-crc-core/ui-parity.spec.ts:5:3 › unchanged UI matches 5dded6a pixels and controls at /explore (1.7s)
+  ✓  44 [mobile] › tests-crc-core/ui-parity.spec.ts:5:3 › unchanged UI matches 5dded6a pixels and controls at /token/regtest%3Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (2.0s)
+  ✓  45 [mobile] › tests-crc-core/ui-parity.spec.ts:5:3 › unchanged UI matches 5dded6a pixels and controls at /launch (1.7s)
+  ✓  46 [mobile] › tests-crc-core/ui-parity.spec.ts:5:3 › unchanged UI matches 5dded6a pixels and controls at /market (1.9s)
+  ✓  47 [mobile] › tests-crc-core/ui-parity.spec.ts:5:3 › unchanged UI matches 5dded6a pixels and controls at /activity (1.7s)
+  ✓  48 [mobile] › tests-crc-core/ui-parity.spec.ts:5:3 › unchanged UI matches 5dded6a pixels and controls at /wallet (14.4s)
+
+
+  1) [desktop] › tests-crc-core/bundle.spec.ts:3:1 › active UI scripts contain only the authoritative CRC implementation and no server modules
+
+    Error: response.text: Protocol error (Network.getResponseBody): No resource with given identifier found
+    Response body is not available for a response that was navigated away from. Read response.body() before triggering any navigation.
+
+       9 |     if (response.request().resourceType() === "script" && url.includes("/_next/") && !seen.has(url)) {
+      10 |       seen.add(url);
+    > 11 |       loaded.push(response.text().then((source) => {
+         |                            ^
+      12 |         for (const module of new Set(source.match(forbidden) ?? [])) violations.push({ url, module });
+      13 |       }));
+      14 |     }
+        at _Page.<anonymous> (/home/andefy/dev/covedao/apps/web/tests-crc-core/bundle.spec.ts:11:28)
+
+    Error: page.goto: Test ended.
+    Call log:
+      - navigating to "http://127.0.0.1:3118/token/regtest%3Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", waiting until "load"
+
+
+      15 |   });
+      16 |   for (const route of ["/", "/explore", `/token/${encodeURIComponent(assetId)}`, "/launch", "/market", "/activity", "/wallet"]) {
+    > 17 |     await page.goto(route); await settle(page);
+         |                ^
+      18 |     await Promise.all(loaded);
+      19 |   }
+      20 |   await Promise.all(loaded);
+        at /home/andefy/dev/covedao/apps/web/tests-crc-core/bundle.spec.ts:17:16
+
+    Error Context: test-results/bundle-active-UI-scripts-c-bb12d-ation-and-no-server-modules-desktop/error-context.md
+
+  2) [desktop] › tests-crc-core/ui-parity.spec.ts:5:3 › unchanged UI matches 5dded6a pixels and controls at /wallet
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 0
+    + Received  + 7
+
+    @@ -67,6 +67,13 @@
+          "placeholder": null,
+          "tag": "A",
+          "text": "Docs",
+          "type": null,
+        },
+    +   Object {
+    +     "name": "Open Next.js Dev Tools",
+    +     "placeholder": null,
+    +     "tag": "BUTTON",
+    +     "text": "",
+    +     "type": null,
+    +   },
+      ]
+
+      21 |     ]);
+      22 |     const controls = async (p: Page) => p.locator("button,input,select,textarea,a").evaluateAll((nodes) => nodes.map((node) => ({ tag: node.tagName, text: node.textContent?.trim(), name: node.getAttribute("aria-label"), placeholder: node.getAttribute("placeholder"), type: node.getAttribute("type") })));
+    > 23 |     expect(await controls(page)).toEqual(await controls(baseline));
+         |                                  ^
+      24 |     const screenshots = await Promise.all([page.screenshot({ path: info.outputPath("current.png"), fullPage: true, animations: "disabled", caret: "hide" }), baseline.screenshot({ path: info.outputPath("baseline-5dded6a.png"), fullPage: true, animations: "disabled", caret: "hide" })]);
+      25 |     await info.attach("current", { body: screenshots[0], contentType: "image/png" });
+      26 |     await info.attach("baseline-5dded6a", { body: screenshots[1], contentType: "image/png" });
+        at /home/andefy/dev/covedao/apps/web/tests-crc-core/ui-parity.spec.ts:23:34
+
+    Error Context: test-results/ui-parity-unchanged-UI-mat-f6e57-xels-and-controls-at-wallet-desktop/error-context.md
+
+  2 failed
+    [desktop] › tests-crc-core/bundle.spec.ts:3:1 › active UI scripts contain only the authoritative CRC implementation and no server modules
+    [desktop] › tests-crc-core/ui-parity.spec.ts:5:3 › unchanged UI matches 5dded6a pixels and controls at /wallet
+  46 passed (2.5m)
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 test:e2e:crc-core: `playwright test -c playwright.crc-core.config.ts`
+Exit status 1

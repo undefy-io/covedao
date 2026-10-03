@@ -1,0 +1,213 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.prod
+#1 transferring dockerfile: 1.09kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/rust:1.94-bookworm
+#2 DONE 0.8s
+
+#3 [internal] load metadata for docker.io/library/node:24-bookworm-slim
+#3 DONE 0.9s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 141B done
+#4 DONE 0.0s
+
+#5 [app-builder  1/11] FROM docker.io/library/node:24-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6
+#5 DONE 0.0s
+
+#6 [rust-builder 1/4] FROM docker.io/library/rust:1.94-bookworm@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 94.47kB 0.0s done
+#7 DONE 0.0s
+
+#8 [app-builder  2/11] WORKDIR /app
+#8 CACHED
+
+#9 [rust-builder 2/4] WORKDIR /build
+#9 CACHED
+
+#10 [rust-builder 3/4] COPY packages/cove-simplicity/rust packages/cove-simplicity/rust
+#10 CACHED
+
+#11 [app-builder  3/11] RUN npm install --global pnpm@10.33.0
+#11 CACHED
+
+#12 [rust-builder 4/4] RUN cargo build --release --locked --manifest-path packages/cove-simplicity/rust/Cargo.toml
+#12 CACHED
+
+#13 [app-builder  4/11] COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
+#13 DONE 0.0s
+
+#14 [app-builder  5/11] COPY apps ./apps
+#14 DONE 0.0s
+
+#15 [app-builder  6/11] COPY packages ./packages
+#15 DONE 0.1s
+
+#16 [app-builder  7/11] RUN pnpm install --frozen-lockfile
+#16 0.409 Scope: all 27 workspace projects
+#16 0.458 Lockfile is up to date, resolution step is skipped
+#16 0.506 Progress: resolved 1, reused 0, downloaded 0, added 0
+#16 0.587 Packages: +1492
+#16 0.587 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#16 0.887
+#16 0.887    ╭─────────────────────────────────────────╮
+#16 0.887    │                                         │
+#16 0.887    │   Update available! 10.33.0 → 12.8.1.   │
+#16 0.887    │   Changelog: https://pnpm.io/v/12.8.1   │
+#16 0.887    │    To update, run: pnpm add -g pnpm     │
+#16 0.887    │                                         │
+#16 0.887    ╰─────────────────────────────────────────╯
+#16 0.887
+#16 1.507 Progress: resolved 1492, reused 0, downloaded 572, added 572
+#16 2.506 Progress: resolved 1492, reused 0, downloaded 1156, added 1157
+#16 3.506 Progress: resolved 1492, reused 0, downloaded 1445, added 1447
+#16 4.506 Progress: resolved 1492, reused 0, downloaded 1487, added 1489
+#16 5.400 Progress: resolved 1492, reused 0, downloaded 1490, added 1492, done
+#16 5.791
+#16 5.791 devDependencies:
+#16 5.791 + @eslint/js 9.39.5
+#16 5.791 + @types/node 22.20.4
+#16 5.791 + eslint 9.39.5
+#16 5.791 + eslint-config-prettier 9.1.2
+#16 5.791 + prettier 3.9.8
+#16 5.791 + turbo 2.11.2
+#16 5.791 + typescript 5.9.3
+#16 5.791 + typescript-eslint 8.70.1
+#16 5.791
+#16 5.847 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+#16 5.847 │                                                                              │
+#16 5.847 │   Ignored build scripts: core-js@3.50.0, esbuild@0.18.20, esbuild@0.19.12,   │
+#16 5.847 │   esbuild@0.21.5, esbuild@0.28.2, msgpackr-extract@3.0.4, secp256k1@3.8.1.   │
+#16 5.847 │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+#16 5.847 │   to run scripts.                                                            │
+#16 5.847 │                                                                              │
+#16 5.847 ╰──────────────────────────────────────────────────────────────────────────────╯
+#16 5.865 Done in 5.6s using pnpm v10.33.0
+#16 DONE 6.3s
+
+#17 [app-builder  8/11] RUN pnpm --filter @crclaunch/crc20-protocol build
+#17 0.326
+#17 0.326 > @crclaunch/crc20-protocol@0.1.0 build /app/packages/cove-market/crc20-protocol
+#17 0.326 > tsc -p tsconfig.build.json && node build-browser.mjs
+#17 0.326
+#17 DONE 1.1s
+
+#18 [app-builder  9/11] RUN pnpm --filter @crclaunch/crc20-adapters build
+#18 0.470
+#18 0.470 > @crclaunch/crc20-adapters@0.1.0 build /app/packages/crc20-adapters
+#18 0.470 > tsc -p tsconfig.build.json && node build-browser.mjs
+#18 0.470
+#18 DONE 1.0s
+
+#19 [app-builder 10/11] COPY --from=rust-builder /build/packages/cove-simplicity/rust/target/release/cove-simplicity /app/packages/cove-simplicity/rust/target/release/cove-simplicity
+#19 DONE 0.0s
+
+#20 [app-builder 11/11] RUN COVE_NETWORK="regtest" SENTRY_DSN="" SENTRY_ENVIRONMENT="dev" pnpm --filter @crclaunch/web build
+#20 0.389
+#20 0.389 > @crclaunch/web@0.1.0 build /app/apps/web
+#20 0.389 > pnpm --filter @crclaunch/docs build:web && next build
+#20 0.389
+#20 0.593
+#20 0.593 > @crclaunch/docs@0.1.0 build:web /app/apps/docs
+#20 0.593 > DOCS_HASH_ROUTER=1 DOCS_BASE_URL=/ DOCS_LOCALE=en docusaurus build --out-dir ../web/public/docs && DOCS_HASH_ROUTER=1 DOCS_BASE_URL=/ DOCS_LOCALE=zh-Hans docusaurus build --locale zh-Hans --out-dir ../web/public/docs/zh-Hans
+#20 0.593
+#20 1.171 [INFO] [en] Creating an optimized production build...
+#20 1.241 [WARNING] docusaurus-plugin-sitemap does not support the Hash Router and will be disabled.
+#20 1.602 [webpackbar] ℹ Compiling Client
+#20 6.541 [webpackbar] ✔ Client: Compiled successfully in 4.94s
+#20 7.543 [SUCCESS] Generated static files in "../web/public/docs".
+#20 7.543 [INFO] Use `npm run serve` command to test your build locally.
+#20 8.134 [INFO] [zh-Hans] Creating an optimized production build...
+#20 8.299 [WARNING] docusaurus-plugin-sitemap does not support the Hash Router and will be disabled.
+#20 8.556 [webpackbar] ℹ Compiling Client
+#20 13.64 [webpackbar] ✔ Client: Compiled successfully in 5.09s
+#20 17.02 [SUCCESS] Generated static files in "../web/public/docs/zh-Hans".
+#20 17.02 [INFO] Use `npm run serve` command to test your build locally.
+#20 18.10 Attention: Next.js now collects completely anonymous telemetry regarding usage.
+#20 18.10 This information is used to shape Next.js' roadmap and prioritize features.
+#20 18.10 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+#20 18.10 https://nextjs.org/telemetry
+#20 18.10
+#20 18.17    ▲ Next.js 15.5.26
+#20 18.17    - Experiments (use with caution):
+#20 18.17      · clientTraceMetadata
+#20 18.17
+#20 18.21    Creating an optimized production build ...
+#20 32.13 Failed to compile.
+#20 32.13
+#20 32.13 ./src/lib/crc-browser-signing.ts
+#20 32.13 Module not found: Can't resolve '@crclaunch/crc20-adapters'
+#20 32.13
+#20 32.13 https://nextjs.org/docs/messages/module-not-found
+#20 32.13
+#20 32.13 Import trace for requested module:
+#20 32.13 ./src/lib/crc-browser-session.ts
+#20 32.13 ./src/components/CrcLaunchForm.tsx
+#20 32.13
+#20 32.13 ./src/lib/crc-market-seller.ts
+#20 32.13 Module not found: Can't resolve '@crclaunch/crc20-adapters'
+#20 32.13
+#20 32.13 https://nextjs.org/docs/messages/module-not-found
+#20 32.13
+#20 32.13 Import trace for requested module:
+#20 32.13 ./src/components/CrcMarketSeller.tsx
+#20 32.13 ./src/components/CrcWalletBalances.tsx
+#20 32.13
+#20 32.13 ./src/lib/wallets/adapters.ts
+#20 32.13 Module not found: Can't resolve '@crclaunch/crc20-adapters'
+#20 32.13
+#20 32.13 https://nextjs.org/docs/messages/module-not-found
+#20 32.13
+#20 32.13 Import trace for requested module:
+#20 32.13 ./src/components/WalletPicker.tsx
+#20 32.13
+#20 32.13 ./src/lib/crc-build.ts
+#20 32.13 Module not found: Can't resolve '@crclaunch/crc20-adapters'
+#20 32.13
+#20 32.13 https://nextjs.org/docs/messages/module-not-found
+#20 32.13
+#20 32.13 Import trace for requested module:
+#20 32.13 ./src/app/api/crc/v1/launch/build/route.ts
+#20 32.13
+#20 32.13 ./src/lib/crc-submit.ts
+#20 32.13 Module not found: Can't resolve '@crclaunch/crc20-adapters'
+#20 32.13
+#20 32.13 https://nextjs.org/docs/messages/module-not-found
+#20 32.13
+#20 32.13 Import trace for requested module:
+#20 32.13 ./src/lib/crc-submit-route.ts
+#20 32.13 ./src/app/api/crc/v1/backing/sell/submit/route.ts
+#20 32.13
+#20 32.13
+#20 32.13 > Build failed because of webpack errors
+#20 32.23 /app/apps/web:
+#20 32.23  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 build: `pnpm --filter @crclaunch/docs build:web && next build`
+#20 32.23 Exit status 1
+#20 ERROR: process "/bin/sh -c COVE_NETWORK=\"$COVE_NETWORK\" SENTRY_DSN=\"$SENTRY_DSN\" SENTRY_ENVIRONMENT=\"$SENTRY_ENVIRONMENT\" pnpm --filter @crclaunch/web build" did not complete successfully: exit code: 1
+------
+ > [app-builder 11/11] RUN COVE_NETWORK="regtest" SENTRY_DSN="" SENTRY_ENVIRONMENT="dev" pnpm --filter @crclaunch/web build:
+32.13
+32.13 Import trace for requested module:
+32.13 ./src/lib/crc-submit-route.ts
+32.13 ./src/app/api/crc/v1/backing/sell/submit/route.ts
+32.13
+32.13
+32.13 > Build failed because of webpack errors
+32.23 /app/apps/web:
+32.23  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 build: `pnpm --filter @crclaunch/docs build:web && next build`
+32.23 Exit status 1
+------
+Dockerfile.prod:19
+--------------------
+  17 |     ARG SENTRY_DSN
+  18 |     ARG SENTRY_ENVIRONMENT=dev
+  19 | >>> RUN COVE_NETWORK="$COVE_NETWORK" SENTRY_DSN="$SENTRY_DSN" SENTRY_ENVIRONMENT="$SENTRY_ENVIRONMENT" pnpm --filter @crclaunch/web build
+  20 |
+  21 |     FROM app-builder AS runtime
+--------------------
+ERROR: failed to build: failed to solve: process "/bin/sh -c COVE_NETWORK=\"$COVE_NETWORK\" SENTRY_DSN=\"$SENTRY_DSN\" SENTRY_ENVIRONMENT=\"$SENTRY_ENVIRONMENT\" pnpm --filter @crclaunch/web build" did not complete successfully: exit code: 1

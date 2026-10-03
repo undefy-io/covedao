@@ -1,5 +1,4 @@
-import { loadV3AppConfig, watchGuardianAgreement } from "@crclaunch/cove-app";
-import { getV3Services } from "@/lib/v3-server";
+import { loadV3AppConfig } from "@crclaunch/cove-app";
 import { serverEnv } from "@/lib/server-env";
 
 /**
@@ -17,9 +16,4 @@ if (
   throw new Error(
     "The browser build and server network differ; rebuild the image for this network",
   );
-}
-
-if (serverEnv.COVE_NETWORK === "mainnet" && serverEnv.COVE_PROTOCOL_MODE === "legacy") {
-  const { config, transitionSigner } = getV3Services();
-  watchGuardianAgreement(transitionSigner, config, { service: "web" });
 }

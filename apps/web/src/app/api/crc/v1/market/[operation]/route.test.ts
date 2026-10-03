@@ -12,7 +12,6 @@ vi.mock("@/lib/server-env", () => ({
     get COVE_CRC_MARKET_TESTING_ENABLED() {
       return gate.testingEnabled;
     },
-    COVE_PROTOCOL_MODE: "crc20",
     COVE_CRC_TRADING_ACTIVE: true,
   },
 }));

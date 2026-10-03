@@ -110,7 +110,7 @@ interface Connected {
   isTestWallet: boolean;
 }
 
-export function WalletProvider({ children, protocolMode = "legacy" }: { children: React.ReactNode; protocolMode?: "legacy" | "crc-read-only" }) {
+export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [conn, setConn] = useState<Connected | null>(null);
   const liveConnection = useRef<Connected | null>(null);
   useEffect(() => { liveConnection.current = conn; }, [conn]);
@@ -296,12 +296,12 @@ export function WalletProvider({ children, protocolMode = "legacy" }: { children
     // From Cove's own node, not the wallet: the server re-resolves every
     // outpoint against Core at build time, and a list from somewhere else
     // just produces failures nobody can explain.
-    const path = protocolMode === "legacy" ? "/api/v3/wallet/utxos" : "/api/crc/v1/wallet/utxos";
+    const path = "/api/crc/v1/wallet/utxos";
     const r = await fetch(`${path}?address=${encodeURIComponent(conn.payments.address)}`);
     const j = await r.json();
     if (!j.ok) throw new WalletError("FAILED", j.error?.detail || j.error?.message || tr("wal.cannotList"));
     return selectFundingCandidates(j.data.utxos as WalletFundingCoin[], confirmedOnly);
-  }, [conn, protocolMode]);
+  }, [conn]);
 
   const getUtxosForAddress = useCallback(async (walletAddress: string, confirmedOnly = false) => {
     if (!conn) return [];
@@ -310,21 +310,19 @@ export function WalletProvider({ children, protocolMode = "legacy" }: { children
       if (test?.getUtxosForAddress) return selectFundingCandidates(await test.getUtxosForAddress(walletAddress), confirmedOnly);
       return test?.getUtxos ? selectFundingCandidates(await test.getUtxos(), confirmedOnly) : [];
     }
-    const path = protocolMode === "legacy" ? "/api/v3/wallet/utxos" : "/api/crc/v1/wallet/utxos";
+    const path = "/api/crc/v1/wallet/utxos";
     const response = await fetch(`${path}?address=${encodeURIComponent(walletAddress)}`);
     const body = await response.json();
     if (!body.ok) throw new WalletError("FAILED", body.error?.detail || body.error?.message || tr("wal.cannotList"));
-    if (protocolMode !== "legacy") {
-      const coins = (body.data.utxos as WalletFundingCoin[]).filter((coin) =>
-        !confirmedOnly || coin.confirmations === undefined || coin.confirmations > 0);
-      return coins.sort((a, b) => {
-        const left = BigInt(a.valueSats ?? "0");
-        const right = BigInt(b.valueSats ?? "0");
-        return left < right ? -1 : left > right ? 1 : 0;
-      }).slice(0, 256).map(({ txid, vout }) => ({ txid, vout }));
-    }
-    return selectFundingCandidates(body.data.utxos as WalletFundingCoin[], confirmedOnly);
-  }, [conn, protocolMode]);
+    const coins = (body.data.utxos as WalletFundingCoin[]).filter((coin) =>
+      !confirmedOnly || coin.confirmations === undefined || coin.confirmations > 0);
+    return coins.sort((a, b) => {
+      const left = BigInt(a.valueSats ?? "0");
+      const right = BigInt(b.valueSats ?? "0");
+      return left < right ? -1 : left > right ? 1 : 0;
+    }).slice(0, 256).map(({ txid, vout }) => ({ txid, vout }));
+
+  }, [conn]);
 
   const walletFields = useCallback(() => {
     if (!conn) return { walletScript: "", walletAddress: "" };

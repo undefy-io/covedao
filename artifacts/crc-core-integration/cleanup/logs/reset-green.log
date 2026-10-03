@@ -1,0 +1,9 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-indexer
+
+ ✓ src/crc20/fresh-reset.integration.test.ts (1 test) 1688ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  00:52:15
+   Duration  2.38s (transform 187ms, setup 0ms, collect 485ms, tests 1.69s, environment 0ms, prepare 71ms)

@@ -1,0 +1,49 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-replacement-boundary.test.ts (5 tests | 1 failed) 15ms
+   × fresh app images build the authoritative core whose dist is excluded from context 10ms
+     → Dockerfile.dev: expected 'FROM rust:1.94-bookworm AS rust-build…' to contain 'pnpm --filter @crclaunch/crc20-protoc…'
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-replacement-boundary.test.ts > fresh app images build the authoritative core whose dist is excluded from context
+AssertionError: Dockerfile.dev: expected 'FROM rust:1.94-bookworm AS rust-build…' to contain 'pnpm --filter @crclaunch/crc20-protoc…'
+
+- Expected
++ Received
+
+- pnpm --filter @crclaunch/crc20-protocol build
++ FROM rust:1.94-bookworm AS rust-builder
++ WORKDIR /build
++ COPY packages/cove-simplicity/rust packages/cove-simplicity/rust
++ RUN cargo build --release --locked --manifest-path packages/cove-simplicity/rust/Cargo.toml
++
++ FROM node:24-bookworm-slim
++ WORKDIR /app
++ RUN npm install --global pnpm@10.33.0
++ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
++ COPY apps ./apps
++ COPY packages ./packages
++ RUN pnpm install --frozen-lockfile
++ COPY --from=rust-builder /build/packages/cove-simplicity/rust/target/release/cove-simplicity /app/packages/cove-simplicity/rust/target/release/cove-simplicity
++
+
+ ❯ src/lib/crc-replacement-boundary.test.ts:42:61
+     40| test("fresh app images build the authoritative core whose dist is excl…
+     41|   for (const path of ["Dockerfile.dev", "Dockerfile.prod"])
+     42|     expect(readFileSync(new URL(path, root), "utf8"), path).toContain(…
+       |                                                             ^
+     43| });
+     44|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  01:05:12
+   Duration  482ms (transform 43ms, setup 0ms, collect 27ms, tests 15ms, environment 0ms, prepare 114ms)
+
+undefined
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/lib/crc-replacement-boundary.test.ts

@@ -70,11 +70,15 @@ canonical_schema = (ROOT / "packages/db/src/schema.ts").read_text()
 suffix = canonical_schema[canonical_schema.index(schema_start):]
 existing = (TARGET / "packages/db/src/schema.ts").read_text()
 prefix = existing.split(schema_start)[0].rstrip()
+if "export const coveCrcAssets" in prefix:
+    start = prefix.index("export const coveCrcAssets")
+    end = prefix.index("// ── Cove V3 P2P marketplace", start)
+    prefix = prefix[:start] + prefix[end:]
 put(Path("packages/db/src/schema.ts"), prefix + "\n\n" + suffix)
 source_journal = json.loads((ROOT / "packages/db/drizzle/meta/_journal.json").read_text())
 target_journal = json.loads((TARGET / "packages/db/drizzle/meta/_journal.json").read_text())
 for entry in source_journal["entries"]:
-    if entry["tag"] not in {"0038_crc_shared_core", "0039_crc_guardian_journal", "0040_crc_api"}:
+    if entry["tag"] not in {"0038_crc_shared_core", "0039_crc_guardian_journal", "0040_crc_api", "0041_crc_fresh_reset"}:
         continue
     matches = [item for item in target_journal["entries"] if item["idx"] == entry["idx"]]
     if matches and matches[0] != entry:

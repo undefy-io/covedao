@@ -1,5 +1,4 @@
 import { bool, cleanEnv, str, url, makeValidator } from "envalid";
-import { parseProtocolMode } from "./protocol-mode";
 
 const budgetRate = makeValidator((value: string) => {
   const rate = Number(value);
@@ -18,7 +17,6 @@ function loadServerEnv() {
       COVE_RPC_REQUESTS_PER_SECOND: process.env.COVE_RPC_REQUESTS_PER_SECOND,
       COVE_TRUSTED_CLIENT_IP_HEADER: process.env.COVE_TRUSTED_CLIENT_IP_HEADER,
       COVE_NETWORK: process.env.COVE_NETWORK,
-      COVE_PROTOCOL_MODE: process.env.COVE_PROTOCOL_MODE,
       COVE_CRC_TRADING_ACTIVE: process.env.COVE_CRC_TRADING_ACTIVE,
       COVE_CRC_MARKET_TESTING_ENABLED: process.env.COVE_CRC_MARKET_TESTING_ENABLED,
       COVE_DATABASE_URL: process.env.COVE_DATABASE_URL || process.env.DATABASE_URL,
@@ -38,7 +36,6 @@ function loadServerEnv() {
       COVE_RPC_REQUESTS_PER_SECOND: budgetRate({ default: process.env.COVE_NETWORK === "regtest" ? 90 : 3 }),
       COVE_TRUSTED_CLIENT_IP_HEADER: str({ choices: ["none", "cf-connecting-ip", "x-real-ip"], default: "none" }),
       COVE_NETWORK: str({ choices: ["regtest", "signet", "testnet", "mainnet"] }),
-      COVE_PROTOCOL_MODE: makeValidator(parseProtocolMode)({ default: "legacy" }),
       COVE_CRC_TRADING_ACTIVE: bool({ default: false }),
       COVE_CRC_MARKET_TESTING_ENABLED: bool({ default: false }),
       COVE_DATABASE_URL: url(),

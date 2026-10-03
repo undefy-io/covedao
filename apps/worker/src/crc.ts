@@ -1,3 +1,4 @@
+import { renameSync, writeFileSync } from "node:fs";
 import { config as loadEnv } from "dotenv";
 import { fileURLToPath } from "node:url";
 import { CoreRpcProvider } from "@crclaunch/bitcoin";
@@ -5,13 +6,21 @@ import { collectFeeObservation, saveFeeObservation } from "@crclaunch/cove-app";
 import { createDb, PostgresRpcBudget, providerAccount } from "@crclaunch/db";
 import { assertCrcChainIdentity, syncCrcTip, type CrcWorkerSnapshot } from "@crclaunch/cove-indexer/crc20";
 import { parseCrcWorkerEnv } from "./crc-env.js";
+import { crcHealthPath } from "./crc-health-policy.js";
 import { acquireCrcOwner } from "./crc-owner.js";
 
 loadEnv({ path: fileURLToPath(new URL("../../../.env", import.meta.url)) });
 
 async function main() {
   const env = parseCrcWorkerEnv(process.env);
+  const healthPath = crcHealthPath(env.databaseUrl, env.network);
+  const health = (healthy: boolean) => {
+    const temporary = `${healthPath}.${process.pid}`;
+    writeFileSync(temporary, JSON.stringify({ network: env.network, pid: process.pid, observedAt: Date.now(), pollMs: env.pollMs, healthy }), { mode: 0o600 });
+    renameSync(temporary, healthPath);
+  };
   const owner = await acquireCrcOwner(env.databaseUrl, env.network);
+  health(false);
   const lost = () => {
     console.error("CRC worker ownership connection lost");
     process.exit(1);
@@ -48,13 +57,16 @@ async function main() {
         protocolScriptHex: env.protocolScriptHex, snapshot,
       });
       snapshot = result.snapshot;
+      health(true);
       if (result.indexed || result.rolledBack) console.log(`CRC cursor ${snapshot.cursor?.height ?? "none"}; indexed ${result.indexed}, rolled back ${result.rolledBack}`);
     } catch (error) {
+      health(false);
       snapshot = undefined;
       console.error("CRC index tick failed:", error instanceof Error ? error.message : String(error));
     }
     if (!stopping) await new Promise((resolve) => setTimeout(resolve, env.pollMs));
   }
+  health(false);
   if (feeInFlight) await feeInFlight;
   owner.removeAllListeners("end");
   owner.removeAllListeners("error");

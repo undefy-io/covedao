@@ -95,7 +95,6 @@ services:
     command: ["pnpm", "exec", "next", "start", "--hostname", "0.0.0.0"]
     environment:
       NODE_ENV: production
-      COVE_PROTOCOL_MODE: crc20
       COVE_CRC_TRADING_ACTIVE: "true"
       COVE_CRC_MARKET_TESTING_ENABLED: "true"
       COVE_TEST_ONLY_PROFILE_PATH: /app/signet-crc-profile.toml

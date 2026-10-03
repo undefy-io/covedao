@@ -1,9 +1,7 @@
 "use client";
 
-import { useStatusSnapshot } from "@/lib/use-indexed-block";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n";
-import { useEffect, useState } from "react";
 
 /**
  * Bitcoin miner-fee speed.
@@ -41,53 +39,6 @@ export function affordableFeeTier(
     (tier) => BigInt(tier.satPerVb) * maxVsize <= BigInt(rates.maxMinerFeeSats),
   );
   return affordable.find((tier) => tier.key === selected) ?? affordable[0] ?? null;
-}
-
-export function useFeeRates() {
-  const snapshot = useStatusSnapshot();
-  const feeRevision = `${snapshot.status?.observations?.feesObservedAt}:${snapshot.available}:${snapshot.feesAvailable}:${snapshot.resumeRevision}`;
-  const [rates, setRates] = useState<FeeRatesResponse | null>(null);
-  const [selected, setSelected] = useState<FeeTier["key"]>("standard");
-
-  useEffect(() => {
-    let live = true;
-    const load = () => {
-      void fetch("/api/v3/fees")
-        .then((r) => r.json())
-        .then((j) => {
-          if (live) setRates(j.ok ? (j.data as FeeRatesResponse) : null);
-        })
-        .catch(() => {
-          if (live) setRates(null);
-        });
-    };
-    load();
-    // The relay floor climbs as the mempool fills; a stale rate is the exact
-    // thing that strands a transaction.
-    return () => {
-      live = false;
-    };
-  }, [feeRevision]);
-
-  const tier = rates ? affordableFeeTier(rates, selected) : null;
-
-  /**
-   * A preview of the miner fee, never the real one. The server sizes the fee
-   * against the transaction it actually builds, so this is marked "≈" wherever
-   * it is shown.
-   */
-  const previewFeeSats = (op: keyof FeeRatesResponse["typicalVsize"]): bigint | null => {
-    if (!rates || !tier) return null;
-    return BigInt(tier.satPerVb) * BigInt(rates.typicalVsize[op] ?? 0);
-  };
-
-  return {
-    rates,
-    selected: tier?.key ?? selected,
-    setSelected,
-    satPerVb: tier?.satPerVb ?? null,
-    previewFeeSats,
-  };
 }
 
 export function FeePicker({

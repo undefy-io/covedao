@@ -1,0 +1,9 @@
+
+> cove-guardian-service@0.1.0 build:rust /home/andefy/dev/guardian
+> pnpm --filter @crclaunch/cove-simplicity build:rust
+
+
+> @crclaunch/cove-simplicity@0.1.0 build:rust /home/andefy/dev/guardian/packages/cove-simplicity
+> cargo build --release --manifest-path rust/Cargo.toml
+
+    Finished `release` profile [optimized] target(s) in 0.18s

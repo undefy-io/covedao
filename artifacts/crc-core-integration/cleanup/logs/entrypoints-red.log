@@ -1,0 +1,33 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-replacement-boundary.test.ts (2 tests | 1 failed) 11ms
+   × default runtime and E2E entrypoints select the core CRC path 7ms
+     → expected 'tsx src/v3.ts' to be 'tsx src/crc.ts' // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-replacement-boundary.test.ts > default runtime and E2E entrypoints select the core CRC path
+AssertionError: expected 'tsx src/v3.ts' to be 'tsx src/crc.ts' // Object.is equality
+
+Expected: "tsx src/crc.ts"
+Received: "tsx src/v3.ts"
+
+ ❯ src/lib/crc-replacement-boundary.test.ts:16:32
+     14| test("default runtime and E2E entrypoints select the core CRC path", (…
+     15|   const worker = JSON.parse(readFileSync(new URL("apps/worker/package.…
+     16|   expect(worker.scripts.start).toBe("tsx src/crc.ts");
+       |                                ^
+     17|   expect(worker.scripts.dev).toBe("tsx watch src/crc.ts");
+     18|   for (const path of ["docker-compose.yml", "apps/worker/src/health.mj…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  00:55:45
+   Duration  458ms (transform 43ms, setup 0ms, collect 29ms, tests 11ms, environment 0ms, prepare 112ms)
+
+undefined
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/lib/crc-replacement-boundary.test.ts

@@ -1,0 +1,33 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-replacement-boundary.test.ts (6 tests | 1 failed) 8ms
+   × fresh host and direct CI entrypoints build the core before importing it 4ms
+     → expected 'turbo run dev --filter=@crclaunch/web…' to contain 'pnpm --filter @crclaunch/crc20-protoc…'
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-replacement-boundary.test.ts > fresh host and direct CI entrypoints build the core before importing it
+AssertionError: expected 'turbo run dev --filter=@crclaunch/web…' to contain 'pnpm --filter @crclaunch/crc20-protoc…'
+
+Expected: "pnpm --filter @crclaunch/crc20-protocol build &&"
+Received: "turbo run dev --filter=@crclaunch/web --filter=@crclaunch/worker"
+
+ ❯ src/lib/crc-replacement-boundary.test.ts:47:78
+     45| test("fresh host and direct CI entrypoints build the core before impor…
+     46|   const scripts = JSON.parse(readFileSync(new URL("package.json", root…
+     47|   for (const name of ["dev", "dev:web", "dev:worker"]) expect(scripts[…
+       |                                                                              ^
+     48|   expect(readFileSync(new URL(".github/workflows/crc-product.yml", roo…
+     49| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed (6)
+   Start at  01:07:00
+   Duration  315ms (transform 43ms, setup 0ms, collect 24ms, tests 8ms, environment 0ms, prepare 81ms)
+
+undefined
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/lib/crc-replacement-boundary.test.ts

@@ -1,0 +1,29 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/worker
+
+ ❯ src/crc-health.test.ts (2 tests | 1 failed) 6ms
+   × probe files isolate databases on the same network without exposing connection strings 4ms
+     → crcHealthPath is not a function
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/crc-health.test.ts > probe files isolate databases on the same network without exposing connection strings
+TypeError: crcHealthPath is not a function
+ ❯ src/crc-health.test.ts:16:17
+     14| test("probe files isolate databases on the same network without exposi…
+     15|   const { crcHealthPath } = await import("./crc-health-policy.js");
+     16|   const first = crcHealthPath("postgres://user:secret@localhost/one", …
+       |                 ^
+     17|   expect(first).not.toBe(crcHealthPath("postgres://user:secret@localho…
+     18|   expect(first).not.toContain("secret");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  00:59:27
+   Duration  312ms (transform 51ms, setup 0ms, collect 36ms, tests 6ms, environment 0ms, prepare 103ms)
+
+undefined
+/home/andefy/dev/covedao/apps/worker:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/crc-health.test.ts

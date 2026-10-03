@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({
   services: vi.fn(() => ({ config: { network: "regtest" }, provider: {}, db: {execute: vi.fn().mockResolvedValue({rows:[]})} })),
   scan: vi.fn().mockResolvedValue([]),
 }));
-vi.mock("@/lib/v3-server", () => ({ getV3Services: mocks.services }));
+vi.mock("@/lib/crc-mutation", () => ({ getCrcMutationServices: mocks.services }));
 vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: vi.fn().mockResolvedValue(null) }));
 vi.mock("@/lib/regtest-scan", () => ({ regtestScans: { scan: mocks.scan } }));
 vi.mock("@/lib/api", () => ({

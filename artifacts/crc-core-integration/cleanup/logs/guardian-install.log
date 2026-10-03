@@ -1,0 +1,9 @@
+Scope: all 21 workspace projects
+Progress: resolved 0, reused 1, downloaded 0, added 0
+ WARN  deprecated eslint@9.39.5: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+Progress: resolved 411, reused 296, downloaded 0, added 0
+ WARN  3 deprecated subdependencies found: @esbuild-kit/core-utils@3.3.2, @esbuild-kit/esm-loader@2.6.5, glob@10.5.0
+Already up to date
+Progress: resolved 411, reused 296, downloaded 0, added 0, done
+
+Done in 2.3s using pnpm v10.33.0

@@ -4,18 +4,17 @@ import { coveNetworkSettings } from "@crclaunch/config";
 import type { VaultRecoveryProfile } from "@crclaunch/cove-vault";
 import { CoreRpcProvider } from "@crclaunch/bitcoin";
 import { PostgresRpcBudget, providerAccount, type Database } from "@crclaunch/db";
-import type { ProtocolMode } from "./protocol-mode";
 import { serverEnv } from "./server-env";
 import { getCrcReadServices } from "./crc-server";
 
-export function assertCrcMutationEnabled(mode: ProtocolMode, active: boolean): void {
-  if (mode !== "crc20" || !active) {
+export function assertCrcMutationEnabled(active: boolean): void {
+  if (!active) {
     throw new AppError("CRC_TRADING_DISABLED", "Cove CRC-20 trading is not active on this server");
   }
 }
 
 export function requireCrcMutationEnabled(): void {
-  assertCrcMutationEnabled(serverEnv.COVE_PROTOCOL_MODE, serverEnv.COVE_CRC_TRADING_ACTIVE);
+  assertCrcMutationEnabled(serverEnv.COVE_CRC_TRADING_ACTIVE);
 }
 
 export type CrcMutationServices = {

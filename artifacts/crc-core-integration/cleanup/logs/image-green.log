@@ -1,0 +1,9 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ✓ src/lib/crc-replacement-boundary.test.ts (5 tests) 3ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  01:05:38
+   Duration  314ms (transform 30ms, setup 0ms, collect 19ms, tests 3ms, environment 0ms, prepare 62ms)

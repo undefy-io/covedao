@@ -1,0 +1,33 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-replacement-boundary.test.ts (3 tests | 1 failed) 5ms
+   × regtest development bootstraps migrations and enables the coordinated CRC services 4ms
+     → expected 'DATABASE_URL=postgres://cove:cove@127…' to contain 'drizzle-kit migrate'
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-replacement-boundary.test.ts > regtest development bootstraps migrations and enables the coordinated CRC services
+AssertionError: expected 'DATABASE_URL=postgres://cove:cove@127…' to contain 'drizzle-kit migrate'
+
+Expected: "drizzle-kit migrate"
+Received: "DATABASE_URL=postgres://cove:cove@127.0.0.1:5432/cove pnpm --filter @crclaunch/db exec drizzle-kit push --force"
+
+ ❯ src/lib/crc-replacement-boundary.test.ts:26:29
+     24| test("regtest development bootstraps migrations and enables the coordi…
+     25|   const scripts = JSON.parse(readFileSync(new URL("package.json", root…
+     26|   expect(scripts["dev:db"]).toContain("drizzle-kit migrate");
+       |                             ^
+     27|   expect(readFileSync(new URL(".env.example", root), "utf8")).toContai…
+     28|   const compose = readFileSync(new URL("docker-compose.yml", root), "u…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+   Start at  01:00:23
+   Duration  300ms (transform 26ms, setup 0ms, collect 16ms, tests 5ms, environment 0ms, prepare 70ms)
+
+undefined
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/lib/crc-replacement-boundary.test.ts

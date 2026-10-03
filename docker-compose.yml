@@ -100,7 +100,7 @@ services:
     restart: unless-stopped
     environment:
       COVE_NETWORK: regtest
-      COVE_V3_CANARY_ACTIVE: "0"
+      COVE_CRC_SIGNING_ACTIVE: "true"
       COVE_DATABASE_URL: postgres://cove:cove@postgres:5432/cove
       COVE_BITCOIN_RPC_URL: http://bitcoind:18443
       COVE_BITCOIN_RPC_USER: user
@@ -131,6 +131,7 @@ services:
     env_file: .env
     environment:
       COVE_NETWORK: regtest
+      COVE_CRC_WORKER_ENABLED: "true"
       COVE_DATABASE_URL: postgres://cove:cove@postgres:5432/cove
       COVE_BITCOIN_RPC_URL: http://bitcoind:18443
       COVE_BITCOIN_RPC_USER: user
@@ -140,7 +141,7 @@ services:
       bitcoind: { condition: service_healthy }
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "node", "src/health.mjs"]
+      test: ["CMD", "pnpm", "exec", "tsx", "src/crc-health.ts"]
       interval: 5s
       timeout: 5s
       retries: 24
@@ -157,6 +158,10 @@ services:
     env_file: .env
     environment:
       COVE_NETWORK: regtest
+      COVE_CRC_TRADING_ACTIVE: "true"
+      COVE_CRC_MARKET_TESTING_ENABLED: "true"
+      COVE_GUARDIAN_ENDPOINT: http://guardian:4391
+      COVE_GUARDIAN_AUTH_TOKEN: local-dev
       COVE_DATABASE_URL: postgres://cove:cove@postgres:5432/cove
       COVE_BITCOIN_RPC_URL: http://bitcoind:18443
       COVE_BITCOIN_RPC_USER: user
@@ -173,7 +178,7 @@ services:
         - CMD
         - node
         - -e
-        - "fetch('http://127.0.0.1:3000/api/v3/status').then(r=>r.json()).then(j=>process.exit(j.ok&&j.data?.indexer?.health==='HEALTHY'?0:1)).catch(()=>process.exit(1))"
+        - "fetch('http://127.0.0.1:3000/api/crc/v1/tokens').then(r=>r.json()).then(j=>process.exit(j.ok?0:1)).catch(()=>process.exit(1))"
       interval: 5s
       timeout: 10s
       retries: 24
