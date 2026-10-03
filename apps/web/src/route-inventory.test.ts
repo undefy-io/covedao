@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
  */
 const REQUIRED_ROUTES = [
   "/api/crc/v1/activity",
+  "/api/crc/v1/status",
   "/api/crc/v1/backing/buy/build",
   "/api/crc/v1/backing/buy/quote",
   "/api/crc/v1/backing/buy/submit",

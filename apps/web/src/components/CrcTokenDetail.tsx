@@ -4,6 +4,8 @@ import Link from "next/link";
 import { atomsPerToken, capAtoms, carrierSats, curveStepAtoms, decodeProtocolDto, type Plan } from "@crclaunch/crc20-protocol";
 import { crcBuiltWalletDelta, signCrcBuildSession } from "@/lib/crc-browser-session";
 import { useEffect, useState } from "react";
+import { useCrcRead } from "../lib/use-crc-read";
+import { crcIndexedRefresh } from "../lib/crc-indexed-refresh";
 import { formatAtoms, formatVaultSats } from "./CrcHome";
 import { Tile } from "./Tile";
 import { TokenImage } from "./TokenImage";
@@ -44,9 +46,9 @@ function CostLine({ label, value, strong = false }: { label: string; value: stri
 export function CrcTokenDetail({ assetId }: { assetId: string }) {
   const { connected, network, address, publicKey, ordinalsAddress, ordinalsPublicKey,
     connect, getUtxos, signPsbt } = useWallet();
-  const [token, setToken] = useState<Token | null>(null);
-  const [indexedHeight, setIndexedHeight] = useState("");
-  const [error, setError] = useState("");
+  const { data, error } = useCrcRead<{ token: Token; indexedTip: { height: string } }>(`/api/crc/v1/tokens/${encodeURIComponent(assetId)}`, "Token not found");
+  const token = data?.token ?? null;
+  const indexedHeight = data?.indexedTip.height ?? "";
   const [quantity, setQuantity] = useState("1000");
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [quote, setQuote] = useState<TradeQuote | null>(null);
@@ -150,20 +152,6 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
 
   useEffect(() => {
     let active = true;
-    void fetch(`/api/crc/v1/tokens/${encodeURIComponent(assetId)}`, { cache: "no-store" })
-      .then((response) => response.json())
-      .then((body) => {
-        if (!active) return;
-        if (!body.ok) throw new Error(body.error?.message ?? "Token not found");
-        setToken(body.data.token as Token);
-        setIndexedHeight(body.data.indexedTip.height);
-      })
-      .catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : "Token not found"); });
-    return () => { active = false; };
-  }, [assetId]);
-
-  useEffect(() => {
-    let active = true;
     void fetch("/api/crc/v1/trading/status", { cache: "no-store" })
       .then((response) => response.json())
       .then((body) => { if (active) setTradingActive(body.ok === true && body.data?.tradingActive === true); })
@@ -184,22 +172,25 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
   }, []);
 
   useEffect(() => {
-    let active = true;
     setHeldAtoms(null);
     setBalanceError("");
-    if (side === "sell" && connected && (ordinalsAddress || address)) {
-      void fetchAllCrcWalletBalances(ordinalsAddress || address)
-        .then((balances) => {
-          if (active) setHeldAtoms(BigInt(balances.find((balance) => balance.assetId === assetId)?.atoms ?? "0"));
-        })
-        .catch((cause) => {
-          if (active) setBalanceError(cause instanceof Error ? cause.message : "Could not read token balance");
-        });
-    }
-    return () => { active = false; };
+    if (side !== "sell" || !connected || !(ordinalsAddress || address)) return;
+    return crcIndexedRefresh.subscribe(async (signal) => {
+      try {
+        const balances = await fetchAllCrcWalletBalances(ordinalsAddress || address, (input, init) =>
+          fetch(input, { ...init, signal: AbortSignal.any([signal, AbortSignal.timeout(15_000)]) }));
+        if (!signal.aborted) {
+          setHeldAtoms(BigInt(balances.find((balance) => balance.assetId === assetId)?.atoms ?? "0"));
+          setBalanceError("");
+        }
+      } catch (cause) {
+        if (!signal.aborted) setBalanceError(cause instanceof Error ? cause.message : "Could not read token balance");
+        throw cause;
+      }
+    });
   }, [address, assetId, connected, ordinalsAddress, side]);
 
-  if (error) return <section className="panel px-6 py-16 text-center sm:px-10"><p role="alert" className="text-danger">{error}</p><Link href="/explore" className="btn-ghost mt-4 inline-block">Back to tokens</Link></section>;
+  if (error && !token) return <section className="panel px-6 py-16 text-center sm:px-10"><p role="alert" className="text-danger">{error}</p><Link href="/explore" className="btn-ghost mt-4 inline-block">Back to tokens</Link></section>;
   if (!token) return <section className="panel px-6 py-16 text-center text-sm text-bone-dim sm:px-10">Reading indexed token state…</section>;
 
   const minted = BigInt(token.mintedAtoms);

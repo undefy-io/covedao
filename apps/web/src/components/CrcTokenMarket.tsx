@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useCrcRead } from "../lib/use-crc-read";
+import { crcIndexedRefresh } from "../lib/crc-indexed-refresh";
 import type { Interval, OhlcCandle } from "@/lib/ohlc";
 import type { CrcMarketListing } from "@/lib/crc-market-client";
 import { formatAtoms, formatVaultSats } from "./CrcHome";
@@ -13,44 +15,35 @@ export function CrcTokenMarket({ assetId, ticker }: { assetId: string; ticker: s
   const [totalSats, setTotalSats] = useState<string | null>(null);
   const [listings, setListings] = useState<CrcMarketListing[]>([]);
   const [interval, setInterval] = useState<Interval>("1h");
-  const [candles, setCandles] = useState<OhlcCandle[]>([]);
-  const [chartLoading, setChartLoading] = useState(true);
+  const { data: history } = useCrcRead<{ candles: OhlcCandle[] }>(`/api/crc/v1/tokens/${encodeURIComponent(assetId)}/candles?interval=${interval}`, "Could not load price history");
+  const candles = history?.candles ?? [];
+  const chartLoading = history === null;
+
+  useEffect(() => crcIndexedRefresh.subscribe(async (signal) => {
+    const response = await fetch("/api/crc/v1/backing/buy/quote", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ assetId, amountAtoms: "100000000000" }),
+      signal: AbortSignal.any([signal, AbortSignal.timeout(15_000)]),
+    });
+    const curve = await response.json();
+    if (!response.ok || !curve.ok) throw new Error(curve.error?.message ?? "Could not read curve price");
+    if (!signal.aborted && curve.data?.quote) {
+      setCurveSats(curve.data.quote.grossSats);
+      setTotalSats(curve.data.quote.buyerTotalSats);
+    }
+  }), [assetId]);
 
   useEffect(() => {
     let live = true;
-    void Promise.all([
-      fetch("/api/crc/v1/backing/buy/quote", {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ assetId, amountAtoms: "100000000000" }),
-      }).then((response) => response.json()),
-      fetch(`/api/crc/v1/market/listings?deployTxid=${assetId.split(":")[1]}`, { cache: "no-store" }).then((response) => response.json()),
-    ]).then(([curve, market]) => {
-      if (!live) return;
-      if (curve.ok && curve.data?.quote) {
-        setCurveSats(curve.data.quote.grossSats);
-        setTotalSats(curve.data.quote.buyerTotalSats);
-      }
-      if (market.ok && Array.isArray(market.data?.listings)) {
-        setListings((market.data.listings as CrcMarketListing[]).filter((row) =>
-          row.status === "OPEN" && `${row.network}:${row.deployTxid}` === assetId));
-      }
-    }).catch(() => {});
+    void fetch(`/api/crc/v1/market/listings?deployTxid=${assetId.split(":")[1]}`, { cache: "no-store" })
+      .then((response) => response.json()).then((market) => {
+        if (live && market.ok && Array.isArray(market.data?.listings)) {
+          setListings((market.data.listings as CrcMarketListing[]).filter((row) =>
+            row.status === "OPEN" && `${row.network}:${row.deployTxid}` === assetId));
+        }
+      }).catch(() => {});
     return () => { live = false; };
   }, [assetId]);
-
-  useEffect(() => {
-    let live = true;
-    setChartLoading(true);
-    void fetch(`/api/crc/v1/tokens/${encodeURIComponent(assetId)}/candles?interval=${interval}`, { cache: "no-store" })
-      .then((response) => response.json())
-      .then((body) => {
-        if (!live) return;
-        setCandles(body.ok && Array.isArray(body.data?.candles) ? body.data.candles as OhlcCandle[] : []);
-      })
-      .catch(() => { if (live) setCandles([]); })
-      .finally(() => { if (live) setChartLoading(false); });
-    return () => { live = false; };
-  }, [assetId, interval]);
 
   const asks = listings.map((row) => ({
     ...row,

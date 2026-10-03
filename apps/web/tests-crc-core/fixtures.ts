@@ -27,7 +27,8 @@ export async function fixture(page: Page) {
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url()); let data: unknown;
     if (url.pathname.endsWith("/envelope/")) { await route.fulfill({ status: 200, body: "" }); return; }
-    if (url.pathname.endsWith("/trading/status")) data = { tradingActive: true, network: "regtest", protocolScriptHex: config.protocolScriptHex };
+    if (url.pathname === "/api/crc/v1/status") data = { network: "regtest", indexedTip };
+    else if (url.pathname.endsWith("/trading/status")) data = { tradingActive: true, network: "regtest", protocolScriptHex: config.protocolScriptHex };
     else if (url.pathname.endsWith("/market/status")) data = { active: true };
     else if (url.pathname.endsWith("/market/listings")) data = { active: true, listings: [listing] };
     else if (url.pathname.endsWith("/fees")) data = { maxMinerFeeSats: "20000", floorSatPerVb: "1", ceilingSatPerVb: "500", estimated: false, tiers: [ { key: "eco", label: "Eco", blocks: 6, satPerVb: "1" }, { key: "standard", label: "Standard", blocks: 3, satPerVb: "2" }, { key: "priority", label: "Priority", blocks: 1, satPerVb: "3" } ], typicalVsize: { DEPLOY: 220, BACKING_BUY: 300, REDEEM: 320, TRANSFER: 220 } };

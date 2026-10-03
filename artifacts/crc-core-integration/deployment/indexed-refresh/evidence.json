@@ -1,0 +1,69 @@
+{
+  "network": "signet",
+  "url": "http://localhost:3000",
+  "image": "sha256:84c5a4e23b7afa0fde148dc0dd7d8c9be10cacc3175432c67f5aafb575781e25",
+  "status": {
+    "ok": true,
+    "data": {
+      "network": "signet",
+      "indexedTip": {
+        "height": "324734",
+        "blockHash": "00000005fe57b0e4e2bfc83091bfcdcc38ac69cd67faa5a77e21a1f5be7c8123"
+      }
+    }
+  },
+  "runtimeSources": [
+    {
+      "path": "apps/web/src/components/CrcTokenDetail.tsx",
+      "sha256": "b4ecf7aa920a2289bf490094e5ce96dca1ea7e353fc63a1297dd73f95f913fbc",
+      "deployedMatches": true
+    },
+    {
+      "path": "apps/web/src/components/CrcTokenActivity.tsx",
+      "sha256": "f2625e85dbb4ab815b792d23fb848845e4c493c8d5b1403e7e0c6fa9c88f5c17",
+      "deployedMatches": true
+    },
+    {
+      "path": "apps/web/src/components/CrcTokenMarket.tsx",
+      "sha256": "0c3d65b10b99218acaaecd3666e35549a0d93b382e9a0552b84c7b22e23c59a7",
+      "deployedMatches": true
+    },
+    {
+      "path": "apps/web/src/components/CrcActivity.tsx",
+      "sha256": "eec37ec5c6c7b72990567e6304f74f71c0159bc309f3756788d13cf7c67ac07a",
+      "deployedMatches": true
+    },
+    {
+      "path": "apps/web/src/lib/use-crc-read.ts",
+      "sha256": "403b884e66e71bedda4f7a9d04508cb7912624ca4af03abee375332bd5edf6e3",
+      "deployedMatches": true
+    },
+    {
+      "path": "apps/web/src/lib/crc-indexed-refresh.ts",
+      "sha256": "32dd5e59e1679d1536e703d6d88cf40808f68f01aade2ceece78b096455adc80",
+      "deployedMatches": true
+    },
+    {
+      "path": "apps/web/src/lib/crc-poll.ts",
+      "sha256": "960784424eb36d127c5bbb11a9d9a6e8e01988e91039f9150d5870dce1bc3207",
+      "deployedMatches": true
+    },
+    {
+      "path": "apps/web/src/app/api/crc/v1/status/route.ts",
+      "sha256": "75a4b6f908f2f0b10b71a5e45b198542754f560d4fd311d9f24f171b4059b181",
+      "deployedMatches": true
+    }
+  ],
+  "validation": {
+    "webTests": 227,
+    "focusedTests": 34,
+    "desktopMobileBrowserInteractions": 34,
+    "typecheck": "pass",
+    "lint": "pass",
+    "productionBuild": "pass",
+    "workerProbe": "pass",
+    "finalIndependentReview": "no remaining actionable findings",
+    "deployedDesktopMobileRefreshTests": 2
+  },
+  "actualWalletSigningPerformed": false
+}

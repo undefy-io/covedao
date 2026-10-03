@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useCrcRead } from "../lib/use-crc-read";
 import { formatAtoms } from "./CrcHome";
 import { crcActivityLabel } from "../lib/crc-activity-label";
 
@@ -16,26 +17,11 @@ type Event = {
 };
 
 export function CrcActivity() {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [network, setNetwork] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { data, error } = useCrcRead<{ rows: Event[]; network: string }>("/api/crc/v1/activity", "Could not load activity");
+  const events = data?.rows ?? [];
+  const network = data?.network ?? "";
+  const loading = data === null && !error;
   const [shown, setShown] = useState(20);
-
-  useEffect(() => {
-    let live = true;
-    void fetch("/api/crc/v1/activity", { cache: "no-store" })
-      .then((response) => response.json())
-      .then((body) => {
-        if (!live) return;
-        if (!body.ok) throw new Error(body.error?.message ?? "Could not load activity");
-        setEvents(body.data.rows as Event[]);
-        setNetwork(body.data.network as string);
-      })
-      .catch((cause) => { if (live) setError(cause instanceof Error ? cause.message : "Could not load activity"); })
-      .finally(() => { if (live) setLoading(false); });
-    return () => { live = false; };
-  }, []);
 
   return <div className="space-y-6 py-8">
     <div><h1 className="text-2xl text-bone">Activity</h1><p className="text-sm text-bone-dim">Recent confirmed Cove CRC-20 transactions.</p></div>

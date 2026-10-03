@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useCrcRead } from "../lib/use-crc-read";
 import { formatAtoms } from "./CrcHome";
 import { crcActivityLabel } from "../lib/crc-activity-label";
 
@@ -15,22 +16,9 @@ type Row = {
 };
 
 export function CrcTokenActivity({ assetId, network }: { assetId: string; network: string }) {
-  const [rows, setRows] = useState<Row[] | null>(null);
-  const [error, setError] = useState("");
+  const { data, error } = useCrcRead<{ rows: Row[] }>(`/api/crc/v1/tokens/${encodeURIComponent(assetId)}/activity`, "Could not load token history");
+  const rows = data?.rows ?? null;
   const [shown, setShown] = useState(10);
-
-  useEffect(() => {
-    let live = true;
-    void fetch(`/api/crc/v1/tokens/${encodeURIComponent(assetId)}/activity`, { cache: "no-store" })
-      .then((response) => response.json())
-      .then((body) => {
-        if (!live) return;
-        if (!body.ok) throw new Error(body.error?.message ?? "Could not load token history");
-        setRows(body.data.rows as Row[]);
-      })
-      .catch((cause) => { if (live) setError(cause instanceof Error ? cause.message : "Could not load token history"); });
-    return () => { live = false; };
-  }, [assetId]);
 
   const explorer = network === "mainnet" ? "https://mempool.space" : `https://mempool.space/${network}`;
   return <section className="panel px-6 py-8 sm:px-10">
