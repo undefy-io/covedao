@@ -1,0 +1,10 @@
+ Container covedao-signet-postgres-1 Running
+ Container covedao-signet-postgres-1 Waiting
+ Container covedao-signet-postgres-1 Healthy
+ Container covedao-signet-migrate-1 Starting
+ Container covedao-signet-migrate-1 Started
+ Container covedao-signet-migrate-1 Waiting
+ Container covedao-signet-migrate-1 Exited
+ Container covedao-signet-bootstrap-run-3b9b8b551d67 Creating
+ Container covedao-signet-bootstrap-run-3b9b8b551d67 Created
+CRC signet ledger initialized at activation 324722

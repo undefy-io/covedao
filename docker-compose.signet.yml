@@ -33,6 +33,20 @@ services:
       postgres: { condition: service_healthy }
     restart: "no"
 
+  bootstrap:
+    image: covedao-signet-app
+    working_dir: /app/apps/web
+    command: ["pnpm", "exec", "tsx", "src/scripts/crc-bootstrap.ts"]
+    env_file: .env.signet.local
+    environment:
+      COVE_NETWORK: signet
+      COVE_TEST_ONLY_PROFILE_PATH: /app/signet-crc-profile.toml
+    volumes:
+      - ./.local/signet-crc-profile.toml:/app/signet-crc-profile.toml:ro
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: "no"
+
   worker:
     image: covedao-signet-app
     build:
@@ -51,7 +65,7 @@ services:
     volumes:
       - ./.local/signet-crc-profile.toml:/app/signet-crc-profile.toml:ro
     depends_on:
-      migrate: { condition: service_completed_successfully }
+      bootstrap: { condition: service_completed_successfully }
     restart: unless-stopped
 
   guardian:
@@ -67,7 +81,7 @@ services:
     volumes:
       - ./.local/signet-crc-profile.toml:/app/signet-crc-profile.toml:ro
     depends_on:
-      migrate: { condition: service_completed_successfully }
+      bootstrap: { condition: service_completed_successfully }
     restart: unless-stopped
     ports:
       - "127.0.0.1:4391:4391"

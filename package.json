@@ -14,7 +14,7 @@
     "dev:guardian": "pnpm dev:guardian:docker",
     "dev:guardian:docker": "docker compose --profile guardian up -d --build --wait guardian",
     "dev:stack": "pnpm dev:infra && docker compose --profile guardian --profile app up -d --build --wait guardian worker web",
-    "dev:infra": "docker compose up -d --wait && pnpm dev:db",
+    "dev:infra": "docker compose up -d --wait && pnpm dev:db && COVE_NETWORK=regtest COVE_DATABASE_URL=postgres://cove:cove@127.0.0.1:5432/cove pnpm dev:crc-bootstrap",
     "dev:infra:down": "docker compose --profile guardian --profile app down",
     "dev:infra:reset": "docker compose --profile guardian --profile app down -v",
     "dev:fees": "docker compose run --rm fees",
@@ -55,7 +55,8 @@
     "check:v3-architecture": "node scripts/check-v3-architecture.mjs",
     "cove:v3-release-manifest": "node scripts/cove-v3-release-manifest.mjs",
     "cove:v3-mutinynet-proof": "pnpm --filter @crclaunch/cove-guardian v3-mutinynet-proof",
-    "build:crc-runtime": "pnpm --filter @crclaunch/crc20-protocol build && pnpm --filter @crclaunch/crc20-adapters build"
+    "build:crc-runtime": "pnpm --filter @crclaunch/crc20-protocol build && pnpm --filter @crclaunch/crc20-adapters build",
+    "dev:crc-bootstrap": "pnpm build:crc-runtime && pnpm --filter @crclaunch/web exec tsx src/scripts/crc-bootstrap.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

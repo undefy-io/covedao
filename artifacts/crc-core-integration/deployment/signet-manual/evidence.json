@@ -1,0 +1,59 @@
+{
+  "createdAt": "2026-10-03T02:57:35.203Z",
+  "network": "signet",
+  "url": "http://localhost:3000",
+  "actualExtensionCanary": false,
+  "userWalletTransactions": 0,
+  "activationHeight": 324722,
+  "alignedRuntimeFiles": 21,
+  "guardianHealth": {
+    "reachable": true,
+    "profileHash": "8d89c2b4f285dfa16991a75a6e12c6e4210c289debd9a17d61c54a040ad7fa6b",
+    "guardianXOnly": "fa24fc756cb674c9d26f109d15fef22026e8c3467d3d7e604645dda6b607e24e",
+    "releaseId": "local",
+    "auditHeadHash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "auditHealthy": true,
+    "signingJournalHealthy": true,
+    "custodyBackendReady": true,
+    "signingEnabled": true
+  },
+  "services": {
+    "web": {
+      "image": "sha256:1bb99c5452e9a13e9206f59d7c3b7b174abe90baa9e291eaaf38d639f9701256",
+      "running": true,
+      "health": "healthy"
+    },
+    "worker": {
+      "image": "sha256:1bb99c5452e9a13e9206f59d7c3b7b174abe90baa9e291eaaf38d639f9701256",
+      "running": true
+    },
+    "guardian": {
+      "image": "sha256:3ce1a24238f0136bf136f1d85865658ebb3d0d8b329d4281fca88ff59294910e",
+      "running": true,
+      "health": "healthy"
+    }
+  },
+  "catalog": {
+    "ok": true,
+    "data": {
+      "network": "signet",
+      "indexedTip": {
+        "height": "324722",
+        "blockHash": "0000000f870237536cceb7fb16d09a7403028b67440ca932f0b7a014ee24b7e6"
+      },
+      "tokens": [],
+      "nextCursor": null
+    }
+  },
+  "trading": {
+    "ok": true,
+    "data": {
+      "tradingActive": true,
+      "network": "signet",
+      "protocolScriptHex": "0014a760aba32ec431908bcac87b8456ab99b080f0e2"
+    }
+  },
+  "initialRoot": "115b1e95f81da62160794ac32e3767e3bb0c5c953618f3f5096915f5d3b7fe1c",
+  "signatureCount": "0",
+  "obsoleteTableCount": "0"
+}

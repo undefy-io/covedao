@@ -25,7 +25,8 @@ pnpm dev:stack
 
 The stack runs Bitcoin Core, PostgreSQL, the CRC worker, web and separate Guardian.
 Public fixture keys and activation settings are regtest-only. `pnpm dev:db` applies
-all committed migrations, including the explicit CRC replacement reset. Migration
+all committed migrations and explicitly initializes the core ledger before worker
+startup. Migration
 0041 drops the obsolete CRC tables and clears CRC core/application records; shared
 application infrastructure remains intact. There is no backfill.
 
@@ -63,8 +64,12 @@ Serial builds avoid the separately tracked shared Docusaurus output race.
 
 ## Release status
 
+The selected local Signet replacement is running at `http://localhost:3000` for
+manual testing. Connect Xverse configured for Signet; the catalog starts empty.
+See [manual steps and deployment evidence](artifacts/crc-core-integration/deployment/signet-manual/README.md).
+
 Mainnet is not enabled. Actual extension signing and the funded two-account Signet
-canary remain open release gates. A prepared Signet deployment uses the standalone
+canary remain open release gates. A Signet deployment uses the standalone
 `docker-compose.signet.yml`, matching web/worker/Guardian profiles and an empty CRC
 namespace. Do not merge the regtest Compose environment into Signet. The operator
 must provide the test profile, service credentials and explicit wallet authorization.

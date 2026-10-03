@@ -1,0 +1,33 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ❯ src/lib/crc-bootstrap.test.ts (4 tests | 1 failed) 15ms
+   × local infrastructure pins its bootstrap to the migrated regtest database 9ms
+     → expected 'docker compose up -d --wait && pnpm d…' to contain 'COVE_NETWORK=regtest COVE_DATABASE_UR…'
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/crc-bootstrap.test.ts > local infrastructure pins its bootstrap to the migrated regtest database
+AssertionError: expected 'docker compose up -d --wait && pnpm d…' to contain 'COVE_NETWORK=regtest COVE_DATABASE_UR…'
+
+Expected: "COVE_NETWORK=regtest COVE_DATABASE_URL=postgres://cove:cove@127.0.0.1:5432/cove pnpm dev:crc-bootstrap"
+Received: "docker compose up -d --wait && pnpm dev:db && pnpm dev:crc-bootstrap"
+
+ ❯ src/lib/crc-bootstrap.test.ts:22:36
+     20|   const { readFileSync } = await import("node:fs");
+     21|   const pkg = JSON.parse(readFileSync(new URL("../../../../package.jso…
+     22|   expect(pkg.scripts["dev:infra"]).toContain("COVE_NETWORK=regtest COV…
+       |                                    ^
+     23|   const signet = readFileSync(new URL("../../../../docker-compose.sign…
+     24|   expect(signet).toContain('tsx", "src/scripts/crc-bootstrap.ts');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  02:53:59
+   Duration  601ms (transform 211ms, setup 0ms, collect 324ms, tests 15ms, environment 0ms, prepare 62ms)
+
+undefined
+/home/andefy/dev/covedao/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/lib/crc-bootstrap.test.ts

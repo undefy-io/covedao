@@ -1,0 +1,9 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ✓ src/lib/crc-bootstrap.test.ts (4 tests) 13ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  02:54:16
+   Duration  554ms (transform 173ms, setup 0ms, collect 264ms, tests 13ms, environment 0ms, prepare 70ms)

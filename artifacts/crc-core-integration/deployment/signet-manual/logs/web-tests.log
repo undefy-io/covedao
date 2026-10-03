@@ -1,0 +1,87 @@
+
+> @crclaunch/web@0.1.0 test /home/andefy/dev/covedao/apps/web
+> vitest run --passWithNoTests
+
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/apps/web
+
+ ✓ src/lib/crc-replacement-boundary.test.ts (6 tests) 4ms
+ ✓ src/lib/format.test.ts (13 tests) 5ms
+ ✓ src/lib/ohlc.test.ts (14 tests) 9ms
+ ✓ src/lib/read-cache.test.ts (4 tests) 24ms
+ ✓ src/lib/chain-status-store.test.ts (5 tests) 25ms
+ ✓ src/lib/wallets/resolve.test.ts (10 tests) 16ms
+ ✓ src/route-inventory.test.ts (24 tests) 4ms
+ ✓ src/lib/crc-client.test.ts (4 tests) 10ms
+ ✓ src/lib/crc-quote.test.ts (4 tests) 7ms
+ ✓ src/i18n/i18n.test.ts (6 tests) 34ms
+ ✓ src/lib/crc-browser-signing.test.ts (4 tests) 38ms
+ ✓ src/lib/regtest-scan.test.ts (8 tests) 20ms
+ ✓ src/lib/crc-browser-session.test.ts (7 tests) 102ms
+ ✓ src/lib/crc-market-seller.test.ts (2 tests) 41ms
+ ✓ src/lib/wallets/xverse-capabilities.test.ts (11 tests) 22ms
+ ✓ src/components/FeePicker.test.ts (3 tests) 3ms
+ ✓ src/lib/funding-candidates.test.ts (2 tests) 5ms
+ ✓ src/lib/crc-market-client.test.ts (3 tests) 124ms
+ ✓ src/lib/crc-market-availability.test.ts (3 tests) 3ms
+ ✓ src/lib/crc-read.test.ts (4 tests) 8ms
+ ✓ src/lib/crc-bootstrap.test.ts (4 tests) 8ms
+ ✓ src/lib/crc-wallet-key.test.ts (2 tests) 3ms
+ ✓ src/app/api/dev/wallet/route.test.ts (3 tests) 22ms
+ ✓ src/lib/crc-activity-label.test.ts (1 test) 3ms
+ ✓ src/lib/crc-metadata.test.ts (2 tests) 7ms
+ ✓ src/lib/crc-mutation.test.ts (1 test) 4ms
+ ✓ src/lib/crc-submit.test.ts (1 test) 18ms
+ ✓ src/lib/rate-limit.test.ts (3 tests) 13ms
+ ✓ src/app/api/crc/v1/tokens/[assetId]/utxos/route.test.ts (2 tests) 19ms
+ ✓ src/app/api/crc/v1/tokens/route.test.ts (4 tests) 15ms
+ ✓ src/app/api/crc/v1/trading/status/route.test.ts (1 test) 13ms
+ ✓ src/app/api/crc/v1/tokens/[assetId]/route.test.ts (2 tests) 18ms
+ ✓ src/app/api/crc/v1/market/[operation]/route.test.ts (4 tests) 36ms
+ ✓ src/lib/crc-quote-route.test.ts (4 tests) 35ms
+ ✓ src/lib/crc-market-route.test.ts (9 tests) 50ms
+stderr | src/lib/crc-trade-build-route.test.ts > CRC sell build authority > rejects an ordinary same-script Bitcoin output without indexed token allocation
+[api] FUNDING_INPUT_INVALID
+
+ ✓ src/lib/crc-trade-build-route.test.ts (2 tests) 19ms
+stderr | src/app/api/crc/v1/wallet/[address]/balances/route.test.ts > CRC wallet balances route > rejects a mainnet address without querying balances
+[api] WRONG_NETWORK
+
+ ✓ src/app/api/crc/v1/wallet/[address]/balances/route.test.ts (3 tests) 24ms
+ ✓ src/lib/crc-core-read.integration.test.ts (6 tests) 2504ms
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP unsigned or changed wallet response never reaches Core live checks or custody
+[api] WALLET_SIGNATURE_INVALID
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP unsigned or changed wallet response never reaches Core live checks or custody
+[api] WALLET_SIGNATURE_INVALID
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP re-signed retry uses cached Guardian witness after lost response
+[api] GUARDIAN_UNAVAILABLE
+
+stderr | src/lib/crc-core-submit.integration.test.ts > HTTP forged offer terms and wrong network reject before live RPC or custody
+[api] WALLET_SIGNATURE_INVALID
+[api] WRONG_NETWORK
+
+stderr | src/lib/crc-core-submit.integration.test.ts > API persists READY before failed broadcast and retries exact saved bytes without custody
+[api] BROADCAST_FAILED
+
+stderr | src/lib/crc-core-submit.integration.test.ts > API admits competing advisory builds but rejects the spent vault before second custody
+[api] STATE_CHANGED
+
+ ✓ src/lib/crc-core-submit.integration.test.ts (13 tests) 51764ms
+   ✓ HTTP submit registers exact signed core deployment before actual broadcast and is idempotent 1779ms
+   ✓ HTTP API sends verified wallet first to actual shared Guardian and mines indexed core mint 2997ms
+   ✓ HTTP sell and inventory buy mine exact core plans, fees and allocations 7253ms
+   ✓ HTTP re-signed retry uses cached Guardian witness after lost response 3666ms
+   ✓ HTTP arbitrary transfer and one-transaction listing preserve exact core allocations 5578ms
+   ✓ core offer activation and buyer-only API fill preserve seller presign and exact fees 3544ms
+   ✓ API cancellation mines, rolls back with actual reorg, and rebroadcasts its persisted receipt 6466ms
+   ✓ API accepts an already signed paid fill after advisory expiry and rejects new expired builds 2928ms
+   ✓ API persists READY before failed broadcast and retries exact saved bytes without custody 3852ms
+   ✓ API admits competing advisory builds but rejects the spent vault before second custody 3209ms
+   ✓ HTTP sell build replay survives consumed token inputs, funding refresh and fee changes 4585ms
+
+ Test Files  39 passed (39)
+      Tests  204 passed (204)
+   Start at  02:54:48
+   Duration  54.47s (transform 4.00s, setup 0ms, collect 33.25s, tests 55.08s, environment 7ms, prepare 2.64s)
