@@ -1,0 +1,334 @@
+{
+  "staticHandlerCount": 25,
+  "expandedWebEndpointCount": 35,
+  "scope": "All route.ts handlers under apps/web/src/app/api, with supported market dispatch expanded. Unsupported dynamic operations return404. N=transaction inputs, P=distinct deployment parents. Existing deployed quota setting is not an upstream limit.",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/crc/v1/activity",
+      "source": "apps/web/src/app/api/crc/v1/activity/route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "read",
+      "recommendedPlacement": "backend projection"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crc/v1/backing/buy/build",
+      "source": "apps/web/src/app/api/crc/v1/backing/buy/build/route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "wallet",
+      "recommendedPlacement": "backend draft/session using DB funding; frontend raw evidence possible"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crc/v1/backing/buy/quote",
+      "source": "apps/web/src/app/api/crc/v1/backing/buy/quote/route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "none",
+      "recommendedPlacement": "backend DB advisory quote; pure math can also run locally"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crc/v1/backing/buy/submit",
+      "source": "apps/web/src/app/api/crc/v1/backing/buy/submit/route.ts",
+      "externalRequests": "fresh web2N+6; buy/sell Guardian2N+P+3 additional; recovery separate",
+      "serverResponseCache": "none",
+      "routeLimiter": "wallet",
+      "recommendedPlacement": "backend authoritative verification/signing/persist/broadcast"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crc/v1/backing/sell/build",
+      "source": "apps/web/src/app/api/crc/v1/backing/sell/build/route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "wallet",
+      "recommendedPlacement": "backend draft/session using DB funding; frontend raw evidence possible"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crc/v1/backing/sell/quote",
+      "source": "apps/web/src/app/api/crc/v1/backing/sell/quote/route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "none",
+      "recommendedPlacement": "backend DB advisory quote; pure math can also run locally"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crc/v1/backing/sell/submit",
+      "source": "apps/web/src/app/api/crc/v1/backing/sell/submit/route.ts",
+      "externalRequests": "fresh web2N+6; buy/sell Guardian2N+P+3 additional; recovery separate",
+      "serverResponseCache": "none",
+      "routeLimiter": "wallet",
+      "recommendedPlacement": "backend authoritative verification/signing/persist/broadcast"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crc/v1/fees",
+      "source": "apps/web/src/app/api/crc/v1/fees/route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "process5s coalesced",
+      "routeLimiter": "read",
+      "recommendedPlacement": "backend projection"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crc/v1/launch/build",
+      "source": "apps/web/src/app/api/crc/v1/launch/build/route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "wallet",
+      "recommendedPlacement": "backend draft/session using DB funding; frontend raw evidence possible"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crc/v1/launch/submit",
+      "source": "apps/web/src/app/api/crc/v1/launch/submit/route.ts",
+      "externalRequests": "fresh web2N+6; buy/sell Guardian2N+P+3 additional; recovery separate",
+      "serverResponseCache": "none",
+      "routeLimiter": "wallet",
+      "recommendedPlacement": "backend authoritative verification/signing/persist/broadcast"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crc/v1/market/listings",
+      "source": "apps/web/src/app/api/crc/v1/market/[operation]/route.ts",
+      "dispatchSource": "apps/web/src/lib/crc-market-route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "read",
+      "recommendedPlacement": "backend projection"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crc/v1/market/listings",
+      "source": "apps/web/src/app/api/crc/v1/market/[operation]/route.ts",
+      "dispatchSource": "apps/web/src/lib/crc-market-route.ts",
+      "externalRequests": "Core3",
+      "serverResponseCache": "none",
+      "routeLimiter": "wallet",
+      "recommendedPlacement": "browser signs terms; backend validates current listing"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crc/v1/market/seller-requests",
+      "source": "apps/web/src/app/api/crc/v1/market/[operation]/route.ts",
+      "dispatchSource": "apps/web/src/lib/crc-market-route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "wallet",
+      "recommendedPlacement": "backend projection"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crc/v1/market/funding-check",
+      "source": "apps/web/src/app/api/crc/v1/market/[operation]/route.ts",
+      "dispatchSource": "apps/web/src/lib/crc-market-route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "wallet",
+      "recommendedPlacement": "backend projection"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crc/v1/market/reserve",
+      "source": "apps/web/src/app/api/crc/v1/market/[operation]/route.ts",
+      "dispatchSource": "apps/web/src/lib/crc-market-route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "wallet",
+      "recommendedPlacement": "backend draft/session using DB funding; frontend raw evidence possible"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crc/v1/market/cancel-build",
+      "source": "apps/web/src/app/api/crc/v1/market/[operation]/route.ts",
+      "dispatchSource": "apps/web/src/lib/crc-market-route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "wallet",
+      "recommendedPlacement": "backend draft/session using DB funding; frontend raw evidence possible"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crc/v1/market/transfer-build",
+      "source": "apps/web/src/app/api/crc/v1/market/[operation]/route.ts",
+      "dispatchSource": "apps/web/src/lib/crc-market-route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "wallet",
+      "recommendedPlacement": "backend draft/session using DB funding; frontend raw evidence possible"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crc/v1/market/listing-build",
+      "source": "apps/web/src/app/api/crc/v1/market/[operation]/route.ts",
+      "dispatchSource": "apps/web/src/lib/crc-market-route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "wallet",
+      "recommendedPlacement": "backend draft/session using DB funding; frontend raw evidence possible"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crc/v1/market/buyer-sign",
+      "source": "apps/web/src/app/api/crc/v1/market/[operation]/route.ts",
+      "dispatchSource": "apps/web/src/lib/crc-market-route.ts",
+      "externalRequests": "fresh web2N+6; buy/sell Guardian2N+P+3 additional; recovery separate",
+      "serverResponseCache": "none",
+      "routeLimiter": "wallet",
+      "recommendedPlacement": "backend authoritative verification/signing/persist/broadcast"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crc/v1/market/cancel",
+      "source": "apps/web/src/app/api/crc/v1/market/[operation]/route.ts",
+      "dispatchSource": "apps/web/src/lib/crc-market-route.ts",
+      "externalRequests": "fresh web2N+6; buy/sell Guardian2N+P+3 additional; recovery separate",
+      "serverResponseCache": "none",
+      "routeLimiter": "wallet",
+      "recommendedPlacement": "backend authoritative verification/signing/persist/broadcast"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crc/v1/market/transfer-submit",
+      "source": "apps/web/src/app/api/crc/v1/market/[operation]/route.ts",
+      "dispatchSource": "apps/web/src/lib/crc-market-route.ts",
+      "externalRequests": "fresh web2N+6; buy/sell Guardian2N+P+3 additional; recovery separate",
+      "serverResponseCache": "none",
+      "routeLimiter": "wallet",
+      "recommendedPlacement": "backend authoritative verification/signing/persist/broadcast"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crc/v1/market/listing-submit",
+      "source": "apps/web/src/app/api/crc/v1/market/[operation]/route.ts",
+      "dispatchSource": "apps/web/src/lib/crc-market-route.ts",
+      "externalRequests": "fresh web2N+6; buy/sell Guardian2N+P+3 additional; recovery separate",
+      "serverResponseCache": "none",
+      "routeLimiter": "wallet",
+      "recommendedPlacement": "backend authoritative verification/signing/persist/broadcast"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crc/v1/market/status",
+      "source": "apps/web/src/app/api/crc/v1/market/status/route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "none",
+      "recommendedPlacement": "backend release/config policy; no Core request"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crc/v1/status",
+      "source": "apps/web/src/app/api/crc/v1/status/route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "none",
+      "recommendedPlacement": "backend projection"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crc/v1/tokens/[assetId]/activity",
+      "source": "apps/web/src/app/api/crc/v1/tokens/[assetId]/activity/route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "read",
+      "recommendedPlacement": "backend projection"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crc/v1/tokens/[assetId]/candles",
+      "source": "apps/web/src/app/api/crc/v1/tokens/[assetId]/candles/route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "read",
+      "recommendedPlacement": "backend projection"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crc/v1/tokens/[assetId]/market",
+      "source": "apps/web/src/app/api/crc/v1/tokens/[assetId]/market/route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "none",
+      "recommendedPlacement": "backend projection"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crc/v1/tokens/[assetId]",
+      "source": "apps/web/src/app/api/crc/v1/tokens/[assetId]/route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "none",
+      "recommendedPlacement": "backend projection"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crc/v1/tokens/[assetId]/utxos",
+      "source": "apps/web/src/app/api/crc/v1/tokens/[assetId]/utxos/route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "none",
+      "recommendedPlacement": "backend projection"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crc/v1/tokens",
+      "source": "apps/web/src/app/api/crc/v1/tokens/route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "none",
+      "recommendedPlacement": "backend projection"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crc/v1/trading/status",
+      "source": "apps/web/src/app/api/crc/v1/trading/status/route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "none",
+      "recommendedPlacement": "backend release/config policy; no Core request"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crc/v1/wallet/[address]/balances",
+      "source": "apps/web/src/app/api/crc/v1/wallet/[address]/balances/route.ts",
+      "externalRequests": "none",
+      "serverResponseCache": "none",
+      "routeLimiter": "none",
+      "recommendedPlacement": "backend projection"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crc/v1/wallet/utxos",
+      "source": "apps/web/src/app/api/crc/v1/wallet/utxos/route.ts",
+      "externalRequests": "Esplora1address+optional1tip; regtest scan",
+      "serverResponseCache": "process5s address/height + same-address coalescing",
+      "routeLimiter": "wallet",
+      "recommendedPlacement": "browser discovery candidate; backend funding contract change required"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dev/wallet",
+      "source": "apps/web/src/app/api/dev/wallet/route.ts",
+      "externalRequests": "regtest scan for GET without identity or POST getUtxos; production403",
+      "serverResponseCache": "none",
+      "routeLimiter": "generic",
+      "recommendedPlacement": "development only"
+    },
+    {
+      "method": "POST",
+      "path": "/api/dev/wallet",
+      "source": "apps/web/src/app/api/dev/wallet/route.ts",
+      "externalRequests": "regtest scan for GET without identity or POST getUtxos; production403",
+      "serverResponseCache": "none",
+      "routeLimiter": "generic",
+      "recommendedPlacement": "development only"
+    }
+  ]
+}
