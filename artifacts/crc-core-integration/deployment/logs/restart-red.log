@@ -1,0 +1,11 @@
+{"status":"failed","checks":["committed migrations applied to new DB; old CRC tables absent; namespace empty","actual standalone Guardian health; CRC worker readiness; production web active; empty catalog indexed at Core tip"],"output":"/tmp/crc-fresh-deployment-evidence.json","appImage":"sha256:7f9ff152faa20c1ed7a2fe1cb3cafef5a0c7867ba1ab3575da55ea130fdf0465","guardianImage":"sha256:32af71b32832c8f2b3596380bc7aa68aa4dae6e67b3e6e6520c483e6d0ad58cc"}
+file:///home/andefy/dev/covedao/scripts/testing/crc-fresh-deployment.mjs:40
+  throw new Error(`owned deployment readiness timeout: ${last?.message ?? "not ready"}`);
+        ^
+
+Error: owned deployment readiness timeout: fetch failed
+    at until (file:///home/andefy/dev/covedao/scripts/testing/crc-fresh-deployment.mjs:40:9)
+    at async deployFreshRegtest (file:///home/andefy/dev/covedao/scripts/testing/crc-fresh-deployment.mjs:108:5)
+    at async file:///home/andefy/dev/covedao/scripts/testing/crc-fresh-deployment.mjs:143:3
+
+Node.js v24.21.0

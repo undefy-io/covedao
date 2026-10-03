@@ -52,6 +52,13 @@ public regtest fixtures; this does not prove actual extension signing.
 `test:e2e:crc-core` compares desktop/mobile screenshots and interactions against an
 owned server at the baseline commit. Its default ports are 3118 and 3119.
 
+A separate fresh-deployment check runs the real standalone Guardian, worker and
+production web images with owned Core/PostgreSQL, verifies restart/reset and mined
+launch/mint, then removes its resources. See
+[deployment evidence](artifacts/crc-core-integration/deployment/README.md) for image
+prerequisites and commands. Unit checks run with
+`node --test scripts/testing/crc-fresh-deployment.test.mjs`.
+
 Serial builds avoid the separately tracked shared Docusaurus output race.
 
 ## Release status

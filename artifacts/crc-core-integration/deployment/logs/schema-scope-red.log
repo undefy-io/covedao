@@ -1,0 +1,74 @@
+{"status":"failed","checks":["committed migrations applied to new DB; old CRC tables absent; namespace empty","actual standalone Guardian health; CRC worker readiness; production web active; empty catalog indexed at Core tip"],"output":"/tmp/crc-fresh-deployment-evidence.json","appImage":"sha256:7f9ff152faa20c1ed7a2fe1cb3cafef5a0c7867ba1ab3575da55ea130fdf0465","guardianImage":"sha256:32af71b32832c8f2b3596380bc7aa68aa4dae6e67b3e6e6520c483e6d0ad58cc"}
+node:internal/errors:986
+  const err = new Error(message);
+              ^
+
+Error: Command failed: docker exec crc-fresh-544fac00-7a6a-46c6-b489-8b1b9d29e246-web node -e const fs=require('fs'),crypto=require('crypto'),files=JSON.parse(process.argv[1]);let count=0;for(const [path,expected] of Object.entries(files)){const actual=crypto.createHash('sha256').update(fs.readFileSync('/app/'+path.replace('packages/crc20-protocol/','packages/cove-market/crc20-protocol/'))).digest('hex');if(actual!==expected)throw new Error('CRC runtime mismatch: '+path);count++;}console.log(count); {"packages/crc20-protocol/dto.ts":"3c155bb8ffb22bb20f82afc8962b614ce8c2907c323227b93012e694c5927e95","packages/crc20-protocol/bip322.ts":"b123020539c25863abe41f96149a728bade5d5fb605c3ea84a5c635491caf879","packages/crc20-protocol/types.ts":"45e27d2ac79297553498bc4fde591aa601ac31f781ab96ef46320a35a061c259","packages/crc20-protocol/taproot.ts":"1ee306add066fd6ee7d44629444503bcbe5f12b83e2b6691f5c9d4b6253c842f","packages/crc20-protocol/vitest.config.ts":"51b79ead4173e2ad1bcd378295051364952196ef6a22adc7f1f75b48e0b053f7","packages/crc20-protocol/economics.ts":"6ab4efcfd68b3411f128d46a570b4099b3578fde4aa7757b019adaf711f243c5","packages/crc20-protocol/replay.ts":"5bb7c0a4209f7f2686048e19cf11bd8bf969a2ca5b5f53546614e7dc62eabcb7","packages/crc20-protocol/bytes.ts":"cff9e38f7e84b1b76bf7762595ca778dbb012ecb6bffeba7d0a4d4229148233e","packages/crc20-protocol/target.ts":"e32baa56bbb621185c98152d2a034c6fd36ed25bc6a85379099dfbac0e58dd67","packages/crc20-protocol/wire.ts":"dc5e0835887112174e1d7f54c065b9e78b3bfc3efe1b0f652f6b9ebe6d5fcded","packages/crc20-protocol/index.ts":"1070be6ecab6bd4831e24ab23f5d247b00f4f11b4483cbe6adf0a6fca396c0b3","packages/crc20-protocol/build-browser.mjs":"a6aa52637aeda78818524efa9a2724a8cca4fc335828506591e6654bcf5787cc","packages/crc20-protocol/builders.ts":"091c1aa12a4a3684ec5cfac1878d7381b0a4ef4a972e70d29b9d5828f47bef51","packages/crc20-protocol/offers.ts":"ab234d038debc23cdd70303d590c8121b688861acfb12c879fd5d225c3363243","packages/crc20-adapters/browser-buffer.mjs":"e046822f165405f0f7c94499f673e446afb4dd2b66f0d3faa019c7c66dd74dba","packages/crc20-adapters/build-browser.mjs":"77b72dd346b18e80efaa8e44c6ba85631c6dea8d1aea25e20264635e333e569a","packages/crc20-adapters/src/guardian.ts":"33785d5e381dc495a4bdb481e0c0170dca0d65fccef815aa745f14b480c9195c","packages/crc20-adapters/src/psbt.ts":"c86894db8e37ce473d1c1818f3b395320b9fdb1bb9cacbcbc9f01411462fbe47","packages/crc20-adapters/src/index.ts":"acc969c608b0857db88c63c29a169715cc6bc41c7fb2bf9ceb00b1105783e29c","packages/crc20-state/src/index.ts":"861612405a4e3b9a3dbf0717f5cb97f3b7e522c409046ca023a7bab4730acae4","packages/crc20-guardian/src/index.ts":"cf9775546f2da5887bec271814e6b11e8dbea9f0fa4a525da8712b7b14dc6f02","packages/db/src/schema.ts":"4fd6200011e901018bbaca518758a4cfdb998c9c2167832f53ed5abd3b4847df"}
+[eval]:1
+(crypto=>{{const fs=require('fs'),crypto=require('crypto'),files=JSON.parse(process.argv[1]);let count=0;for(const [path,expected] of Object.entries(files)){const actual=crypto.createHash('sha256').update(fs.readFileSync('/app/'+path.replace('packages/crc20-protocol/','packages/cove-market/crc20-protocol/'))).digest('hex');if(actual!==expected)throw new Error('CRC runtime mismatch: '+path);count++;}console.log(count);}})(require('node:crypto'))
+                                                                                                                                                                                                                                                                                                                                                          ^
+
+Error: CRC runtime mismatch: packages/db/src/schema.ts
+    at [eval]:1:353
+    at [eval]:1:425
+    at runScriptInThisContext (node:internal/vm:219:10)
+    at node:internal/process/execution:451:12
+    at [eval]-wrapper:6:24
+    at runScriptInContext (node:internal/process/execution:449:60)
+    at evalFunction (node:internal/process/execution:283:30)
+    at evalTypeScript (node:internal/process/execution:295:3)
+    at node:internal/main/eval_string:71:3
+
+Node.js v24.21.0
+
+    at genericNodeError (node:internal/errors:986:15)
+    at wrappedFn (node:internal/errors:540:14)
+    at checkExecSyncError (node:child_process:942:11)
+    at execFileSync (node:child_process:978:15)
+    at docker (file:///home/andefy/dev/covedao/scripts/testing/crc-fresh-deployment.mjs:32:29)
+    at deployFreshRegtest (file:///home/andefy/dev/covedao/scripts/testing/crc-fresh-deployment.mjs:110:43)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async file:///home/andefy/dev/covedao/scripts/testing/crc-fresh-deployment.mjs:164:3 {
+  status: 1,
+  signal: null,
+  output: [
+    null,
+    '',
+    '[eval]:1\n' +
+      "(crypto=>{{const fs=require('fs'),crypto=require('crypto'),files=JSON.parse(process.argv[1]);let count=0;for(const [path,expected] of Object.entries(files)){const actual=crypto.createHash('sha256').update(fs.readFileSync('/app/'+path.replace('packages/crc20-protocol/','packages/cove-market/crc20-protocol/'))).digest('hex');if(actual!==expected)throw new Error('CRC runtime mismatch: '+path);count++;}console.log(count);}})(require('node:crypto'))\n" +
+      '                                                                                                                                                                                                                                                                                                                                                          ^\n' +
+      '\n' +
+      'Error: CRC runtime mismatch: packages/db/src/schema.ts\n' +
+      '    at [eval]:1:353\n' +
+      '    at [eval]:1:425\n' +
+      '    at runScriptInThisContext (node:internal/vm:219:10)\n' +
+      '    at node:internal/process/execution:451:12\n' +
+      '    at [eval]-wrapper:6:24\n' +
+      '    at runScriptInContext (node:internal/process/execution:449:60)\n' +
+      '    at evalFunction (node:internal/process/execution:283:30)\n' +
+      '    at evalTypeScript (node:internal/process/execution:295:3)\n' +
+      '    at node:internal/main/eval_string:71:3\n' +
+      '\n' +
+      'Node.js v24.21.0\n'
+  ],
+  pid: 1240369,
+  stdout: '',
+  stderr: '[eval]:1\n' +
+    "(crypto=>{{const fs=require('fs'),crypto=require('crypto'),files=JSON.parse(process.argv[1]);let count=0;for(const [path,expected] of Object.entries(files)){const actual=crypto.createHash('sha256').update(fs.readFileSync('/app/'+path.replace('packages/crc20-protocol/','packages/cove-market/crc20-protocol/'))).digest('hex');if(actual!==expected)throw new Error('CRC runtime mismatch: '+path);count++;}console.log(count);}})(require('node:crypto'))\n" +
+    '                                                                                                                                                                                                                                                                                                                                                          ^\n' +
+    '\n' +
+    'Error: CRC runtime mismatch: packages/db/src/schema.ts\n' +
+    '    at [eval]:1:353\n' +
+    '    at [eval]:1:425\n' +
+    '    at runScriptInThisContext (node:internal/vm:219:10)\n' +
+    '    at node:internal/process/execution:451:12\n' +
+    '    at [eval]-wrapper:6:24\n' +
+    '    at runScriptInContext (node:internal/process/execution:449:60)\n' +
+    '    at evalFunction (node:internal/process/execution:283:30)\n' +
+    '    at evalTypeScript (node:internal/process/execution:295:3)\n' +
+    '    at node:internal/main/eval_string:71:3\n' +
+    '\n' +
+    'Node.js v24.21.0\n'
+}
+
+Node.js v24.21.0

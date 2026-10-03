@@ -1,0 +1,428 @@
+{
+  "network": "regtest",
+  "actualExtension": false,
+  "manifest": {
+    "prefix": "crc-fresh-44ee7a69-5021-444c-b3b9-af89940003c0"
+  },
+  "checks": [
+    "committed migrations applied to new DB; old CRC tables absent; namespace empty",
+    "actual standalone Guardian health; CRC worker readiness; production web active; empty catalog indexed at Core tip",
+    "actual app/standalone Guardian CRC runtime source hashes and CRC schema definitions match",
+    "coordinated service restart preserves core state root",
+    "services stopped; explicit CRC reset; rebootstrap/replay returns exact prior empty core root",
+    "fresh Node-fixture launch and 500-token mint mine through actual standalone Guardian; authoritative raw fees/outputs and worker catalog match"
+  ],
+  "createdAt": "2026-10-03T01:32:43.316Z",
+  "appImage": "sha256:7f9ff152faa20c1ed7a2fe1cb3cafef5a0c7867ba1ab3575da55ea130fdf0465",
+  "guardianImage": "sha256:32af71b32832c8f2b3596380bc7aa68aa4dae6e67b3e6e6520c483e6d0ad58cc",
+  "chain": {
+    "chain": "regtest",
+    "blocks": 103,
+    "headers": 103,
+    "bestblockhash": "0224d06e81f7f0a84ad89027d1e2e1eddfd9724b72c3831d9ab17d2dc0c73e98",
+    "bits": "207fffff",
+    "target": "7fffff0000000000000000000000000000000000000000000000000000000000",
+    "difficulty": 4.656542373906925e-10,
+    "time": 1790991183,
+    "mediantime": 1790991183,
+    "verificationprogress": 1,
+    "initialblockdownload": false,
+    "chainwork": "00000000000000000000000000000000000000000000000000000000000000d0",
+    "size_on_disk": 30971,
+    "pruned": false,
+    "warnings": []
+  },
+  "webUrl": "http://127.0.0.1:33184",
+  "guardianUrl": "http://127.0.0.1:33183",
+  "guardianHealth": {
+    "reachable": true,
+    "profileHash": "f2b589edda9214bfaac9d35f3c32827d58fee58affcb85180b05b662fb0cc541",
+    "guardianXOnly": "24653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1c",
+    "releaseId": "local",
+    "auditHeadHash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "auditHealthy": true,
+    "signingJournalHealthy": true,
+    "custodyBackendReady": true,
+    "signingEnabled": true
+  },
+  "trading": {
+    "tradingActive": true,
+    "network": "regtest",
+    "protocolScriptHex": "0014cc1b07838e387deacd0e5232e1e8b49f4c29e484"
+  },
+  "alignedRuntimeFiles": 21,
+  "crcSchemaHash": "b2b2cbc1bba4db5eab2f19b8fde1ff8bd7d9f8d767150a5662c01d5e0d82d435",
+  "recoveryUrls": [
+    {
+      "web": "http://127.0.0.1:33185",
+      "guardian": "http://127.0.0.1:33186"
+    },
+    {
+      "web": "http://127.0.0.1:33188",
+      "guardian": "http://127.0.0.1:33187"
+    }
+  ],
+  "stateRoot": "51768a61c86f2b62f3f02b52bc956e0ebcffc838a042778a7862f6fb02c63c9c",
+  "fixtureTransactions": [
+    {
+      "txid": "7c12770d2f406bc5905e8cad8496888342a0ed5f1b1e36ffd14c3148497ea76f",
+      "rawHex": "020000000001013d9b44d2abae79dcda5be90253961420984fbfcc3e4dc30cb8d8d2299b315aeb0000000000feffffff050000000000000000816a4c7e7b2270223a226372632d3230222c226f70223a226465706c6f79222c227469636b223a224652455348222c2274797065223a22626f6e64696e67222c226d6178223a223231303030303030222c226c696d223a223231303030303030222c226c656166223a2230222c226f726469223a2230222c22627463223a2231227de8030000000000002251205da5aeda8cc265c41c4052b788a0641d1bd08c8eef2bf93f7dd3581c46683ee5e803000000000000160014c62ec1117fa030b9771639f1e10555cdbeea1dbc581b000000000000160014cc1b07838e387deacd0e5232e1e8b49f4c29e484f3b6f50500000000160014c62ec1117fa030b9771639f1e10555cdbeea1dbc0247304402201b4864c6fa47234525d8f5022f7a7c9232f46a929096eda84a7883635cfd7ad7022047999f12f59685b411459f09e413ce479b30a0cc7ff3aaf63ccbbf9bfdde22bc0121021492bc6a132ac91cb8b9f57d2b809dd2bdb8e1a294d3edbb6c6f7fc03bf11cac00000000",
+      "verification": "{\"operation\":\"deploy\",\"minerFeeSats\":\"1765\"}",
+      "sessionId": "64e24c83-f8a8-4e19-816a-cc6c1b040801",
+      "intent": {
+        "ticker": "FRESH",
+        "feeTier": "standard",
+        "corePlan": {
+          "inputs": [
+            {
+              "sats": "100000000",
+              "txid": "eb5a319b29d2d8b80cc34d3eccbf4f982014965302e95bdadc79aeabd2449b3d",
+              "vout": 0,
+              "scriptHex": "0014c62ec1117fa030b9771639f1e10555cdbeea1dbc",
+              "publicKeyHex": "021492bc6a132ac91cb8b9f57d2b809dd2bdb8e1a294d3edbb6c6f7fc03bf11cac"
+            }
+          ],
+          "outputs": [
+            {
+              "role": "marker",
+              "sats": "0",
+              "scriptHex": "6a4c7e7b2270223a226372632d3230222c226f70223a226465706c6f79222c227469636b223a224652455348222c2274797065223a22626f6e64696e67222c226d6178223a223231303030303030222c226c696d223a223231303030303030222c226c656166223a2230222c226f726469223a2230222c22627463223a2231227d"
+            },
+            {
+              "role": "vault",
+              "sats": "1000",
+              "scriptHex": "51205da5aeda8cc265c41c4052b788a0641d1bd08c8eef2bf93f7dd3581c46683ee5"
+            },
+            {
+              "role": "creatorRecord",
+              "sats": "1000",
+              "scriptHex": "0014c62ec1117fa030b9771639f1e10555cdbeea1dbc"
+            },
+            {
+              "role": "protocolFee",
+              "sats": "7000",
+              "scriptHex": "0014cc1b07838e387deacd0e5232e1e8b49f4c29e484"
+            },
+            {
+              "role": "btcChange",
+              "sats": "99989235",
+              "scriptHex": "0014c62ec1117fa030b9771639f1e10555cdbeea1dbc"
+            }
+          ],
+          "markerJson": "{\"p\":\"crc-20\",\"op\":\"deploy\",\"tick\":\"FRESH\",\"type\":\"bonding\",\"max\":\"21000000\",\"lim\":\"21000000\",\"leaf\":\"0\",\"ordi\":\"0\",\"btc\":\"1\"}",
+          "markerVout": 0,
+          "changeAtoms": "0",
+          "minerFeeSats": "1765",
+          "transactions": [
+            {
+              "inputs": [
+                {
+                  "sats": "100000000",
+                  "txid": "eb5a319b29d2d8b80cc34d3eccbf4f982014965302e95bdadc79aeabd2449b3d",
+                  "vout": 0,
+                  "scriptHex": "0014c62ec1117fa030b9771639f1e10555cdbeea1dbc",
+                  "publicKeyHex": "021492bc6a132ac91cb8b9f57d2b809dd2bdb8e1a294d3edbb6c6f7fc03bf11cac"
+                }
+              ],
+              "outputs": [
+                {
+                  "role": "marker",
+                  "sats": "0",
+                  "scriptHex": "6a4c7e7b2270223a226372632d3230222c226f70223a226465706c6f79222c227469636b223a224652455348222c2274797065223a22626f6e64696e67222c226d6178223a223231303030303030222c226c696d223a223231303030303030222c226c656166223a2230222c226f726469223a2230222c22627463223a2231227d"
+                },
+                {
+                  "role": "vault",
+                  "sats": "1000",
+                  "scriptHex": "51205da5aeda8cc265c41c4052b788a0641d1bd08c8eef2bf93f7dd3581c46683ee5"
+                },
+                {
+                  "role": "creatorRecord",
+                  "sats": "1000",
+                  "scriptHex": "0014c62ec1117fa030b9771639f1e10555cdbeea1dbc"
+                },
+                {
+                  "role": "protocolFee",
+                  "sats": "7000",
+                  "scriptHex": "0014cc1b07838e387deacd0e5232e1e8b49f4c29e484"
+                },
+                {
+                  "role": "btcChange",
+                  "sats": "99989235",
+                  "scriptHex": "0014c62ec1117fa030b9771639f1e10555cdbeea1dbc"
+                }
+              ]
+            }
+          ],
+          "recipientVout": 1,
+          "creatorFeeSats": "0",
+          "protocolFeeSats": "7000"
+        },
+        "metadata": {
+          "xUrl": null,
+          "imageUrl": null,
+          "websiteUrl": null,
+          "description": "Owned regtest fixture",
+          "displayName": "Fresh deployment"
+        },
+        "operation": "deploy",
+        "changeSats": 99989235,
+        "coreConfig": {
+          "ticker": "FRESH",
+          "network": "regtest",
+          "vaultScriptHex": "51205da5aeda8cc265c41c4052b788a0641d1bd08c8eef2bf93f7dd3581c46683ee5",
+          "guardianCustody": {
+            "controlBlockHex": "c150929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac066c0dd465c5e706d46a68f79f52287c996b6019d772e10d222496a5807313c8f",
+            "assetCommitmentHex": "e394fd4d209c10d6d8aa02a12baf9522fc39a9aa3881b9b4bcca0ecbcd8650bf",
+            "executionScriptHex": "20e394fd4d209c10d6d8aa02a12baf9522fc39a9aa3881b9b4bcca0ecbcd8650bf882024653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1cac",
+            "recoveryLeafHashHex": "66c0dd465c5e706d46a68f79f52287c996b6019d772e10d222496a5807313c8f",
+            "guardianPublicKeyHex": "24653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1c"
+          },
+          "creatorScriptHex": "0014c62ec1117fa030b9771639f1e10555cdbeea1dbc",
+          "protocolScriptHex": "0014cc1b07838e387deacd0e5232e1e8b49f4c29e484"
+        },
+        "minerFeeSats": 1765,
+        "launchFeeSats": 7000,
+        "launchSaltHex": "3d673d355ccc414bc636b4a5b839bdaa80ccb96bfe43eaa6809060a3b13582ac",
+        "vaultScriptHex": "51205da5aeda8cc265c41c4052b788a0641d1bd08c8eef2bf93f7dd3581c46683ee5",
+        "feeRateSatPerVb": 5,
+        "vaultAnchorSats": 1000,
+        "creatorScriptHex": "0014c62ec1117fa030b9771639f1e10555cdbeea1dbc",
+        "unsignedTxDigest": "cbaaf2de7d19c05179b64f2981c2aac7aedb151e5cbc054f3736092f11f3769a",
+        "creatorRecordSats": 1000,
+        "protocolScriptHex": "0014cc1b07838e387deacd0e5232e1e8b49f4c29e484"
+      }
+    },
+    {
+      "txid": "7bd8706018052864fdf8bef55511b3c2b6905196e221172b393ae01281292969",
+      "rawHex": "020000000001026fa77e4948314cd1ff361e1b5feda04283889684ad8c5e90c56b402f0d77127c0100000000feffffff6fa77e4948314cd1ff361e1b5feda04283889684ad8c5e90c56b402f0d77127c0400000000feffffff0600000000000000002b6a297b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a224652455348227de803000000000000160014c62ec1117fa030b9771639f1e10555cdbeea1dbcf6030000000000002251205da5aeda8cc265c41c4052b788a0641d1bd08c8eef2bf93f7dd3581c46683ee58f13000000000000160014cc1b07838e387deacd0e5232e1e8b49f4c29e4842202000000000000160014c62ec1117fa030b9771639f1e10555cdbeea1dbc8695f50500000000160014c62ec1117fa030b9771639f1e10555cdbeea1dbc0441f2fa786f6dfd54920ad9edacda3f2164a0c1b88423c06f7d9f0d788ad91929da1dc8db99a397815c19b82b268ec3d44898029fda999296d0711968e95e8b9baa0120e394fd4d209c10d6d8aa02a12baf9522fc39a9aa3881b9b4bcca0ecbcd8650bf4420e394fd4d209c10d6d8aa02a12baf9522fc39a9aa3881b9b4bcca0ecbcd8650bf882024653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1cac41c150929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac066c0dd465c5e706d46a68f79f52287c996b6019d772e10d222496a5807313c8f02473044022073517ec019113cfa2878e929699e95be64abb09d0cd511122a638503d3778eb5022044098bba452b89984635d82bc4e9db21ccc91bb4a2437cd6efd90073f0fe1a7b0121021492bc6a132ac91cb8b9f57d2b809dd2bdb8e1a294d3edbb6c6f7fc03bf11cac00000000",
+      "verification": "{\"operation\":\"mint-buy\",\"minerFeeSats\":\"1990\"}",
+      "sessionId": "d36bbad6-e9f2-4730-b9bc-de942f78eb5a",
+      "intent": {
+        "quote": {
+          "assetId": "regtest:7c12770d2f406bc5905e8cad8496888342a0ed5f1b1e36ffd14c3148497ea76f",
+          "grossSats": "14",
+          "operation": "mint",
+          "amountAtoms": "50000000000",
+          "vaultOutpoint": "7c12770d2f406bc5905e8cad8496888342a0ed5f1b1e36ffd14c3148497ea76f:1",
+          "buyerTotalSats": "5567",
+          "creatorFeeSats": "546",
+          "protocolFeeSats": "5007",
+          "minerFeeExcluded": true
+        },
+        "assetId": "regtest:7c12770d2f406bc5905e8cad8496888342a0ed5f1b1e36ffd14c3148497ea76f",
+        "feeTier": "standard",
+        "corePlan": {
+          "inputs": [
+            {
+              "sats": "1000",
+              "txid": "7c12770d2f406bc5905e8cad8496888342a0ed5f1b1e36ffd14c3148497ea76f",
+              "vout": 1,
+              "scriptHex": "51205da5aeda8cc265c41c4052b788a0641d1bd08c8eef2bf93f7dd3581c46683ee5"
+            },
+            {
+              "sats": "99989235",
+              "txid": "7c12770d2f406bc5905e8cad8496888342a0ed5f1b1e36ffd14c3148497ea76f",
+              "vout": 4,
+              "scriptHex": "0014c62ec1117fa030b9771639f1e10555cdbeea1dbc",
+              "publicKeyHex": "021492bc6a132ac91cb8b9f57d2b809dd2bdb8e1a294d3edbb6c6f7fc03bf11cac"
+            }
+          ],
+          "outputs": [
+            {
+              "role": "marker",
+              "sats": "0",
+              "scriptHex": "6a297b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a224652455348227d"
+            },
+            {
+              "role": "recipient",
+              "sats": "1000",
+              "atoms": "50000000000",
+              "scriptHex": "0014c62ec1117fa030b9771639f1e10555cdbeea1dbc"
+            },
+            {
+              "role": "vault",
+              "sats": "1014",
+              "scriptHex": "51205da5aeda8cc265c41c4052b788a0641d1bd08c8eef2bf93f7dd3581c46683ee5"
+            },
+            {
+              "role": "protocolFee",
+              "sats": "5007",
+              "scriptHex": "0014cc1b07838e387deacd0e5232e1e8b49f4c29e484"
+            },
+            {
+              "role": "creatorFee",
+              "sats": "546",
+              "scriptHex": "0014c62ec1117fa030b9771639f1e10555cdbeea1dbc"
+            },
+            {
+              "role": "btcChange",
+              "sats": "99980678",
+              "scriptHex": "0014c62ec1117fa030b9771639f1e10555cdbeea1dbc"
+            }
+          ],
+          "grossSats": "14",
+          "markerJson": "{\"p\":\"crc-20\",\"op\":\"mint\",\"tick\":\"FRESH\"}",
+          "markerVout": 0,
+          "changeAtoms": "0",
+          "minerFeeSats": "1990",
+          "transactions": [
+            {
+              "inputs": [
+                {
+                  "sats": "1000",
+                  "txid": "7c12770d2f406bc5905e8cad8496888342a0ed5f1b1e36ffd14c3148497ea76f",
+                  "vout": 1,
+                  "scriptHex": "51205da5aeda8cc265c41c4052b788a0641d1bd08c8eef2bf93f7dd3581c46683ee5"
+                },
+                {
+                  "sats": "99989235",
+                  "txid": "7c12770d2f406bc5905e8cad8496888342a0ed5f1b1e36ffd14c3148497ea76f",
+                  "vout": 4,
+                  "scriptHex": "0014c62ec1117fa030b9771639f1e10555cdbeea1dbc",
+                  "publicKeyHex": "021492bc6a132ac91cb8b9f57d2b809dd2bdb8e1a294d3edbb6c6f7fc03bf11cac"
+                }
+              ],
+              "outputs": [
+                {
+                  "role": "marker",
+                  "sats": "0",
+                  "scriptHex": "6a297b2270223a226372632d3230222c226f70223a226d696e74222c227469636b223a224652455348227d"
+                },
+                {
+                  "role": "recipient",
+                  "sats": "1000",
+                  "atoms": "50000000000",
+                  "scriptHex": "0014c62ec1117fa030b9771639f1e10555cdbeea1dbc"
+                },
+                {
+                  "role": "vault",
+                  "sats": "1014",
+                  "scriptHex": "51205da5aeda8cc265c41c4052b788a0641d1bd08c8eef2bf93f7dd3581c46683ee5"
+                },
+                {
+                  "role": "protocolFee",
+                  "sats": "5007",
+                  "scriptHex": "0014cc1b07838e387deacd0e5232e1e8b49f4c29e484"
+                },
+                {
+                  "role": "creatorFee",
+                  "sats": "546",
+                  "scriptHex": "0014c62ec1117fa030b9771639f1e10555cdbeea1dbc"
+                },
+                {
+                  "role": "btcChange",
+                  "sats": "99980678",
+                  "scriptHex": "0014c62ec1117fa030b9771639f1e10555cdbeea1dbc"
+                }
+              ]
+            }
+          ],
+          "recipientVout": 1,
+          "creatorFeeSats": "546",
+          "protocolFeeSats": "5007"
+        },
+        "operation": "mint-buy",
+        "changeSats": 99980678,
+        "coreConfig": {
+          "ticker": "FRESH",
+          "network": "regtest",
+          "vaultScriptHex": "51205da5aeda8cc265c41c4052b788a0641d1bd08c8eef2bf93f7dd3581c46683ee5",
+          "guardianCustody": {
+            "controlBlockHex": "c150929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac066c0dd465c5e706d46a68f79f52287c996b6019d772e10d222496a5807313c8f",
+            "assetCommitmentHex": "e394fd4d209c10d6d8aa02a12baf9522fc39a9aa3881b9b4bcca0ecbcd8650bf",
+            "executionScriptHex": "20e394fd4d209c10d6d8aa02a12baf9522fc39a9aa3881b9b4bcca0ecbcd8650bf882024653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1cac",
+            "recoveryLeafHashHex": "66c0dd465c5e706d46a68f79f52287c996b6019d772e10d222496a5807313c8f",
+            "guardianPublicKeyHex": "24653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1c"
+          },
+          "creatorScriptHex": "0014c62ec1117fa030b9771639f1e10555cdbeea1dbc",
+          "protocolScriptHex": "0014cc1b07838e387deacd0e5232e1e8b49f4c29e484"
+        },
+        "amountAtoms": "50000000000",
+        "minerFeeSats": 1990,
+        "vaultOutpoint": "7c12770d2f406bc5905e8cad8496888342a0ed5f1b1e36ffd14c3148497ea76f:1",
+        "tokenScriptHex": "0014c62ec1117fa030b9771639f1e10555cdbeea1dbc",
+        "feeRateSatPerVb": 5,
+        "walletScriptHex": "0014c62ec1117fa030b9771639f1e10555cdbeea1dbc",
+        "unsignedTxDigest": "a8b0976f15c4d5a1478f5e63c4f3623c9b9e0261caa507abba978910360f4cad"
+      }
+    }
+  ],
+  "deployedCatalog": {
+    "ok": true,
+    "data": {
+      "network": "regtest",
+      "indexedTip": {
+        "height": "106",
+        "blockHash": "132b91824d066b077f5910776a146c7cd0e2ac76ed1280ab240bac06f707436c"
+      },
+      "tokens": [
+        {
+          "assetId": "regtest:7c12770d2f406bc5905e8cad8496888342a0ed5f1b1e36ffd14c3148497ea76f",
+          "network": "regtest",
+          "deployTxid": "7c12770d2f406bc5905e8cad8496888342a0ed5f1b1e36ffd14c3148497ea76f",
+          "ticker": "FRESH",
+          "metadata": {
+            "displayName": "Fresh deployment",
+            "description": "Owned regtest fixture",
+            "websiteUrl": null,
+            "xUrl": null,
+            "imageUrl": null
+          },
+          "deployHeight": "105",
+          "deployBlockHash": "51205bbff87b3dac0d0be2975f6716bf6d800b5292b837ae98b3461877d14af9",
+          "creatorScriptHex": "0014c62ec1117fa030b9771639f1e10555cdbeea1dbc",
+          "protocolScriptHex": "0014cc1b07838e387deacd0e5232e1e8b49f4c29e484",
+          "protocolVersion": 3,
+          "burnedAtoms": "0",
+          "mintedAtoms": "50000000000",
+          "inventoryAtoms": "0",
+          "circulatingAtoms": "50000000000",
+          "availability": "active",
+          "vault": {
+            "txid": "7bd8706018052864fdf8bef55511b3c2b6905196e221172b393ae01281292969",
+            "vout": 2,
+            "scriptHex": "51205da5aeda8cc265c41c4052b788a0641d1bd08c8eef2bf93f7dd3581c46683ee5",
+            "btcSats": "1014"
+          },
+          "coreState": {
+            "vault": {
+              "sats": "1014",
+              "txid": "7bd8706018052864fdf8bef55511b3c2b6905196e221172b393ae01281292969",
+              "vout": 2,
+              "scriptHex": "51205da5aeda8cc265c41c4052b788a0641d1bd08c8eef2bf93f7dd3581c46683ee5"
+            },
+            "config": {
+              "ticker": "FRESH",
+              "network": "regtest",
+              "vaultScriptHex": "51205da5aeda8cc265c41c4052b788a0641d1bd08c8eef2bf93f7dd3581c46683ee5",
+              "guardianCustody": {
+                "controlBlockHex": "c150929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac066c0dd465c5e706d46a68f79f52287c996b6019d772e10d222496a5807313c8f",
+                "assetCommitmentHex": "e394fd4d209c10d6d8aa02a12baf9522fc39a9aa3881b9b4bcca0ecbcd8650bf",
+                "executionScriptHex": "20e394fd4d209c10d6d8aa02a12baf9522fc39a9aa3881b9b4bcca0ecbcd8650bf882024653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1cac",
+                "recoveryLeafHashHex": "66c0dd465c5e706d46a68f79f52287c996b6019d772e10d222496a5807313c8f",
+                "guardianPublicKeyHex": "24653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1c"
+              },
+              "creatorScriptHex": "0014c62ec1117fa030b9771639f1e10555cdbeea1dbc",
+              "protocolScriptHex": "0014cc1b07838e387deacd0e5232e1e8b49f4c29e484"
+            },
+            "deployTxid": "7c12770d2f406bc5905e8cad8496888342a0ed5f1b1e36ffd14c3148497ea76f",
+            "burnedAtoms": "0",
+            "issuedAtoms": "50000000000",
+            "inventoryAtoms": "0"
+          }
+        }
+      ],
+      "nextCursor": null
+    }
+  },
+  "finalStateRoot": "a80bfb17bff5c2eb4887893cb5da0ccd93546487bc36b4887a09466db2bd36fb",
+  "status": "passed",
+  "logs": {
+    "crc-fresh-44ee7a69-5021-444c-b3b9-af89940003c0-core": "2026-10-03T01:32:45Z UpdateTip: new best=3a597e9a38840d7ae4a14479b87534736d79fa50609bd3211244883d7ee59651 height=92 version=0x20000000 log2_work=7.539159 tx=93 date='2026-10-03T01:33:02Z' progress=1.000000 cache=0.3MiB(92txo)\n2026-10-03T01:32:45Z CreateNewBlock(): block weight: 888 txs: 0 fees: 0 sigops 400\n2026-10-03T01:32:45Z UpdateTip: new best=6b4db37959a15643cb67278020fb1cf5a70b79e5e5f97a920277831befed5c90 height=93 version=0x20000000 log2_work=7.554589 tx=94 date='2026-10-03T01:33:02Z' progress=1.000000 cache=0.3MiB(93txo)\n2026-10-03T01:32:45Z CreateNewBlock(): block weight: 888 txs: 0 fees: 0 sigops 400\n2026-10-03T01:32:45Z UpdateTip: new best=6f8cfedeca99f062605af1fc7b28a1de4d6d0e349dec1ad14d7497b24423b64b height=94 version=0x20000000 log2_work=7.569856 tx=95 date='2026-10-03T01:33:02Z' progress=1.000000 cache=0.3MiB(94txo)\n2026-10-03T01:32:45Z CreateNewBlock(): block weight: 888 txs: 0 fees: 0 sigops 400\n2026-10-03T01:32:45Z UpdateTip: new best=2d3d26bbd9d776e209beb6078c38db02883429f0003e7a18014616ee87f17940 height=95 version=0x20000000 log2_work=7.584963 tx=96 date='2026-10-03T01:33:02Z' progress=1.000000 cache=0.3MiB(95txo)\n2026-10-03T01:32:45Z CreateNewBlock(): block weight: 888 txs: 0 fees: 0 sigops 400\n2026-10-03T01:32:45Z [miner] AddToWallet 0fd1c56c27d1e4b6fd6ce58b4085a1e730b3685d5298691e7c40575ae39b8d8a  new Confirmed (block=460b495c94409034b6c89dcf53ada1bec83b69ab471a1df4995784ae634cb76f, height=91, index=0)\n2026-10-03T01:32:45Z [miner] AddToWallet 601881841e00fc32881aaa5e35c8a3899ef4da7fc59469eb1d509390b1d61d0c  new Confirmed (block=3a597e9a38840d7ae4a14479b87534736d79fa50609bd3211244883d7ee59651, height=92, index=0)\n2026-10-03T01:32:45Z [miner] AddToWallet 63500cb6cf6467d9c048dc82858364b49b867fc6981775790bb14722f431fa56  new Confirmed (block=6b4db37959a15643cb67278020fb1cf5a70b79e5e5f97a920277831befed5c90, height=93, index=0)\n2026-10-03T01:32:45Z [miner] AddToWallet fe4c69203d8246b388bdb2602dab808bfa5ca06d2377f9d20e204c910736e29d  new Confirmed (block=6f8cfedeca99f062605af1fc7b28a1de4d6d0e349dec1ad14d7497b24423b64b, height=94, index=0)\n2026-10-03T01:32:45Z [miner] AddToWallet f5afc28da7c3637d1e5452ee75583bf6e7323c07d9ce8364039c41d2e2029223  new Confirmed (block=2d3d26bbd9d776e209beb6078c38db02883429f0003e7a18014616ee87f17940, height=95, index=0)\n2026-10-03T01:32:45Z UpdateTip: new best=671974d39b82a67c4957d8d8cf6e57e5b6f827c4d0db5035f7279d26963d92e9 height=96 version=0x20000000 log2_work=7.599913 tx=97 date='2026-10-03T01:33:02Z' progress=1.000000 cache=0.3MiB(96txo)\n2026-10-03T01:32:45Z CreateNewBlock(): block weight: 888 txs: 0 fees: 0 sigops 400\n2026-10-03T01:32:45Z UpdateTip: new best=01dedc809065667e8d47f73a07f1154f9db4ca9cb80427c13be081e967062fb2 height=97 version=0x20000000 log2_work=7.614710 tx=98 date='2026-10-03T01:33:02Z' progress=1.000000 cache=0.3MiB(97txo)\n2026-10-03T01:32:45Z CreateNewBlock(): block weight: 888 txs: 0 fees: 0 sigops 400\n2026-10-03T01:32:45Z UpdateTip: new best=149cdb7cd7c5aee5d7519da15b8b2f5b5ce31972882246b1dab6ce00dd25d174 height=98 version=0x20000000 log2_work=7.629357 tx=99 date='2026-10-03T01:33:03Z' progress=1.000000 cache=0.3MiB(98txo)\n2026-10-03T01:32:45Z CreateNewBlock(): block weight: 888 txs: 0 fees: 0 sigops 400\n2026-10-03T01:32:45Z UpdateTip: new best=22b7071dc38eeba867bda4e29f24265c35f6f3197b7f0f172e09c7e4a281c211 height=99 version=0x20000000 log2_work=7.643856 tx=100 date='2026-10-03T01:33:03Z' progress=1.000000 cache=0.3MiB(99txo)\n2026-10-03T01:32:45Z CreateNewBlock(): block weight: 888 txs: 0 fees: 0 sigops 400\n2026-10-03T01:32:45Z UpdateTip: new best=7b8e9ad24d5b69f6e4e916b1c51c5ace612a6962f1122dab151fd97e9a552b1a height=100 version=0x20000000 log2_work=7.658211 tx=101 date='2026-10-03T01:33:03Z' progress=1.000000 cache=0.3MiB(100txo)\n2026-10-03T01:32:45Z CreateNewBlock(): block weight: 888 txs: 0 fees: 0 sigops 400\n2026-10-03T01:32:45Z [miner] AddToWallet 6669a147cc9b68ef8159bc49511740b721ed8af73cc0c4725e8e04dddfe629ce  new Confirmed (block=671974d39b82a67c4957d8d8cf6e57e5b6f827c4d0db5035f7279d26963d92e9, height=96, index=0)\n2026-10-03T01:32:45Z [miner] AddToWallet e398fc26e3e9b67d310992034e2c062fe591d1e50336d52c19b5ba826aa9b663  new Confirmed (block=01dedc809065667e8d47f73a07f1154f9db4ca9cb80427c13be081e967062fb2, height=97, index=0)\n2026-10-03T01:32:45Z [miner] AddToWallet bb7110b348df5843c381b1273c00711b567407a33d06ff28f847e9b01bbffc91  new Confirmed (block=149cdb7cd7c5aee5d7519da15b8b2f5b5ce31972882246b1dab6ce00dd25d174, height=98, index=0)\n2026-10-03T01:32:45Z [miner] AddToWallet 49a8261d0e418c2f29597e6d38e932ba4c40f0aa50f71514cf661ede17aaa803  new Confirmed (block=22b7071dc38eeba867bda4e29f24265c35f6f3197b7f0f172e09c7e4a281c211, height=99, index=0)\n2026-10-03T01:32:45Z [miner] AddToWallet 8ec37369fcbbdacba02202e78fc76a7d714a42bfbc72364985a8a3a009248234  new Confirmed (block=7b8e9ad24d5b69f6e4e916b1c51c5ace612a6962f1122dab151fd97e9a552b1a, height=100, index=0)\n2026-10-03T01:32:45Z UpdateTip: new best=467d8cd9b524fde3f8a623b1da9947a73be9e721ab16e54d6167e6b6be9347de height=101 version=0x20000000 log2_work=7.672425 tx=102 date='2026-10-03T01:33:03Z' progress=1.000000 cache=0.3MiB(101txo)\n2026-10-03T01:32:45Z CreateNewBlock(): block weight: 888 txs: 0 fees: 0 sigops 400\n2026-10-03T01:32:45Z UpdateTip: new best=0c0889203ad63a095421b5944ccf4426d12dbea6ae1a72150c5bdf83a8ea099f height=102 version=0x20000000 log2_work=7.686501 tx=103 date='2026-10-03T01:33:03Z' progress=1.000000 cache=0.3MiB(102txo)\n2026-10-03T01:32:45Z CreateNewBlock(): block weight: 888 txs: 0 fees: 0 sigops 400\n2026-10-03T01:32:45Z UpdateTip: new best=0224d06e81f7f0a84ad89027d1e2e1eddfd9724b72c3831d9ab17d2dc0c73e98 height=103 version=0x20000000 log2_work=7.700440 tx=104 date='2026-10-03T01:33:03Z' progress=1.000000 cache=0.3MiB(103txo)\n2026-10-03T01:32:45Z [miner] AddToWallet 163546f2fa427c1f09cde7f9b2e155e0d5ade7cf576d49b7694367316b9b674f  new Confirmed (block=467d8cd9b524fde3f8a623b1da9947a73be9e721ab16e54d6167e6b6be9347de, height=101, index=0)\n2026-10-03T01:32:45Z [miner] AddToWallet 506abe4e7559aa3f6967dd9fc1c813e36f11ff259250619150da53d7719e717d  new Confirmed (block=0c0889203ad63a095421b5944ccf4426d12dbea6ae1a72150c5bdf83a8ea099f, height=102, index=0)\n2026-10-03T01:32:45Z [miner] AddToWallet 99e9ab047134987f97158414b5593865bfe92791a0d1d363811e525043397a8d  new Confirmed (block=0224d06e81f7f0a84ad89027d1e2e1eddfd9724b72c3831d9ab17d2dc0c73e98, height=103, index=0)\n2026-10-03T01:33:01Z [miner] Coin Selection: Algorithm:knapsack, Waste Metric Score:99\n2026-10-03T01:33:01Z [miner] Fee Calculation: Fee:141 Bytes:141 Tgt:0 (requested 6) Reason:\"Fallback fee\" Decay 0.00000: Estimation: (-1 - -1) 0.00% 0.0/(0.0 0 mem 0.0 out) Fail: (-1 - -1) 0.00% 0.0/(0.0 0 mem 0.0 out)\n2026-10-03T01:33:01Z [miner] Coin Selection: Algorithm:knapsack, Waste Metric Score:-1125\n2026-10-03T01:33:01Z [miner] Fee Calculation: Fee:276 Bytes:276 Tgt:0 (requested 6) Reason:\"Fallback fee\" Decay 0.00000: Estimation: (-1 - -1) 0.00% 0.0/(0.0 0 mem 0.0 out) Fail: (-1 - -1) 0.00% 0.0/(0.0 0 mem 0.0 out)\n2026-10-03T01:33:01Z [miner] Fee non-grouped = 141, grouped = 276, using non-grouped\n2026-10-03T01:33:01Z [miner] CommitTransaction:\nCTransaction(hash=eb5a319b29, ver=2, vin.size=1, vout.size=2, nLockTime=103)\n    CTxIn(COutPoint(83ebe5ab8a, 0), scriptSig=, nSequence=4294967293)\n    CScriptWitness(304402206d8d95dd76b7cc67885a6c42bd7d46c7e5dd6d1cbe8977264302b29c7274726502203409bfe500762799a10352e5784adabdadbb559a98c7e1e406f07d948f2a1d6d01, 0342681e3d16e434cd341da8dec8c3d7f0f6f48e369571c89493d947ece0a38121)\n    CTxOut(nValue=1.00000000, scriptPubKey=0014c62ec1117fa030b9771639f1e1)\n    CTxOut(nValue=48.99999859, scriptPubKey=001474e360a5ae5c5634a01db0c6bc)\n2026-10-03T01:33:01Z [miner] AddToWallet eb5a319b29d2d8b80cc34d3eccbf4f982014965302e95bdadc79aeabd2449b3d  newupdate Inactive (abandoned=0)\n2026-10-03T01:33:01Z [miner] Submitting wtx eb5a319b29d2d8b80cc34d3eccbf4f982014965302e95bdadc79aeabd2449b3d to mempool for relay\n2026-10-03T01:33:01Z [miner] AddToWallet eb5a319b29d2d8b80cc34d3eccbf4f982014965302e95bdadc79aeabd2449b3d   InMempool\n2026-10-03T01:33:01Z CreateNewBlock(): block weight: 1449 txs: 1 fees: 141 sigops 401\n2026-10-03T01:33:01Z UpdateTip: new best=10f436c7c461cb932f9d547ace08097121134998afd3ac509d5e49c02b99227d height=104 version=0x20000000 log2_work=7.714246 tx=106 date='2026-10-03T01:33:04Z' progress=1.000000 cache=0.3MiB(106txo)\n2026-10-03T01:33:01Z [miner] AddToWallet 0936d36f4e4bc9ce1626bb52a228e0931311862c4d63a5ed5231ba1324029c74  new Confirmed (block=10f436c7c461cb932f9d547ace08097121134998afd3ac509d5e49c02b99227d, height=104, index=0)\n2026-10-03T01:33:01Z [miner] AddToWallet eb5a319b29d2d8b80cc34d3eccbf4f982014965302e95bdadc79aeabd2449b3d  update Confirmed (block=10f436c7c461cb932f9d547ace08097121134998afd3ac509d5e49c02b99227d, height=104, index=1)\n2026-10-03T01:33:05Z CreateNewBlock(): block weight: 2297 txs: 1 fees: 1765 sigops 401\n2026-10-03T01:33:05Z UpdateTip: new best=51205bbff87b3dac0d0be2975f6716bf6d800b5292b837ae98b3461877d14af9 height=105 version=0x20000000 log2_work=7.727920 tx=108 date='2026-10-03T01:33:05Z' progress=1.000000 cache=0.3MiB(6txo)\n2026-10-03T01:33:05Z [miner] AddToWallet 6c1ec8072a6f2793455d96831a676b62b2e0bd2c1d462f5f3dd47a9f2b898d69  new Confirmed (block=51205bbff87b3dac0d0be2975f6716bf6d800b5292b837ae98b3461877d14af9, height=105, index=0)\n2026-10-03T01:33:13Z CreateNewBlock(): block weight: 2476 txs: 1 fees: 1990 sigops 401\n2026-10-03T01:33:13Z UpdateTip: new best=132b91824d066b077f5910776a146c7cd0e2ac76ed1280ab240bac06f707436c height=106 version=0x20000000 log2_work=7.741467 tx=110 date='2026-10-03T01:33:13Z' progress=1.000000 cache=0.3MiB(8txo)\n2026-10-03T01:33:13Z [miner] AddToWallet 27e85a8f5964b8db3f154c7ed42f7ce0a407e18f31c25c618d045d6354c62a74  new Confirmed (block=132b91824d066b077f5910776a146c7cd0e2ac76ed1280ab240bac06f707436c, height=106, index=0)\n",
+    "crc-fresh-44ee7a69-5021-444c-b3b9-af89940003c0-db": "The files belonging to this database system will be owned by user \"postgres\".\nThis user must also own the server process.\n\nThe database cluster will be initialized with locale \"en_US.utf8\".\nThe default database encoding has accordingly been set to \"UTF8\".\nThe default text search configuration will be set to \"english\".\n\nData page checksums are disabled.\n\nfixing permissions on existing directory /var/lib/postgresql/data ... ok\ncreating subdirectories ... ok\nselecting dynamic shared memory implementation ... posix\nselecting default max_connections ... 100\nselecting default shared_buffers ... 128MB\nselecting default time zone ... UTC\ncreating configuration files ... ok\nrunning bootstrap script ... ok\nperforming post-bootstrap initialization ... ok\nsyncing data to disk ... ok\n\n\nSuccess. You can now start the database server using:\n\n    pg_ctl -D /var/lib/postgresql/data -l logfile start\n\nwaiting for server to start....2026-10-03 01:32:44.335 UTC [53] LOG:  starting PostgreSQL 16.14 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit\n2026-10-03 01:32:44.335 UTC [53] LOG:  listening on Unix socket \"/var/run/postgresql/.s.PGSQL.5432\"\n2026-10-03 01:32:44.337 UTC [56] LOG:  database system was shut down at 2026-10-03 01:32:44 UTC\n2026-10-03 01:32:44.340 UTC [53] LOG:  database system is ready to accept connections\n done\nserver started\n2026-10-03 01:32:44.453 UTC [71] FATAL:  database \"crc_fresh\" does not exist\nCREATE DATABASE\n\n\n/usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*\n\nwaiting for server to shut down....2026-10-03 01:32:44.476 UTC [53] LOG:  received fast shutdown request\n2026-10-03 01:32:44.477 UTC [53] LOG:  aborting any active transactions\n2026-10-03 01:32:44.479 UTC [53] LOG:  background worker \"logical replication launcher\" (PID 59) exited with exit code 1\n2026-10-03 01:32:44.479 UTC [54] LOG:  shutting down\n2026-10-03 01:32:44.479 UTC [54] LOG:  checkpoint starting: shutdown immediate\n2026-10-03 01:32:44.496 UTC [54] LOG:  checkpoint complete: wrote 926 buffers (5.7%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.011 s, sync=0.004 s, total=0.017 s; sync files=301, longest=0.001 s, average=0.001 s; distance=4283 kB, estimate=4283 kB; lsn=0/1925D60, redo lsn=0/1925D60\n2026-10-03 01:32:44.502 UTC [53] LOG:  database system is shut down\n done\nserver stopped\n\nPostgreSQL init process complete; ready for start up.\n\n",
+    "crc-fresh-44ee7a69-5021-444c-b3b9-af89940003c0-guardian": "/app/apps/guardian:\n ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/guardian@0.1.0 start: `tsx src/index.ts`\nExit status 1\n ELIFECYCLE  Command failed with exit code 1.\n",
+    "crc-fresh-44ee7a69-5021-444c-b3b9-af89940003c0-worker": "\n> @crclaunch/worker@0.1.0 start /app/apps/worker\n> tsx src/crc.ts\n\nCRC worker started for regtest at activation 101\nCRC cursor 103; indexed 3, rolled back 0\n/app/apps/worker:\n ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/worker@0.1.0 start: `tsx src/crc.ts`\nCommand failed with signal \"SIGTERM\"\n\n> @crclaunch/worker@0.1.0 start /app/apps/worker\n> tsx src/crc.ts\n\nCRC worker started for regtest at activation 101\n/app/apps/worker:\n ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/worker@0.1.0 start: `tsx src/crc.ts`\nCommand failed with signal \"SIGTERM\"\n\n> @crclaunch/worker@0.1.0 start /app/apps/worker\n> tsx src/crc.ts\n\nCRC worker started for regtest at activation 101\nCRC cursor 103; indexed 3, rolled back 0\nCRC cursor 104; indexed 1, rolled back 0\nCRC cursor 105; indexed 1, rolled back 0\nCRC cursor 106; indexed 1, rolled back 0\n/app/apps/worker:\n ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/worker@0.1.0 start: `tsx src/crc.ts`\nExit status 1\n",
+    "crc-fresh-44ee7a69-5021-444c-b3b9-af89940003c0-web": "\n> @crclaunch/web@0.1.0 start /app/apps/web\n> next start\n\n   ▲ Next.js 15.5.26\n   - Local:        http://localhost:3000\n   - Network:      http://192.168.160.6:3000\n\n ✓ Starting...\n ✓ Ready in 399ms\n/app/apps/web:\n ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 start: `next start`\nCommand failed with signal \"SIGTERM\"\n\n> @crclaunch/web@0.1.0 start /app/apps/web\n> next start\n\n   ▲ Next.js 15.5.26\n   - Local:        http://localhost:3000\n   - Network:      http://192.168.160.6:3000\n\n ✓ Starting...\n ✓ Ready in 364ms\n/app/apps/web:\n ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @crclaunch/web@0.1.0 start: `next start`\nCommand failed with signal \"SIGTERM\"\n\n> @crclaunch/web@0.1.0 start /app/apps/web\n> next start\n\n   ▲ Next.js 15.5.26\n   - Local:        http://localhost:3000\n   - Network:      http://192.168.160.6:3000\n\n ✓ Starting...\n ✓ Ready in 379ms\n"
+  },
+  "finishedAt": "2026-10-03T01:33:15.943Z"
+}
