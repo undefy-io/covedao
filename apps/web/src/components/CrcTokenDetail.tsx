@@ -1,4 +1,5 @@
 "use client";
+import { crcWalletData } from "@/lib/crc-wallet-data";
 
 import Link from "next/link";
 import { atomsPerToken, capAtoms, carrierSats, curveStepAtoms, decodeProtocolDto, type Plan } from "@crclaunch/crc20-protocol";
@@ -88,7 +89,8 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
         setQuote(null);
         return;
       }
-      const paymentFunding = (await getUtxos(true)).slice(0, 40);
+      const candidates = (await getUtxos(true)).slice(0, 40);
+      const { funding: paymentFunding, fundingEvidence } = await crcWalletData(network).funding(address, candidates, [address, ordinalsAddress || address]);
       let sellerFunding: { txid: string; vout: number }[] | undefined;
       if (side === "sell") {
         const response = await fetch(`/api/crc/v1/tokens/${encodeURIComponent(assetId)}/utxos?address=${encodeURIComponent(ordinalsAddress || address)}`, { cache: "no-store" });
@@ -110,7 +112,7 @@ export function CrcTokenDetail({ assetId }: { assetId: string }) {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({
           assetId, amountAtoms, walletAddress: address, ordinalsAddress: ordinalsAddress || address,
-          walletPublicKey: publicKey, ordinalsPublicKey, paymentFunding, sellerFunding,
+          walletPublicKey: publicKey, ordinalsPublicKey, paymentFunding, sellerFunding, fundingEvidence,
           feeTier, idempotencyKey: crypto.randomUUID(),
         }),
       });

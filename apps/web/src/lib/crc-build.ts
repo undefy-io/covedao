@@ -20,7 +20,9 @@ import {
 import { createCrcBuildSession, findCrcBuildSessionByKey } from "./crc-session";
 import { quoteCrcBuy, quoteCrcSell, type CrcQuoteAsset } from "./crc-quote";
 import { parseCrcLaunchMetadata, type CrcLaunchMetadata } from "./crc-metadata";
+import { verifyFundingEvidence } from "./crc-funding-evidence";
 type Common = {
+  fundingEvidence?: unknown;
   db: Database;
   network: "regtest" | "signet" | "testnet" | "mainnet";
   bitcoinNetwork: bitcoin.networks.Network;
@@ -181,6 +183,7 @@ export async function buildCrcLaunchSession(
     recoveryProfile: VaultRecoveryProfile;
   },
 ) {
+  const evidenceInputs = verifyFundingEvidence(params.fundingEvidence, params.network, params.funding, params.walletScriptHex);
   const metadata = parseCrcLaunchMetadata(params.metadata, params.ticker);
   const hash = requestHash(params, {
     ticker: params.ticker,
@@ -228,7 +231,7 @@ export async function buildCrcLaunchSession(
     params.network,
     params.walletScriptHex,
     params.funding,
-    { publicKeyHex: params.walletPublicKeyHex },
+    { publicKeyHex: params.walletPublicKeyHex, evidenceInputs },
   );
   const plan = selectPlan(params, candidates, (funding, minerFeeSats) =>
     core.buildDeploy({ config, funding, minerFeeSats, changeScriptHex: params.walletScriptHex }),
@@ -282,6 +285,7 @@ export async function buildCrcTradeSession(
     paymentFunding: CrcFundingOutpoint[];
   },
 ) {
+  const evidenceInputs = verifyFundingEvidence(params.fundingEvidence, params.network, params.paymentFunding, params.walletScriptHex);
   const hash = requestHash(params, {
     assetId: params.asset.assetId,
     operation: params.operation,
@@ -340,7 +344,7 @@ export async function buildCrcTradeSession(
     params.network,
     params.walletScriptHex,
     params.paymentFunding,
-    { publicKeyHex: params.walletPublicKeyHex },
+    { publicKeyHex: params.walletPublicKeyHex, evidenceInputs },
   );
   const plan = selectPlan(
     params,
@@ -425,6 +429,7 @@ export async function buildCrcTokenSession(
     tokenPublicKeyHex?: string;
   },
 ) {
+  const evidenceInputs = verifyFundingEvidence(params.fundingEvidence, params.network, params.paymentFunding, params.walletScriptHex);
   const hash = requestHash(params, {
     deployTxid: params.deployTxid,
     operation: params.operation,
@@ -462,7 +467,7 @@ export async function buildCrcTokenSession(
     params.network,
     params.walletScriptHex,
     params.paymentFunding,
-    { publicKeyHex: params.walletPublicKeyHex },
+    { publicKeyHex: params.walletPublicKeyHex, evidenceInputs },
   );
   const plan = selectPlan(params, candidates, (funding, minerFeeSats) =>
     (params.operation === "listing" ? core.buildListing : core.buildTransfer)({
@@ -523,6 +528,7 @@ export async function buildCrcOfferSession(
     tokenPublicKeyHex?: string;
   },
 ) {
+  const evidenceInputs = verifyFundingEvidence(params.fundingEvidence, params.network, params.paymentFunding, params.walletScriptHex);
   const hash = requestHash(params, {
     operation: params.operation,
     offerId: params.offerId,
@@ -543,7 +549,7 @@ export async function buildCrcOfferSession(
     params.network,
     params.walletScriptHex,
     params.paymentFunding,
-    { publicKeyHex: params.walletPublicKeyHex },
+    { publicKeyHex: params.walletPublicKeyHex, evidenceInputs },
   );
   const plan = selectPlan(params, candidates, (funding, minerFeeSats) =>
     params.operation === "purchase"

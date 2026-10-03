@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
+import { VerifiedParentCache } from "./verified-parents";
 import * as bitcoin from "bitcoinjs-lib";
 import { sql } from "drizzle-orm";
 import type { Database } from "@crclaunch/db";
@@ -44,6 +45,7 @@ export type CrcSignResponse =
   | { ok: true; signedPsbtBase64: string; signatureHex: string; unsignedTxDigest: string }
   | { ok: false; reason: string; detail: string };
 export class CrcGuardianSigningService {
+  private readonly parents: VerifiedParentCache;
   constructor(
     private readonly options: {
       db: Database;
@@ -55,7 +57,9 @@ export class CrcGuardianSigningService {
       protocolScript: Buffer;
       maxMinerFeeSats: bigint;
     },
-  ) {}
+  ) {
+    this.parents = new VerifiedParentCache(txid => this.options.core.getRawTransaction(txid));
+  }
   async probe(): Promise<void> {
     await this.options.db.execute(sql`select network from crc_signatures limit 1`);
     await this.options.db.execute(sql`select network from crc_registrations limit 1`);
@@ -142,7 +146,7 @@ export class CrcGuardianSigningService {
     for (const input of deploy.inputs) {
       let rawParent = parents.get(input.txid);
       if (!rawParent) {
-        rawParent = await this.options.core.getRawTransaction(input.txid);
+        rawParent = await this.parents.get(input.txid);
         parents.set(input.txid, rawParent);
       }
       const parent = core.parseRawTransaction(rawParent),

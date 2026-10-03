@@ -1,4 +1,5 @@
 "use client";
+import { crcWalletData } from "@/lib/crc-wallet-data";
 
 import { useCallback, useEffect, useState } from "react";
 import * as core from "@crclaunch/crc20-protocol";
@@ -9,7 +10,7 @@ import { cancelCrcMarketListing, type CrcMarketListing } from "@/lib/crc-market-
 import { formatAtoms } from "./CrcHome";
 import { useWallet } from "./WalletProvider";
 
-type TokenCoin = { txid: string; vout: number; atoms: string; scriptHex: string };
+type TokenCoin = { txid: string; vout: number; atoms: string; btcSats: string; scriptHex: string };
 type BitcoinCoin = { txid: string; vout: number; valueSats: string; confirmations?: number };
 type Token = { assetId: string; network: string; deployTxid: string; ticker: string; coreState: unknown };
 type FillRequest = { fillId: string; amountAtoms: string; priceSats: string; expiresAt: string };
@@ -60,7 +61,7 @@ export function CrcMarketSeller() {
     void Promise.all([
       api<{ indexedTip: { height: string }; token: Token }>(`/api/crc/v1/tokens/${encodeURIComponent(assetId)}`),
       api<{ utxos: TokenCoin[]; truncated: boolean }>(`/api/crc/v1/tokens/${encodeURIComponent(assetId)}/utxos?address=${encodeURIComponent(ordinalsAddress)}`),
-      api<{ utxos: BitcoinCoin[] }>(`/api/crc/v1/wallet/utxos?address=${encodeURIComponent(ordinalsAddress)}`),
+      crcWalletData(network).coins(ordinalsAddress).then(utxos => ({ utxos: utxos as BitcoinCoin[] })),
     ]).then(([detail, tokenOutputs, bitcoinOutputs]) => {
       if (!alive) return;
       if (tokenOutputs.truncated) throw new Error("This address has more than 100 token outputs. Consolidate before listing.");
@@ -102,10 +103,13 @@ export function CrcMarketSeller() {
       const [current, tokens, bitcoins] = await Promise.all([
         api<{ indexedTip: { height: string }; token: Token }>(`/api/crc/v1/tokens/${encodeURIComponent(assetId)}`),
         api<{ utxos: TokenCoin[]; truncated: boolean }>(`/api/crc/v1/tokens/${encodeURIComponent(assetId)}/utxos?address=${encodeURIComponent(ordinalsAddress)}`),
-        api<{ utxos: BitcoinCoin[] }>(`/api/crc/v1/wallet/utxos?address=${encodeURIComponent(ordinalsAddress)}`),
+        crcWalletData(network).coins(ordinalsAddress).then(utxos => ({ utxos: utxos as BitcoinCoin[] })),
       ]);
       const coin = tokens.utxos.find((item) => item.txid === preview.sellerAnchorTxid && item.vout === preview.sellerAnchorVout);
       if (!coin || tokens.truncated) throw new Error("Selected token output moved. Preview again.");
+      const observed = await crcWalletData(network).observe([ordinalsAddress], [{ txid: coin.txid, vout: coin.vout, sats: BigInt(coin.btcSats), scriptHex: coin.scriptHex }]);
+      const live = observed.find(row => row.txid === coin.txid && row.vout === coin.vout);
+      if (!live || live.valueSats !== coin.btcSats) throw new Error("Selected token output moved. Preview again.");
       const rechecked = makeCrcSellerListing({ network, coreState: current.token.coreState, sellerScriptHex: ordinalsScript,
         publicKeyHex: ordinalsPublicKey || wallet.publicKey, tokenCoin: coin,
         bitcoinCoin: bitcoins.utxos.find((item) => item.txid === coin.txid && item.vout === coin.vout) ?? null,

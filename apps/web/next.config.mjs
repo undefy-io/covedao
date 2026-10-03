@@ -2,6 +2,7 @@ import { config as loadEnv } from "dotenv";
 import { fileURLToPath } from "node:url";
 import sentry from "@sentry/nextjs/config";
 import { cleanEnv, str, url } from "envalid";
+import { publicChainUrl } from "./public-chain-config.mjs";
 
 const { withSentryConfig } = sentry;
 
@@ -33,6 +34,8 @@ const nextConfig = {
   // (@crclaunch/config); the env override is honoured off mainnet only.
   env: {
     NEXT_PUBLIC_COVE_NETWORK: network,
+    NEXT_PUBLIC_COVE_BITCOIN_RPC_URL: publicChainUrl(process.env.NEXT_PUBLIC_COVE_BITCOIN_RPC_URL) ?? "",
+    NEXT_PUBLIC_COVE_ESPLORA_URL: publicChainUrl(process.env.NEXT_PUBLIC_COVE_ESPLORA_URL) ?? "",
     NEXT_PUBLIC_EXPLORER_URL: network === "mainnet" ? "" : (process.env.NEXT_PUBLIC_EXPLORER_URL ?? ""),
     NEXT_PUBLIC_SENTRY_DSN: buildEnv.SENTRY_DSN ?? "",
     NEXT_PUBLIC_SENTRY_ENVIRONMENT: buildEnv.SENTRY_ENVIRONMENT,

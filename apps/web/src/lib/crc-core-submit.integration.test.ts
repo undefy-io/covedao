@@ -144,6 +144,13 @@ async function cacheFunding(wallet: "alice" | "bob" = "alice") {
   );
   return [{ txid: input.txid, vout: input.vout }];
 }
+async function browserFunding(wallet: "alice" | "bob" = "alice") {
+  const input = node.funding(wallet);
+  const funding = [{ txid: input.txid, vout: input.vout }];
+  const rawHex = node.rpc("getrawtransaction", [input.txid]);
+  await database.pool.query("delete from cove_wallet_funding where network=$1 and wallet_script=$2", ["regtest", wallet === "alice" ? aliceScript : bobScript]);
+  return { funding, paymentFunding: funding, fundingEvidence: { version: 1 as const, network: "regtest", parents: [{ txid: input.txid, rawHex }] } };
+}
 function walletSign(psbtBase64: string, guardian = false, entropy?: number, key = aliceKey) {
   const psbt = bitcoin.Psbt.fromBase64(psbtBase64);
   for (let index = guardian ? 1 : 0; index < psbt.inputCount; index++)
@@ -241,7 +248,7 @@ test("HTTP submit registers exact signed core deployment before actual broadcast
     walletScriptHex: aliceScript,
     tokenScriptHex: aliceScript,
     walletPublicKeyHex: Buffer.from(aliceKey.publicKey).toString("hex"),
-    funding: await cacheFunding(),
+    ...await browserFunding(),
     minerFeeSats: 1000,
     idempotencyKey: "http-deploy",
     feeScriptHex: protocolScript,
@@ -286,7 +293,7 @@ test("HTTP API sends verified wallet first to actual shared Guardian and mines i
     walletScriptHex: aliceScript,
     tokenScriptHex: aliceScript,
     walletPublicKeyHex: Buffer.from(aliceKey.publicKey).toString("hex"),
-    paymentFunding: await cacheFunding(),
+    ...await browserFunding(),
     minerFeeSats: 1000,
     idempotencyKey: "http-mint",
     feeScriptHex: protocolScript,
@@ -354,12 +361,12 @@ test("HTTP sell and inventory buy mine exact core plans, fees and allocations", 
 }, 60000);
 test("HTTP unsigned or changed wallet response never reaches Core live checks or custody", async () => {
   const asset = (await readCrcQuoteAsset(database.db, "regtest", deployId))!;
-  const built = await buildCrcTradeSession({
+  const args = {
     db: database.db,
-    network: "regtest",
+    network: "regtest" as const,
     bitcoinNetwork: bitcoin.networks.regtest,
     asset,
-    operation: "buy",
+    operation: "buy" as const,
     amountAtoms: 100000000000n,
     walletScriptHex: aliceScript,
     tokenScriptHex: aliceScript,
@@ -368,7 +375,14 @@ test("HTTP unsigned or changed wallet response never reaches Core live checks or
     minerFeeSats: 1000,
     idempotencyKey: "http-wallet-rejection",
     feeScriptHex: protocolScript,
-  });
+  };
+  const built = await buildCrcTradeSession(args);
+  const fundingEvidence = { version: 1, network: "regtest", parents: args.paymentFunding.map(input => ({ txid: input.txid, rawHex: node.rpc("getrawtransaction", [input.txid]) })) };
+  await database.pool.query("delete from cove_wallet_funding where network='regtest' and wallet_script=$1", [aliceScript]);
+  const replayRpcCount = node.calls.length;
+  expect(await buildCrcTradeSession({ ...args, fundingEvidence })).toEqual(built);
+  expect(node.calls).toHaveLength(replayRpcCount);
+  expect((await database.pool.query("select count(*)::int as count from cove_wallet_funding where network='regtest' and wallet_script=$1", [aliceScript])).rows[0].count).toBe(0);
   const count = sign.mock.calls.length,
     rpcCount = node.calls.length;
   for (const responsePsbt of [
@@ -445,7 +459,7 @@ test("HTTP arbitrary transfer and one-transaction listing preserve exact core al
     const tokenFunding = Object.entries(before.allocations)
       .filter(([, a]) => a.deployTxid === deployId && a.scriptHex === aliceScript)
       .map(([key]) => ({ txid: key.split(":")[0]!, vout: Number(key.split(":")[1]) }));
-    const funding = await cacheFunding();
+    const packet = await browserFunding();
     const rpcCount = node.calls.length;
     const response = await crcMarketPost(
       new Request(`http://localhost/api/crc/v1/market/${operation}-build`, {
@@ -457,7 +471,8 @@ test("HTTP arbitrary transfer and one-transaction listing preserve exact core al
           recipientScriptHex: operation === "transfer" ? bobScript : aliceScript,
           priceSats: operation === "listing" ? "5000" : undefined,
           tokenFunding,
-          paymentFunding: funding,
+          paymentFunding: packet.paymentFunding,
+          fundingEvidence: packet.fundingEvidence,
           walletScriptHex: aliceScript,
           tokenScriptHex: aliceScript,
           walletPublicKeyHex: Buffer.from(aliceKey.publicKey).toString("hex"),
@@ -544,7 +559,7 @@ test("core offer activation and buyer-only API fill preserve seller presign and 
     }),
   ).toBe(id);
   const rpcCount = node.calls.length;
-  const funding = await cacheFunding("bob");
+  const packet = await browserFunding("bob");
   const afterFunding = node.calls.length;
   const reserved = await crcMarketPost(
     new Request("http://localhost/api/crc/v1/market/reserve", {
@@ -555,7 +570,8 @@ test("core offer activation and buyer-only API fill preserve seller presign and 
         walletScriptHex: bobScript,
         tokenScriptHex: bobScript,
         walletPublicKeyHex: Buffer.from(bobKey.publicKey).toString("hex"),
-        paymentFunding: funding,
+        paymentFunding: packet.paymentFunding,
+        fundingEvidence: packet.fundingEvidence,
         minerFeeSats: 1000,
         idempotencyKey: "http-presigned-purchase",
       }),
@@ -652,7 +668,7 @@ test("API cancellation mines, rolls back with actual reorg, and rebroadcasts its
     tokenScriptHex: bobScript,
     walletPublicKeyHex: Buffer.from(bobKey.publicKey).toString("hex"),
     tokenPublicKeyHex: Buffer.from(bobKey.publicKey).toString("hex"),
-    paymentFunding: await cacheFunding("bob"),
+    ...await browserFunding("bob"),
     minerFeeSats: 1000,
     idempotencyKey: "http-cancel",
     feeScriptHex: protocolScript,
@@ -867,7 +883,7 @@ test("API admits competing advisory builds but rejects the spent vault before se
 
 test("HTTP sell build replay survives consumed token inputs, funding refresh and fee changes", async () => {
   const before = await sync();
-  const funding = await cacheFunding();
+  const packet = await browserFunding();
   const tokens = Object.keys(before.allocations)
     .filter(
       (key) =>
@@ -889,7 +905,8 @@ test("HTTP sell build replay survives consumed token inputs, funding refresh and
     ordinalsAddress: aliceAddress,
     walletPublicKey: Buffer.from(aliceKey.publicKey).toString("hex"),
     ordinalsPublicKey: Buffer.from(aliceKey.publicKey).toString("hex"),
-    paymentFunding: funding,
+    paymentFunding: packet.paymentFunding,
+    fundingEvidence: packet.fundingEvidence as unknown,
     sellerFunding: tokens,
     feeTier: "standard",
     idempotencyKey: "http-sell-build-replay",
@@ -917,6 +934,14 @@ test("HTTP sell build replay survives consumed token inputs, funding refresh and
   expect(retried.data.psbtBase64).toBe(built.psbtBase64);
   expect(retried.data.intent).toEqual(built.intent);
   expect(node.calls).toHaveLength(rpcCount);
+  payload.fundingEvidence = { ...packet.fundingEvidence, parents: [{ ...packet.fundingEvidence.parents[0]!, rawHex: "00" }] };
+  const invalid = await crcTradeBuildRoute(request(), "sell");
+  expect(invalid.status).toBe(400);
+  expect(await invalid.json()).toMatchObject({ ok: false, error: { code: "FUNDING_INPUT_INVALID" } });
+  payload.fundingEvidence = undefined;
+  const legacy = await crcTradeBuildRoute(request(), "sell");
+  expect((await legacy.json()).data.sessionId).toBe(built.sessionId);
+  expect(node.calls).toHaveLength(rpcCount);
 }, 60000);
 
 const invAtoms = (n: number) => BigInt(n) * core.atomsPerToken;
@@ -929,7 +954,7 @@ async function inventoryTrade(
   const ledger = await sync(),
     script = owner === "alice" ? aliceScript : bobScript,
     key = owner === "alice" ? aliceKey : bobKey;
-  const funding = await cacheFunding(owner);
+  const packet = await browserFunding(owner);
   const args = {
     db: database.db,
     network: "regtest" as const,
@@ -941,7 +966,7 @@ async function inventoryTrade(
     tokenScriptHex: script,
     walletPublicKeyHex: Buffer.from(key.publicKey).toString("hex"),
     tokenPublicKeyHex: Buffer.from(key.publicKey).toString("hex"),
-    paymentFunding: funding,
+    ...packet,
     minerFeeSats: 1000,
     idempotencyKey: tag,
     feeScriptHex: protocolScript,

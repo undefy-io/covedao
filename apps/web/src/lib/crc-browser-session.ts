@@ -1,3 +1,4 @@
+import { crcWalletData } from "./crc-wallet-data";
 import * as bitcoin from "bitcoinjs-lib";
 import * as core from "@crclaunch/crc20-protocol";
 import { describeCurveBuy } from "@crclaunch/crc20-adapters";
@@ -118,27 +119,6 @@ export async function signCrcBuildSession(
     { address: tokenAddress, publicKey: wallet.ordinalsPublicKey || wallet.publicKey },
   ];
   const addresses = [...new Set(accounts.map((a) => a.address))];
-  const bitcoinRows = await Promise.all(
-    addresses.map(async (address) => ({
-      address,
-      data: await crcBrowserData<{
-        utxos: { txid: string; vout: number; valueSats: string; confirmations: number }[];
-      }>(request, `/api/crc/v1/wallet/utxos?address=${encodeURIComponent(address)}`),
-    })),
-  );
-  const observed = new Map(
-    bitcoinRows.flatMap(({ address, data }) =>
-      data.utxos
-        .filter((coin) => coin.confirmations > 0)
-        .map(
-          (coin) =>
-            [
-              core.outpoint(coin),
-              { sats: amount(coin.valueSats), scriptHex: crcBrowserScript(address, network) },
-            ] as const,
-        ),
-    ),
-  );
   const ledger = core.emptyLedger(config);
   let asset: core.Asset | undefined;
   let height = 0;
@@ -232,6 +212,10 @@ export async function signCrcBuildSession(
     (input) =>
       !tokens.includes(input) && (!asset || core.outpoint(input) !== core.outpoint(asset.vault)),
   );
+  const bitcoinRows = await crcWalletData(wallet.network, request).observe(addresses, funding.map(input => ({
+    txid: input.txid, vout: input.vout, sats: core.sats(input.sats), scriptHex: input.scriptHex,
+  })));
+  const observed = new Map(bitcoinRows.map(coin => [core.outpoint(coin), { sats: amount(coin.valueSats), scriptHex: coin.scriptHex }]));
   for (const input of funding) {
     const actual = observed.get(core.outpoint(input));
     if (

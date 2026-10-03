@@ -5,6 +5,7 @@ import * as core from "@crclaunch/crc20-protocol";
 import { createPlanPsbt } from "@crclaunch/crc20-adapters";
 import { ECPairFactory } from "ecpair";
 import * as ecc from "tiny-secp256k1";
+import * as walletData from "./crc-wallet-data";
 import { signCrcBuildSession } from "./crc-browser-session";
 const key = ECPairFactory(ecc).fromPrivateKey(Buffer.alloc(32, 1));
 const payment = bitcoin.payments.p2wpkh({
@@ -435,4 +436,15 @@ test("mixed buy top-level receipt accounting and operation reject tampering befo
     ).rejects.toThrow();
   }
   expect(f.signer).not.toHaveBeenCalled();
+});
+
+test("direct review observes ordinary funding only, excluding the custody vault", async () => {
+  const f = mixedBrowserFixture();
+  const observe = vi.fn(async (_addresses: string[], inputs: { txid: string; vout: number; sats: bigint; scriptHex: string }[]) => inputs.map(i => ({ txid: i.txid, vout: i.vout, valueSats: i.sats.toString(), scriptHex: i.scriptHex, confirmations: 1 })));
+  const factory = vi.spyOn(walletData, "crcWalletData").mockReturnValue({ observe } as unknown as walletData.CrcWalletData);
+  try {
+    await signCrcBuildSession(f.built, f.review, wallet, f.signer, f.request);
+    expect(observe.mock.calls[0]![1]).toEqual([input]);
+    expect(f.request.mock.calls.some(([url]) => url.includes("wallet/utxos"))).toBe(false);
+  } finally { factory.mockRestore(); }
 });

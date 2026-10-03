@@ -24,6 +24,8 @@ services:
       dockerfile: Dockerfile.prod
       args:
         COVE_NETWORK: signet
+        NEXT_PUBLIC_COVE_BITCOIN_RPC_URL: ${NEXT_PUBLIC_COVE_BITCOIN_RPC_URL:-}
+        NEXT_PUBLIC_COVE_ESPLORA_URL: ${NEXT_PUBLIC_COVE_ESPLORA_URL:-}
         SENTRY_DSN: ${SENTRY_DSN:-}
         SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-dev}
     working_dir: /app/packages/db
@@ -54,6 +56,8 @@ services:
       dockerfile: Dockerfile.prod
       args:
         COVE_NETWORK: signet
+        NEXT_PUBLIC_COVE_BITCOIN_RPC_URL: ${NEXT_PUBLIC_COVE_BITCOIN_RPC_URL:-}
+        NEXT_PUBLIC_COVE_ESPLORA_URL: ${NEXT_PUBLIC_COVE_ESPLORA_URL:-}
         SENTRY_DSN: ${SENTRY_DSN:-}
         SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-dev}
     working_dir: /app/apps/worker
@@ -103,6 +107,8 @@ services:
       dockerfile: Dockerfile.prod
       args:
         COVE_NETWORK: signet
+        NEXT_PUBLIC_COVE_BITCOIN_RPC_URL: ${NEXT_PUBLIC_COVE_BITCOIN_RPC_URL:-}
+        NEXT_PUBLIC_COVE_ESPLORA_URL: ${NEXT_PUBLIC_COVE_ESPLORA_URL:-}
         SENTRY_DSN: ${SENTRY_DSN:-}
         SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-dev}
     working_dir: /app/apps/web

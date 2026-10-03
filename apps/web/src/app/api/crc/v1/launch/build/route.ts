@@ -38,6 +38,7 @@ export async function POST(req: Request) {
       ticker, metadata,
       walletScriptHex, tokenScriptHex,
       walletPublicKeyHex: normalizeCrcWalletPublicKey(walletScriptHex, strField(body, "walletPublicKey") || undefined),
+      fundingEvidence: body.fundingEvidence,
       funding: funding as { txid: string; vout: number }[],
       feeRateSatPerVb: Number(rate), feeTier, idempotencyKey,
       feeScriptHex: crcVaultConfig.feeScriptHex,

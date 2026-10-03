@@ -20,7 +20,9 @@ test("runtime attestation rejects drift in either service and incomplete manifes
   const { verifyRuntimeHashes } = await import("./crc-fresh-deployment.mjs");
   const files = Object.fromEntries(["protocol/index.ts", "adapters/src/index.ts", "state/src/index.ts", "guardian/src/index.ts"].map((suffix) => ["packages/crc20-"+suffix, "ab".repeat(32)]));
   files["packages/db/src/quotas.ts"] = "ab".repeat(32);
-  assert.equal(verifyRuntimeHashes(files, { ...files }), 5);
+  files["packages/crc20-protocol/wire.ts"] = "ab".repeat(32);
+  files["packages/crc20-guardian/src/verified-parents.ts"] = "ab".repeat(32);
+  assert.equal(verifyRuntimeHashes(files, { ...files }), 7);
   assert.throws(() => verifyRuntimeHashes(files, { ...files, "packages/db/src/quotas.ts": "cd".repeat(32) }));
   const changed = { ...files, "packages/crc20-guardian/src/index.ts": "cd".repeat(32) };
   assert.throws(() => verifyRuntimeHashes(files, changed));

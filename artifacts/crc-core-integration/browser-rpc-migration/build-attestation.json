@@ -1,0 +1,27 @@
+{
+  "runtimeSources": {
+    "covedao-browser-signet:2y8": {
+      "verified": 40
+    },
+    "covedao-browser-guardian:2y8": {
+      "verified": 23
+    }
+  },
+  "browserUrls": {
+    "https://bitcoin-signet-rpc.publicnode.com": [
+      "apps/web/.next/static/chunks/9116-2c4aa3cd76255e30.js",
+      "apps/web/.next/static/chunks/main-8acb6bc289ec5512.js",
+      "apps/web/.next/static/chunks/main-app-855b44f82a397715.js"
+    ],
+    "https://mempool.space/signet/api": [
+      "apps/web/.next/static/chunks/9116-2c4aa3cd76255e30.js",
+      "apps/web/.next/static/chunks/main-8acb6bc289ec5512.js",
+      "apps/web/.next/static/chunks/main-app-855b44f82a397715.js"
+    ]
+  },
+  "images": {
+    "covedao-browser-signet:2y8": "sha256:7e3db3a5ee16c4fd289f6bbacba0401eb43f651fbb2f9d989b69a67db302e2a3",
+    "covedao-browser-guardian:2y8": "sha256:1891759fb2377ac08eb433477bba4f01f15971fbfc777f4cbd255264aed00bf0",
+    "covedao-browser-regtest:2y8": "sha256:6da8409ee9a3f11a466041af82df5abc08c1f10f6f6b4608843f1ecda060e719"
+  }
+}

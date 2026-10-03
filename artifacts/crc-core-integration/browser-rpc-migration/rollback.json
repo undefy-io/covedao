@@ -1,0 +1,8 @@
+{
+  "backup": ".local/signet-backups/browser-2y8/pre-upgrade.dump",
+  "images": {
+    "web": "sha256:fd973b1f7d97c3de0b538f6146e02a2636c962a75a75bfa1a9c95e3ffa457bec",
+    "worker": "sha256:fd973b1f7d97c3de0b538f6146e02a2636c962a75a75bfa1a9c95e3ffa457bec",
+    "guardian": "sha256:41a43812144aad4c774f993755f2fe044272212a1d3faf60a5c6f969342cd8aa"
+  }
+}

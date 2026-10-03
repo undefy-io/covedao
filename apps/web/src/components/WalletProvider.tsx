@@ -1,5 +1,6 @@
 "use client";
 
+import { crcWalletData } from "@/lib/crc-wallet-data";
 import { tr } from "@/i18n";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { NETWORK as COVE_NETWORK } from "@/lib/network";
@@ -293,14 +294,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       const test = getTestWallet();
       return test?.getUtxos ? selectFundingCandidates(await test.getUtxos(), confirmedOnly) : [];
     }
-    // From Cove's own node, not the wallet: the server re-resolves every
-    // outpoint against Core at build time, and a list from somewhere else
-    // just produces failures nobody can explain.
-    const path = "/api/crc/v1/wallet/utxos";
-    const r = await fetch(`${path}?address=${encodeURIComponent(conn.payments.address)}`);
-    const j = await r.json();
-    if (!j.ok) throw new WalletError("FAILED", j.error?.detail || j.error?.message || tr("wal.cannotList"));
-    return selectFundingCandidates(j.data.utxos as WalletFundingCoin[], confirmedOnly);
+    const coins = await crcWalletData(NETWORK).coins(conn.payments.address);
+    return selectFundingCandidates(coins, confirmedOnly);
   }, [conn]);
 
   const getUtxosForAddress = useCallback(async (walletAddress: string, confirmedOnly = false) => {
@@ -310,11 +305,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       if (test?.getUtxosForAddress) return selectFundingCandidates(await test.getUtxosForAddress(walletAddress), confirmedOnly);
       return test?.getUtxos ? selectFundingCandidates(await test.getUtxos(), confirmedOnly) : [];
     }
-    const path = "/api/crc/v1/wallet/utxos";
-    const response = await fetch(`${path}?address=${encodeURIComponent(walletAddress)}`);
-    const body = await response.json();
-    if (!body.ok) throw new WalletError("FAILED", body.error?.detail || body.error?.message || tr("wal.cannotList"));
-    const coins = (body.data.utxos as WalletFundingCoin[]).filter((coin) =>
+    const observed = await crcWalletData(NETWORK).coins(walletAddress);
+    const coins = (observed as WalletFundingCoin[]).filter((coin) =>
       !confirmedOnly || coin.confirmations === undefined || coin.confirmations > 0);
     return coins.sort((a, b) => {
       const left = BigInt(a.valueSats ?? "0");

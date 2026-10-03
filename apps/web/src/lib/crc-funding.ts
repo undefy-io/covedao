@@ -44,11 +44,13 @@ export async function loadCrcFundingCandidates(
   network: string,
   walletScriptHex: string,
   outpoints: readonly CrcFundingOutpoint[],
-  options: { allowCarrier?: boolean; publicKeyHex?: string } = {},
+  options: { allowCarrier?: boolean; publicKeyHex?: string; evidenceInputs?: core.Input[] } = {},
 ): Promise<CrcObservedInput[]> {
   outpoints = parseCrcFundingOutpoints(outpoints);
   if (!outpoints.length) return [];
-  const observed = await walletFundingSnapshot(db, network, walletScriptHex);
+  const observed = options.evidenceInputs === undefined
+    ? await walletFundingSnapshot(db, network, walletScriptHex)
+    : options.evidenceInputs.map(input => ({ ...input, valueSats: core.sats(input.sats).toString(), confirmations: 0 }));
   if (!observed)
     throw new AppError(
       "FUNDING_INPUT_INVALID",
@@ -94,7 +96,7 @@ export async function loadCrcFundingCandidates(
           "CRC funding outpoint was not observed for this wallet",
         );
       const sats = BigInt(coin.valueSats);
-      if (coin.confirmations < 1 || sats <= (options.allowCarrier ? 0n : core.carrierSats))
+      if ((options.evidenceInputs === undefined && coin.confirmations < 1) || sats <= (options.allowCarrier ? 0n : core.carrierSats))
         return null;
       core.sats(sats);
       return { txid, vout, sats, scriptHex: walletScriptHex, ...metadata };

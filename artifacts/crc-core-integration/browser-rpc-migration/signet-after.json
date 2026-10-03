@@ -1,0 +1,28 @@
+{
+  "sessions": {
+    "count": 11,
+    "digest": "f4b3f2c17a576c9f6ce133db493ebbc3"
+  },
+  "registrations": {
+    "count": 1,
+    "digest": "dd03cc52170258c2b18d7333fc995e74"
+  },
+  "events": {
+    "count": 7,
+    "digest": "c99451b3a62eac889ae98d62a030ed0b"
+  },
+  "records": {
+    "count": 25,
+    "digest": "492c1988bd524b9928852d69d3383b7f"
+  },
+  "statuses": [
+    {
+      "status": "BROADCAST",
+      "count": 7
+    },
+    {
+      "status": "BUILT",
+      "count": 4
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import { crcWalletData } from "./crc-wallet-data";
 import * as core from "@crclaunch/crc20-protocol";
 import { crcBrowserData, crcBrowserScript, signCrcBuildSession, type CrcBrowserBuild, type CrcBrowserWallet, type CrcRequest } from "./crc-browser-session";
 
@@ -29,11 +30,11 @@ export async function buyCrcMarketListing(
   if (core.protocolNetwork(wallet.network) !== offer.network || crcBrowserScript(wallet.address, wallet.network) !== wallet.script ||
     crcBrowserScript(wallet.ordinalsAddress, wallet.network) !== wallet.ordinalsScript) throw new Error("Wallet network or address differs from this marketplace");
   if (!Number.isSafeInteger(minerFeeSats) || minerFeeSats < 1 || BigInt(minerFeeSats) > core.maxMinerFeeSats) throw new Error("Miner fee outside core policy");
-  const paymentFunding = await crcMarketFunding(request, wallet.address);
+  const { funding: paymentFunding, fundingEvidence } = await crcMarketFunding(request, wallet);
   const built = await crcBrowserData<CrcBrowserBuild & { fillId: string }>(request, "/api/crc/v1/market/reserve", {
     offerId: row.id, walletScriptHex: wallet.script, tokenScriptHex: wallet.ordinalsScript,
     walletPublicKeyHex: wallet.publicKey, tokenPublicKeyHex: wallet.ordinalsPublicKey || wallet.publicKey,
-    paymentFunding, minerFeeSats, idempotencyKey: crypto.randomUUID(),
+    paymentFunding, fundingEvidence, minerFeeSats, idempotencyKey: crypto.randomUUID(),
   });
   if (built.fillId !== built.sessionId) throw new Error("Market session identity changed");
   const signedPsbtBase64 = await signCrcBuildSession(built, { operation: "purchase", assetId: `${wallet.network}:${offer.deployTxid}`, amountAtoms: offer.listedInput.atoms.toString(), minerFeeSats, offer }, wallet, wallet.signPsbt, request);
@@ -42,13 +43,14 @@ export async function buyCrcMarketListing(
   return result;
 }
 
-async function crcMarketFunding(request: CrcRequest, address: string): Promise<{ txid: string; vout: number }[]> {
-  const coins = await crcBrowserData<{ utxos: { txid: string; vout: number; confirmations: number }[] }>(request, `/api/crc/v1/wallet/utxos?address=${encodeURIComponent(address)}`);
-  const candidates = coins.utxos.filter((coin) => coin.confirmations > 0).slice(0, 40).map(({ txid, vout }) => ({ txid, vout }));
+async function crcMarketFunding(request: CrcRequest, wallet: CrcBrowserWallet) {
+  const data = crcWalletData(wallet.network, request);
+  const coins = await data.coins(wallet.address);
+  const candidates = coins.filter((coin) => (coin.confirmations ?? 0) > 0).slice(0, 40).map(({ txid, vout }) => ({ txid, vout }));
   if (!candidates.length) throw new Error("Not enough confirmed Bitcoin for this sale");
   const checked = await crcBrowserData<{ tokenFreeOutpoints: { txid: string; vout: number }[] }>(request, "/api/crc/v1/market/funding-check", { outpoints: candidates });
   const allowed = new Set(checked.tokenFreeOutpoints.map(core.outpoint));
-  return candidates.filter((coin) => allowed.has(core.outpoint(coin)));
+  return data.funding(wallet.address, candidates.filter((coin) => allowed.has(core.outpoint(coin))), [wallet.address, wallet.ordinalsAddress]);
 }
 
 export async function cancelCrcMarketListing(
@@ -60,11 +62,11 @@ export async function cancelCrcMarketListing(
   if (core.protocolNetwork(wallet.network) !== offer.network || offer.sellerScriptHex !== wallet.ordinalsScript ||
     crcBrowserScript(wallet.address, wallet.network) !== wallet.script || crcBrowserScript(wallet.ordinalsAddress, wallet.network) !== wallet.ordinalsScript) throw new Error("Listing belongs to another wallet or network");
   if (!Number.isSafeInteger(minerFeeSats) || minerFeeSats < 1 || BigInt(minerFeeSats) > core.maxMinerFeeSats) throw new Error("Miner fee outside core policy");
-  const paymentFunding = await crcMarketFunding(request, wallet.address);
+  const { funding: paymentFunding, fundingEvidence } = await crcMarketFunding(request, wallet);
   const built = await crcBrowserData<CrcBrowserBuild>(request, "/api/crc/v1/market/cancel-build", {
     offerId: row.id, walletScriptHex: wallet.script, tokenScriptHex: wallet.ordinalsScript,
     walletPublicKeyHex: wallet.publicKey, tokenPublicKeyHex: wallet.ordinalsPublicKey || wallet.publicKey,
-    paymentFunding, minerFeeSats, idempotencyKey: crypto.randomUUID(),
+    paymentFunding, fundingEvidence, minerFeeSats, idempotencyKey: crypto.randomUUID(),
   });
   const signedPsbtBase64 = await signCrcBuildSession(built, { operation: "cancel", offer, assetId: `${wallet.network}:${offer.deployTxid}`, amountAtoms: offer.listedInput.atoms.toString(), minerFeeSats }, wallet, wallet.signPsbt, request);
   const result = await crcBrowserData<{ txid: string }>(request, "/api/crc/v1/market/cancel", { sessionId: built.sessionId, signedPsbtBase64 });

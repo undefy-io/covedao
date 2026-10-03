@@ -1,4 +1,5 @@
 "use client";
+import { crcWalletData } from "@/lib/crc-wallet-data";
 
 import Link from "next/link";
 import { signCrcBuildSession } from "@/lib/crc-browser-session";
@@ -75,10 +76,11 @@ export function CrcLaunchForm() {
     try {
       const normalized = ticker.trim().toUpperCase();
       if (!rates || !affordableFeeTier(rates, feeTier)) throw new Error("Mining speeds are unavailable. Retry shortly");
-      const funding = (await getUtxos(true)).slice(0, 40);
+      const candidates = (await getUtxos(true)).slice(0, 40);
+      const { funding, fundingEvidence } = await crcWalletData(network).funding(address, candidates, [address, ordinalsAddress || address]);
       const response = await fetch("/api/crc/v1/launch/build", { method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ ticker: normalized, metadata: { displayName: name, description, websiteUrl, xUrl, imageUrl }, walletAddress: address, ordinalsAddress: ordinalsAddress || address,
-          walletPublicKey: publicKey, funding, feeTier, idempotencyKey: crypto.randomUUID() }) });
+          walletPublicKey: publicKey, funding, fundingEvidence, feeTier, idempotencyKey: crypto.randomUUID() }) });
       const body = await response.json();
       if (!response.ok || !body.ok) throw new Error(body.error?.detail || body.error?.message || "Could not prepare launch");
       if (body.data.intent?.ticker !== normalized) throw new Error("Launch ticker changed. Review again");

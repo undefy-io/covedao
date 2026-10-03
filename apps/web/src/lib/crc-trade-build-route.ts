@@ -78,6 +78,7 @@ export async function crcTradeBuildRoute(
       ),
       sellerFunding,
       paymentFunding,
+      fundingEvidence: body.fundingEvidence,
       feeRateSatPerVb: Number(rate),
       feeTier,
       idempotencyKey,

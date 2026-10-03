@@ -26,7 +26,7 @@ export function deploymentManifest(appImage, guardianImage) {
   };
 }
 export function verifyRuntimeHashes(expected, actual) {
-  for (const path of ["packages/crc20-protocol/index.ts", "packages/crc20-adapters/src/index.ts", "packages/crc20-state/src/index.ts", "packages/crc20-guardian/src/index.ts", "packages/db/src/quotas.ts"])
+  for (const path of ["packages/crc20-protocol/index.ts", "packages/crc20-adapters/src/index.ts", "packages/crc20-state/src/index.ts", "packages/crc20-guardian/src/index.ts", "packages/db/src/quotas.ts", "packages/crc20-protocol/wire.ts", "packages/crc20-guardian/src/verified-parents.ts"])
     if (!Object.hasOwn(expected, path)) throw new Error("incomplete CRC runtime manifest");
   for (const [path, digest] of Object.entries(expected))
     if (!/^[0-9a-f]{64}$/.test(digest) || actual[path] !== digest) throw new Error(`CRC runtime mismatch: ${path}`);
@@ -34,7 +34,7 @@ export function verifyRuntimeHashes(expected, actual) {
 }
 export function assertOwnedResource(manifest, name) {
   if (!/^crc-fresh-[0-9a-f-]{36}$/.test(manifest.prefix) ||
-      ![manifest.prefix, ...["core", "db", "guardian", "worker", "web"].map((role) => `${manifest.prefix}-${role}`)].includes(name))
+      ![manifest.prefix, ...["core", "db", "guardian", "worker", "web", "baseline"].map((role) => `${manifest.prefix}-${role}`)].includes(name))
     throw new Error("refusing a resource outside this owned deployment");
 }
 const docker = (...args) => execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 8 * 1024 * 1024 });
@@ -47,7 +47,7 @@ async function until(check, seconds = 60) {
   }
   throw new Error(`owned deployment readiness timeout: ${last?.message ?? "not ready"}`);
 }
-export async function deployFreshRegtest({ appImage, guardianImage, output, inventoryFirst = false }) {
+export async function deployFreshRegtest({ appImage, guardianImage, output, inventoryFirst = false, browserUi = false, baselineImage }) {
   const manifest = deploymentManifest(appImage, guardianImage);
   const evidence = { network: "regtest", actualExtension: false, manifest: { prefix: manifest.prefix }, checks: [], createdAt: new Date().toISOString() };
   const owned = [], directory = mkdtempSync(join(tmpdir(), "crc-fresh-deploy-"));
@@ -219,9 +219,20 @@ export async function deployFreshRegtest({ appImage, guardianImage, output, inve
       evidence.inventoryFirst = { quote:quote.quote, receipt:event, finalToken:detail.data.token, actualExtension:false };
       evidence.checks.push("actual production images: buy400/sell400/buy1000 delivers1000, reuses400, issues600 with one fee set; repeat100 and coordinated restart preserve mixed history");
     }
+    if (browserUi) {
+      if (!baselineImage) throw new Error("browser UI parity requires an explicit previous regtest image");
+      run("baseline", baselineImage, [], manifest.common, [3000]);
+      const baseline = `http://127.0.0.1:${await until(() => port("baseline", 3000))}`;
+      await until(async () => (await json(baseline+"/api/crc/v1/trading/status")).ok);
+      evidence.baselineImage = JSON.parse(docker("image", "inspect", baselineImage))[0].Id;
+      const result = execFileSync("pnpm", ["--filter", "@crclaunch/web", "exec", "playwright", "test", "-c", "playwright.crc-core.config.ts"], { encoding: "utf8", env: { ...process.env, CRC_CORE_UI_URL: web, CRC_CORE_BASELINE_URL: baseline }, timeout: 300000, maxBuffer: 8 * 1024 * 1024 });
+      evidence.browserUi = { output: result, actualExtension: false };
+      evidence.checks.push("desktop/mobile production bundle UI regressions pass on the owned regtest deployment");
+    }
     evidence.status = "passed";
   } catch (error) {
     evidence.status = "failed"; evidence.error = String(error);
+    if (browserUi && error.stdout) evidence.browserUiFailure = String(error.stdout);
     throw error;
   } finally {
     evidence.logs = {};

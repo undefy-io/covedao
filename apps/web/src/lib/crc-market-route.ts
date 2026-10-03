@@ -23,6 +23,7 @@ const common = z.object({
   walletPublicKeyHex: z.string().max(66).optional(),
   tokenPublicKeyHex: z.string().max(66).optional(),
   paymentFunding: z.array(outpoint).max(40),
+  fundingEvidence: z.unknown().optional(),
   minerFeeSats: z.number().int().positive().max(Number(core.maxMinerFeeSats)),
   idempotencyKey: z.string().min(1).max(128),
 });

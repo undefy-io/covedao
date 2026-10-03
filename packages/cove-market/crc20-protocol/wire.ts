@@ -135,6 +135,12 @@ class Reader {
   field(): Uint8Array {
     return this.take(this.count());
   }
+  boundedCount(minimumItemBytes: number): number {
+    const count = this.count();
+    if (count > Math.floor((this.bytes.length - this.offset) / minimumItemBytes))
+      throw new Error("truncated transaction count");
+    return count;
+  }
 }
 /** Consensus witness serialization for PSBT finalized inputs, including Guardian script paths. */
 export function encodeWitness(witness: Uint8Array[]): string {
@@ -170,7 +176,7 @@ export function parseRawTransaction(rawHex: string): RawTransaction {
   const version = Number(r.integer(4));
   const witness = r.bytes[r.offset] === 0 && r.bytes[r.offset + 1] === 1;
   if (witness) r.take(2);
-  const count = r.count();
+  const count = r.boundedCount(41);
   if (!count) throw new Error("empty transaction");
   const inputs = Array.from({ length: count }, () => ({
     txid: hex(r.take(32).reverse()),
@@ -179,13 +185,13 @@ export function parseRawTransaction(rawHex: string): RawTransaction {
     sequence: Number(r.integer(4)),
     witness: [] as Uint8Array[],
   }));
-  const outputCount = r.count();
+  const outputCount = r.boundedCount(9);
   const outputs = Array.from({ length: outputCount }, () => ({
     sats: sats(r.integer(8)),
     scriptHex: hex(r.field()),
   }));
   if (witness)
-    for (const input of inputs) input.witness = Array.from({ length: r.count() }, () => r.field());
+    for (const input of inputs) input.witness = Array.from({ length: r.boundedCount(1) }, () => r.field());
   const locktime = Number(r.integer(4));
   if (r.offset !== r.bytes.length) throw new Error("trailing transaction bytes");
   const stripped = concat(
