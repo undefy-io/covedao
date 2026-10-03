@@ -29,6 +29,7 @@ import {
   carrierSats,
   curveStepAtoms,
   maxMinerFeeSats,
+  curveBuyAmounts,
 } from "./economics.js";
 import {
   decodeTransaction,
@@ -81,6 +82,8 @@ export interface ValidatedTransition {
   deployTxid: string;
   amountAtoms?: bigint;
   grossSats?: bigint;
+  inventoryBuyAtoms?: bigint;
+  newlyMintedAtoms?: bigint;
 }
 function applyTransaction(ledger: Ledger, transaction: ChainTransaction): Ledger {
   return transitionTransaction(ledger, transaction).ledger;
@@ -177,11 +180,14 @@ function transitionTransaction(
       if (inputs[0] && outpoint(inputs[0]) !== outpoint(asset.vault))
         throw new Error("vault must be input zero");
       if (marker.operation === "mint") {
-        if (tokens.length || marker.markerVout !== 0 || asset.inventoryAtoms)
-          throw new Error("ambiguous issuance");
+        if (tokens.length || marker.markerVout !== 0) throw new Error("ambiguous issuance");
         const successor = tx.outputs[2];
         if (!successor) throw new Error("missing successor vault");
-        const amount = deriveAmount(successor.sats - sats(asset.vault.sats), asset.issuedAtoms);
+        const amount = deriveAmount(
+          successor.sats - sats(asset.vault.sats),
+          asset.issuedAtoms - asset.inventoryAtoms,
+        );
+        const amounts = curveBuyAmounts(asset, amount);
         plan = buildMint({
           state: asset,
           funding,
@@ -192,7 +198,8 @@ function transitionTransaction(
         });
         asset = {
           ...asset,
-          issuedAtoms: asset.issuedAtoms + amount,
+          issuedAtoms: asset.issuedAtoms + amounts.newlyMintedAtoms,
+          inventoryAtoms: asset.inventoryAtoms - amounts.inventoryBuyAtoms,
           vault: {
             txid: tx.txid,
             vout: 2,
@@ -323,8 +330,13 @@ function transitionTransaction(
   if (allocationView) {
     const beforeAsset = ledger.assets[asset.deployTxid];
     const beforeTotal = Object.values(ledger.allocations)
-      .filter((a) => a.deployTxid === asset.deployTxid).reduce((sum, a) => sum + a.atoms, 0n);
-    const beforeDeficit = beforeTotal + (beforeAsset?.inventoryAtoms ?? 0n) + (beforeAsset?.burnedAtoms ?? 0n) - (beforeAsset?.issuedAtoms ?? 0n);
+      .filter((a) => a.deployTxid === asset.deployTxid)
+      .reduce((sum, a) => sum + a.atoms, 0n);
+    const beforeDeficit =
+      beforeTotal +
+      (beforeAsset?.inventoryAtoms ?? 0n) +
+      (beforeAsset?.burnedAtoms ?? 0n) -
+      (beforeAsset?.issuedAtoms ?? 0n);
     if (beforeDeficit > 0n || afterDeficit > 0n || beforeDeficit !== afterDeficit)
       throw new Error("transaction-view atom conservation failure");
   } else if (afterDeficit !== 0n) throw new Error("atom conservation failure");
@@ -336,8 +348,14 @@ function transitionTransaction(
       kind === "deploy"
         ? undefined
         : kind === "mint"
-          ? asset.issuedAtoms - ledger.assets[asset.deployTxid]!.issuedAtoms
+          ? plan.outputs[plan.recipientVout]!.atoms!
           : marker.amountAtoms!,
+    ...(plan.inventoryBuyAtoms === undefined
+      ? {}
+      : {
+          inventoryBuyAtoms: plan.inventoryBuyAtoms,
+          newlyMintedAtoms: plan.newlyMintedAtoms,
+        }),
     grossSats:
       kind === "mint" || kind === "inventoryBuy"
         ? sats(asset.vault.sats) - sats(ledger.assets[asset.deployTxid]!.vault.sats)
@@ -386,19 +404,34 @@ function guardianTransaction(
     sats(claimed.sats) !== sats(asset.vault.sats)
   )
     throw new Error("Guardian vault prevout mismatch");
-  const result = transitionTransaction({ ...ledger, config: asset.config }, transaction, true, allocationView);
+  const result = transitionTransaction(
+    { ...ledger, config: asset.config },
+    transaction,
+    true,
+    allocationView,
+  );
   if (!["mint", "inventoryBuy", "sell"].includes(result.kind))
     throw new Error("Guardian operation requires vault transition");
   return { ...result, ledger: { ...result.ledger, config: ledger.config } };
 }
 
-export function validateGuardianTransaction(ledger: Ledger, transaction: ChainTransaction): ValidatedTransition {
+export function validateGuardianTransaction(
+  ledger: Ledger,
+  transaction: ChainTransaction,
+): ValidatedTransition {
   return guardianTransaction(ledger, transaction);
 }
 /** Input-scoped wallet preview only; returns no ledger eligible for persistence. */
-export function validateGuardianTransactionView(view: TransactionView, transaction: ChainTransaction): Omit<ValidatedTransition, "ledger"> {
+export function validateGuardianTransactionView(
+  view: TransactionView,
+  transaction: ChainTransaction,
+): Omit<ValidatedTransition, "ledger"> {
   bindTransactionViewInputs(view, transaction.prevouts);
-  const { ledger: _prediction, ...validated } = guardianTransaction({ ...view, history: {} }, transaction, true);
+  const { ledger: _prediction, ...validated } = guardianTransaction(
+    { ...view, history: {} },
+    transaction,
+    true,
+  );
   return validated;
 }
 
@@ -678,6 +711,12 @@ export function applyConfirmedBlockDetailed(
         valid: true,
         amountAtoms: transition.amountAtoms,
         grossSats: transition.grossSats,
+        ...(transition.inventoryBuyAtoms === undefined
+          ? {}
+          : {
+              inventoryBuyAtoms: transition.inventoryBuyAtoms,
+              newlyMintedAtoms: transition.newlyMintedAtoms,
+            }),
       });
     } catch {
       // Full parent bytes are needed before burning for unsupported funded spends.
@@ -763,25 +802,51 @@ function finalTransaction(
     tx.outputs.reduce((sum, o) => sum + o.sats, 0n);
   if (minerFee !== plan.minerFeeSats || minerFee < 1n || minerFee > maxMinerFeeSats)
     throw new Error("final miner fee differs from quote");
-  if (ledger) transitionTransaction(ledger, transaction, false, allocationView);
+  if (ledger) {
+    const transition = transitionTransaction(ledger, transaction, false, allocationView);
+    if (transition.kind === "mint" || transition.kind === "inventoryBuy") {
+      if (
+        plan.outputs[plan.recipientVout]!.atoms !== transition.amountAtoms ||
+        plan.inventoryBuyAtoms !== transition.inventoryBuyAtoms ||
+        plan.newlyMintedAtoms !== transition.newlyMintedAtoms
+      )
+        throw new Error("quoted buy amount or inventory breakdown differs from transition");
+    }
+  }
   return tx.txid;
 }
 
-export function validateFinalTransaction(plan: Plan, transaction: ChainTransaction, ledger?: Ledger): string {
+export function validateFinalTransaction(
+  plan: Plan,
+  transaction: ChainTransaction,
+  ledger?: Ledger,
+): string {
   return finalTransaction(plan, transaction, ledger);
 }
 /** Preview the same transition against observed inputs; full confirmed totals remain a server/indexer gate. */
-export function validateFinalTransactionView(plan: Plan, transaction: ChainTransaction, view: TransactionView): string {
+export function validateFinalTransactionView(
+  plan: Plan,
+  transaction: ChainTransaction,
+  view: TransactionView,
+): string {
   bindTransactionViewInputs(view, plan.inputs, true);
   return finalTransaction(plan, transaction, { ...view, history: {} }, true);
 }
 
-function bindTransactionViewInputs(view: TransactionView, inputs: Plan["inputs"], reviewed = false): void {
+function bindTransactionViewInputs(
+  view: TransactionView,
+  inputs: Plan["inputs"],
+  reviewed = false,
+): void {
   for (const input of inputs) {
     const allocation = view.allocations[outpoint(input)];
-    if (allocation && (allocation.scriptHex !== input.scriptHex || allocation.sats !== sats(input.sats) ||
-      ((reviewed || input.atoms !== undefined) && input.atoms !== allocation.atoms) ||
-      (input.deployTxid !== undefined && input.deployTxid !== allocation.deployTxid)))
+    if (
+      allocation &&
+      (allocation.scriptHex !== input.scriptHex ||
+        allocation.sats !== sats(input.sats) ||
+        ((reviewed || input.atoms !== undefined) && input.atoms !== allocation.atoms) ||
+        (input.deployTxid !== undefined && input.deployTxid !== allocation.deployTxid))
+    )
       throw new Error("input allocation differs from transaction view");
   }
 }

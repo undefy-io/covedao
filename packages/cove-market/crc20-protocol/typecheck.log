@@ -1,2 +1,2 @@
-> @crclaunch/crc20-protocol@0.1.0 typecheck /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
-> tsc --noEmit --incremental false --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution bundler --allowImportingTsExtensions --types node *.ts test-support/*.ts
+pnpm --silent typecheck
+Exit status: 0

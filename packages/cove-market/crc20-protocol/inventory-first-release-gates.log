@@ -1,4 +1,8 @@
 
+> @crclaunch/crc20-protocol@0.1.0 build /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+> tsc -p tsconfig.build.json && node build-browser.mjs
+
+
  RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
 
  ✓ regtest.test.ts (2 tests) 20796ms
@@ -56,3 +60,6 @@
       Tests  173 passed (173)
    Start at  05:17:39
    Duration  110.43s (transform 254ms, setup 0ms, collect 1.24s, tests 106.15s, environment 3ms, prepare 849ms)
+
+
+Package check exit status: 0. Build, 173 tests, TypeScript, ESLint and formatting passed.

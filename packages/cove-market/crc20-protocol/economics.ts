@@ -25,12 +25,28 @@ export function marketFee(price: bigint): bigint {
   if (price <= 0n) throw new Error("positive integer-sat price required");
   return maximum(ceil(price * 750n, 10000n), 1000n);
 }
-export function quoteBuy(state: Pick<Asset, "issuedAtoms" | "inventoryAtoms">, amount: bigint) {
+/** The requested amount is what the buyer receives, including reused inventory. */
+export function curveBuyAmounts(
+  state: Pick<Asset, "issuedAtoms" | "inventoryAtoms">,
+  amount: bigint,
+) {
   curveAmount(amount);
-  if (state.inventoryAtoms < 0n || state.inventoryAtoms > state.issuedAtoms)
+  if (
+    state.issuedAtoms < 0n ||
+    state.issuedAtoms > capAtoms ||
+    state.inventoryAtoms < 0n ||
+    state.inventoryAtoms > state.issuedAtoms ||
+    state.issuedAtoms % curveStepAtoms ||
+    state.inventoryAtoms % curveStepAtoms
+  )
     throw new Error("invalid inventory");
-  if (state.inventoryAtoms && amount > state.inventoryAtoms)
-    throw new Error("split inventory buy from new issuance");
+  const inventoryBuyAtoms = amount < state.inventoryAtoms ? amount : state.inventoryAtoms;
+  const newlyMintedAtoms = amount - inventoryBuyAtoms;
+  if (state.issuedAtoms + newlyMintedAtoms > capAtoms) throw new Error("buy exceeds issuance cap");
+  return { inventoryBuyAtoms, newlyMintedAtoms };
+}
+export function quoteBuy(state: Pick<Asset, "issuedAtoms" | "inventoryAtoms">, amount: bigint) {
+  curveBuyAmounts(state, amount);
   const before = state.issuedAtoms - state.inventoryAtoms;
   const grossSats = backingSats(before + amount) - backingSats(before);
   if (grossSats <= 0n) throw new Error("economic dust");

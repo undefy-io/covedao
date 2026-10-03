@@ -4,7 +4,7 @@
 
 After launch, every token movement is a **mint** or a **transfer**.
 
-- Mint marker: `{"p":"crc-20","op":"mint","tick":"TEST"}`. It contains no amount. Cove derives the minted amount from its registered curve, the previous vault state, the successor vault, and BTC payment in the same transaction.
+- Mint marker: `{"p":"crc-20","op":"mint","tick":"TEST"}`. It contains no amount. Cove derives the total received amount from its registered curve, the previous vault state, the successor vault, and BTC payment in the same transaction.
 - Transfer marker: `{"p":"crc-20","op":"transfer","tick":"TEST","amt":"50000000000"}`. `amt` is the atom amount sent to the spendable output immediately after the marker. Sending to a friend, selling into the curve, buying existing reserve tokens, and marketplace purchases all use transfer.
 
 Launch is setup: its marker has fields `p,op,tick,type,max,lim,leaf,ordi,btc` in that order. It registers the curve, fee rules, vault, and asset identity `(network, deploy txid)`. A ticker alone cannot identify an asset.
@@ -38,9 +38,34 @@ TEST, and issued supply stays the same. A 500-TEST curve sale is valid; a 50-TES
 
 One transaction spends the vault and Bob's BTC funding. A **transfer** marker
 sends 1,000 TEST from reserve inventory to Bob and creates a successor vault.
-Inventory falls, circulation rises, and issued supply does not rise. A
-purchase that spans inventory and new issuance is rejected with a request to
-split into an inventory buy and a mint; it cannot be guessed from the marker.
+Inventory falls, circulation rises, and issued supply does not rise.
+
+### Bob buys 1,000 TEST after Alice buys and sells 400
+
+Bob enters **1,000 TEST**. One transaction consumes the 400 available reserve
+tokens and issues the remaining 600, giving Bob one 1,000-token carrier. It
+uses one amountless **mint** marker and charges one set of purchase fees on
+the full 1,000 tokens. The backing increases by 27 sats, the protocol fee is
+5,013 sats, and the creator fee is 546 sats, with carrier and miner costs
+accounted for separately. Issued supply becomes 1,000 and inventory becomes
+zero. Bob can subsequently buy 100 more tokens. Alice could instead have
+listed 300 of her original 400 in one listing transaction, keeping 100.
+
+For requested amount `Q`, existing inventory `I`, and issued supply `S`, the
+protocol reuses `min(I, Q)` and issues `Q - min(I, Q)`. Backing moves from
+`backing(S - I)` to `backing(S - I + Q)`; issued supply increases only by
+the newly issued amount and inventory decreases only by the reused amount.
+The issuance cap applies to the resulting issued supply, so existing inventory
+remains purchasable at the cap. Replay derives the full receipt from the
+backing change at the prior circulating supply, then applies this split. A
+pure inventory purchase retains its transfer marker; any new issuance uses
+a mint marker. These are Cove rules, not issuance rules proved by SQLite.
+
+The confirmed event reports the full receipt as `amountAtoms`. Mixed-buy
+plans, validated transitions and events additionally report
+`inventoryBuyAtoms` and `newlyMintedAtoms`; these sum to the receipt.
+Ledger-aware final validation binds both the receipt and this breakdown to
+the signed transaction. Pure-buy plan and event shapes are preserved.
 
 ### Alice lists 500 TEST for 12,347 sats; Bob buys it
 
@@ -92,7 +117,7 @@ again against the final transaction, not only against the quote.
 2. **Amounts:** zero, negative, fractional, exponent notation, greater than balance, one atom, 123,456,789 atoms, exact full balance, and values above JavaScript's safe integer range. Use `bigint` and canonical decimal strings.
 3. **Mint:** correct 2,000-TEST quote and payment; wrong payment; wrong fee or recipient; stale vault; cap; ambiguous issuance; duplicate marker; a different wallet trying to claim the output.
 4. **Transfer:** 500 of 2,000 with exact 1,500 change; full balance; multiple token inputs; wrong asset or ticker; missing token input or change; BTC change mistaken for token change; missing or unspendable recipient.
-5. **Curve sale and inventory buy:** exact 1,000-token lot payout, protocol fee, wallet top-up, miner fee, 500-token remainder, insufficient vault BTC, too-small economic result, stale vault, and buying sold inventory without increasing issued supply. Reject sub-100-token or non-100-token-increment curve trades and a buy that crosses inventory into new issuance.
+5. **Curve sale and inventory buy:** exact 1,000-token lot payout, protocol fee, wallet top-up, miner fee, 500-token remainder, insufficient vault BTC, too-small economic result, stale vault, and buying sold inventory without increasing issued supply. Reject sub-100-token or non-100-token-increment curve trades; inventory-first mixed purchases succeed with one fee set.
 6. **Marketplace:** exactly one confirmed listing transaction creates 500-TEST sale output plus 1,500-TEST change from Alice's 2,000 TEST; exactly one purchase transaction spends that sale output and pays Alice 12,347 sats plus returned carrier sats. Assert the 1,000-sat protocol fee and separate buyer carrier/miner costs. Repeat with arbitrary atom amounts and integer-sat prices. Test altered amount, buyer, payout, or fee after signing; two buyers racing; and marker-valid but wrong token outpoint. Assert that a Bitcoin-valid transaction can still be protocol-invalid.
 7. **Cancellation:** signed off-chain cancel without an on-chain spend does not count as final; one confirmed self-transfer of the listed output cancels it on-chain with miner fee but no market fee; fill-first and cancel-first races have one winner and exact balances.
 8. **Small curve round trips:** confirm buys of 500 + 500 followed by sells of 400 + 600 and, independently, a sale of 1,000. Verify actual creator/platform fee outputs after every transaction, including zero creator fee on sell, miner fees, token change, wallet top-up, supply and inventory. Repeat reserve purchases in two 500-token steps.

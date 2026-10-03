@@ -1,0 +1,98 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ inventory-first-replay.test.ts (10 tests | 9 failed) 40ms
+   × signed mixed 500-token purchase replays full receipt and only 100 new tokens 10ms
+     → ambiguous issuance
+   × signed mixed 1000-token purchase replays full receipt and only 600 new tokens 2ms
+     → ambiguous issuance
+   × signed mixed 1000-token purchase replays full receipt and only 600 new tokens 2ms
+     → ambiguous issuance
+   × signed mixed 1500-token purchase replays full receipt and only 1100 new tokens 2ms
+     → ambiguous issuance
+   × Guardian and input-scoped preflight accept the same mixed purchase without its own signature 4ms
+     → ambiguous issuance
+   × mixed purchase rejects independently signed wrong backing 5ms
+     → expected [Function] to throw error matching /transition|payment|outputs/ but got 'ambiguous issuance'
+   × mixed purchase rejects independently signed wrong protocol fee 3ms
+     → expected [Function] to throw error matching /transition|payment|outputs/ but got 'ambiguous issuance'
+   × mixed purchase rejects independently signed wrong creator fee 3ms
+     → expected [Function] to throw error matching /transition|payment|outputs/ but got 'ambiguous issuance'
+   × mixed purchase rejects stale vaults, hidden token funding, duplicate spends and invalid signatures 7ms
+     → ambiguous issuance
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 9 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  inventory-first-replay.test.ts > signed mixed 500-token purchase replays full receipt and only 100 new tokens
+ FAIL  inventory-first-replay.test.ts > signed mixed 1000-token purchase replays full receipt and only 600 new tokens
+ FAIL  inventory-first-replay.test.ts > signed mixed 1000-token purchase replays full receipt and only 600 new tokens
+ FAIL  inventory-first-replay.test.ts > signed mixed 1500-token purchase replays full receipt and only 1100 new tokens
+Error: ambiguous issuance
+ ❯ transitionTransaction replay.ts:181:17
+    179|       if (marker.operation === "mint") {
+    180|         if (tokens.length || marker.markerVout !== 0 || asset.inventor…
+    181|           throw new Error("ambiguous issuance");
+       |                 ^
+    182|         const successor = tx.outputs[2];
+    183|         if (!successor) throw new Error("missing successor vault");
+ ❯ applyTransaction replay.ts:86:10
+ ❯ Module.applyBlock replay.ts:426:47
+ ❯ inventory-first-replay.test.ts:37:51
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/9]⎯
+
+ FAIL  inventory-first-replay.test.ts > Guardian and input-scoped preflight accept the same mixed purchase without its own signature
+Error: ambiguous issuance
+ ❯ transitionTransaction replay.ts:181:17
+    179|       if (marker.operation === "mint") {
+    180|         if (tokens.length || marker.markerVout !== 0 || asset.inventor…
+    181|           throw new Error("ambiguous issuance");
+       |                 ^
+    182|         const successor = tx.outputs[2];
+    183|         if (!successor) throw new Error("missing successor vault");
+ ❯ guardianTransaction replay.ts:389:18
+ ❯ Module.validateGuardianTransaction replay.ts:396:10
+ ❯ inventory-first-replay.test.ts:56:23
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/9]⎯
+
+ FAIL  inventory-first-replay.test.ts > mixed purchase rejects independently signed wrong backing
+ FAIL  inventory-first-replay.test.ts > mixed purchase rejects independently signed wrong protocol fee
+ FAIL  inventory-first-replay.test.ts > mixed purchase rejects independently signed wrong creator fee
+AssertionError: expected [Function] to throw error matching /transition|payment|outputs/ but got 'ambiguous issuance'
+
+- Expected:
+/transition|payment|outputs/
+
++ Received:
+"ambiguous issuance"
+
+ ❯ inventory-first-replay.test.ts:75:90
+     73|     const transaction = signed(changed);
+     74|     expect(() => core.validateFinalTransaction(plan, transaction, ledg…
+     75|     if (field !== "recipient") expect(() => core.applyBlock(ledger, bl…
+       |                                                                                          ^
+     76|   });
+     77| }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/9]⎯
+
+ FAIL  inventory-first-replay.test.ts > mixed purchase rejects stale vaults, hidden token funding, duplicate spends and invalid signatures
+Error: ambiguous issuance
+ ❯ transitionTransaction replay.ts:181:17
+    179|       if (marker.operation === "mint") {
+    180|         if (tokens.length || marker.markerVout !== 0 || asset.inventor…
+    181|           throw new Error("ambiguous issuance");
+       |                 ^
+    182|         const successor = tx.outputs[2];
+    183|         if (!successor) throw new Error("missing successor vault");
+ ❯ applyTransaction replay.ts:86:10
+ ❯ Module.applyBlock replay.ts:426:47
+ ❯ inventory-first-replay.test.ts:92:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/9]⎯
+
+ Test Files  1 failed (1)
+      Tests  9 failed | 1 passed (10)
+   Start at  05:03:04
+   Duration  344ms (transform 123ms, setup 0ms, collect 192ms, tests 40ms, environment 0ms, prepare 32ms)

@@ -1,0 +1,32 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ inventory-first-replay.test.ts (11 tests | 1 failed | 10 skipped) 13ms
+   × a mixed buy quote cannot misstate the receipt or inventory/new issuance breakdown 12ms
+     → expected [Function] to throw an error
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  inventory-first-replay.test.ts > a mixed buy quote cannot misstate the receipt or inventory/new issuance breakdown
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ inventory-first-replay.test.ts:233:79
+    231|     if (field === "issuance") claimed.newlyMintedAtoms = atoms(700);
+    232|     if (field === "missing breakdown") delete claimed.newlyMintedAtoms;
+    233|     expect(() => core.validateFinalTransaction(claimed, transaction, l…
+       |                                                                               ^
+    234|     expect(() => core.validateFinalTransactionView(claimed, transactio…
+    235|   }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 10 skipped (11)
+   Start at  05:08:13
+   Duration  269ms (transform 88ms, setup 0ms, collect 137ms, tests 13ms, environment 0ms, prepare 32ms)

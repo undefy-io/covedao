@@ -10,6 +10,7 @@ import {
   quoteBuy,
   quoteSell,
   backingSats,
+  curveBuyAmounts,
 } from "./economics.js";
 import { markerScript, outpoint, sats, spendable } from "./wire.js";
 import { verifyOffer } from "./offers.js";
@@ -224,12 +225,9 @@ function buy(args: TradeArgs, inventory: boolean): Plan {
   validateAssetVault(args.state);
   const state = args.state,
     c = state.config;
-  if (
-    inventory
-      ? args.amountAtoms > state.inventoryAtoms || !state.inventoryAtoms
-      : !!state.inventoryAtoms
-  )
-    throw new Error("inventory/issuance ambiguity: split trades");
+  const amounts = curveBuyAmounts(state, args.amountAtoms);
+  if (inventory ? amounts.newlyMintedAtoms > 0n : amounts.newlyMintedAtoms === 0n)
+    throw new Error("buy builder does not match inventory/issuance transition");
   const quote = quoteBuy(state, args.amountAtoms);
   const markerJson = inventory ? transferMarker(c.ticker, args.amountAtoms) : mintMarker(c.ticker);
   return finish(
@@ -244,11 +242,14 @@ function buy(args: TradeArgs, inventory: boolean): Plan {
     markerJson,
     args.changeScriptHex ?? args.recipientScriptHex,
     args.minerFeeSats,
-    quote,
+    { ...quote, ...(amounts.inventoryBuyAtoms && amounts.newlyMintedAtoms ? amounts : {}) },
   );
 }
 export const buildMint = (args: TradeArgs): Plan => buy(args, false);
 export const buildInventoryBuy = (args: TradeArgs): Plan => buy(args, true);
+/** A single purchase consumes inventory first and issues only the remainder. */
+export const buildBuy = (args: TradeArgs): Plan =>
+  buy(args, curveBuyAmounts(args.state, args.amountAtoms).newlyMintedAtoms === 0n);
 export function buildSell(args: TradeArgs): Plan {
   validateAssetVault(args.state);
   const state = args.state,

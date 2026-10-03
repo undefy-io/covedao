@@ -1,0 +1,30 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ inventory-first-chain.test.ts (3 tests | 1 failed | 2 skipped) 5585ms
+   × buy400 -> sell400 -> buy1000 settles one full purchase, then repeat and partial trades remain seamless 2248ms
+     → ambiguous issuance
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  inventory-first-chain.test.ts > buy400 -> sell400 -> buy1000 settles one full purchase, then repeat and partial trades remain seamless
+Error: ambiguous issuance
+ ❯ transitionTransaction replay.ts:181:17
+    179|       if (marker.operation === "mint") {
+    180|         if (tokens.length || marker.markerVout !== 0 || asset.inventor…
+    181|           throw new Error("ambiguous issuance");
+       |                 ^
+    182|         const successor = tx.outputs[2];
+    183|         if (!successor) throw new Error("missing successor vault");
+ ❯ finalTransaction replay.ts:766:15
+ ❯ Module.validateFinalTransaction replay.ts:771:10
+ ❯ confirm inventory-first-chain.test.ts:60:17
+ ❯ Object.buy inventory-first-chain.test.ts:119:5
+ ❯ inventory-first-chain.test.ts:165:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 skipped (3)
+   Start at  05:05:56
+   Duration  5.86s (transform 93ms, setup 0ms, collect 145ms, tests 5.58s, environment 0ms, prepare 37ms)

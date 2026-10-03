@@ -72,9 +72,11 @@ test("independent curve and fee vectors, boundaries, and economic top-up", async
   expect(() => backingSats(-1n)).toThrow();
   expect(() => quoteBuy({ ...state, issuedAtoms: 2100000000000000n }, 100000000000n)).toThrow();
   expect(() => quoteSell(state, 300000000000n)).toThrow();
-  expect(() => quoteBuy({ ...state, inventoryAtoms: 100000000000n }, 200000000000n)).toThrow(
-    /split|inventory/i,
-  );
+  expect(quoteBuy({ ...state, inventoryAtoms: 100000000000n }, 200000000000n)).toEqual({
+    grossSats: 54n,
+    protocolFeeSats: 5025n,
+    creatorFeeSats: 546n,
+  });
 });
 
 test.each([1n, 123456789n, 50000000000n, 200000000000n])(

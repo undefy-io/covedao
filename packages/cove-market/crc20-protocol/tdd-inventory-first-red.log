@@ -1,0 +1,84 @@
+
+ RUN  v2.1.9 /home/andefy/dev/covedao/packages/cove-market/crc20-protocol
+
+ ❯ inventory-first.test.ts (11 tests | 11 failed) 10ms
+   × one 400-token buy with 0 inventory and 0 issued delivers the entire amount 3ms
+     → curveBuyAmounts is not a function
+   × one 100-token buy with 0 inventory and 400 issued delivers the entire amount 0ms
+     → curveBuyAmounts is not a function
+   × one 100-token buy with 400 inventory and 400 issued delivers the entire amount 0ms
+     → curveBuyAmounts is not a function
+   × one 400-token buy with 400 inventory and 400 issued delivers the entire amount 0ms
+     → curveBuyAmounts is not a function
+   × one 500-token buy with 400 inventory and 400 issued delivers the entire amount 0ms
+     → curveBuyAmounts is not a function
+   × one 1000-token buy with 400 inventory and 400 issued delivers the entire amount 0ms
+     → curveBuyAmounts is not a function
+   × one 1000-token buy with 400 inventory and 1000 issued delivers the entire amount 0ms
+     → curveBuyAmounts is not a function
+   × one 400-token buy with 1000 inventory and 1000 issued delivers the entire amount 0ms
+     → curveBuyAmounts is not a function
+   × one 1500-token buy with 400 inventory and 99500 issued delivers the entire amount 0ms
+     → curveBuyAmounts is not a function
+   × mixed purchases reach the issuance cap exactly; existing inventory remains buyable at the cap 0ms
+     → curveBuyAmounts is not a function
+   × unified buys reject invalid increments, funding and vault state before signing 4ms
+     → expected [Function] to throw error matching /funding|insufficient/i but got 'buildBuy is not…'
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  inventory-first.test.ts > one 400-token buy with 0 inventory and 0 issued delivers the entire amount
+ FAIL  inventory-first.test.ts > one 100-token buy with 0 inventory and 400 issued delivers the entire amount
+ FAIL  inventory-first.test.ts > one 100-token buy with 400 inventory and 400 issued delivers the entire amount
+ FAIL  inventory-first.test.ts > one 400-token buy with 400 inventory and 400 issued delivers the entire amount
+ FAIL  inventory-first.test.ts > one 500-token buy with 400 inventory and 400 issued delivers the entire amount
+ FAIL  inventory-first.test.ts > one 1000-token buy with 400 inventory and 400 issued delivers the entire amount
+ FAIL  inventory-first.test.ts > one 1000-token buy with 400 inventory and 1000 issued delivers the entire amount
+ FAIL  inventory-first.test.ts > one 400-token buy with 1000 inventory and 1000 issued delivers the entire amount
+ FAIL  inventory-first.test.ts > one 1500-token buy with 400 inventory and 99500 issued delivers the entire amount
+TypeError: curveBuyAmounts is not a function
+ ❯ inventory-first.test.ts:26:17
+     24|   test(`one ${requested}-token buy with ${inventory} inventory and ${i…
+     25|     const asset = state(issued, inventory), before = structuredClone(a…
+     26|     expect(core.curveBuyAmounts(asset, atoms(requested))).toEqual({ in…
+       |                 ^
+     27|     expect(core.quoteBuy(asset, atoms(requested))).toEqual({ grossSats…
+     28|     const plan = core.buildBuy({ state: asset, funding, amountAtoms: a…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯
+
+ FAIL  inventory-first.test.ts > mixed purchases reach the issuance cap exactly; existing inventory remains buyable at the cap
+TypeError: curveBuyAmounts is not a function
+ ❯ inventory-first.test.ts:47:15
+     45|   const cap = 21000000;
+     46|   const exact = state(cap - 100, 400);
+     47|   expect(core.curveBuyAmounts(exact, atoms(500))).toEqual({ inventoryB…
+       |               ^
+     48|   expect(() => core.buildBuy({ state: exact, funding: [{ ...funding[0]…
+     49|   expect(() => core.quoteBuy(exact, atoms(600))).toThrow(/cap|supply/i…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯
+
+ FAIL  inventory-first.test.ts > unified buys reject invalid increments, funding and vault state before signing
+AssertionError: expected [Function] to throw error matching /funding|insufficient/i but got 'buildBuy is not…'
+
+- Expected:
+/funding|insufficient/i
+
++ Received:
+"__vite_ssr_import_1__.buildBuy is not a function"
+
+ ❯ inventory-first.test.ts:60:57
+     58|   }
+     59|   const args = { state: state(400, 400), funding, amountAtoms: atoms(1…
+     60|   expect(() => core.buildBuy({ ...args, funding: [] })).toThrow(/fundi…
+       |                                                         ^
+     61|   expect(() => core.buildBuy({ ...args, funding: [{ ...funding[0]!, at…
+     62|   expect(() => core.buildBuy({ ...args, minerFeeSats: 20001n })).toThr…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/11]⎯
+
+ Test Files  1 failed (1)
+      Tests  11 failed (11)
+   Start at  05:00:38
+   Duration  258ms (transform 108ms, setup 0ms, collect 131ms, tests 10ms, environment 0ms, prepare 34ms)

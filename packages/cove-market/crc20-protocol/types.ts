@@ -31,6 +31,9 @@ export interface Asset {
   vaultAvailable?: boolean;
 }
 export interface Plan {
+  /** Present on mixed buys; the recipient receives their sum. */
+  inventoryBuyAtoms?: bigint;
+  newlyMintedAtoms?: bigint;
   inputWitnesses?: string[][];
   inputs: Input[];
   outputs: Output[];
@@ -121,6 +124,9 @@ export interface ConfirmedEvent {
   valid: boolean;
   amountAtoms?: bigint;
   grossSats?: bigint;
+  /** Mixed purchases report the total received in amountAtoms and this breakdown. */
+  inventoryBuyAtoms?: bigint;
+  newlyMintedAtoms?: bigint;
 }
 
 /** Read-only input-scoped observation. Omitted allocations are not asserted or persisted. */
