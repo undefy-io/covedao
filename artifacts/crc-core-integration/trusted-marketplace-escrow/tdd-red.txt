@@ -1,0 +1,6 @@
+Before implementation, owned Bitcoin Core escrow.test.ts reached the requested listing behavior and failed both tests with:
+TypeError: buildEscrowListing is not a function
+
+Expected cases:
+- One listing transaction automatically activates250 from400 and refunds150; one atomic buyer transaction fills it.
+- Seller cancellation requires signed authority funding and returns exact tokens even after expiry.

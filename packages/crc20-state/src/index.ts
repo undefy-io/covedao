@@ -288,11 +288,15 @@ export async function persistCrcCoreBlock(
         })),
       );
     // Only canonical, protocol-accepted chain events acknowledge browser broadcasts.
-    const observedTxids = [...new Set(accepted.events.map(event => event.txid))];
-    if (observedTxids.length) await tx.execute(sql`
+    const observedTxids = [...new Set(accepted.events.map((event) => event.txid))];
+    if (observedTxids.length)
+      await tx.execute(sql`
       UPDATE crc_sessions SET status='BROADCAST', updated_at=now()
       WHERE network=${selected === "bitcoin" ? "mainnet" : selected} AND status='READY'
-      AND txid IN (${sql.join(observedTxids.map(id => sql`${id}`), sql`, `)})
+      AND txid IN (${sql.join(
+        observedTxids.map((id) => sql`${id}`),
+        sql`, `,
+      )})
     `);
     await tx.insert(schema.crcUndo).values({
       network: selected,
@@ -576,6 +580,67 @@ export async function saveCrcOfferAuthorization(db: Database, offer: core.Offer)
   });
   return id;
 }
+/** Verified signed listing metadata is durable before broadcast; only canonical replay activates it. */
+export async function saveCrcEscrowAuthorization(
+  db: Database,
+  offer: core.Offer,
+  transaction: core.ChainTransaction,
+): Promise<string> {
+  if (!offer.escrowTerms) throw new Error("escrow terms required");
+  core.verifyOffer(offer);
+  const network = core.protocolNetwork(offer.network),
+    id = core.offerId(offer);
+  await db.transaction(async (tx) => {
+    await lock(tx, network);
+    const state = await readLedger(tx, network),
+      asset = state?.assets[offer.deployTxid];
+    if (!state || !asset) throw new Error("escrow registered state unavailable");
+    core.validateEscrowConfig(offer.escrowTerms!, asset.config);
+    const raw = core.parseRawTransaction(transaction.rawHex),
+      output = raw.outputs[offer.listedInput.vout];
+    if (
+      raw.txid !== offer.listedInput.txid ||
+      offer.listedInput.vout !== 1 ||
+      !output ||
+      output.scriptHex !== offer.listedInput.scriptHex ||
+      output.sats !== core.sats(offer.listedInput.sats)
+    )
+      throw new Error("escrow signed listing binding mismatch");
+    const transition = core.validateEscrowListingTransaction(
+      state,
+      offer.escrowTerms!,
+      transaction,
+    );
+    if (transition.amountAtoms !== offer.listedInput.atoms)
+      throw new Error("escrow listing amount mismatch");
+    const [existing] = await tx
+      .select()
+      .from(schema.crcAuthorizations)
+      .where(
+        and(
+          eq(schema.crcAuthorizations.network, network),
+          eq(schema.crcAuthorizations.offerId, id),
+        ),
+      );
+    if (existing) {
+      if (
+        core.offerMessage(core.decodeProtocolDto<core.Offer>(existing.offerJson)) !==
+        core.offerMessage(offer)
+      )
+        throw new Error("conflicting escrow authorization");
+      return;
+    }
+    await tx
+      .insert(schema.crcAuthorizations)
+      .values({
+        network,
+        offerId: id,
+        listedOutpoint: core.outpoint(offer.listedInput),
+        offerJson: core.encodeProtocolDto(offer),
+      });
+  });
+  return id;
+}
 export async function requestCrcOfferCancellation(
   db: Database,
   network: string,
@@ -638,6 +703,7 @@ export interface CrcSigningContext {
   deployTxid: string;
   unsignedDigest: string;
   stateRoot: string;
+  custodyOutpoint?: string;
 }
 async function signingState(tx: DbTransaction, context: CrcSigningContext) {
   const state = await readLedger(tx, core.protocolNetwork(context.network));
@@ -645,13 +711,27 @@ async function signingState(tx: DbTransaction, context: CrcSigningContext) {
   if (
     !state?.tip ||
     !asset ||
-    asset.vaultAvailable === false ||
+    (!context.custodyOutpoint && asset.vaultAvailable === false) ||
     crcCoreStateRoot(state) !== context.stateRoot
   )
     throw new Error("CRC canonical signing state changed or unavailable");
   if (!/^[0-9a-f]{64}$/.test(context.unsignedDigest))
     throw new Error("invalid unsigned transaction digest");
-  return { state, asset };
+  const backingOutpoint = context.custodyOutpoint ?? core.outpoint(asset.vault);
+  if (context.custodyOutpoint) {
+    const offer = Object.values(state.offers).find(
+      (o) =>
+        o.escrowTerms &&
+        core.outpoint(o.listedInput) === backingOutpoint &&
+        o.deployTxid === context.deployTxid &&
+        (o.status === "open" || o.status === "cancelPending"),
+    );
+    if (!offer || !state.allocations[backingOutpoint])
+      throw new Error("escrow signing allocation unavailable");
+    core.verifyOffer(offer);
+    core.validateEscrowConfig(offer.escrowTerms!, asset.config);
+  }
+  return { state, asset, backingOutpoint };
 }
 export async function claimCrcSignature(
   db: Database,
@@ -660,8 +740,7 @@ export async function claimCrcSignature(
   const network = core.protocolNetwork(context.network);
   return db.transaction(async (tx) => {
     await lock(tx, network);
-    const { asset } = await signingState(tx, context);
-    const backingOutpoint = core.outpoint(asset.vault);
+    const { backingOutpoint } = await signingState(tx, context);
     const where = and(
       eq(schema.crcSignatures.network, network),
       eq(schema.crcSignatures.backingOutpoint, backingOutpoint),
@@ -712,7 +791,7 @@ export async function completeCrcSignature(
   const network = core.protocolNetwork(context.network);
   await db.transaction(async (tx) => {
     await lock(tx, network);
-    const { asset } = await signingState(tx, context);
+    const { backingOutpoint } = await signingState(tx, context);
     const result = await tx
       .update(schema.crcSignatures)
       .set({ status: "signed", signedPsbtBase64 })
@@ -720,7 +799,7 @@ export async function completeCrcSignature(
         and(
           eq(schema.crcSignatures.network, network),
           eq(schema.crcSignatures.claimId, claimId),
-          eq(schema.crcSignatures.backingOutpoint, core.outpoint(asset.vault)),
+          eq(schema.crcSignatures.backingOutpoint, backingOutpoint),
           eq(schema.crcSignatures.unsignedDigest, context.unsignedDigest),
           eq(schema.crcSignatures.stateRoot, context.stateRoot),
           eq(schema.crcSignatures.status, "pending"),

@@ -1,0 +1,75 @@
+{
+  "network": "signet",
+  "tests": {
+    "protocol": 179,
+    "web": 274,
+    "adapters": 29,
+    "guardianCoreService": 7,
+    "worker": 12,
+    "standaloneGuardian": 30,
+    "standaloneGuardianSkipped": 14
+  },
+  "gates": {
+    "workspaceTypecheck": "passed",
+    "workspaceLint": "passed",
+    "standaloneTypecheck": "passed",
+    "standaloneLint": "passed",
+    "standaloneRustBuild": "passed",
+    "pairedProductionBuild": "passed",
+    "secretScan": "passed"
+  },
+  "implementation": {
+    "listingWalletApprovals": 1,
+    "listingTransactions": 1,
+    "autoPublishesAfterConfirmedIndexing": true,
+    "buyerWalletApprovals": 1,
+    "buyerTransactions": 1,
+    "listingFeeAutomaticallyEstimated": true,
+    "arbitraryAtomAmounts": true,
+    "guardianTrustedCustody": true,
+    "databaseReset": false,
+    "schemaMigration": false,
+    "legacyPresignedOffersSupported": true,
+    "browserTransactionPersistence": false,
+    "actualXverseExtensionCanary": "manual user test remains; owned Core+PG+HTTP Guardian and desktop/mobile browser tests passed"
+  },
+  "livePreservation": {
+    "priorImmutableSessionsPreserved": 20,
+    "before": {
+      "sessions": 20,
+      "events": 12,
+      "registrations": 1,
+      "authorizations": 0,
+      "cursor": [
+        {
+          "network": "signet",
+          "height": 324888,
+          "block_hash": "0000000971acd20ceb20162a393dcf69f1725ab7b66d79de75152fe8fe638ea9",
+          "fingerprint": "af317b7e8f93d2a0ece4d7b21ddc5d8bfd680e292d179de96fa2e427c9c91e46",
+          "state_root": "21b5266d5aa3e696bdaea9b8adc62cadb12a21173652db54c8b6e84e82cff72a"
+        }
+      ]
+    },
+    "after": {
+      "sessions": 20,
+      "events": 12,
+      "registrations": 1,
+      "authorizations": 0,
+      "cursor": [
+        {
+          "network": "signet",
+          "height": 324888,
+          "block_hash": "0000000971acd20ceb20162a393dcf69f1725ab7b66d79de75152fe8fe638ea9",
+          "fingerprint": "af317b7e8f93d2a0ece4d7b21ddc5d8bfd680e292d179de96fa2e427c9c91e46",
+          "state_root": "21b5266d5aa3e696bdaea9b8adc62cadb12a21173652db54c8b6e84e82cff72a"
+        }
+      ]
+    },
+    "profileHashUnchanged": true,
+    "guardianReadmeUnchanged": true
+  },
+  "images": {
+    "webWorker": "sha256:cbd8c10fcc6657800026afa5ca83958f20a989d0418cb09d005513b5a2a4b719",
+    "guardian": "sha256:94cd30de3bb2a0829d7bcb3ace8f07f42badf3ee00540730bdb926199959a891"
+  }
+}

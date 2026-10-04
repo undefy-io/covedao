@@ -27,6 +27,7 @@ export type CrcBrowserReview = {
   recipientScriptHex?: string;
   priceSats?: string;
   offer?: core.Offer;
+  escrowTerms?: core.EscrowTerms;
 };
 export type CrcRequest = (url: string, init?: RequestInit) => Promise<Response>;
 export async function crcBrowserData<T>(
@@ -212,10 +213,21 @@ export async function signCrcBuildSession(
     (input) =>
       !tokens.includes(input) && (!asset || core.outpoint(input) !== core.outpoint(asset.vault)),
   );
-  const bitcoinRows = await crcWalletData(wallet.network, request).observe(addresses, funding.map(input => ({
-    txid: input.txid, vout: input.vout, sats: core.sats(input.sats), scriptHex: input.scriptHex,
-  })));
-  const observed = new Map(bitcoinRows.map(coin => [core.outpoint(coin), { sats: amount(coin.valueSats), scriptHex: coin.scriptHex }]));
+  const bitcoinRows = await crcWalletData(wallet.network, request).observe(
+    addresses,
+    funding.map((input) => ({
+      txid: input.txid,
+      vout: input.vout,
+      sats: core.sats(input.sats),
+      scriptHex: input.scriptHex,
+    })),
+  );
+  const observed = new Map(
+    bitcoinRows.map((coin) => [
+      core.outpoint(coin),
+      { sats: amount(coin.valueSats), scriptHex: coin.scriptHex },
+    ]),
+  );
   for (const input of funding) {
     const actual = observed.get(core.outpoint(input));
     if (
@@ -231,10 +243,11 @@ export async function signCrcBuildSession(
     throw new Error("Reviewed token amount changed");
   const minerFeeSats = BigInt(review.minerFeeSats);
   let expected: core.Plan;
-  const guardianPending = review.operation === "buy" || review.operation === "sell";
+  const curvePending = review.operation === "buy" || review.operation === "sell";
+  const guardianPending = curvePending || !!review.offer?.escrowTerms;
   if (review.operation === "deploy")
     expected = core.buildDeploy({ config, funding, changeScriptHex: paymentScript, minerFeeSats });
-  else if (guardianPending) {
+  else if (curvePending) {
     const args = {
       state: asset!,
       inputs: tokens,
@@ -256,19 +269,43 @@ export async function signCrcBuildSession(
       }
   } else if (review.operation === "transfer" || review.operation === "listing") {
     if (built.intent.operation !== review.operation) throw new Error("Token operation changed");
-    expected = (review.operation === "listing" ? core.buildListing : core.buildTransfer)({
-      network,
-      deployTxid: asset!.deployTxid,
-      ticker: config.ticker,
-      inputs: tokens,
-      funding,
-      amountAtoms: amount(review.amountAtoms),
-      recipientScriptHex: review.recipientScriptHex,
-      sellerScriptHex: tokenScript,
-      changeScriptHex: paymentScript,
-      minerFeeSats,
-      ...(review.priceSats ? { priceSats: amount(review.priceSats) } : {}),
-    });
+    if (review.escrowTerms) {
+      const t = review.escrowTerms;
+      const received = core.decodeProtocolDto<core.EscrowTerms>(built.intent.escrowTerms);
+      if (
+        review.operation !== "listing" ||
+        core.escrowTermsMessage(received) !== core.escrowTermsMessage(t) ||
+        t.sellerTokenScriptHex !== tokenScript ||
+        t.sellerPayoutScriptHex !== paymentScript ||
+        t.sellerAuthorityScriptHex !== paymentScript ||
+        t.deployTxid !== asset!.deployTxid ||
+        t.amountAtoms !== amount(review.amountAtoms) ||
+        t.priceSats !== amount(review.priceSats) ||
+        t.expiryHeight <= height
+      )
+        throw new Error("Reviewed escrow listing changed");
+      expected = core.buildEscrowListing({
+        config,
+        terms: t,
+        inputs: tokens,
+        funding,
+        changeScriptHex: paymentScript,
+        minerFeeSats,
+      });
+    } else
+      expected = (review.operation === "listing" ? core.buildListing : core.buildTransfer)({
+        network,
+        deployTxid: asset!.deployTxid,
+        ticker: config.ticker,
+        inputs: tokens,
+        funding,
+        amountAtoms: amount(review.amountAtoms),
+        recipientScriptHex: review.recipientScriptHex,
+        sellerScriptHex: tokenScript,
+        changeScriptHex: paymentScript,
+        minerFeeSats,
+        ...(review.priceSats ? { priceSats: amount(review.priceSats) } : {}),
+      });
   } else {
     const offer = review.offer;
     if (

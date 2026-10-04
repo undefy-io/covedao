@@ -71,3 +71,13 @@ This change is limited to the protocol. Consumer adoption is tracked in Beads
 been updated for mixed purchases. See `inventory-first-chain.test.ts` for the
 real Core journeys and `inventory-first-chain-evidence.json` for raw-chain and
 SQLite wire-compliance evidence.
+
+## Trusted marketplace escrow
+
+New marketplace listings use a single seller-signed token transfer. `buildEscrowListing` sends the chosen amount (including arbitrary amounts through eight decimals) to a per-order Taproot escrow and returns any token change. Every new listing pays an automatically estimated network fee, including exact coin amounts. The listing becomes public automatically when canonical block replay matches its committed terms to the confirmed allocation; no seller message, presigned sale authorization or second publish action is needed.
+
+`EscrowTerms` commits the exact amount, total price, seller token refund, seller payment payout and cancellation authority, expiry, registered Guardian key, registered protocol fee destination, versioned fee policy and nonce. A standard NUMS internal key and a single execution leaf commit these terms. The marketplace Guardian controls these tokens: this is trusted custody, and cancellation also requires its signature. The seller authorizes cancellation with an ordinary payment input; cancelled tokens return only to the committed token refund script.
+
+`buildEscrowPurchase` and `validateEscrowGuardianTransaction` require the buyer's signatures before the Guardian signs escrow input zero with `SIGHASH_ALL`. One transaction delivers the exact tokens, pays the seller the agreed price plus the escrow carrier, and pays the existing marketplace protocol fee. Expiry prevents new Guardian purchase signatures at the live chain tip; it is not a Bitcoin timelock, so a previously signed purchase can confirm later. Refunds remain available after expiry.
+
+Escrow orders use optional immutable `escrowTerms` on existing offers. Historical offers omit the field and retain their existing signatures, builders, snapshots, state roots and undo encoding. Signed listing metadata is stored under the canonical database lock before browser broadcast; pending metadata alone never activates a listing. Reorgs and checkpoint replay derive active/filled/cancelled status from canonical allocations. No database reset or schema migration is needed.

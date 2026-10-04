@@ -28,7 +28,11 @@ const common = z.object({
   idempotencyKey: z.string().min(1).max(128),
 });
 const signed = z
-  .object({ sessionId: z.string().uuid(), signedPsbtBase64: z.string().min(1).max(250000), broadcast: z.literal("client").optional() })
+  .object({
+    sessionId: z.string().uuid(),
+    signedPsbtBase64: z.string().min(1).max(250000),
+    broadcast: z.literal("client").optional(),
+  })
   .strict();
 export type CrcMarketServices = {
   db: Database;
@@ -78,12 +82,12 @@ export async function readCrcMarketListings(
     JOIN crc_records a ON a.network=o.network AND a.kind='assets' AND a.key=o.deploy_txid
     JOIN crc_records u ON u.network=o.network AND u.kind='allocations'
       AND u.key=(o.value_json->'listedInput'->>'txid') || ':' || (o.value_json->'listedInput'->>'vout')
-      AND u.deploy_txid=o.deploy_txid AND u.script_hex=o.script_hex AND u.atoms=o.atoms
+      AND u.deploy_txid=o.deploy_txid AND u.script_hex=(o.value_json->'listedInput'->>'scriptHex') AND u.atoms=o.atoms
     JOIN crc_cursors c ON c.network=o.network
     WHERE o.network=${core.protocolNetwork(network)} AND o.kind='offers' AND ${sellerScriptHex ? sql`o.status IN ('open', 'cancelPending')` : sql`o.status='open'`}
-      AND (o.value_json->>'expiryHeight')::bigint > c.height
+      AND ${sellerScriptHex ? sql`((o.value_json->>'expiryHeight')::bigint > c.height OR o.value_json->'escrowTerms' IS NOT NULL)` : sql`(o.value_json->>'expiryHeight')::bigint > c.height`}
       AND ${deployTxid ? sql`o.deploy_txid=${deployTxid}` : sql`true`}
-      AND ${sellerScriptHex ? sql`o.script_hex=${sellerScriptHex}` : sql`true`}
+      AND ${sellerScriptHex ? sql`COALESCE(o.value_json->'escrowTerms'->>'sellerTokenScriptHex', o.script_hex)=${sellerScriptHex}` : sql`true`}
     ORDER BY o.key LIMIT 101
   `);
   return rows.rows.map((row) => {
@@ -126,8 +130,18 @@ export async function crcMarketGet(
       return fail("BAD_REQUEST", "Invalid seller script", 400);
     const { db, network } = read();
     const rows = await readCrcMarketListings(db, network, deployTxid, sellerScriptHex);
-    return ok({ active: true, listings: rows.slice(0, 100), truncated: rows.length > 100,
-      ...(sellerScriptHex ? { unavailableOutpoints: rows.slice(0, 100).map(row => ({txid: row.sellerAnchorTxid, vout: row.sellerAnchorVout})) } : {}) });
+    return ok({
+      active: true,
+      listings: rows.slice(0, 100),
+      truncated: rows.length > 100,
+      ...(sellerScriptHex
+        ? {
+            unavailableOutpoints: rows
+              .slice(0, 100)
+              .map((row) => ({ txid: row.sellerAnchorTxid, vout: row.sellerAnchorVout })),
+          }
+        : {}),
+    });
   } catch (error) {
     return handleError(error);
   }
@@ -140,7 +154,8 @@ export async function crcMarketPost(
 ): Promise<Response> {
   // Funding exclusion is a read-only observation shared by launch and curve
   // signing; marketplace release controls only marketplace mutations.
-  if (!enabled && operation !== "funding-check") return fail("CRC_MARKET_DISABLED", "Cove marketplace trading is paused", 503, true);
+  if (!enabled && operation !== "funding-check")
+    return fail("CRC_MARKET_DISABLED", "Cove marketplace trading is paused", 503, true);
   try {
     const limited = checkCrcRateLimit(req, true);
     if (limited) return limited;
@@ -221,9 +236,13 @@ export async function crcMarketPost(
           amountAtoms: decimal,
           recipientScriptHex: script,
           priceSats: decimal.optional(),
+          escrowTerms: z.record(z.unknown()).optional(),
         })
         .strict()
-        .refine(value => (value.minerFeeSats === undefined) !== (value.feeRateSatPerVb === undefined), "Choose one network fee method")
+        .refine(
+          (value) => (value.minerFeeSats === undefined) !== (value.feeRateSatPerVb === undefined),
+          "Choose one network fee method",
+        )
         .parse(raw);
       if (!service.feeScriptHex) throw new Error("CRC market fee authority is unavailable");
       return ok(
@@ -234,6 +253,9 @@ export async function crcMarketPost(
           bitcoinNetwork,
           operation: operation === "listing-build" ? "listing" : "transfer",
           amountAtoms: BigInt(parsed.amountAtoms),
+          escrowTerms: parsed.escrowTerms
+            ? core.decodeProtocolDto<core.EscrowTerms>(parsed.escrowTerms)
+            : undefined,
           priceSats: parsed.priceSats === undefined ? undefined : BigInt(parsed.priceSats),
           feeScriptHex: service.feeScriptHex,
         }),
@@ -248,7 +270,11 @@ export async function crcMarketPost(
     if (Object.hasOwn(operations, operation)) {
       const parsed = signed.parse(raw);
       if (network !== "regtest" && parsed.broadcast !== "client")
-        return fail("CLIENT_UPDATE_REQUIRED", "Refresh this page before submitting the transaction.", 409);
+        return fail(
+          "CLIENT_UPDATE_REQUIRED",
+          "Refresh this page before submitting the transaction.",
+          409,
+        );
       const result = await (parsed.broadcast === "client" ? prepareCrcSession : submitCrcSession)({
         ...parsed,
         db,

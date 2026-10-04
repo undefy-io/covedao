@@ -9,6 +9,7 @@ import type { Input } from "@crclaunch/crc20-protocol";
 import {
   guardianPsbtTransaction,
   signGuardianPsbt,
+  signEscrowGuardianPsbt,
   type GuardianSigningBackend,
 } from "@crclaunch/crc20-adapters";
 import {
@@ -25,7 +26,7 @@ import {
   type VaultRecoveryProfile,
 } from "@crclaunch/cove-vault";
 export interface GuardianChainProvider {
-  getBlockchainInfo(): Promise<{ chain: string }>;
+  getBlockchainInfo(): Promise<{ chain: string; blocks?: number }>;
   getBlockHash(height: number): Promise<string>;
   getRawTransaction(txid: string): Promise<string>;
   getTxout(
@@ -38,7 +39,7 @@ export interface CrcSignRequest {
   requestId: string;
   network: "regtest" | "signet" | "testnet" | "mainnet";
   deploymentTxid: string;
-  operation: "mint-buy" | "inventory-buy" | "sell";
+  operation: "mint-buy" | "inventory-buy" | "sell" | "escrow-purchase" | "escrow-cancel";
   psbtBase64: string;
 }
 export type CrcSignResponse =
@@ -58,7 +59,7 @@ export class CrcGuardianSigningService {
       maxMinerFeeSats: bigint;
     },
   ) {
-    this.parents = new VerifiedParentCache(txid => this.options.core.getRawTransaction(txid));
+    this.parents = new VerifiedParentCache((txid) => this.options.core.getRawTransaction(txid));
   }
   async probe(): Promise<void> {
     await this.options.db.execute(sql`select network from crc_signatures limit 1`);
@@ -91,7 +92,9 @@ export class CrcGuardianSigningService {
       fields.network !== this.options.network ||
       typeof fields.deploymentTxid !== "string" ||
       !/^[0-9a-f]{64}$/.test(fields.deploymentTxid) ||
-      !["mint-buy", "inventory-buy", "sell"].includes(String(fields.operation)) ||
+      !["mint-buy", "inventory-buy", "sell", "escrow-purchase", "escrow-cancel"].includes(
+        String(fields.operation),
+      ) ||
       typeof fields.psbtBase64 !== "string" ||
       fields.psbtBase64.length > 750000
     )
@@ -104,8 +107,8 @@ export class CrcGuardianSigningService {
       testnet: "test",
       regtest: "regtest",
     }[network];
-    if ((await this.options.core.getBlockchainInfo()).chain !== expectedChain)
-      throw new Error("Guardian Bitcoin network mismatch");
+    const chainInfo = await this.options.core.getBlockchainInfo();
+    if (chainInfo.chain !== expectedChain) throw new Error("Guardian Bitcoin network mismatch");
     const ledger = await loadCrcCoreLedger(this.options.db, network);
     const asset = ledger?.assets[request.deploymentTxid];
     const registration = await loadCrcRegistration(
@@ -165,14 +168,30 @@ export class CrcGuardianSigningService {
       throw new Error("CRC registration is not a core deployment");
     const psbt = bitcoin.Psbt.fromBase64(request.psbtBase64);
     const transaction = guardianPsbtTransaction(psbt);
-    const transition = core.validateGuardianTransaction(ledger, transaction);
-    const kind = { "mint-buy": "mint", "inventory-buy": "inventoryBuy", sell: "sell" }[
-      request.operation
-    ];
+    const escrow = request.operation.startsWith("escrow-");
+    const liveLedger =
+      escrow && request.operation === "escrow-purchase"
+        ? (() => {
+            if (!Number.isSafeInteger(chainInfo.blocks) || chainInfo.blocks! < ledger.tip!.height)
+              throw new Error("live escrow expiry height unavailable");
+            return { ...ledger, tip: { ...ledger.tip!, height: chainInfo.blocks! } };
+          })()
+        : ledger;
+    const transition = (
+      escrow ? core.validateEscrowGuardianTransaction : core.validateGuardianTransaction
+    )(liveLedger, transaction);
+    const kind = {
+      "mint-buy": "mint",
+      "inventory-buy": "inventoryBuy",
+      sell: "sell",
+      "escrow-purchase": "fill",
+      "escrow-cancel": "transfer",
+    }[request.operation];
     if (
       transition.kind !== kind ||
       transition.plan.minerFeeSats > this.options.maxMinerFeeSats ||
-      core.outpoint(transition.plan.inputs[0]!) !== core.outpoint(asset.vault)
+      transition.deployTxid !== request.deploymentTxid ||
+      (!escrow && core.outpoint(transition.plan.inputs[0]!) !== core.outpoint(asset.vault))
     )
       throw new Error("Guardian operation, current vault or fee cap mismatch");
     const digest = createHash("sha256")
@@ -181,6 +200,16 @@ export class CrcGuardianSigningService {
     const assertLive = async () => {
       if ((await this.options.core.getBlockHash(ledger.tip!.height)) !== ledger.tip!.hash)
         throw new Error("CRC indexer cursor diverged from Core");
+      if (request.operation === "escrow-purchase") {
+        const current = await this.options.core.getBlockchainInfo();
+        const order = Object.values(ledger.offers).find(
+          (o) =>
+            o.escrowTerms &&
+            core.outpoint(o.listedInput) === core.outpoint(transaction.prevouts[0]!),
+        )!;
+        if (!Number.isSafeInteger(current.blocks) || current.blocks! >= order.expiryHeight)
+          throw new Error("escrow listing expired at live tip");
+      }
       for (const input of transaction.prevouts) {
         const current = await this.options.core.getTxout(input.txid, input.vout, true);
         if (
@@ -197,6 +226,7 @@ export class CrcGuardianSigningService {
       deployTxid: request.deploymentTxid,
       unsignedDigest: digest,
       stateRoot: crcCoreStateRoot(ledger),
+      ...(escrow ? { custodyOutpoint: core.outpoint(transaction.prevouts[0]!) } : {}),
     };
     const claim = await claimCrcSignature(this.options.db, context);
     if (claim.signedPsbtBase64) {
@@ -222,7 +252,11 @@ export class CrcGuardianSigningService {
     }
     try {
       await assertLive();
-      const signed = await signGuardianPsbt(psbt.toBase64(), ledger, this.options.custodyBackend);
+      const signed = await (escrow ? signEscrowGuardianPsbt : signGuardianPsbt)(
+        psbt.toBase64(),
+        liveLedger,
+        this.options.custodyBackend,
+      );
       await assertLive();
       await completeCrcSignature(this.options.db, claim.claimId, context, signed.psbtBase64);
       return {

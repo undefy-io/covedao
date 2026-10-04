@@ -50,7 +50,25 @@ export interface Plan {
   minerFeeSats: bigint;
   walletTopUpSats?: bigint;
 }
+export interface EscrowTerms {
+  version: 1;
+  network: string;
+  deployTxid: string;
+  ticker: string;
+  amountAtoms: bigint;
+  priceSats: bigint;
+  sellerTokenScriptHex: string;
+  sellerPayoutScriptHex: string;
+  sellerAuthorityScriptHex: string;
+  protocolScriptHex: string;
+  feePolicy: "market-v1";
+  expiryHeight: number;
+  guardianPublicKeyHex: string;
+  nonceHex: string;
+}
 export interface Offer {
+  /** Omitted on historical presigned offers; preserves old snapshots and state roots. */
+  escrowTerms?: EscrowTerms;
   network: string;
   deployTxid: string;
   ticker: string;

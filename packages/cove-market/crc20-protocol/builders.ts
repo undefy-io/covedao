@@ -311,6 +311,11 @@ export function buildPurchase(args: PurchaseArgs): Plan {
   if (args.offer) {
     verifyOffer(args.offer);
     if (
+      args.offer.escrowTerms &&
+      args.protocolScriptHex !== args.offer.escrowTerms.protocolScriptHex
+    )
+      throw new Error("escrow protocol payout mismatch");
+    if (
       !Number.isSafeInteger(args.currentHeight) ||
       args.currentHeight! < 0 ||
       args.currentHeight! >= args.offer.expiryHeight ||
@@ -339,7 +344,12 @@ export function buildPurchase(args: PurchaseArgs): Plan {
     args.minerFeeSats,
     { sellerPayoutSats: price, buyerAtoms: input.atoms, protocolFeeSats },
   );
-  return { ...plan, ...(args.offer ? { inputWitnesses: [args.offer.sellerWitnessHex] } : {}) };
+  return {
+    ...plan,
+    ...(args.offer && !args.offer.escrowTerms
+      ? { inputWitnesses: [args.offer.sellerWitnessHex] }
+      : {}),
+  };
 }
 export function buildCancel(args: {
   offer: Offer;
@@ -349,15 +359,23 @@ export function buildCancel(args: {
 }): Plan {
   verifyOffer(args.offer);
   const o = args.offer;
+  if (o.escrowTerms && !args.funding.length) throw new Error("insufficient BTC funding");
+  if (
+    o.escrowTerms &&
+    (!args.funding.length ||
+      args.funding.some((i) => i.scriptHex !== o.escrowTerms!.sellerAuthorityScriptHex))
+  )
+    throw new Error("seller cancellation authority funding required");
   return buildTransfer({
     network: o.network,
     deployTxid: o.deployTxid,
     ticker: o.ticker,
     input: o.listedInput,
     amountAtoms: o.listedInput.atoms,
-    recipientScriptHex: o.sellerScriptHex,
+    recipientScriptHex: o.escrowTerms?.sellerTokenScriptHex ?? o.sellerScriptHex,
     funding: args.funding,
-    changeScriptHex: args.changeScriptHex ?? o.sellerScriptHex,
+    changeScriptHex:
+      args.changeScriptHex ?? o.escrowTerms?.sellerAuthorityScriptHex ?? o.sellerScriptHex,
     minerFeeSats: args.minerFeeSats,
   });
 }

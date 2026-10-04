@@ -183,7 +183,12 @@ export async function buildCrcLaunchSession(
     recoveryProfile: VaultRecoveryProfile;
   },
 ) {
-  const evidenceInputs = verifyFundingEvidence(params.fundingEvidence, params.network, params.funding, params.walletScriptHex);
+  const evidenceInputs = verifyFundingEvidence(
+    params.fundingEvidence,
+    params.network,
+    params.funding,
+    params.walletScriptHex,
+  );
   const metadata = parseCrcLaunchMetadata(params.metadata, params.ticker);
   const hash = requestHash(params, {
     ticker: params.ticker,
@@ -285,7 +290,12 @@ export async function buildCrcTradeSession(
     paymentFunding: CrcFundingOutpoint[];
   },
 ) {
-  const evidenceInputs = verifyFundingEvidence(params.fundingEvidence, params.network, params.paymentFunding, params.walletScriptHex);
+  const evidenceInputs = verifyFundingEvidence(
+    params.fundingEvidence,
+    params.network,
+    params.paymentFunding,
+    params.walletScriptHex,
+  );
   const hash = requestHash(params, {
     assetId: params.asset.assetId,
     operation: params.operation,
@@ -424,18 +434,25 @@ export async function buildCrcTokenSession(
     amountAtoms: bigint;
     recipientScriptHex: string;
     priceSats?: bigint;
+    escrowTerms?: core.EscrowTerms;
     tokenFunding: CrcFundingOutpoint[];
     paymentFunding: CrcFundingOutpoint[];
     tokenPublicKeyHex?: string;
   },
 ) {
-  const evidenceInputs = verifyFundingEvidence(params.fundingEvidence, params.network, params.paymentFunding, params.walletScriptHex);
+  const evidenceInputs = verifyFundingEvidence(
+    params.fundingEvidence,
+    params.network,
+    params.paymentFunding,
+    params.walletScriptHex,
+  );
   const hash = requestHash(params, {
     deployTxid: params.deployTxid,
     operation: params.operation,
     amountAtoms: params.amountAtoms.toString(),
     recipientScriptHex: params.recipientScriptHex,
     priceSats: params.priceSats?.toString(),
+    ...(params.escrowTerms ? { escrowTerms: core.encodeProtocolDto(params.escrowTerms) } : {}),
     tokenFunding: params.tokenFunding,
     paymentFunding: params.paymentFunding,
     tokenPublicKeyHex: params.tokenPublicKeyHex,
@@ -469,20 +486,42 @@ export async function buildCrcTokenSession(
     params.paymentFunding,
     { publicKeyHex: params.walletPublicKeyHex, evidenceInputs },
   );
+  if (
+    params.escrowTerms &&
+    (params.operation !== "listing" ||
+      params.escrowTerms.amountAtoms !== params.amountAtoms ||
+      params.escrowTerms.priceSats !== params.priceSats ||
+      params.escrowTerms.deployTxid !== params.deployTxid ||
+      params.escrowTerms.sellerTokenScriptHex !== params.tokenScriptHex ||
+      params.escrowTerms.sellerAuthorityScriptHex !== params.walletScriptHex ||
+      params.escrowTerms.sellerPayoutScriptHex !== params.walletScriptHex ||
+      params.escrowTerms.expiryHeight <= (ledger!.tip?.height ?? 0) ||
+      params.escrowTerms.expiryHeight > (ledger!.tip?.height ?? 0) + 2016)
+  )
+    throw new AppError("CLIENT_INTENT_MISMATCH", "Escrow listing terms mismatch");
   const plan = selectPlan(params, candidates, (funding, minerFeeSats) =>
-    (params.operation === "listing" ? core.buildListing : core.buildTransfer)({
-      network: asset.config.network,
-      deployTxid: asset.deployTxid,
-      ticker: asset.config.ticker,
-      inputs: tokens,
-      funding,
-      amountAtoms: params.amountAtoms,
-      recipientScriptHex: params.recipientScriptHex,
-      sellerScriptHex: params.tokenScriptHex,
-      changeScriptHex: params.walletScriptHex,
-      minerFeeSats,
-      priceSats: params.priceSats,
-    }),
+    params.escrowTerms
+      ? core.buildEscrowListing({
+          config: asset.config,
+          terms: params.escrowTerms,
+          inputs: tokens,
+          funding,
+          changeScriptHex: params.walletScriptHex,
+          minerFeeSats,
+        })
+      : (params.operation === "listing" ? core.buildListing : core.buildTransfer)({
+          network: asset.config.network,
+          deployTxid: asset.deployTxid,
+          ticker: asset.config.ticker,
+          inputs: tokens,
+          funding,
+          amountAtoms: params.amountAtoms,
+          recipientScriptHex: params.recipientScriptHex,
+          sellerScriptHex: params.tokenScriptHex,
+          changeScriptHex: params.walletScriptHex,
+          minerFeeSats,
+          priceSats: params.priceSats,
+        }),
   );
   const psbt = createPlanPsbt(plan, params.network, {
     publicKeys: publicKeys(plan, [...tokens, ...candidates]),
@@ -490,6 +529,7 @@ export async function buildCrcTokenSession(
   const digest = unsignedTxDigest(psbt);
   const intent = {
     operation: params.operation,
+    ...(params.escrowTerms ? { escrowTerms: core.encodeProtocolDto(params.escrowTerms) } : {}),
     assetId: `${params.network}:${asset.deployTxid}`,
     amountAtoms: params.amountAtoms.toString(),
     recipientScriptHex: params.recipientScriptHex,
@@ -529,7 +569,12 @@ export async function buildCrcOfferSession(
     tokenPublicKeyHex?: string;
   },
 ) {
-  const evidenceInputs = verifyFundingEvidence(params.fundingEvidence, params.network, params.paymentFunding, params.walletScriptHex);
+  const evidenceInputs = verifyFundingEvidence(
+    params.fundingEvidence,
+    params.network,
+    params.paymentFunding,
+    params.walletScriptHex,
+  );
   const hash = requestHash(params, {
     operation: params.operation,
     offerId: params.offerId,
@@ -543,7 +588,13 @@ export async function buildCrcOfferSession(
     asset = offer && ledger?.assets[offer.deployTxid];
   if (!offer || !asset || asset.config.protocolScriptHex !== params.feeScriptHex)
     throw new AppError("STATE_CHANGED", "CRC signed offer is unavailable");
-  if (params.operation === "cancel" && offer.sellerScriptHex !== params.tokenScriptHex)
+  if (
+    params.operation === "cancel" &&
+    (offer.escrowTerms
+      ? offer.escrowTerms.sellerTokenScriptHex !== params.tokenScriptHex ||
+        offer.escrowTerms.sellerAuthorityScriptHex !== params.walletScriptHex
+      : offer.sellerScriptHex !== params.tokenScriptHex)
+  )
     throw new AppError("CLIENT_INTENT_MISMATCH", "Cancellation must use the offer owner");
   const candidates = await loadCrcFundingCandidates(
     params.db,
@@ -566,7 +617,7 @@ export async function buildCrcOfferSession(
       : core.buildCancel({ offer, funding, changeScriptHex: params.walletScriptHex, minerFeeSats }),
   );
   const inputs =
-    params.operation === "cancel"
+    params.operation === "cancel" && !offer.escrowTerms
       ? [
           {
             ...offer.listedInput,

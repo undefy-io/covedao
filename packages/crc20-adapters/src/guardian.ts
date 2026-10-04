@@ -32,6 +32,7 @@ export async function signGuardianPsbt(
   psbtBase64: string,
   ledger: Ledger,
   backend: GuardianSigningBackend,
+  escrow = false,
 ): Promise<{
   psbtBase64: string;
   transaction: ChainTransaction;
@@ -40,12 +41,27 @@ export async function signGuardianPsbt(
 }> {
   const psbt = bitcoin.Psbt.fromBase64(psbtBase64);
   const transaction = guardianPsbtTransaction(psbt);
-  const transition = core.validateGuardianTransaction(ledger, transaction);
+  const transition = (
+    escrow ? core.validateEscrowGuardianTransaction : core.validateGuardianTransaction
+  )(ledger, transaction);
   const raw = core.parseRawTransaction(transaction.rawHex);
-  const asset = Object.values(ledger.assets).find(
-    (asset) => core.outpoint(asset.vault) === core.outpoint(raw.inputs[0]!),
-  )!;
-  const custody = asset.config.guardianCustody!;
+  const offer = escrow
+    ? Object.values(ledger.offers).find(
+        (o) => o.escrowTerms && core.outpoint(o.listedInput) === core.outpoint(raw.inputs[0]!),
+      )
+    : undefined;
+  const asset = offer
+    ? ledger.assets[offer.deployTxid]!
+    : Object.values(ledger.assets).find(
+        (asset) => core.outpoint(asset.vault) === core.outpoint(raw.inputs[0]!),
+      )!;
+  const custody = offer
+    ? {
+        ...core.escrowCustody(offer.escrowTerms!),
+        guardianPublicKeyHex: offer.escrowTerms!.guardianPublicKeyHex,
+        assetCommitmentHex: core.escrowCustody(offer.escrowTerms!).commitmentHex,
+      }
+    : asset.config.guardianCustody!;
   const xOnly = Buffer.from(await backend.xOnlyPubkey());
   if (xOnly.toString("hex") !== custody.guardianPublicKeyHex)
     throw new Error("Guardian backend key differs from registered custody");
@@ -58,7 +74,10 @@ export async function signGuardianPsbt(
     Buffer.from(custody.executionScriptHex, "hex"),
     Buffer.from(custody.controlBlockHex, "hex"),
   ];
-  const { leafHash } = core.guardianExecutionKey(witness, asset.vault.scriptHex);
+  const { leafHash } = core.guardianExecutionKey(
+    witness,
+    offer?.listedInput.scriptHex ?? asset.vault.scriptHex,
+  );
   const sighash = core.taprootSignatureHash(raw, transaction.prevouts, 0, 1, leafHash);
   const signature = await backend.signTaprootScriptPath({
     sighash: Buffer.from(sighash),
@@ -75,4 +94,12 @@ export async function signGuardianPsbt(
     transition,
     signatureHex: Buffer.from(witness[0]).toString("hex"),
   };
+}
+
+export function signEscrowGuardianPsbt(
+  psbtBase64: string,
+  ledger: Ledger,
+  backend: GuardianSigningBackend,
+) {
+  return signGuardianPsbt(psbtBase64, ledger, backend, true);
 }

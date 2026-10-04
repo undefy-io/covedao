@@ -254,6 +254,28 @@ export function prepareGuardianPlanSigning(
   options: SigningOptions,
 ): PreparedSigning {
   const first = plan.inputs[0];
+  const escrowOffer = Object.values(ledger.offers).find(
+    (o) => o.escrowTerms && first && core.outpoint(o.listedInput) === core.outpoint(first),
+  );
+  if (escrowOffer) {
+    core.verifyOffer(escrowOffer);
+    const asset = ledger.assets[escrowOffer.deployTxid];
+    if (
+      !asset ||
+      core.protocolNetwork(options.network) !== asset.config.network ||
+      first!.scriptHex !== escrowOffer.listedInput.scriptHex ||
+      core.sats(first!.sats) !== core.sats(escrowOffer.listedInput.sats)
+    )
+      throw new Error("escrow custody/network mismatch");
+    core.validateEscrowConfig(escrowOffer.escrowTerms!, asset.config);
+    if (options.finalizedWitnesses?.[0] || plan.inputWitnesses?.some((w) => w.length))
+      throw new Error("escrow must be unsigned");
+    return {
+      ...preparedPsbt(plan.inputs, plan.outputs, options, 1, options.finalizedWitnesses, true),
+      plan: structuredClone(plan),
+      guardianPending: true,
+    };
+  }
   const asset = Object.values(ledger.assets).find(
     (asset) => first && core.outpoint(asset.vault) === core.outpoint(first),
   );
@@ -380,7 +402,11 @@ export function completeGuardianWalletSigning(
     rawHex: rawWithWitnesses(psbt).toHex(),
     prevouts: structuredClone(prepared.prevouts),
   };
-  const transition = core.validateGuardianTransaction(ledger, transaction);
+  const transition = (
+    hasEscrowInput(ledger, transaction)
+      ? core.validateEscrowGuardianTransaction
+      : core.validateGuardianTransaction
+  )(ledger, transaction);
   assertBuyReceipt(prepared.plan, transition);
   return { psbtBase64: psbt.toBase64(), transaction, transition };
 }
@@ -445,7 +471,12 @@ export function completeBrowserWalletSigning(
     prevouts: structuredClone(prepared.prevouts),
   };
   if (prepared.guardianPending)
-    assertBuyReceipt(prepared.plan, core.validateGuardianTransactionView(view, transaction));
+    assertBuyReceipt(
+      prepared.plan,
+      (hasEscrowInput(view, transaction)
+        ? core.validateEscrowGuardianTransactionView
+        : core.validateGuardianTransactionView)(view, transaction),
+    );
   else core.validateFinalTransactionView(prepared.plan, transaction, view);
   return { psbtBase64: psbt.toBase64(), transaction };
 }
@@ -538,3 +569,16 @@ export async function requestOfferSigning(
 }
 
 export * from "./guardian.js";
+
+function hasEscrowInput(
+  ledger: core.TransactionView | Ledger,
+  transaction: ChainTransaction,
+): boolean {
+  const first = core.parseRawTransaction(transaction.rawHex).inputs[0];
+  return (
+    !!first &&
+    Object.values(ledger.offers).some(
+      (o) => o.escrowTerms && core.outpoint(o.listedInput) === core.outpoint(first),
+    )
+  );
+}

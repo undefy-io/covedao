@@ -3,8 +3,16 @@ import { isDeepStrictEqual } from "node:util";
 import * as bitcoin from "bitcoinjs-lib";
 import * as core from "@crclaunch/crc20-protocol";
 import { completeServerWalletSigning } from "@crclaunch/crc20-adapters";
-import { loadCrcCoreLedger, saveCrcRegistration } from "@crclaunch/crc20-state";
-import { broadcastRecordedTransaction, type CoreRpcProvider, type BlockchainInfo } from "@crclaunch/bitcoin";
+import {
+  loadCrcCoreLedger,
+  saveCrcRegistration,
+  saveCrcEscrowAuthorization,
+} from "@crclaunch/crc20-state";
+import {
+  broadcastRecordedTransaction,
+  type CoreRpcProvider,
+  type BlockchainInfo,
+} from "@crclaunch/bitcoin";
 import { AppError, unsignedTxDigest } from "@crclaunch/cove-app";
 import type { Database } from "@crclaunch/db";
 import {
@@ -30,8 +38,11 @@ type SubmitParams = {
 };
 async function timed<T>(params: SubmitParams, stage: string, run: () => Promise<T>): Promise<T> {
   const start = performance.now();
-  try { return await run(); }
-  finally { params.onTiming?.(stage, performance.now() - start); }
+  try {
+    return await run();
+  } finally {
+    params.onTiming?.(stage, performance.now() - start);
+  }
 }
 type Session = NonNullable<Awaited<ReturnType<typeof getCrcBuildSession>>>;
 function operationMatches(actual: string, expected: SubmitParams["expectedOperation"]) {
@@ -75,7 +86,7 @@ async function assertLive(
   transaction: core.ChainTransaction,
   observation?: BlockchainInfo,
 ) {
-  const network = observation ?? await assertNetwork(params);
+  const network = observation ?? (await assertNetwork(params));
   if (ledger.tip && (await params.provider.getBlockHash(ledger.tip.height)) !== ledger.tip.hash)
     throw new AppError("STATE_CHANGED", "CRC indexed state is no longer canonical");
   for (const input of transaction.prevouts) {
@@ -134,17 +145,33 @@ export function finalizeCrcPsbt(psbt: bitcoin.Psbt): bitcoin.Transaction {
   }
   return psbt.extractTransaction();
 }
-export type CrcReadyTransaction = { network: CrcNetwork; status: "READY" | "BROADCAST"; rawTxHex: string; txid: string };
+export type CrcReadyTransaction = {
+  network: CrcNetwork;
+  status: "READY" | "BROADCAST";
+  rawTxHex: string;
+  txid: string;
+};
 function readyReceipt(params: SubmitParams, session: Session): CrcReadyTransaction {
-  if (!session.signedRawHex || !session.txid || readyTransactionId(session.signedRawHex, session.psbtBase64) !== session.txid)
+  if (
+    !session.signedRawHex ||
+    !session.txid ||
+    readyTransactionId(session.signedRawHex, session.psbtBase64) !== session.txid
+  )
     throw new Error("Stored CRC transaction identity mismatch");
-  return { network: params.network, status: session.status === "BROADCAST" ? "BROADCAST" : "READY", rawTxHex: session.signedRawHex, txid: session.txid };
+  return {
+    network: params.network,
+    status: session.status === "BROADCAST" ? "BROADCAST" : "READY",
+    rawTxHex: session.signedRawHex,
+    txid: session.txid,
+  };
 }
 export async function prepareCrcSession(params: SubmitParams): Promise<CrcReadyTransaction> {
   return completeCrcSession(params, true) as Promise<CrcReadyTransaction>;
 }
 /** Regtest fixture relay. Public HTTP routes exclusively use preparation. */
-export async function submitCrcSession(params: SubmitParams): Promise<{ txid: string; status: "BROADCAST" }> {
+export async function submitCrcSession(
+  params: SubmitParams,
+): Promise<{ txid: string; status: "BROADCAST" }> {
   return completeCrcSession(params, false) as Promise<{ txid: string; status: "BROADCAST" }>;
 }
 async function completeCrcSession(params: SubmitParams, clientBroadcast: boolean) {
@@ -163,7 +190,12 @@ async function completeCrcSession(params: SubmitParams, clientBroadcast: boolean
     throw new AppError("REQUEST_TOO_LARGE", "signed PSBT exceeds transport limit");
   const { plan, config, data } = storedPlan(session);
   let ledger = await context(params, session, config);
-  const guardianPending = ["mint-buy", "inventory-buy", "sell"].includes(session.operation);
+  const escrowPending =
+    ["purchase", "cancel"].includes(session.operation) &&
+    typeof data.offerId === "string" &&
+    !!ledger.offers[data.offerId]?.escrowTerms;
+  const guardianPending =
+    escrowPending || ["mint-buy", "inventory-buy", "sell"].includes(session.operation);
   let verified: ReturnType<typeof completeServerWalletSigning>;
   try {
     verified = completeServerWalletSigning(
@@ -184,10 +216,13 @@ async function completeCrcSession(params: SubmitParams, clientBroadcast: boolean
     guardianPending &&
     verified.transition?.kind !==
       (
-        { "mint-buy": "mint", "inventory-buy": "inventoryBuy", sell: "sell" } as Record<
-          string,
-          string
-        >
+        {
+          "mint-buy": "mint",
+          "inventory-buy": "inventoryBuy",
+          sell: "sell",
+          purchase: "fill",
+          cancel: "transfer",
+        } as Record<string, string>
       )[session.operation]
   )
     throw new AppError("CLIENT_INTENT_MISMATCH", "CRC operation differs from core transition");
@@ -221,21 +256,23 @@ async function completeCrcSession(params: SubmitParams, clientBroadcast: boolean
     if (guardianPending) {
       let response: Response;
       try {
-        response = await timed(params, "guardian", () => fetch(new URL("/sign/crc20", params.guardianEndpoint), {
-          method: "POST",
-          headers: {
-            authorization: `Bearer ${params.guardianAuthToken}`,
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            requestId: session.id,
-            network: params.network,
-            deploymentTxid: session.deploymentTxid,
-            operation: session.operation,
-            psbtBase64: verified.psbtBase64,
+        response = await timed(params, "guardian", () =>
+          fetch(new URL("/sign/crc20", params.guardianEndpoint), {
+            method: "POST",
+            headers: {
+              authorization: `Bearer ${params.guardianAuthToken}`,
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({
+              requestId: session.id,
+              network: params.network,
+              deploymentTxid: session.deploymentTxid,
+              operation: escrowPending ? `escrow-${session.operation}` : session.operation,
+              psbtBase64: verified.psbtBase64,
+            }),
+            signal: AbortSignal.timeout(30000),
           }),
-          signal: AbortSignal.timeout(30000),
-        }));
+        );
       } catch (error) {
         throw new AppError(
           "GUARDIAN_UNAVAILABLE",
@@ -291,7 +328,9 @@ async function completeCrcSession(params: SubmitParams, clientBroadcast: boolean
     }
     ledger = await context(params, session, config);
     core.validateFinalTransaction(plan, transaction, ledger);
-    const network = await timed(params, "live_before_ready", () => assertLive(params, ledger, transaction));
+    const network = await timed(params, "live_before_ready", () =>
+      assertLive(params, ledger, transaction),
+    );
     const txid = core.parseRawTransaction(transaction.rawHex).txid;
     if (session.operation === "deploy") {
       await saveCrcRegistration(params.db, config, transaction);
@@ -303,6 +342,15 @@ async function completeCrcSession(params: SubmitParams, clientBroadcast: boolean
         parseCrcLaunchMetadata(data.metadata, config.ticker),
       );
     }
+    if (session.operation === "listing" && data.escrowTerms) {
+      const terms = core.decodeProtocolDto<core.EscrowTerms>(data.escrowTerms);
+      const output = plan.outputs[1]!;
+      await saveCrcEscrowAuthorization(
+        params.db,
+        core.escrowOffer(terms, { txid, vout: 1, ...output }),
+        transaction,
+      );
+    }
     await markCrcBuildReady(
       params.db,
       params.network,
@@ -311,16 +359,30 @@ async function completeCrcSession(params: SubmitParams, clientBroadcast: boolean
       txid,
       claim.claimId,
     );
-    if (clientBroadcast) return { network: params.network, status: "READY" as const, rawTxHex: transaction.rawHex, txid };
+    if (clientBroadcast)
+      return {
+        network: params.network,
+        status: "READY" as const,
+        rawTxHex: transaction.rawHex,
+        txid,
+      };
     // Fresh submission already has a verified current transaction and live
     // fence. Persist READY before I/O, but leave observation/reconstruction to
     // the recovery path; a lost response is retried from these exact bytes.
     try {
-      await timed(params, "broadcast", () => broadcastRecordedTransaction(
-        params.provider, { rawTxHex: transaction.rawHex, txid }, params.network, network,
-      ));
+      await timed(params, "broadcast", () =>
+        broadcastRecordedTransaction(
+          params.provider,
+          { rawTxHex: transaction.rawHex, txid },
+          params.network,
+          network,
+        ),
+      );
     } catch (error) {
-      throw new AppError("BROADCAST_FAILED", error instanceof Error ? error.message : "CRC transaction could not be broadcast");
+      throw new AppError(
+        "BROADCAST_FAILED",
+        error instanceof Error ? error.message : "CRC transaction could not be broadcast",
+      );
     }
     await markCrcBuildBroadcast(params.db, params.network, params.sessionId, txid);
     return { txid, status: "BROADCAST" };

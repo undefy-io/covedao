@@ -1,3 +1,5 @@
+import { buildEscrowCancel } from "./escrow.js";
+import { escrowCustody, validateEscrowConfig } from "./escrow-terms.js";
 import { hash256, hex, utf8 } from "./bytes.js";
 import type {
   Asset,
@@ -5,6 +7,7 @@ import type {
   BlockUndo,
   ChainTransaction,
   Config,
+  EscrowTerms,
   ConfirmedBlockOptions,
   ConfirmedEvent,
   Ledger,
@@ -112,7 +115,7 @@ function transitionTransaction(
     verifySignatures(
       tx,
       transaction.prevouts,
-      authorized ? outpoint(authorized.listedInput) : undefined,
+      authorized && !authorized.escrowTerms ? outpoint(authorized.listedInput) : undefined,
     );
   }
   const marker = decodeTransaction(
@@ -134,6 +137,29 @@ function transitionTransaction(
   const tokens = inputs
     .filter((i) => ledger.allocations[outpoint(i)])
     .map((i) => ({ ...i, ...ledger.allocations[outpoint(i)]! }));
+  for (const offer of Object.values(ledger.offers)) {
+    if (!offer.escrowTerms || !tokens.some((i) => outpoint(i) === outpoint(offer.listedInput)))
+      continue;
+    if (offer !== authorized || tokens.length !== 1)
+      throw new Error("escrow requires sole token input at input zero");
+    const registered = ledger.assets[offer.deployTxid];
+    if (!registered) throw new Error("unregistered escrow asset");
+    validateEscrowConfig(offer.escrowTerms, registered.config);
+    verifyOffer(offer);
+    if (!guardianUnsigned) {
+      const witness = tx.inputs[0]!.witness,
+        custody = escrowCustody(offer.escrowTerms);
+      if (
+        witness.length !== 4 ||
+        witness[0]!.length !== 65 ||
+        witness[0]![64] !== 1 ||
+        hex(witness[1]!) !== custody.commitmentHex ||
+        hex(witness[2]!) !== custody.executionScriptHex ||
+        hex(witness[3]!) !== custody.controlBlockHex
+      )
+        throw new Error("escrow requires exact ALL execution witness");
+    }
+  }
   const vaultEntries = Object.values(ledger.assets).filter((a) =>
     inputs.some((i) => outpoint(i) === outpoint(a.vault)),
   );
@@ -282,17 +308,20 @@ function transitionTransaction(
       } else {
         if (marker.markerVout !== 0)
           throw new Error("unregistered market offer or invalid transfer position");
-        plan = buildTransfer({
-          network: asset.config.network,
-          deployTxid: id,
-          ticker: asset.config.ticker,
-          inputs: tokens,
-          funding,
-          amountAtoms: marker.amountAtoms!,
-          recipientScriptHex,
-          changeScriptHex,
-          minerFeeSats,
-        });
+        if (authorized?.escrowTerms) {
+          plan = buildEscrowCancel({ offer: authorized, funding, changeScriptHex, minerFeeSats });
+        } else
+          plan = buildTransfer({
+            network: asset.config.network,
+            deployTxid: id,
+            ticker: asset.config.ticker,
+            inputs: tokens,
+            funding,
+            amountAtoms: marker.amountAtoms!,
+            recipientScriptHex,
+            changeScriptHex,
+            minerFeeSats,
+          });
         kind = "transfer";
       }
     }
@@ -415,6 +444,101 @@ function guardianTransaction(
   return { ...result, ledger: { ...result.ledger, config: ledger.config } };
 }
 
+/** Authenticate seller-signed listing bytes before admitting durable order metadata. */
+export function validateEscrowListingTransaction(
+  ledger: Ledger,
+  terms: EscrowTerms,
+  transaction: ChainTransaction,
+): ValidatedTransition {
+  const asset = ledger.assets[terms.deployTxid];
+  if (!asset) throw new Error("unregistered escrow asset");
+  validateEscrowConfig(terms, asset.config);
+  const result = transitionTransaction({ ...ledger, config: asset.config }, transaction);
+  const output = result.plan.outputs[1];
+  if (
+    result.kind !== "transfer" ||
+    result.deployTxid !== terms.deployTxid ||
+    result.amountAtoms !== terms.amountAtoms ||
+    output?.scriptHex !== escrowCustody(terms).scriptHex ||
+    output.sats !== carrierSats ||
+    result.plan.inputs
+      .filter((i) => ledger.allocations[outpoint(i)])
+      .some((i) => i.scriptHex !== terms.sellerTokenScriptHex) ||
+    result.plan.inputs
+      .filter((i) => !ledger.allocations[outpoint(i)])
+      .some((i) => i.scriptHex !== terms.sellerAuthorityScriptHex)
+  )
+    throw new Error("escrow signed seller listing mismatch");
+  return result;
+}
+
+/** Only escrow input zero is unsigned; every buyer/seller funding signature is verified. */
+function escrowGuardianTransaction(
+  ledger: Ledger,
+  transaction: ChainTransaction,
+  allocationView = false,
+): ValidatedTransition {
+  const tx = parseRawTransaction(transaction.rawHex);
+  const offer = Object.values(ledger.offers).find(
+    (o) => o.escrowTerms && tx.inputs[0] && outpoint(o.listedInput) === outpoint(tx.inputs[0]),
+  );
+  if (!offer?.escrowTerms) throw new Error("registered escrow order required");
+  const asset = ledger.assets[offer.deployTxid];
+  if (!asset) throw new Error("unregistered escrow asset");
+  verifyOffer(offer);
+  validateEscrowConfig(offer.escrowTerms, asset.config);
+  if (offer.status !== "open" && offer.status !== "cancelPending")
+    throw new Error("escrow order unavailable");
+  const input = transaction.prevouts[0];
+  if (
+    !input ||
+    outpoint(input) !== outpoint(offer.listedInput) ||
+    input.scriptHex !== offer.listedInput.scriptHex ||
+    sats(input.sats) !== sats(offer.listedInput.sats)
+  )
+    throw new Error("escrow prevout mismatch");
+  if (
+    tx.version !== 2 ||
+    tx.locktime !== 0 ||
+    tx.inputs.some((i) => i.sequence !== 0xfffffffe) ||
+    tx.inputs[0]!.witness.length ||
+    tx.inputs[0]!.scriptHex
+  )
+    throw new Error("escrow input must be unsigned with canonical transaction header");
+  const result = transitionTransaction(
+    { ...ledger, config: asset.config },
+    transaction,
+    true,
+    allocationView,
+  );
+  if (result.kind !== "fill" && result.kind !== "transfer")
+    throw new Error("escrow operation requires fill or cancellation");
+  if (
+    result.kind === "fill" &&
+    (offer.status !== "open" || !ledger.tip || ledger.tip.height >= offer.expiryHeight)
+  )
+    throw new Error("expired or unavailable escrow order");
+  return { ...result, ledger: { ...result.ledger, config: ledger.config } };
+}
+export function validateEscrowGuardianTransaction(
+  ledger: Ledger,
+  transaction: ChainTransaction,
+): ValidatedTransition {
+  return escrowGuardianTransaction(ledger, transaction);
+}
+export function validateEscrowGuardianTransactionView(
+  view: TransactionView,
+  transaction: ChainTransaction,
+): Omit<ValidatedTransition, "ledger"> {
+  bindTransactionViewInputs(view, transaction.prevouts);
+  const { ledger: _prediction, ...validated } = escrowGuardianTransaction(
+    { ...view, history: {} },
+    transaction,
+    true,
+  );
+  return validated;
+}
+
 export function validateGuardianTransaction(
   ledger: Ledger,
   transaction: ChainTransaction,
@@ -489,7 +613,7 @@ export function rollbackBlock(ledger: Ledger, hash: string): Ledger {
       allocation.deployTxid !== offer.deployTxid ||
       allocation.atoms !== offer.listedInput.atoms ||
       allocation.sats !== sats(offer.listedInput.sats) ||
-      allocation.scriptHex !== offer.sellerScriptHex ||
+      allocation.scriptHex !== offer.listedInput.scriptHex ||
       asset.config.network !== offer.network ||
       asset.config.ticker !== offer.ticker
     )

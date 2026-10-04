@@ -1,0 +1,10 @@
+{
+  "url": "http://127.0.0.1:3000/market",
+  "errors": [],
+  "loadedJsFiles": 18,
+  "newListingAction": true,
+  "automaticPublicationMessage": true,
+  "oldPreparationInstruction": false,
+  "oldPreparedListingAction": false,
+  "mempoolApiRequests": []
+}

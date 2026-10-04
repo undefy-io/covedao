@@ -1,3 +1,4 @@
+import { escrowCustody, escrowTermsMessage, validateEscrowConfig } from "./escrow-terms.js";
 import * as ecc from "tiny-secp256k1";
 import { hash160, hex, unhex } from "./bytes.js";
 import { outpoint, sats, verifySignatures } from "./wire.js";
@@ -9,6 +10,12 @@ export const offerId = (offer: Offer): string =>
 export type OfferTerms = Omit<Offer, "signatureHex" | "sellerWitnessHex" | "status">;
 export function offerMessage(o: OfferTerms): string {
   validateOfferTerms(o);
+  if (o.escrowTerms)
+    return JSON.stringify([
+      "cove-crc-escrow-offer-v1",
+      escrowTermsMessage(o.escrowTerms),
+      outpoint(o.listedInput),
+    ]);
   return JSON.stringify([
     "cove-crc-offer-v1",
     o.network,
@@ -61,6 +68,7 @@ function ownerScript(key: Uint8Array, script: string): string {
 }
 export function validateOfferTerms(o: OfferTerms & { status?: Offer["status"] }): void {
   const allowed = [
+    "escrowTerms",
     "network",
     "deployTxid",
     "ticker",
@@ -91,6 +99,27 @@ export function validateOfferTerms(o: OfferTerms & { status?: Offer["status"] })
     (o.status !== undefined && !["open", "cancelPending", "cancelled", "filled"].includes(o.status))
   )
     throw new Error("invalid signed offer terms");
+  if (o.escrowTerms) {
+    const t = o.escrowTerms,
+      custody = escrowCustody(t);
+    if (
+      o.network !== t.network ||
+      o.deployTxid !== t.deployTxid ||
+      o.ticker !== t.ticker ||
+      o.priceSats !== t.priceSats ||
+      o.expiryHeight !== t.expiryHeight ||
+      o.sellerScriptHex !== t.sellerPayoutScriptHex ||
+      o.publicKeyHex !== t.guardianPublicKeyHex ||
+      o.listedInput.scriptHex !== custody.scriptHex ||
+      o.listedInput.atoms !== t.amountAtoms ||
+      sats(o.listedInput.sats) !== 1000n ||
+      o.listedInput.deployTxid !== t.deployTxid ||
+      ("signatureHex" in o && o.signatureHex !== "") ||
+      ("sellerWitnessHex" in o && (!Array.isArray(o.sellerWitnessHex) || o.sellerWitnessHex.length))
+    )
+      throw new Error("escrow offer commitment/terms mismatch");
+    return;
+  }
   const key = unhex(o.publicKeyHex);
   if (
     ownerScript(key, o.sellerScriptHex) !== o.sellerScriptHex ||
@@ -102,6 +131,11 @@ export function validateOfferTerms(o: OfferTerms & { status?: Offer["status"] })
 
 export function verifyOffer(o: Offer): void {
   validateOfferTerms(o);
+  if (o.escrowTerms) {
+    if (o.signatureHex !== "" || !Array.isArray(o.sellerWitnessHex) || o.sellerWitnessHex.length)
+      throw new Error("escrow uses confirmed transaction authorization");
+    return;
+  }
   verifyMessageAuthorization(o.sellerScriptHex, offerMessage(o), o.signatureHex);
   const tx = offerSigningTransaction(o, o.sellerWitnessHex);
   if (tx.inputs[0]!.witness[0]?.at(-1) !== 131)
@@ -111,6 +145,7 @@ export function verifyOffer(o: Offer): void {
 function matchesAllocation(ledger: Ledger, offer: Offer): boolean {
   const allocation = ledger.allocations[outpoint(offer.listedInput)],
     asset = ledger.assets[offer.deployTxid];
+  if (asset && offer.escrowTerms) validateEscrowConfig(offer.escrowTerms, asset.config);
   return Boolean(
     asset &&
     offer.network === asset.config.network &&
@@ -119,7 +154,7 @@ function matchesAllocation(ledger: Ledger, offer: Offer): boolean {
     allocation.deployTxid === offer.deployTxid &&
     allocation.atoms === offer.listedInput.atoms &&
     allocation.sats === sats(offer.listedInput.sats) &&
-    allocation.scriptHex === offer.sellerScriptHex,
+    allocation.scriptHex === offer.listedInput.scriptHex,
   );
 }
 /** Replay previously admitted signed terms, including expired terms needed for confirmed fills.
