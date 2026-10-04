@@ -1,0 +1,36 @@
+{
+  "network": "signet",
+  "address": "tb1qg358gsla30dtx228u3za8253zncpzdwkrl6eem",
+  "coins": 32,
+  "proofVersion": 1,
+  "observedInputs": 1,
+  "signing": false,
+  "requests": [
+    {
+      "url": "https://bitcoin-signet-rpc.publicnode.com/",
+      "method": "POST",
+      "rpcMethod": "getblockchaininfo"
+    },
+    {
+      "url": "https://bitcoin-signet-rpc.publicnode.com/",
+      "method": "POST",
+      "rpcMethod": "getblockhash"
+    },
+    {
+      "url": "https://mempool.space/signet/api/address/tb1qg358gsla30dtx228u3za8253zncpzdwkrl6eem/utxo",
+      "method": "GET"
+    },
+    {
+      "url": "https://bitcoin-signet-rpc.publicnode.com/",
+      "method": "POST",
+      "rpcMethod": "getrawtransaction"
+    },
+    {
+      "url": "https://bitcoin-signet-rpc.publicnode.com/",
+      "method": "POST",
+      "rpcMethod": "gettxout"
+    }
+  ],
+  "backendAddressDiscovery": 0,
+  "checkedAt": "2026-10-04T04:13:30.919Z"
+}

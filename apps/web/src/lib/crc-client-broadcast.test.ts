@@ -29,7 +29,7 @@ test("desktop/mobile saves before relay, survives reload, retries without wallet
         calls.push(body.method);
         if(body.method==='sendrawtransaction') {sends++;expect(body.params).toEqual([receipt.rawTxHex]);expect(await page.evaluate('window.saved()[0].receipt.txid')).toBe(receipt.txid);result=accept?{result:receipt.txid,error:null}:{result:null,error:{code:-26,message:'provider unavailable'}};}
         else if(body.method==='getrawtransaction') result={result:null,error:{code:-5,message:'not found'}};
-        else result={result:body.method==='getblockchaininfo'?{chain:'signet',blocks:100}:'ab'.repeat(32),error:null};
+        else result={result:body.method==='getblockchaininfo'?{chain:'signet',blocks:100}:'00000008819873e925422c1ff0f99f7cc9bbb232af63a077a480a3633bee1ef6',error:null};
       }
       await route.fulfill({status:200,json:result,headers:{'access-control-allow-origin':'*'}});
     });

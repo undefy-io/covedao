@@ -13,6 +13,14 @@ type Requester = (url: string, init?: RequestInit) => Promise<Response>;
 type Coin = Required<WalletFundingCoin>;
 type Input = { txid: string; vout: number; sats: bigint; scriptHex: string };
 
+// Bitcoin Core v30.0 src/kernel/chainparams.cpp: expected genesis per network.
+const GENESIS: Readonly<Record<string, string>> = {
+  mainnet: "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+  testnet: "000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943",
+  signet: "00000008819873e925422c1ff0f99f7cc9bbb232af63a077a480a3633bee1ef6",
+  regtest: "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206",
+};
+
 async function observations<T>(tasks: Promise<T>[]): Promise<T[]> {
   const settled = await Promise.allSettled(tasks);
   const failures = settled.filter((item): item is PromiseRejectedResult => item.status === "rejected");
@@ -130,11 +138,9 @@ export class CrcPublicChain {
       const expected = this.network === "mainnet" ? "main" : this.network === "testnet" ? "test" : this.network;
       if (!info || info.chain !== expected || !Number.isSafeInteger(info.blocks) || info.blocks! < 0)
         throw new PublicChainInvalid("Public RPC network differs from the wallet");
-      const [rpcGenesis, indexGenesis] = await observations([
-        this.rpc("getblockhash", [0]), this.body(`${this.indexUrl}/block-height/0`),
-      ]);
-      if (typeof rpcGenesis !== "string" || !/^[0-9a-f]{64}$/.test(rpcGenesis) || typeof indexGenesis !== "string" || indexGenesis.trim() !== rpcGenesis)
-        throw new PublicChainInvalid("Public address index network differs from RPC");
+      const rpcGenesis = await this.rpc("getblockhash", [0]);
+      if (!GENESIS[this.network] || rpcGenesis !== GENESIS[this.network])
+        throw new PublicChainInvalid("Public RPC genesis differs from the wallet network");
       this.identity = { until: Date.now() + 5000, blocks: info.blocks! }; return info.blocks!;
     });
   }

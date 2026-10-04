@@ -1,12 +1,12 @@
 import { expect, test, vi } from "vitest";
 import * as bitcoin from "bitcoinjs-lib";
 import { CrcPublicChain, PublicChainInvalid, PublicChainUnavailable } from "./crc-public-chain";
-const script = `0014${"12".repeat(20)}`, genesis = "ab".repeat(32);
+const script = `0014${"12".repeat(20)}`, genesis = "00000008819873e925422c1ff0f99f7cc9bbb232af63a077a480a3633bee1ef6";
 const tx = new bitcoin.Transaction(); tx.addInput(Buffer.alloc(32, 1), 0); tx.addOutput(Buffer.from(script, "hex"), 12345);
 const input = { txid: tx.getId(), vout: 0, sats: 12345n, scriptHex: script };
 function fixture(overrides: Record<string, unknown> = {}) {
   const request = vi.fn(async (url: string, init?: RequestInit) => {
-    if (url.includes("block-height")) return new Response(String(overrides.genesis ?? genesis));
+    if (url.includes("block-height")) throw new Error("Unexpected Esplora genesis request");
     if (url.includes("/utxo")) return Response.json([{ txid: tx.getId(), vout: 0, value: 12345, status: { confirmed: true, block_height: 10 } }]);
     const body = JSON.parse(String(init!.body));
     const results: Record<string, unknown> = { getblockchaininfo: { chain: "signet", blocks: 12 }, getblockhash: genesis,
@@ -18,18 +18,18 @@ function fixture(overrides: Record<string, unknown> = {}) {
 test("coalesces address/identity/raw reads and observes reviewed inputs directly without proxy calls", async () => {
   const { request, client } = fixture();
   await Promise.all(Array.from({ length: 20 }, () => client.coins("wallet")));
-  expect(request).toHaveBeenCalledTimes(4);
+  expect(request).toHaveBeenCalledTimes(3);
   const proofs = await Promise.all([client.evidence([input]), client.evidence([input])]);
   expect(proofs[0]).toEqual({ version: 1, network: "signet", parents: [{ txid: tx.getId(), rawHex: tx.toHex() }] });
-  expect(request).toHaveBeenCalledTimes(5);
+  expect(request).toHaveBeenCalledTimes(4);
   expect(await client.observe([input])).toEqual([{ ...input, confirmations: 3 }]);
-  expect(request).toHaveBeenCalledTimes(6);
+  expect(request).toHaveBeenCalledTimes(5);
   const observed = request.mock.calls.map(([, init]) => init?.body && JSON.parse(String(init.body))).filter(Boolean);
   expect(observed.at(-1).params).toEqual([input.txid, 0, true]);
 });
-test("wrong RPC/index networks, forged raw content and spent/unconfirmed outputs fail closed", async () => {
+test("wrong RPC network/genesis, forged raw content and spent/unconfirmed outputs fail closed", async () => {
   for (const overrides of [
-    { getblockchaininfo: { chain: "test", blocks: 12 } }, { genesis: "cd".repeat(32) },
+    { getblockchaininfo: { chain: "test", blocks: 12 } }, { getblockhash: "cd".repeat(32) },
     { getrawtransaction: "00" }, { gettxout: null },
     { gettxout: { confirmations: 0, value: 0.00012345, scriptPubKey: { hex: script } } },
     { gettxout: { confirmations: 3, value: 0.000123455, scriptPubKey: { hex: script } } },
@@ -120,4 +120,17 @@ test("wrong network and mismatching relay/observation identities never acknowled
     return f.request(url,init);
   });
   await expect(client.broadcast(tx.toHex(),tx.getId())).rejects.toThrow();
+});
+
+test("proof, input review and broadcast need no address-index requests", async () => {
+  const f = fixture({sendrawtransaction: tx.getId()});
+  const request = vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.includes("index.example")) throw new Error("Address index is unavailable");
+    return f.request(url, init);
+  });
+  const client = new CrcPublicChain("signet", "https://rpc.example", "https://index.example", request);
+  await expect(client.evidence([input])).resolves.toMatchObject({version:1});
+  await expect(client.observe([input])).resolves.toHaveLength(1);
+  await expect(client.broadcast(tx.toHex(), tx.getId())).resolves.toBe(tx.getId());
+  expect(request.mock.calls.every(([url]) => url.startsWith("https://rpc.example"))).toBe(true);
 });

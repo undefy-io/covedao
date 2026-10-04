@@ -59,7 +59,7 @@ test("desktop/mobile browser callers discover, prove and review trades/purchases
         calls.push({ url, method: body?.method, params: body?.params });
         let result: unknown;
         if (url.includes("rpc.example")) {
-          const values: Record<string, unknown> = { getblockchaininfo: { chain: "signet", blocks: 100 }, getblockhash: "11".repeat(32), getrawtransaction: parent.toHex(), gettxout: { confirmations: 1, value: 0.001, scriptPubKey: { hex: script } } };
+          const values: Record<string, unknown> = { getblockchaininfo: { chain: "signet", blocks: 100 }, getblockhash: "00000008819873e925422c1ff0f99f7cc9bbb232af63a077a480a3633bee1ef6", getrawtransaction: parent.toHex(), gettxout: { confirmations: 1, value: 0.001, scriptPubKey: { hex: script } } };
           result = { result: values[body!.method!], error: null };
         } else if (url.includes("block-height/0")) {
           await route.fulfill({ status: 200, body: "11".repeat(32), headers: { "access-control-allow-origin": "*" } }); return;
@@ -73,6 +73,7 @@ test("desktop/mobile browser callers discover, prove and review trades/purchases
       await page.goto(`http://127.0.0.1:${port}`); await page.waitForFunction("typeof window.run === 'function'");
       expect(await page.evaluate("window.run()")).toEqual({ coins: 1, proof: 1 });
       expect(calls.some(call => call.url.includes("/wallet/utxos"))).toBe(false);
+      expect(calls.some(call => call.url.includes("block-height/0"))).toBe(false);
       expect(calls.filter(call => call.method === "getrawtransaction")).toHaveLength(1);
       expect(calls.filter(call => call.method === "gettxout").map(call => call.params)).toEqual([[input.txid, 0, true], [input.txid, 0, true]]);
       await page.close();

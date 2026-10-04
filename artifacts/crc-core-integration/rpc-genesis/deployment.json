@@ -1,0 +1,35 @@
+{
+  "network": "signet",
+  "priorSessionsRetained": 17,
+  "sessionContentsPreserved": true,
+  "observedSessionTransitions": [
+    {
+      "txid": "4da09bf74e3c7fdbd5e02c03dae4162fa65310e2f25689c6a1df659884ffa0b0",
+      "previous": "READY",
+      "current": "BROADCAST"
+    }
+  ],
+  "priorEventsRetained": 8,
+  "currentEvents": 9,
+  "registrationsUnchanged": true,
+  "profileUnchanged": true,
+  "services": [
+    {
+      "role": "web",
+      "image": "sha256:15e989d2553e33e54299464273199df99ab52e2eca610168da0c4c846c08bd04",
+      "status": "healthy"
+    },
+    {
+      "role": "worker",
+      "image": "sha256:15e989d2553e33e54299464273199df99ab52e2eca610168da0c4c846c08bd04",
+      "status": "running"
+    },
+    {
+      "role": "guardian",
+      "image": "sha256:295beafc29cf9dd4e093285799c5a45de77235c13b7a33f386456ee58589e3b1",
+      "status": "healthy"
+    }
+  ],
+  "workerReady": true,
+  "databaseReset": false
+}
