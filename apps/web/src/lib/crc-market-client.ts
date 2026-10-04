@@ -28,6 +28,18 @@ export type CrcMarketListing = {
   protocolFeeSats: number;
   coreOffer: core.ProtocolDto<core.Offer>;
 };
+/** Ownership label only; purchases/cancellations still validate the full core offer. */
+export function isCrcMarketListingOwner(
+  row: CrcMarketListing,
+  wallet: { network: string; script: string; ordinalsScript: string },
+): boolean {
+  if (core.protocolNetwork(row.network) !== core.protocolNetwork(wallet.network)) return false;
+  const terms = row.coreOffer.escrowTerms;
+  return terms
+    ? terms.sellerTokenScriptHex === wallet.ordinalsScript &&
+        terms.sellerAuthorityScriptHex === wallet.script
+    : row.sellerScriptHex === wallet.ordinalsScript;
+}
 export function crcOfferFromListing(row: CrcMarketListing): core.Offer {
   const offer = core.decodeProtocolDto<core.Offer>(row.coreOffer);
   core.verifyOffer(offer);
@@ -67,6 +79,8 @@ export async function buyCrcMarketListing(
     crcBrowserScript(wallet.ordinalsAddress, wallet.network) !== wallet.ordinalsScript
   )
     throw new Error("Wallet network or address differs from this marketplace");
+  if (isCrcMarketListingOwner(row, wallet))
+    throw new Error("This is your listing. Manage or cancel it under Your listings.");
   if (
     !Number.isSafeInteger(minerFeeSats) ||
     minerFeeSats < 1 ||

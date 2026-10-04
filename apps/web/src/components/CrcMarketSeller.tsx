@@ -365,7 +365,7 @@ export function CrcMarketSeller() {
             </div>
           )}
           {!!listings.length && (
-            <div className="border-t border-rule pt-4">
+            <div id="your-market-listings" className="border-t border-rule pt-4">
               <h3 className="text-sm text-bone">Your listings</h3>
               {listings.map((row) => (
                 <div
