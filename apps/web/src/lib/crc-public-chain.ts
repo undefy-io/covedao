@@ -158,7 +158,7 @@ export class CrcPublicChain {
         try {
           const observed = await this.rpc("getrawtransaction", [txid, false]);
           if (typeof observed === "string" && observed.length <= 750000 && core.parseRawTransaction(observed).txid === txid) return txid;
-        } catch { /* Keep the original failure and saved receipt for explicit retry. */ }
+        } catch { /* Report the original broadcast failure. */ }
         throw error;
       }
       if (result !== txid) throw new PublicChainInvalid("Public RPC broadcast identity mismatch");

@@ -1,6 +1,5 @@
 "use client";
 
-import { CrcPendingBroadcasts } from "./CrcPendingBroadcasts";
 import { crcWalletData } from "@/lib/crc-wallet-data";
 import { tr } from "@/i18n";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
@@ -356,7 +355,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     [conn, capabilities, connect, connectDev, devIdentity, disconnect, signPsbt, signBip322, getUtxos, getUtxosForAddress, walletFields, pickerOpen],
   );
 
-  return <WalletContext.Provider value={value}><CrcPendingBroadcasts network={value.network} address={value.address} />{children}</WalletContext.Provider>;
+  return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }
 
 export function useWallet(): WalletState {
