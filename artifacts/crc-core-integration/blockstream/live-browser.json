@@ -1,0 +1,43 @@
+{
+  "checkedAt": "2026-10-04T04:40:02.633Z",
+  "backendDiscoveryStatus": 410,
+  "evidence": [
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "activityLinks": [
+        "https://blockstream.info/signet/tx/4da09bf74e3c7fdbd5e02c03dae4162fa65310e2f25689c6a1df659884ffa0b0",
+        "https://blockstream.info/signet/tx/d19a4f766a24eaeaad9198db94329d8b2fc2269a19042f493a64da6a80fc9a96",
+        "https://blockstream.info/signet/tx/1ffe6fb9a7b3b647405d9a5e926d32ac2bce9023505836632d86b294dce7eeca",
+        "https://blockstream.info/signet/tx/5348740223488130f54ac71e592108b0b1adc6c043d60510fa0f33d4697baf9b",
+        "https://blockstream.info/signet/tx/220fc5f5931f2fb44a6ee5544e10317c52cfcddc5b5577459f16a10aaa5b81ce",
+        "https://blockstream.info/signet/tx/87033edf3314684848c680743c7d4cad73024523b3715cca2a86c5381462662d",
+        "https://blockstream.info/signet/tx/b0ed552fae5a34634349c75bf02aec495a9b889a18a8368318088295ad9ea89e",
+        "https://blockstream.info/signet/tx/04977af4a6b3057b59a9db043dc82497d5f3ea2e1bcedb98e5d5497318b82d93",
+        "https://blockstream.info/signet/tx/b7b3faa32c7de8f122c1482fcbee3a67255af573e7f1894c94501511fff95c1e"
+      ],
+      "mempoolRequests": 0
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "activityLinks": [
+        "https://blockstream.info/signet/tx/4da09bf74e3c7fdbd5e02c03dae4162fa65310e2f25689c6a1df659884ffa0b0",
+        "https://blockstream.info/signet/tx/d19a4f766a24eaeaad9198db94329d8b2fc2269a19042f493a64da6a80fc9a96",
+        "https://blockstream.info/signet/tx/1ffe6fb9a7b3b647405d9a5e926d32ac2bce9023505836632d86b294dce7eeca",
+        "https://blockstream.info/signet/tx/5348740223488130f54ac71e592108b0b1adc6c043d60510fa0f33d4697baf9b",
+        "https://blockstream.info/signet/tx/220fc5f5931f2fb44a6ee5544e10317c52cfcddc5b5577459f16a10aaa5b81ce",
+        "https://blockstream.info/signet/tx/87033edf3314684848c680743c7d4cad73024523b3715cca2a86c5381462662d",
+        "https://blockstream.info/signet/tx/b0ed552fae5a34634349c75bf02aec495a9b889a18a8368318088295ad9ea89e",
+        "https://blockstream.info/signet/tx/04977af4a6b3057b59a9db043dc82497d5f3ea2e1bcedb98e5d5497318b82d93",
+        "https://blockstream.info/signet/tx/b7b3faa32c7de8f122c1482fcbee3a67255af573e7f1894c94501511fff95c1e"
+      ],
+      "mempoolRequests": 0
+    }
+  ],
+  "localAndTunnelTradingActive": true
+}

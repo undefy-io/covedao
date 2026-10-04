@@ -107,7 +107,7 @@ export function loadConfig(env: Env): RuntimeConfig {
           password: str(env, "BITCOIN_RPC_PASSWORD") || null,
         }
       : null,
-    explorerUrl: str(env, "BITCOIN_EXPLORER_URL", "https://mempool.space"),
+    explorerUrl: str(env, "BITCOIN_EXPLORER_URL", "https://blockstream.info"),
     treasuryAddress: str(env, "PLATFORM_TREASURY_ADDRESS") || null,
     launchFeeSats: bigintOrNull(env, "LAUNCH_FEE_SATS") ?? 10_000n,
     primaryMintFeeBps: bigintOrNull(env, "PRIMARY_MINT_FEE_BPS") ?? 100n,

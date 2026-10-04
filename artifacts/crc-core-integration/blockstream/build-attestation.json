@@ -1,0 +1,27 @@
+{
+  "covedao-blockstream-signet:jpo": {
+    "image": "sha256:5ead8d0b33f1841b23228fa0b42383b217d263445b140f25bca791146d97c1e6",
+    "hashes": {
+      "packages/config/src/cove-networks.ts": "faa35281e81bb7a3a634fefac2cac2df26d1291aadeec359874865c7a3807823",
+      "packages/config/src/load.ts": "94f30ce6701439911d44f81bf00351c86bb6eca1a8869bf90e301d3f1f74a203",
+      "apps/web/src/components/CrcTokenActivity.tsx": "278559748fb689906fd3e11bd0448dc24936b75c349d1ec086ae45eceeee5f62",
+      "apps/web/src/lib/crc-wallet-data.ts": "2055ba23e25057a5c1a97d1407449747099b125dee68742b81d4409cade295ec",
+      "apps/web/src/app/api/crc/v1/wallet/utxos/route.ts": "37486f4b0f5d24ca9d2716f49b0707a6716d10a4988c3710eb53163f7bb1fbfc"
+    }
+  },
+  "covedao-blockstream-guardian:jpo": {
+    "image": "sha256:86702d48b77b247397bae5668d3799ac31c1e5a4816761b4e506f2b601b208b2",
+    "hashes": {
+      "packages/config/src/cove-networks.ts": "51f05494b7c8a022b55b8ecd6ccc1c2933efda7d454d52b6569a30cb6234b181",
+      "packages/config/src/load.ts": "58eb46f60cc90eb4aee3c9686ed65014d1c45cd746ed3fc3ab2cd6fbabce5e3c"
+    }
+  },
+  "browserChunks": {
+    "mempool": [],
+    "blockstream": [
+      "/app/apps/web/.next/static/chunks/1694-c2037901ca192312.js",
+      "/app/apps/web/.next/static/chunks/main-app-3b46d9340259f40b.js",
+      "/app/apps/web/.next/static/chunks/main-ce9651af6d091743.js"
+    ]
+  }
+}

@@ -1,8 +1,8 @@
 import * as bitcoin from "bitcoinjs-lib";
 import * as core from "@crclaunch/crc20-protocol";
-import { CrcPublicChain, PublicChainUnavailable } from "./crc-public-chain";
+import { CrcPublicChain } from "./crc-public-chain";
 import { verifyFundingEvidence, type FundingOutpoint } from "./crc-funding-evidence";
-import { selectFundingCandidates, type WalletFundingCoin } from "./funding-candidates";
+import { type WalletFundingCoin } from "./funding-candidates";
 
 type Requester = (url: string, init?: RequestInit) => Promise<Response>;
 type Input = { txid: string; vout: number; sats: bigint; scriptHex: string };
@@ -24,7 +24,11 @@ export class CrcWalletData {
     if (!this.client) throw new Error("Public broadcast is unavailable. Refresh this page and retry.");
     return this.client.broadcast(rawHex, txid, signal);
   }
+  private requireRegtest(): void {
+    if (this.network !== "regtest") throw new Error("Public chain configuration is unavailable. Refresh this page and retry.");
+  }
   private async serverCoins(address: string, signal?: AbortSignal): Promise<WalletFundingCoin[]> {
+    this.requireRegtest();
     signal?.throwIfAborted();
     const response = await (0, this.request)(`/api/crc/v1/wallet/utxos?address=${encodeURIComponent(address)}`, { cache: "no-store", signal });
     const body = await response.json();
@@ -33,35 +37,23 @@ export class CrcWalletData {
   }
   async coins(address: string, signal?: AbortSignal): Promise<WalletFundingCoin[]> {
     fundingAddressScript(address, this.network);
-    if (this.client) {
-      try { return await this.client.coins(address, signal); }
-      catch (error) { signal?.throwIfAborted(); if (!(error instanceof PublicChainUnavailable)) throw error; }
-    }
+    if (this.client) return this.client.coins(address, signal);
     return this.serverCoins(address, signal);
   }
-  async funding(address: string, candidates: FundingOutpoint[], addresses: string[] = [address], signal?: AbortSignal) {
+  async funding(address: string, candidates: FundingOutpoint[], _addresses: string[] = [address], signal?: AbortSignal) {
     signal?.throwIfAborted();
     if (this.client) {
-      try {
-        const fundingEvidence = await this.client.evidence(candidates, signal);
-        verifyFundingEvidence(fundingEvidence, this.network, candidates, fundingAddressScript(address, this.network));
-        return { funding: candidates, fundingEvidence };
-      } catch (error) {
-        signal?.throwIfAborted(); if (!(error instanceof PublicChainUnavailable)) throw error;
-        // Restart from exact server observations; never submit a partial proof.
-        const rows = await Promise.all([...new Set([address, ...addresses])].map(async owner => ({ owner, coins: await this.serverCoins(owner, signal) })));
-        return { funding: selectFundingCandidates(rows.find(row => row.owner === address)!.coins, true).slice(0, 40), fundingEvidence: undefined };
-      }
+      const fundingEvidence = await this.client.evidence(candidates, signal);
+      verifyFundingEvidence(fundingEvidence, this.network, candidates, fundingAddressScript(address, this.network));
+      return { funding: candidates, fundingEvidence };
     }
+    this.requireRegtest();
     return { funding: candidates, fundingEvidence: undefined };
   }
   async observe(addresses: string[], inputs: Input[], signal?: AbortSignal) {
-    if (this.client) {
-      try {
-        return (await this.client.observe(inputs, signal)).map(input => ({ txid: input.txid, vout: input.vout,
-          valueSats: core.sats(input.sats).toString(), confirmations: input.confirmations, scriptHex: input.scriptHex }));
-      } catch (error) { signal?.throwIfAborted(); if (!(error instanceof PublicChainUnavailable)) throw error; }
-    }
+    if (this.client) return (await this.client.observe(inputs, signal)).map(input => ({txid:input.txid,vout:input.vout,
+      valueSats:core.sats(input.sats).toString(),confirmations:input.confirmations,scriptHex:input.scriptHex}));
+    this.requireRegtest();
     const rows = await Promise.all([...new Set(addresses)].map(async address => ({
       scriptHex: fundingAddressScript(address, this.network), coins: await this.serverCoins(address, signal),
     })));

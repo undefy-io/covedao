@@ -1,0 +1,28 @@
+{
+  "network": "signet",
+  "priorSessionsRetained": 17,
+  "savedTransactionsPreserved": true,
+  "priorEventsRetained": 9,
+  "currentEvents": 9,
+  "registrationsUnchanged": true,
+  "profileUnchanged": true,
+  "services": [
+    {
+      "role": "web",
+      "image": "sha256:5ead8d0b33f1841b23228fa0b42383b217d263445b140f25bca791146d97c1e6",
+      "status": "healthy"
+    },
+    {
+      "role": "worker",
+      "image": "sha256:5ead8d0b33f1841b23228fa0b42383b217d263445b140f25bca791146d97c1e6",
+      "status": "running"
+    },
+    {
+      "role": "guardian",
+      "image": "sha256:86702d48b77b247397bae5668d3799ac31c1e5a4816761b4e506f2b601b208b2",
+      "status": "healthy"
+    }
+  ],
+  "workerReady": true,
+  "databaseReset": false
+}

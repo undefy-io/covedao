@@ -12,13 +12,22 @@ test("normal browser proof path never calls the backend wallet observation", asy
   const result = await new CrcWalletData("signet", server, client).funding(address, candidates);
   expect(result.fundingEvidence?.version).toBe(1); expect(server).not.toHaveBeenCalled();
 });
-test("outage restarts funding from server observations and omits all browser proof", async () => {
-  const fresh = { txid: "aa".repeat(32), vout: 2, valueSats: "20000", confirmations: 1 };
-  const server = vi.fn(async () => Response.json({ ok: true, data: { utxos: [fresh] } }));
-  const client = { evidence: vi.fn(async () => { throw new PublicChainUnavailable("timeout"); }) } as unknown as CrcPublicChain;
-  const result = await new CrcWalletData("signet", server, client).funding(address, candidates);
-  expect(result).toEqual({ funding: [{ txid: fresh.txid, vout: 2 }], fundingEvidence: undefined });
-  expect(server).toHaveBeenCalledOnce();
+test("public discovery, evidence and input review outages never call the backend", async () => {
+  const server = vi.fn();
+  const unavailable = async () => { throw new PublicChainUnavailable("timeout"); };
+  const client = {coins: unavailable, evidence: unavailable, observe: unavailable} as unknown as CrcPublicChain;
+  const data = new CrcWalletData("signet", server, client);
+  await expect(data.coins(address)).rejects.toThrow("timeout");
+  await expect(data.funding(address, candidates)).rejects.toThrow("timeout");
+  await expect(data.observe([address], [{...candidates[0]!, sats:12000n, scriptHex:script}])).rejects.toThrow("timeout");
+  expect(server).not.toHaveBeenCalled();
+});
+test("missing public client configuration fails without server lookup", async () => {
+  const server = vi.fn(); const data = new CrcWalletData("signet",server);
+  await expect(data.coins(address)).rejects.toThrow("Public chain configuration");
+  await expect(data.funding(address,candidates)).rejects.toThrow("Public chain configuration");
+  await expect(data.observe([address],[])).rejects.toThrow("Public chain configuration");
+  expect(server).not.toHaveBeenCalled();
 });
 test("semantic invalidity and cancellation never trigger server fallback", async () => {
   const server = vi.fn();

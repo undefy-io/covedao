@@ -5,6 +5,7 @@ import * as core from "@crclaunch/crc20-protocol";
 import { createPlanPsbt } from "@crclaunch/crc20-adapters";
 import { ECPairFactory } from "ecpair";
 import * as ecc from "tiny-secp256k1";
+import type { CrcPublicChain } from "./crc-public-chain";
 import * as walletData from "./crc-wallet-data";
 import { signCrcBuildSession } from "./crc-browser-session";
 const key = ECPairFactory(ecc).fromPrivateKey(Buffer.alloc(32, 1));
@@ -162,6 +163,9 @@ test("validates the actual Xverse wallet-first mint response with unsigned serve
     },
   };
   const signer = vi.fn(async () => response.toBase64());
+  const publicChain = {observe:async (inputs: {txid:string;vout:number;sats:bigint;scriptHex:string}[]) => inputs.map(input=>({...input,confirmations:1}))};
+  const factory = vi.spyOn(walletData,"crcWalletData").mockReturnValue(new walletData.CrcWalletData("signet",request,publicChain as unknown as CrcPublicChain));
+  try {
   const signed = await signCrcBuildSession(
     session,
     {
@@ -183,6 +187,8 @@ test("validates the actual Xverse wallet-first mint response with unsigned serve
   expect(signer).toHaveBeenCalledOnce();
   expect(bitcoin.Psbt.fromBase64(signed).data.inputs[0]!.finalScriptWitness).toBeUndefined();
   expect(bitcoin.Psbt.fromBase64(signed).data.inputs[1]!.finalScriptWitness).toBeDefined();
+    expect(request.mock.calls.some(([url])=>url.includes("/wallet/utxos"))).toBe(false);
+  } finally {factory.mockRestore();}
 });
 
 test("launch creator identity follows the payment account when token account differs", async () => {

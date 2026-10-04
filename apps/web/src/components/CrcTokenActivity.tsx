@@ -1,5 +1,6 @@
 "use client";
 
+import { COVE_NETWORK_SETTINGS, type CoveNetworkName } from "@crclaunch/config";
 import { useState } from "react";
 import { useCrcRead } from "../lib/use-crc-read";
 import { formatAtoms } from "./CrcHome";
@@ -20,7 +21,7 @@ export function CrcTokenActivity({ assetId, network }: { assetId: string; networ
   const rows = data?.rows ?? null;
   const [shown, setShown] = useState(10);
 
-  const explorer = network === "mainnet" ? "https://mempool.space" : `https://mempool.space/${network}`;
+  const explorer = COVE_NETWORK_SETTINGS[network as CoveNetworkName]?.explorerUrl;
   return <section className="panel px-6 py-8 sm:px-10">
     <div className="flex items-baseline justify-between gap-3">
       <p className="eyebrow">History</p>
@@ -38,7 +39,7 @@ export function CrcTokenActivity({ assetId, network }: { assetId: string; networ
           <td className="text-right text-bone-dim">{Number(row.blockHeight).toLocaleString()}</td>
           <td className={row.valid ? "text-bone" : "text-rejected"}>{crcActivityLabel(row)}{!row.valid && <span className="ml-2 text-label">Rejected</span>}</td>
           <td className="text-right tabular-nums">{row.amountAtoms ? formatAtoms(row.amountAtoms) : "—"}</td>
-          <td className="text-right"><a href={`${explorer}/tx/${row.txid}`} target="_blank" rel="noreferrer noopener" className="hex hover:text-signal">{row.txid.slice(0, 12)}…</a></td>
+          <td className="text-right">{explorer ? <a href={`${explorer}/tx/${row.txid}`} target="_blank" rel="noreferrer noopener" className="hex hover:text-signal">{row.txid.slice(0, 12)}…</a> : <span className="hex">{row.txid.slice(0, 12)}…</span>}</td>
         </tr>)}</tbody>
       </table>
       {rows.length > shown && <button type="button" className="btn-ghost mt-4 w-full" onClick={() => setShown((value) => value + 10)}>Show more</button>}
