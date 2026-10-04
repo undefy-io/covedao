@@ -1,0 +1,23 @@
+{
+  "records": [
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "manualFeeFieldInBundle": false,
+      "automaticFeeLogicInBundle": true,
+      "errors": []
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "manualFeeFieldInBundle": false,
+      "automaticFeeLogicInBundle": true,
+      "errors": []
+    }
+  ],
+  "tunnelTradingActive": true
+}
