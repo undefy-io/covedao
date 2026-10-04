@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { crcIndexedRefresh } from "@/lib/crc-indexed-refresh";
 import { capAtoms } from "@crclaunch/crc20-protocol";
 import { useEffect, useState } from "react";
 import { useWallet } from "./WalletProvider";
@@ -22,18 +23,22 @@ export function CrcMarketBuyer() {
 
   useEffect(() => {
     let live = true;
-    void Promise.all([
-      fetch("/api/crc/v1/market/status", { cache: "no-store" }).then((response) => response.json()),
-      fetch("/api/crc/v1/market/listings", { cache: "no-store" }).then((response) => response.json()),
-      fetch("/api/crc/v1/tokens?limit=100", { cache: "no-store" }).then((response) => response.json()),
+    const controller = new AbortController();
+    const load = async (signal: AbortSignal) => Promise.all([
+      fetch("/api/crc/v1/market/status", { cache: "no-store", signal }).then((response) => response.json()),
+      fetch("/api/crc/v1/market/listings", { cache: "no-store", signal }).then((response) => response.json()),
+      fetch("/api/crc/v1/tokens?limit=100", { cache: "no-store", signal }).then((response) => response.json()),
     ]).then(([status, book, catalog]) => {
       if (!live) return;
       setActive(status.ok === true && status.data?.active === true && book.ok === true && book.data?.active === true);
       if (book.ok === true && Array.isArray(book.data?.listings)) setListings(book.data.listings);
       if (catalog.ok === true && Array.isArray(catalog.data?.tokens)) setTokens(catalog.data.tokens);
-    }).catch(() => { if (live) setError("Could not load the marketplace"); })
+    }).catch((cause) => { if (live && !signal.aborted) setError("Could not load the marketplace"); throw cause; })
       .finally(() => { if (live) setLoading(false); });
-    return () => { live = false; };
+    const stop = crcIndexedRefresh.subscribe(load);
+    const changed = () => { void load(controller.signal).catch(() => {}); };
+    window.addEventListener("crc-market-listings-changed", changed);
+    return () => { live = false; controller.abort(); stop(); window.removeEventListener("crc-market-listings-changed", changed); };
   }, []);
 
   async function buy(listing: CrcMarketListing) {

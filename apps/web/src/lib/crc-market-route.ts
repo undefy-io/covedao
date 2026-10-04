@@ -71,6 +71,7 @@ export async function readCrcMarketListings(
   db: Database,
   network: CrcNetwork,
   deployTxid?: string,
+  sellerScriptHex?: string,
 ) {
   const rows = await db.execute(sql`
     SELECT o.key, o.value_json FROM crc_records o
@@ -79,10 +80,11 @@ export async function readCrcMarketListings(
       AND u.key=(o.value_json->'listedInput'->>'txid') || ':' || (o.value_json->'listedInput'->>'vout')
       AND u.deploy_txid=o.deploy_txid AND u.script_hex=o.script_hex AND u.atoms=o.atoms
     JOIN crc_cursors c ON c.network=o.network
-    WHERE o.network=${core.protocolNetwork(network)} AND o.kind='offers' AND o.status='open'
+    WHERE o.network=${core.protocolNetwork(network)} AND o.kind='offers' AND ${sellerScriptHex ? sql`o.status IN ('open', 'cancelPending')` : sql`o.status='open'`}
       AND (o.value_json->>'expiryHeight')::bigint > c.height
       AND ${deployTxid ? sql`o.deploy_txid=${deployTxid}` : sql`true`}
-    ORDER BY o.key LIMIT 100
+      AND ${sellerScriptHex ? sql`o.script_hex=${sellerScriptHex}` : sql`true`}
+    ORDER BY o.key LIMIT 101
   `);
   return rows.rows.map((row) => {
     const offer = core.decodeProtocolDto<core.Offer>(row.value_json);
@@ -100,7 +102,7 @@ export async function readCrcMarketListings(
       priceSats: Number(offer.priceSats),
       protocolFeeSats: Number(core.marketFee(offer.priceSats)),
       expiresAtHeight: String(offer.expiryHeight),
-      status: "OPEN",
+      status: offer.status === "cancelPending" ? "CANCEL_PENDING" : "OPEN",
       coreOffer: core.encodeProtocolDto(offer),
     };
   });
@@ -119,8 +121,13 @@ export async function crcMarketGet(
     const deployTxid = new URL(req.url).searchParams.get("deployTxid") ?? undefined;
     if (deployTxid && !txid.safeParse(deployTxid).success)
       return fail("BAD_REQUEST", "Invalid deployment", 400);
+    const sellerScriptHex = new URL(req.url).searchParams.get("sellerScriptHex") ?? undefined;
+    if (sellerScriptHex && !script.safeParse(sellerScriptHex).success)
+      return fail("BAD_REQUEST", "Invalid seller script", 400);
     const { db, network } = read();
-    return ok({ active: true, listings: await readCrcMarketListings(db, network, deployTxid) });
+    const rows = await readCrcMarketListings(db, network, deployTxid, sellerScriptHex);
+    return ok({ active: true, listings: rows.slice(0, 100), truncated: rows.length > 100,
+      ...(sellerScriptHex ? { unavailableOutpoints: rows.slice(0, 100).map(row => ({txid: row.sellerAnchorTxid, vout: row.sellerAnchorVout})) } : {}) });
   } catch (error) {
     return handleError(error);
   }

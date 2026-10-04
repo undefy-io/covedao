@@ -75,7 +75,7 @@ describe("CRC market settlement gate", () => {
       { params: Promise.resolve({ operation: "listings" }) },
     );
     expect(listings.status).toBe(200);
-    expect((await listings.json()).data).toEqual({ active: true, listings: [] });
+    expect((await listings.json()).data).toEqual({ active: true, listings: [], truncated: false });
     const funding = await POST(
       new Request("http://localhost/api/crc/v1/market/funding-check", {
         method: "POST",

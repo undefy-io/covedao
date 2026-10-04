@@ -1,0 +1,46 @@
+{
+  "checkedAt": "2026-10-04T05:47:27.827855+00:00",
+  "beadsEpic": "covedao-xjj",
+  "freshPlanReviewer": "gpt-6.1-sol",
+  "webTests": 272,
+  "ownedCoreSubmitTests": 19,
+  "webTypecheck": "pass",
+  "webLint": "pass",
+  "productionBuild": "pass",
+  "containers": {
+    "worker": {
+      "id": "9987ea0b6077e9c4a3800d5b8ec42b21f356b75a303b06d9a457036a27b3b75e",
+      "image": "sha256:5ead8d0b33f1841b23228fa0b42383b217d263445b140f25bca791146d97c1e6",
+      "state": "running"
+    },
+    "guardian": {
+      "id": "502b9c0eae1744e429c0131c85c28af31e159a315e851c5e64ed1a751776c2d7",
+      "image": "sha256:86702d48b77b247397bae5668d3799ac31c1e5a4816761b4e506f2b601b208b2",
+      "state": "running"
+    },
+    "postgres": {
+      "id": "2f55d9b55078737438708fd215dd4bc1dd984b38ce95ff1a48ec26b3537d98c7",
+      "image": "sha256:de3a4eab8fdfa507ea92aac488b916b08089e515db49b055fe71dfa271ba3a28",
+      "state": "running"
+    },
+    "web": {
+      "id": "a6c370b941bfe06a15f31ffe1e7db0c3ec97b7229136d34ff769da873626efb7",
+      "image": "sha256:0ab10e6d3c75b9fc50c286990e8abdd5784ac8153df2345763322fa58858f0bf",
+      "state": "running"
+    }
+  },
+  "existingSessionsPreserved": 19,
+  "profileSha256": "d4e2e0943e2543010a401aca4fa9c560d1fc4da1f7c346d5e115757faf34b095",
+  "sourceHashes": {
+    "apps/web/src/components/CrcMarketSeller.tsx": "eca84d984ab8fe054aac9433b996d8d5c72e8cc130618f5da9c410dc32d84a62",
+    "apps/web/src/components/CrcMarketBuyer.tsx": "1fcbe8fb971e7db497305a1419faaa84b45433dd2a4e24188f3f22531e648059",
+    "apps/web/src/components/CrcMarketPageContent.tsx": "2a7286c90386cc16afae26b12d9f015d19a1b5072e0945aa86d136a6a82097ff",
+    "apps/web/src/lib/crc-market-listing.ts": "3fd6f8aedd3e3798a80b48200886319ad21270be343907d61b7d9b9e98f49bc0",
+    "apps/web/src/lib/crc-market-amount.ts": "98929b7295bdd9e79df041bdca4ee611a3354424cc47c8ca947d6a90df4caa8b",
+    "apps/web/src/lib/crc-market-route.ts": "7020adeb696f26838ad66c43229df838d8f6da7b53c8d1242f9bb8dcb252cc8d"
+  },
+  "dbMigrations": false,
+  "dbReset": false,
+  "protocolChanges": false,
+  "browserRecoveryStorage": false
+}

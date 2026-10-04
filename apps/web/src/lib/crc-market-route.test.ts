@@ -136,3 +136,16 @@ for (const network of ["regtest", "signet", "testnet", "mainnet"] as const) {
     expect(execute).toHaveBeenCalledOnce();
   });
 }
+
+it("seller availability is filtered, includes cancelPending, and explicitly reports truncation", async () => {
+  const sellerScript = "0014" + "c".repeat(40);
+  const rows=Array.from({length:101},(_,i)=>({key:String(i),value_json:core.encodeProtocolDto({network:"regtest",deployTxid:"a".repeat(64),ticker:"TEST",listedInput:{txid:i.toString(16).padStart(64,"0"),vout:0,sats:1000n,atoms:100n,scriptHex:sellerScript},sellerScriptHex:sellerScript,priceSats:5000n,expiryHeight:200,publicKeyHex:"02"+"d".repeat(64),signatureHex:"",sellerWitnessHex:[],status:i===0?"cancelPending":"open"})}));
+  const execute=vi.fn(async (_query: unknown)=>({rows}));
+  const response=await crcMarketGet(new Request(`http://localhost/api/crc/v1/market/listings?sellerScriptHex=${sellerScript}`),"listings",true,()=>({db:{execute},network:"regtest"}) as any);
+  const data=(await response.json()).data;
+  expect(data.truncated).toBe(true);expect(data.listings).toHaveLength(100);expect(data.unavailableOutpoints).toHaveLength(100);
+  expect(data.listings[0].status).toBe("CANCEL_PENDING");
+  const {PgDialect}=await import("drizzle-orm/pg-core");
+  const query=new PgDialect().sqlToQuery(execute.mock.calls[0]![0] as any);
+  expect(query.sql).toContain("cancelPending");expect(query.sql).toContain("LIMIT 101");expect(query.params).toContain(sellerScript);
+});

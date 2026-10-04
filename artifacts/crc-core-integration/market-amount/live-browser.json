@@ -1,0 +1,33 @@
+{
+  "checkedAt": "2026-10-04T05:47:28.641Z",
+  "records": [
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "marketSellerVisible": true,
+      "connectWalletAvailable": true,
+      "availabilityStatus": 200,
+      "truncated": false,
+      "availableMetadata": true,
+      "consoleErrors": [],
+      "horizontalOverflow": false
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "marketSellerVisible": true,
+      "connectWalletAvailable": true,
+      "availabilityStatus": 200,
+      "truncated": false,
+      "availableMetadata": true,
+      "consoleErrors": [],
+      "horizontalOverflow": false
+    }
+  ],
+  "tunnelTradingActive": true,
+  "userWalletSigning": false
+}
