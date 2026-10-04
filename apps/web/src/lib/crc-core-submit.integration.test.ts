@@ -1165,7 +1165,9 @@ test("consumer buy400/list300/buyer-only fill returns100 without an extra split 
   const before=await sync();
   const tokens=Object.entries(before.allocations).filter(([,a])=>a.deployTxid===deployId&&a.scriptHex===aliceScript).map(([p])=>({txid:p.split(":")[0]!,vout:Number(p.split(":")[1])}));
   const common={db:database.db,network:"regtest" as const,bitcoinNetwork:bitcoin.networks.regtest,walletScriptHex:aliceScript,tokenScriptHex:aliceScript,walletPublicKeyHex:Buffer.from(aliceKey.publicKey).toString("hex"),tokenPublicKeyHex:Buffer.from(aliceKey.publicKey).toString("hex"),paymentFunding:await cacheFunding(),minerFeeSats:1000,feeScriptHex:protocolScript};
-  const built=await buildCrcTokenSession({...common,deployTxid:deployId,operation:"listing",amountAtoms:invAtoms(300),recipientScriptHex:aliceScript,priceSats:5000n,tokenFunding:tokens,idempotencyKey:"inventory-list300"});
+  const built=await buildCrcTokenSession({...common,deployTxid:deployId,operation:"listing",amountAtoms:invAtoms(300),recipientScriptHex:aliceScript,priceSats:5000n,tokenFunding:tokens,minerFeeSats:undefined,feeRateSatPerVb:2,idempotencyKey:"inventory-list300"});
+  expect(built.intent.feeRateSatPerVb).toBe(2);
+  expect(built.intent.minerFeeSats).toBeLessThanOrEqual(20000);
   const custodyCount=sign.mock.calls.length;
   const listing=await submit(built.sessionId,walletSign(built.psbtBase64),"listing");
   const [hash]=node.mine(); expect(node.block(hash).transactions).toHaveLength(1);

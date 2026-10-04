@@ -40,7 +40,7 @@ test("desktop/mobile amount seller stages confirmation, invalidates edits, and n
   const page=await browser.newPage({viewport});
   await page.route('**/api/**',async route=>{const url=route.request().url();const data=url.includes('/balances')?{balances:[{assetId,ticker:'TEST',atoms:'40000000000'}],nextCursor:null}:{active:true,listings:[],truncated:false,unavailableOutpoints:[]};await route.fulfill({json:{ok:true,data}});});
   await page.goto(`http://127.0.0.1:${(server.address() as {port:number}).port}`);
-  await page.getByText('Confirmed: 400',{exact:false}).waitFor();expect(await page.getByLabel('Whole token output').count()).toBe(0);
+  await page.getByText('Confirmed: 400',{exact:false}).waitFor();expect(await page.getByLabel('Preparation network fee (sats)').count()).toBe(0);expect(await page.getByLabel('Whole token output').count()).toBe(0);
   await page.getByLabel('Amount to sell').fill('400');await page.getByLabel('Total price (sats)').fill('5000');await page.getByRole('button',{name:'Review listing',exact:true}).click();
   await page.getByRole('button',{name:'Sign and publish listing'}).waitFor();
   await page.getByLabel('Amount to sell').fill('300');expect(await page.getByRole('button',{name:'Sign and publish listing'}).count()).toBe(0);

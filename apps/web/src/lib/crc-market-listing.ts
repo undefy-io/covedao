@@ -42,7 +42,7 @@ function offerFor(snapshot:SellerSnapshot,coin:CrcListingCoin,priceSats:bigint,e
   if(!Number.isSafeInteger(expiryBlocks)||expiryBlocks<1||expiryBlocks>2016) throw new Error("Expiry must be 1 to 2,016 blocks");
   return makeCrcSellerListing({network:wallet.network,coreState:snapshot.token.coreState,sellerScriptHex:wallet.ordinalsScript,publicKeyHex:wallet.ordinalsPublicKey||wallet.publicKey,tokenCoin:coin,bitcoinCoin:{txid:coin.txid,vout:coin.vout,valueSats:coin.btcSats},priceSats,currentHeight:snapshot.height,expiryHeight:snapshot.height+expiryBlocks});
 }
-export async function reviewCrcAmountListing(args:{assetId:string;amountAtoms:bigint;priceSats:bigint;expiryBlocks:number;minerFeeSats:number;preferredCoin?:CrcListingCoin},wallet:CrcListingWallet,request:CrcRequest=fetch,guard:Guard=unchanged):Promise<AmountListingReview> {
+export async function reviewCrcAmountListing(args:{assetId:string;amountAtoms:bigint;priceSats:bigint;expiryBlocks:number;preferredCoin?:CrcListingCoin},wallet:CrcListingWallet,request:CrcRequest=fetch,guard:Guard=unchanged):Promise<AmountListingReview> {
   guard();validateWallet(wallet);
   const snapshot=await loadCrcSellerSnapshot(args.assetId,wallet,request);guard();
   const selected=selectCrcListingCoins(snapshot.coins,args.amountAtoms,snapshot.unavailableOutpoints,snapshot.truncated);
@@ -56,7 +56,10 @@ export async function reviewCrcAmountListing(args:{assetId:string;amountAtoms:bi
   const total=selected.reduce((sum,c)=>sum+BigInt(c.atoms),0n);
   const review:AmountListingReview={...args,selected,changeAtoms:total-args.amountAtoms,walletDeltaSats:0n};
   if(selected.length===1 && total===args.amountAtoms) return {...review,offer};
-  if(!Number.isSafeInteger(args.minerFeeSats)||args.minerFeeSats<1||BigInt(args.minerFeeSats)>core.maxMinerFeeSats) throw new Error("Miner fee must be 1 to 20,000 sats");
+  const rates=await crcBrowserData<{tiers:{key:string;satPerVb:string}[]}>(request,"/api/crc/v1/fees");guard();
+  const tier=rates.tiers.find(t=>t.key==="standard")??rates.tiers[0];
+  if(!tier || !/^[1-9]\d{0,2}$/.test(tier.satPerVb) || Number(tier.satPerVb)>500) throw new Error("Network fee estimate is unavailable. Try again shortly.");
+  const feeRateSatPerVb=Number(tier.satPerVb);
   const data=crcWalletData(wallet.network,request);
   const coins=await data.coins(wallet.address);guard();
   const candidates=coins.filter(c=>(c.confirmations??0)>0).slice(0,40).map(({txid,vout})=>({txid,vout}));
@@ -69,10 +72,10 @@ export async function reviewCrcAmountListing(args:{assetId:string;amountAtoms:bi
   const built=await crcBrowserData<CrcBrowserBuild>(request,"/api/crc/v1/market/listing-build",{
     deployTxid:snapshot.token.deployTxid,tokenFunding:selected.map(({txid,vout})=>({txid,vout})),paymentFunding:evidence.funding,fundingEvidence:evidence.fundingEvidence,
     walletScriptHex:wallet.script,tokenScriptHex:wallet.ordinalsScript,walletPublicKeyHex:wallet.publicKey,tokenPublicKeyHex:wallet.ordinalsPublicKey||wallet.publicKey,
-    recipientScriptHex:wallet.ordinalsScript,amountAtoms:args.amountAtoms.toString(),priceSats:args.priceSats.toString(),minerFeeSats:args.minerFeeSats,idempotencyKey:crypto.randomUUID(),
+    recipientScriptHex:wallet.ordinalsScript,amountAtoms:args.amountAtoms.toString(),priceSats:args.priceSats.toString(),feeRateSatPerVb,idempotencyKey:crypto.randomUUID(),
   });guard();
   const plan=core.decodeProtocolDto<core.Plan>(built.intent.corePlan);
-  if(built.intent.operation!=="listing" || built.intent.assetId!==args.assetId || built.intent.amountAtoms!==args.amountAtoms.toString() || built.intent.priceSats!==args.priceSats.toString() || built.intent.minerFeeSats!==args.minerFeeSats || plan.minerFeeSats!==BigInt(args.minerFeeSats) || plan.changeAtoms!==review.changeAtoms) throw new Error("Listing build differs from reviewed terms");
+  if(built.intent.operation!=="listing" || built.intent.assetId!==args.assetId || built.intent.amountAtoms!==args.amountAtoms.toString() || built.intent.priceSats!==args.priceSats.toString() || built.intent.feeRateSatPerVb!==feeRateSatPerVb || !Number.isSafeInteger(built.intent.minerFeeSats) || plan.minerFeeSats<1n || plan.minerFeeSats>core.maxMinerFeeSats || plan.minerFeeSats!==BigInt(String(built.intent.minerFeeSats)) || plan.changeAtoms!==review.changeAtoms) throw new Error("Listing build differs from reviewed terms");
   const tokenInputs=plan.inputs.filter(input=>input.atoms!==undefined);
   const recipient=plan.outputs.filter(output=>output.role==="recipient");
   if(tokenInputs.length!==selected.length || tokenInputs.some((input,index)=>{

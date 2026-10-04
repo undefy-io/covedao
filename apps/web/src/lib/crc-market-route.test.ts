@@ -149,3 +149,17 @@ it("seller availability is filtered, includes cancelPending, and explicitly repo
   const query=new PgDialect().sqlToQuery(execute.mock.calls[0]![0] as any);
   expect(query.sql).toContain("cancelPending");expect(query.sql).toContain("LIMIT 101");expect(query.params).toContain(sellerScript);
 });
+
+it("listing builds accept automatic fee rates and reject missing, conflicting or excessive fee methods", async()=>{
+  const builds=await import('./crc-build');
+  const mock=vi.spyOn(builds,'buildCrcTokenSession').mockResolvedValue({sessionId:'test',psbtBase64:'psbt',intent:{}} as any);
+  const script='0014'+'aa'.repeat(20);
+  const body={deployTxid:'bb'.repeat(32),tokenFunding:[{txid:'cc'.repeat(32),vout:0}],paymentFunding:[],walletScriptHex:script,tokenScriptHex:script,recipientScriptHex:script,amountAtoms:'30000000000',priceSats:'5000',idempotencyKey:'auto-fee'};
+  const send=(fees:object)=>crcMarketPost(new Request('http://localhost/api/crc/v1/market/listing-build',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...body,...fees})}),'listing-build',true,()=>({db:{},provider:{},network:'regtest',feeScriptHex:script}) as any);
+  try {
+    expect((await send({feeRateSatPerVb:6})).status).toBe(200);
+    expect(mock).toHaveBeenCalledWith(expect.objectContaining({feeRateSatPerVb:6,amountAtoms:30000000000n}));
+    for(const fees of [{},{minerFeeSats:1000,feeRateSatPerVb:6},{feeRateSatPerVb:0},{feeRateSatPerVb:501}]) expect((await send(fees)).status).toBe(400);
+    expect(mock).toHaveBeenCalledOnce();
+  } finally {mock.mockRestore();}
+});

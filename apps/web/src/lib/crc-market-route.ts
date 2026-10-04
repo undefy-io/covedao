@@ -214,6 +214,8 @@ export async function crcMarketPost(
     if (operation === "transfer-build" || operation === "listing-build") {
       const parsed = common
         .extend({
+          minerFeeSats: common.shape.minerFeeSats.optional(),
+          feeRateSatPerVb: z.number().int().min(1).max(500).optional(),
           deployTxid: txid,
           tokenFunding: z.array(outpoint).min(1).max(32),
           amountAtoms: decimal,
@@ -221,6 +223,7 @@ export async function crcMarketPost(
           priceSats: decimal.optional(),
         })
         .strict()
+        .refine(value => (value.minerFeeSats === undefined) !== (value.feeRateSatPerVb === undefined), "Choose one network fee method")
         .parse(raw);
       if (!service.feeScriptHex) throw new Error("CRC market fee authority is unavailable");
       return ok(

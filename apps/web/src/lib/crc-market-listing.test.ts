@@ -25,12 +25,13 @@ function fixture() {
   else if(url.includes('/utxos?')) data={utxos:(confirmed?[prepared]:[input]).map(c=>({txid:c.txid,vout:c.vout,atoms:c.atoms.toString(),btcSats:c.sats.toString(),scriptHex:c.scriptHex})),truncated:false};
   else if(url.includes('/tokens/')) data={token:{assetId,network:'regtest',deployTxid,ticker:'TEST',coreState:core.encodeProtocolDto(state)},indexedTip:{height:String(height),blockHash:'ff'.repeat(32)}};
   else if(url.includes('/listings?')) data={active:true,listings:[],unavailableOutpoints:[],truncated};
+  else if(url.endsWith('/fees')) data={tiers:[{key:'standard',satPerVb:'2'}]};
   else if(url.endsWith('/funding-check')) data={tokenFreeOutpoints:[{txid:funding.txid,vout:0}]};
   else if(url.endsWith('/listing-build')) {
-   expect(body.recipientScriptHex).toBe(script);expect(body.amountAtoms).toBe((300n*core.atomsPerToken).toString());expect(body.tokenFunding).toEqual([{txid:input.txid,vout:0}]);
+   expect(body.feeRateSatPerVb).toBe(2);expect(body.minerFeeSats).toBeUndefined();expect(body.recipientScriptHex).toBe(script);expect(body.amountAtoms).toBe((300n*core.atomsPerToken).toString());expect(body.tokenFunding).toEqual([{txid:input.txid,vout:0}]);
    const plan=core.buildListing({network:'regtest',deployTxid,ticker:'TEST',input,funding:[funding],amountAtoms:300n*core.atomsPerToken,sellerScriptHex:script,recipientScriptHex:script,changeScriptHex:script,priceSats:5000n,minerFeeSats:1000n});
    if(tamper) plan.outputs.find(o=>o.role==="btcChange")!.scriptHex=config.protocolScriptHex;
-   data={sessionId:'test-session',psbtBase64:createPlanPsbt(plan,'regtest').toBase64(),intent:{operation:'listing',assetId,amountAtoms:body.amountAtoms,priceSats:'5000',minerFeeSats:1000,corePlan:core.encodeProtocolDto(plan),coreConfig:core.encodeProtocolDto(config)}};
+   data={sessionId:'test-session',psbtBase64:createPlanPsbt(plan,'regtest').toBase64(),intent:{operation:'listing',assetId,amountAtoms:body.amountAtoms,priceSats:'5000',minerFeeSats:1000,feeRateSatPerVb:2,corePlan:core.encodeProtocolDto(plan),coreConfig:core.encodeProtocolDto(config)}};
   } else if(url.endsWith('/listing-submit')) data={txid:prepared.txid};
   else if(url.endsWith('/listings')) {const offer=core.decodeProtocolDto<core.Offer>(body.offer);core.verifyOffer(offer);data={listingId:core.offerId(offer)};}
   else throw new Error(`Unexpected ${url}`);
@@ -38,13 +39,13 @@ function fixture() {
  });
  return {wallet,request,signer,proof,confirm:()=>{confirmed=true;height=102;},truncate:()=>{truncated=true;},spend:()=>{spent=true;},tamper:()=>{tamper=true;},onProof:(fn:()=>void)=>{proofHook=fn;}};
 }
-const args={assetId,amountAtoms:300n*core.atomsPerToken,priceSats:5000n,expiryBlocks:12,minerFeeSats:1000};
+const args={assetId,amountAtoms:300n*core.atomsPerToken,priceSats:5000n,expiryBlocks:12};
 test('exact400 offer needs no payment discovery, setup transaction or broadcast',async()=>{
  const f=fixture();const review=await reviewCrcAmountListing({...args,amountAtoms:input.atoms},f.wallet,f.request);
  expect(review.built).toBeUndefined();expect(review.offer?.amountAtoms).toBe(input.atoms);
  await publishCrcAmountListing(review,f.wallet,f.request);
  expect(f.signer).toHaveBeenCalledOnce();expect(f.proof).toHaveBeenCalledOnce();
- expect(f.request.mock.calls.some(([url])=>/listing-build|listing-submit|funding-check/.test(url))).toBe(false);
+ expect(f.request.mock.calls.some(([url])=>/listing-build|listing-submit|funding-check|\/fees/.test(url))).toBe(false);
 });
 test('400 lists300 with100change, waits indexed confirmation and publishes only explicitly',async()=>{
  const f=fixture();const review=await reviewCrcAmountListing(args,f.wallet,f.request);
@@ -90,4 +91,11 @@ test('identity change after setup signature prevents server submission and activ
  const original=f.wallet.signPsbt;f.wallet.signPsbt=vi.fn(async(psbt,operation)=>{const signed=await original(psbt,operation);current=false;return signed;});
  await expect(prepareCrcAmountListing(review,f.wallet,f.request,guard)).rejects.toThrow('Wallet changed');
  expect(f.request.mock.calls.some(([url])=>url.endsWith('/listing-submit')||url.endsWith('/listings'))).toBe(false);
+});
+
+test('fee estimation failures stop preparation while exact listings need no estimate',async()=>{
+ const f=fixture();const request=async(url:string,init?:RequestInit)=>url.endsWith('/fees')?new Response(JSON.stringify({ok:false,error:{message:'Fee estimate unavailable'}}),{status:503}):f.request(url,init);
+ await expect(reviewCrcAmountListing(args,f.wallet,request)).rejects.toThrow('Fee estimate unavailable');
+ expect(f.signer).not.toHaveBeenCalled();
+ await expect(reviewCrcAmountListing({...args,amountAtoms:input.atoms},f.wallet,request)).resolves.toHaveProperty('offer');
 });

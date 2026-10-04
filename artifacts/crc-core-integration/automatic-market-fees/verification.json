@@ -1,0 +1,39 @@
+{
+  "checkedAt": "2026-10-04T06:28:26.046611+00:00",
+  "beads": "covedao-ap5",
+  "webTests": 274,
+  "ownedCoreSubmitTests": 19,
+  "typecheck": "pass",
+  "lint": "pass",
+  "productionBuild": "pass",
+  "sourceHashes": {
+    "apps/web/src/components/CrcMarketSeller.tsx": "4bed08745c81ac12d368b26d19b00b3426c78cb069c165d687a02175cc48dced",
+    "apps/web/src/lib/crc-market-listing.ts": "0a2bff49c1e346bf952b97319e5f37c4dd6da4066474a3a2272f2b242a4fc5c4",
+    "apps/web/src/lib/crc-market-route.ts": "e9ee0ed424721fb8ec85221b297dca7dd0024b3d3bd80f33dcd631eed9cb03e0",
+    "apps/web/src/lib/crc-build.ts": "6414b4fe7d8a9f09e914b3ad7510fdd414c634bb49a5c4efa1c191ff31c0a9f9"
+  },
+  "containers": {
+    "web": {
+      "id": "9a5e5302dc467416f2ee2520fabbcc8db690132ebfeb69844454091e7fc1fba2",
+      "image": "sha256:00252cb90f0de27b4bd286daacd13a3b952f95b9d926947a999f8400aa856201"
+    },
+    "worker": {
+      "id": "9987ea0b6077e9c4a3800d5b8ec42b21f356b75a303b06d9a457036a27b3b75e",
+      "image": "sha256:5ead8d0b33f1841b23228fa0b42383b217d263445b140f25bca791146d97c1e6"
+    },
+    "guardian": {
+      "id": "502b9c0eae1744e429c0131c85c28af31e159a315e851c5e64ed1a751776c2d7",
+      "image": "sha256:86702d48b77b247397bae5668d3799ac31c1e5a4816761b4e506f2b601b208b2"
+    },
+    "postgres": {
+      "id": "2f55d9b55078737438708fd215dd4bc1dd984b38ce95ff1a48ec26b3537d98c7",
+      "image": "sha256:de3a4eab8fdfa507ea92aac488b916b08089e515db49b055fe71dfa271ba3a28"
+    }
+  },
+  "preservedSessions": 19,
+  "profileSha256": "d4e2e0943e2543010a401aca4fa9c560d1fc4da1f7c346d5e115757faf34b095",
+  "manualFeeEntry": false,
+  "exactCoinFeeLookup": false,
+  "dbReset": false,
+  "userWalletSigning": false
+}

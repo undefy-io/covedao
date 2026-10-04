@@ -497,6 +497,7 @@ export async function buildCrcTokenSession(
     walletScriptHex: params.walletScriptHex,
     tokenScriptHex: params.tokenScriptHex,
     minerFeeSats: Number(plan.minerFeeSats),
+    ...(params.feeRateSatPerVb === undefined ? {} : { feeRateSatPerVb: params.feeRateSatPerVb }),
     unsignedTxDigest: digest,
     corePlan: core.encodeProtocolDto(plan),
     coreConfig: core.encodeProtocolDto(asset.config),
