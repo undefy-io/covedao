@@ -34,7 +34,6 @@ export function CrcMarketBuyer() {
   const [pending, setPending] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [minerFee, setMinerFee] = useState("1000");
 
   useEffect(() => {
     let live = true;
@@ -95,9 +94,6 @@ export function CrcMarketBuyer() {
         return;
       }
       if (isCrcMarketListingOwner(listing, { network, script, ordinalsScript })) return;
-      if (!/^[1-9]\d{0,4}$/.test(minerFee) || Number(minerFee) > 20_000) {
-        throw new Error("Miner fee must be 1 to 20,000 sats");
-      }
       const result = await buyCrcMarketListing(
         listing,
         {
@@ -110,7 +106,7 @@ export function CrcMarketBuyer() {
           ordinalsAddress,
           signPsbt,
         },
-        Number(minerFee),
+        1000,
       );
       setMessage(`Sale submitted: ${result.txid}`);
       setListings((current) => current.filter((row) => row.id !== listing.id));
@@ -268,17 +264,6 @@ export function CrcMarketBuyer() {
             </tbody>
           </table>
         </div>
-      )}
-      {active && visible.length > 0 && (
-        <label className="mt-6 block max-w-xs text-sm text-bone-dim">
-          Miner fee (sats)
-          <input
-            className="field mt-2 max-w-xs"
-            inputMode="numeric"
-            value={minerFee}
-            onChange={(event) => setMinerFee(event.target.value)}
-          />
-        </label>
       )}
       {error && (
         <p role="alert" className="text-sm text-danger">

@@ -53,7 +53,7 @@ const root=createRoot(document.getElementById('root'));window.render=()=>root.re
                 refresh: `export const crcIndexedRefresh={subscribe(read){void read(new AbortController().signal);return()=>{};}};`,
                 link: `import React from 'react';export default ({children,...props})=>React.createElement('a',props,children);`,
                 client: `export {isCrcMarketListingOwner} from ${JSON.stringify(new URL("../lib/crc-market-client.ts", import.meta.url).pathname)};
-export const buyCrcMarketListing=async(row)=>{window.buyCalls.push(row.id);return {txid:'submitted'};};`,
+export const buyCrcMarketListing=async(row,wallet,minerFeeSats)=>{window.buyCalls.push({id:row.id,minerFeeSats});return {txid:'submitted'};};`,
               } as Record<string, string>
             )[path]!,
             loader: "js",
@@ -120,7 +120,9 @@ export const buyCrcMarketListing=async(row)=>{window.buyCalls.push(row.id);retur
       expect(await alice.getByRole("button", { name: "Review buy" }).count()).toBe(0);
       await bob.getByRole("button", { name: "Review buy" }).click();
       await page.getByText("Sale submitted: submitted").waitFor();
-      expect(await page.evaluate("window.buyCalls")).toEqual(["bob"]);
+      expect(await page.evaluate("window.buyCalls")).toEqual([{id:"bob",minerFeeSats:1000}]);
+      expect(await page.getByText("Miner fee (sats)", {exact:true}).count()).toBe(0);
+      expect(await page.getByRole("spinbutton").count()).toBe(0);
       await page.reload();
       await alice.getByText("Your listing", { exact: true }).waitFor();
       await page.evaluate(
